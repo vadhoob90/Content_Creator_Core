@@ -49,7 +49,7 @@ Initial scope excludes:
 4. A voice is a package, not one prompt file.
 5. Core editorial, channel and voice rubrics are composed at runtime.
 6. Candidate voices cannot be used for content until activated.
-7. `content-studio voice approve <voice-id>` is the authoritative activation
+7. `content-creator voice approve <voice-id>` is the authoritative activation
    command and is safe to rerun.
 8. Source material is private by default and is not committed automatically.
 9. LinkedIn Writer remains operational until the new repository passes the

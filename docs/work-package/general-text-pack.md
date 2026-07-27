@@ -101,7 +101,7 @@ Conversationally:
 CLI:
 
 ```bash
-content-studio content run \
+content-creator content run \
   "Explain how platform engineering changes team responsibilities" \
   --voice aisha-khan \
   --pack general-text \
@@ -129,7 +129,7 @@ pack_options:
 ```
 
 ```bash
-content-studio content run --brief briefs/platform-engineering.yaml
+content-creator content run --brief briefs/platform-engineering.yaml
 ```
 
 ## Specialising the pack
@@ -183,12 +183,12 @@ Integrity validators cannot be removed by a specialised pack or run override.
 ## Creating a configured pack
 
 ```bash
-content-studio pack create internal-blog \
+content-creator pack create internal-blog \
   --extends general-text
 
-content-studio pack validate internal-blog
-content-studio pack show internal-blog --resolved
-content-studio pack list
+content-creator pack validate internal-blog
+content-creator pack show internal-blog --resolved
+content-creator pack list
 ```
 
 The create command scaffolds:

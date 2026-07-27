@@ -23,7 +23,7 @@ voice, publish content, select arbitrary models or mutate registries.
 ## Repository layout
 
 ```text
-content-studio/
+content-creator/
 ├── src/content_engine/
 │   ├── domain.py
 │   ├── orchestrator.py
@@ -126,7 +126,7 @@ candidate fails with a command the user can run to activate it.
 
 ## Activation transaction
 
-`content-studio voice approve <voice-id>`:
+`content-creator voice approve <voice-id>`:
 
 1. Acquires a voice-specific lock
 2. Resolves the exact candidate version
@@ -145,7 +145,7 @@ Failure before the atomic registry update leaves the active voice unchanged.
 Running the command again for the same candidate returns success without
 creating another version.
 
-`content-studio voice deactivate <voice-id> --reason <reason>` is also
+`content-creator voice deactivate <voice-id> --reason <reason>` is also
 deterministic. It removes the voice from future resolution while preserving
 manifests, approval receipts and historical run snapshots.
 

@@ -177,8 +177,8 @@ hard_gates:
 ### One-time setup
 
 ```bash
-content-studio init
-content-studio provider verify anthropic
+content-creator init
+content-creator provider verify anthropic
 ```
 
 ### Voice creation
@@ -188,7 +188,7 @@ evaluation, stopping at `awaiting_approval`. `--no-build` supports staged
 operation and recovery.
 
 ```bash
-content-studio voice create \
+content-creator voice create \
   --name "Aisha Khan" \
   --authorised-by "Bharath" \
   --use linkedin-post \
@@ -196,7 +196,7 @@ content-studio voice create \
   --sources source-urls.txt \
   --documents voice-material/aisha/
 
-content-studio voice create \
+content-creator voice create \
   --name "Aisha Khan" \
   --sources source-urls.txt \
   --no-build
@@ -205,22 +205,22 @@ content-studio voice create \
 ### Build and inspect
 
 ```bash
-content-studio voice build aisha-khan
-content-studio voice status aisha-khan
-content-studio voice show aisha-khan
-content-studio voice verify aisha-khan
+content-creator voice build aisha-khan
+content-creator voice status aisha-khan
+content-creator voice show aisha-khan
+content-creator voice verify aisha-khan
 ```
 
 ### Deterministic approval
 
 ```bash
-content-studio voice approve aisha-khan
+content-creator voice approve aisha-khan
 ```
 
 Optional explicit editorial override:
 
 ```bash
-content-studio voice approve aisha-khan \
+content-creator voice approve aisha-khan \
   --override-evaluation \
   --reason "Approved directly by the profile owner"
 ```
@@ -230,11 +230,11 @@ Authorisation, invalid schema and corrupted provenance are never overridable.
 ### Voice maintenance
 
 ```bash
-content-studio voice list
-content-studio voice add-sources aisha-khan --sources additional-urls.txt
-content-studio voice rebuild aisha-khan
-content-studio voice diff aisha-khan --from 1.0.0 --to candidate
-content-studio voice deactivate aisha-khan \
+content-creator voice list
+content-creator voice add-sources aisha-khan --sources additional-urls.txt
+content-creator voice rebuild aisha-khan
+content-creator voice diff aisha-khan --from 1.0.0 --to candidate
+content-creator voice deactivate aisha-khan \
   --reason "Authorisation withdrawn"
 ```
 
@@ -244,15 +244,15 @@ receipts and run snapshots. Reactivation requires a new explicit approval.
 ### Content creation
 
 ```bash
-content-studio content run \
+content-creator content run \
   "Explain engineering career progression" \
   --voice aisha-khan \
   --pack linkedin-post \
   --research none
 
-content-studio content status <run-id>
-content-studio content approve <run-id>
-content-studio content finalize <run-id>
+content-creator content status <run-id>
+content-creator content approve <run-id>
+content-creator content finalize <run-id>
 ```
 
 `approve` records author acceptance. `finalize` writes the channel-ready

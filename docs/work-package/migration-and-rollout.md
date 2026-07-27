@@ -17,7 +17,7 @@ new repository has proven:
 
 ### 1. Establish the new repository
 
-- Create `content-studio`
+- Create `content-creator`
 - Copy only reusable code initially
 - Preserve attribution to the original project
 - Add new package and CLI names
@@ -117,7 +117,7 @@ Do not migrate into the generic core:
 Optional transitional aliases:
 
 ```bash
-linkedin-writer run ...       # delegates to content-studio content run
+linkedin-writer run ...       # delegates to content-creator content run
 linkedin-writer publish ...   # delegates to content approve + finalize
 ```
 
@@ -130,7 +130,7 @@ Activation rollback does not delete a version. It changes the registry pointer
 to the previous approved version and creates an audit event:
 
 ```bash
-content-studio voice rollback aisha-khan --to 1.0.0
+content-creator voice rollback aisha-khan --to 1.0.0
 ```
 
 Repository rollout rollback returns conversational use to LinkedIn Writer.

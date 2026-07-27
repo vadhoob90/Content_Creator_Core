@@ -25,3 +25,21 @@ def test_readme_contains_end_to_end_diagram():
     assert "```mermaid" in readme
     assert "Voice Builder" in readme
     assert "Capability router" in readme
+
+
+def test_readme_covers_the_complete_operator_journey():
+    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+
+    assert "Current status:" in readme
+    assert "content-creator voice create" in readme
+    assert "content-creator voice approve" in readme
+    assert "content-creator content run" in readme
+    assert "triggers a voice-scoped learning update" in readme
+
+
+def test_work_package_uses_the_repository_cli_name():
+    work_package = ROOT / "docs" / "work-package"
+
+    for path in work_package.rglob("*"):
+        if path.is_file():
+            assert "content-studio" not in path.read_text(encoding="utf-8")

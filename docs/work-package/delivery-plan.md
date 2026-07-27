@@ -7,7 +7,7 @@ the repository runnable and its tests green.
 
 Deliverables:
 
-- `content-studio` package and CLI skeleton
+- `content-creator` package and CLI skeleton
 - Python packaging and development dependencies
 - Repository guidance for Codex and other agent runtimes
 - Offline CI
@@ -16,7 +16,7 @@ Deliverables:
 Acceptance:
 
 - Fresh clone installs in one documented command
-- `content-studio --help` succeeds
+- `content-creator --help` succeeds
 - Unit-test and lint jobs run without provider credentials
 
 Dependencies: none.
@@ -175,7 +175,7 @@ Dependencies: WP-06 and provider core.
 Command:
 
 ```bash
-content-studio voice build <voice-id>
+content-creator voice build <voice-id>
 ```
 
 Build:
@@ -222,7 +222,7 @@ Dependencies: WP-08.
 Command:
 
 ```bash
-content-studio voice approve <voice-id>
+content-creator voice approve <voice-id>
 ```
 
 Implement:
@@ -290,7 +290,7 @@ Dependencies: WP-11.
 Add:
 
 - `voice-builder` skill
-- Generic `content-studio` skill
+- Generic `content-creator` skill
 - Approval-trigger rules
 - Failure and recovery instructions
 
