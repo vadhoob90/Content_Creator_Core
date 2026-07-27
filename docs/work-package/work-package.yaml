@@ -1,0 +1,161 @@
+id: content-studio-voice-builder
+version: "1.0"
+status: proposed
+objective: >-
+  Build a provider-neutral text-content engine with content packs and
+  evidence-backed, versioned, deterministically activated voice packages.
+
+non_goals:
+  - external publication
+  - image_or_video_generation
+  - model_fine_tuning
+  - automatic_voice_activation
+  - in_place_rewrite_of_linkedin_writer
+
+work_items:
+  - id: WP-00
+    name: repository_scaffold
+    depends_on: []
+    acceptance:
+      - fresh_clone_installs
+      - cli_help_succeeds
+      - offline_ci_runs
+
+  - id: WP-01
+    name: provider_neutral_core
+    depends_on: [WP-00]
+    acceptance:
+      - provider_contract_tests_pass
+      - orchestration_has_no_provider_model_names
+      - core_has_no_linkedin_format_assumptions
+
+  - id: WP-02
+    name: content_packs
+    depends_on: [WP-01]
+    acceptance:
+      - general_text_completes_end_to_end_run
+      - forbidden_pack_overrides_fail_closed
+      - integrity_validators_cannot_be_removed
+      - fixture_pack_requires_no_orchestrator_change
+      - linkedin_routes_pass
+      - pack_rules_are_isolated
+
+  - id: WP-03
+    name: voice_domain_and_registry
+    depends_on: [WP-01]
+    acceptance:
+      - lifecycle_transitions_are_validated
+      - candidate_voice_is_not_resolvable
+      - active_versions_are_immutable
+
+  - id: WP-04
+    name: source_ingestion
+    depends_on: [WP-03]
+    acceptance:
+      - url_pdf_docx_and_transcript_fixtures_parse
+      - normalized_hashes_are_stable
+      - private_cache_is_not_committed
+
+  - id: WP-05
+    name: attribution_checking
+    depends_on: [WP-04]
+    acceptance:
+      - attribution_fixture_matrix_passes
+      - ambiguous_reviews_include_evidence
+      - uncertain_sources_have_zero_weight
+
+  - id: WP-06
+    name: corpus_assessment
+    depends_on: [WP-05]
+    acceptance:
+      - supported_packs_are_reported
+      - corpus_gaps_are_actionable
+
+  - id: WP-07
+    name: voice_analysis_and_criticism
+    depends_on: [WP-06, WP-01]
+    acceptance:
+      - confirmed_patterns_have_provenance
+      - unsupported_patterns_are_rejected
+      - personal_facts_are_not_inferred
+
+  - id: WP-08
+    name: voice_build
+    depends_on: [WP-07]
+    acceptance:
+      - candidate_package_is_complete
+      - unchanged_build_is_reproducible
+      - failed_build_preserves_existing_state
+
+  - id: WP-09
+    name: voice_evaluation
+    depends_on: [WP-08]
+    acceptance:
+      - held_out_and_transfer_suites_run
+      - integrity_gates_cannot_be_averaged_away
+      - evaluation_report_is_versioned
+
+  - id: WP-10
+    name: deterministic_activation
+    depends_on: [WP-09]
+    acceptance:
+      - approval_uses_no_llm
+      - approval_is_idempotent
+      - activation_is_atomic
+      - active_voice_resolves
+      - deactivation_prevents_future_resolution
+      - historical_runs_remain_resolvable
+
+  - id: WP-11
+    name: runtime_voice_resolution
+    depends_on: [WP-02, WP-10]
+    acceptance:
+      - resolved_context_is_immutable
+      - historical_runs_are_reproducible
+      - voice_isolation_tests_pass
+
+  - id: WP-12
+    name: profile_scoped_learning
+    depends_on: [WP-11]
+    acceptance:
+      - approval_updates_only_selected_voice
+      - provisional_learning_is_not_prompted
+      - stable_change_requires_new_candidate
+
+  - id: WP-13
+    name: conversational_skills
+    depends_on: [WP-10, WP-11, WP-12]
+    acceptance:
+      - natural_voice_creation_request_routes_correctly
+      - approve_phrase_calls_deterministic_command
+      - activation_is_not_claimed_without_command_success
+      - deactivate_phrase_calls_deterministic_command
+
+  - id: WP-14
+    name: evaluation_and_ci
+    depends_on: [WP-00, WP-01, WP-02, WP-03, WP-04, WP-05, WP-06, WP-07, WP-08, WP-09, WP-10, WP-11, WP-12, WP-13]
+    acceptance:
+      - offline_suite_is_green
+      - linkedin_regression_suite_is_green
+      - live_evaluation_is_manual
+
+  - id: WP-15
+    name: documentation_and_release
+    depends_on: [WP-14]
+    acceptance:
+      - documented_commands_are_tested
+      - fresh_user_completes_fixture_journey
+
+definition_of_done:
+  - fixture_voice_builds_from_all_supported_source_types
+  - ambiguous_attribution_requires_review
+  - candidate_voice_cannot_create_content
+  - deterministic_approval_activates_voice
+  - repeated_approval_is_no_op
+  - deactivation_blocks_future_use_and_preserves_history
+  - content_run_snapshots_pack_and_voice_versions
+  - general_text_pack_runs_directly
+  - specialised_pack_extends_general_text_safely
+  - learning_is_voice_scoped
+  - linkedin_regression_suite_passes
+  - anthropic_and_openai_manual_evaluations_pass

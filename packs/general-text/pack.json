@@ -1,0 +1,20 @@
+{
+  "id": "general-text",
+  "version": "0.1.0",
+  "content_types": [
+    "linkedin-post",
+    "article",
+    "briefing-note"
+  ],
+  "workflow": [
+    "brief",
+    "research-if-needed",
+    "draft",
+    "validate",
+    "review",
+    "approve",
+    "publish",
+    "learn"
+  ],
+  "rubric": "../../rubrics/core.json"
+}

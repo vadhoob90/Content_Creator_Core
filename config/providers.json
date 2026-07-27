@@ -1,0 +1,38 @@
+{
+  "default_provider": "openai",
+  "complexity_to_tier": {
+    "simple": "fast",
+    "standard": "balanced",
+    "deep": "deep"
+  },
+  "providers": {
+    "openai": {
+      "adapter": "openai",
+      "api_key_env": "OPENAI_API_KEY",
+      "models": {
+        "fast": "${OPENAI_FAST_MODEL}",
+        "balanced": "${OPENAI_BALANCED_MODEL}",
+        "deep": "${OPENAI_DEEP_MODEL}"
+      }
+    },
+    "anthropic": {
+      "adapter": "anthropic",
+      "api_key_env": "ANTHROPIC_API_KEY",
+      "models": {
+        "fast": "${ANTHROPIC_FAST_MODEL}",
+        "balanced": "${ANTHROPIC_BALANCED_MODEL}",
+        "deep": "${ANTHROPIC_DEEP_MODEL}"
+      }
+    },
+    "custom": {
+      "adapter": "openai-compatible",
+      "api_key_env": "CUSTOM_LLM_API_KEY",
+      "base_url_env": "CUSTOM_LLM_BASE_URL",
+      "models": {
+        "fast": "${CUSTOM_FAST_MODEL}",
+        "balanced": "${CUSTOM_BALANCED_MODEL}",
+        "deep": "${CUSTOM_DEEP_MODEL}"
+      }
+    }
+  }
+}

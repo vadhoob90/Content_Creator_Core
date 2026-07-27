@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "content-creator"
+version = "0.1.0"
+description = "Provider-neutral content creation and voice workflow"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { file = "LICENSE.md" }
+authors = [{ name = "Bharath Vadhoola" }]
+
+[project.scripts]
+content-creator = "content_creator.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
