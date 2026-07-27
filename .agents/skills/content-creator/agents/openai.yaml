@@ -1,0 +1,4 @@
+interface:
+  display_name: "Content Creator"
+  short_description: "Create researched content in an approved voice"
+  default_prompt: "Use $content-creator to plan and create content in an approved voice."

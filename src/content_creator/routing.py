@@ -1,43 +1,55 @@
-"""Deterministic capability routing.
-
-The orchestrator chooses a capability tier. Provider-specific model names are
-resolved only at the adapter boundary.
-"""
-
 from __future__ import annotations
 
-import json
-from dataclasses import dataclass
-from pathlib import Path
+from .domain import ContentFormat, ResearchDepth, ResearchSource, RoutePlan, WorkOrder
 
 
-@dataclass(frozen=True)
-class Route:
-    provider: str
-    adapter: str
-    tier: str
-    model_reference: str
+class RoutingError(ValueError):
+    pass
 
 
-def load_catalog(path: Path) -> dict:
-    with path.open(encoding="utf-8") as handle:
-        return json.load(handle)
+def validate_work_order(order: WorkOrder) -> None:
+    if order.research_depth == ResearchDepth.NONE and order.research_source != ResearchSource.NONE:
+        raise RoutingError("No-research work cannot specify a research source")
+    if order.research_depth != ResearchDepth.NONE and order.research_source == ResearchSource.NONE:
+        raise RoutingError("Research work must specify supplied or agent research")
+    if order.research_source == ResearchSource.SUPPLIED and not order.supplied_research_path:
+        raise RoutingError("Supplied research requires supplied_research_path")
 
 
-def select_route(catalog: dict, provider: str, complexity: str) -> Route:
-    try:
-        tier = catalog["complexity_to_tier"][complexity]
-    except KeyError as exc:
-        raise ValueError(f"Unknown complexity: {complexity}") from exc
+def build_route(order: WorkOrder) -> RoutePlan:
+    validate_work_order(order)
+    stages = []
+    profiles = {}
+    checkpoint = False
 
-    try:
-        provider_config = catalog["providers"][provider]
-    except KeyError as exc:
-        raise ValueError(f"Unknown provider: {provider}") from exc
+    if order.research_depth != ResearchDepth.NONE:
+        stages.append("research")
+        profiles["researcher"] = (
+            "deep" if order.research_depth == ResearchDepth.DEEP else "balanced"
+        )
+        checkpoint = (
+            order.research_depth == ResearchDepth.DEEP
+            and order.research_source == ResearchSource.AGENT
+        )
+        if checkpoint:
+            stages.append("research-approval")
 
-    return Route(
-        provider=provider,
-        adapter=provider_config["adapter"],
-        tier=tier,
-        model_reference=provider_config["models"][tier],
+    stages.extend(["draft", "validate", "critic", "quality-gate"])
+    profiles["writer"] = (
+        "deep"
+        if order.format == ContentFormat.ARTICLE
+        and order.research_depth == ResearchDepth.DEEP
+        else "balanced"
+    )
+    profiles["critic"] = (
+        "deep" if order.research_depth == ResearchDepth.DEEP else "balanced"
+    )
+
+    return RoutePlan(
+        route="{}-{}-{}".format(
+            order.format.value, order.research_depth.value, order.research_source.value
+        ),
+        stages=stages,
+        requires_research_checkpoint=checkpoint,
+        model_profiles=profiles,
     )

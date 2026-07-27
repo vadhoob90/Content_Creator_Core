@@ -10,7 +10,7 @@ new repository has proven:
 - Provider parity
 - All current routes
 - Publication and learning behaviour
-- Bharath voice compatibility
+- original-author voice compatibility
 - Offline and live evaluation parity
 
 ## Migration sequence
@@ -49,18 +49,18 @@ articles/ destination   → LinkedIn article pack destination
 The generic orchestrator must contain no LinkedIn directory or word-limit
 logic.
 
-### 4. Migrate Bharath as the first voice package
+### 4. Migrate the original author as the first voice package
 
 Use the current profile, learnings and published content to build:
 
 ```text
-profiles/bharath/
+profiles/original-author/
 ```
 
 The imported profile begins as a candidate. Run the new voice evaluation and
 activate it through the same deterministic command as any other profile.
 
-Do not special-case Bharath in application code.
+Do not special-case the original author in application code.
 
 ### 5. Add a second content pack
 
@@ -77,7 +77,7 @@ Keep private extracted source content out of Git.
 For selected LinkedIn briefs:
 
 1. Run the current repository
-2. Run Content Creator with the migrated Bharath voice
+2. Run Content Creator with the migrated original-author voice
 3. Compare route, integrity, voice and author assessment
 4. Record differences without making exact wording a regression target
 
@@ -117,8 +117,8 @@ Do not migrate into the generic core:
 Optional transitional aliases:
 
 ```bash
-linkedin-writer run ...       # delegates to content-creator content run
-linkedin-writer publish ...   # delegates to content approve + finalize
+linkedin-writer run ...       # delegates to content-creator run
+linkedin-writer publish ...   # delegates to content-creator publish
 ```
 
 Aliases are temporary and must emit the resolved content pack and voice so

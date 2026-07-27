@@ -62,14 +62,26 @@ the same internal request into each vendor's API format.
 
 ## Repository status
 
-This first commit is an **implementation-ready scaffold**, not a finished content
-engine. It contains:
+The provider-neutral content engine and LinkedIn compatibility pack are now
+executable. The repository contains:
 
-- the reviewed architecture and delivery work package in [`docs/work-package`](docs/work-package);
-- a provider-neutral capability catalogue and deterministic routing helper;
-- a general text content-pack skeleton;
-- initial tests for configuration and routing;
-- the non-commercial software licence.
+- a deterministic orchestrator, persistent run state, bounded revision loop,
+  validation, quality gates, publication, and voice-scoped learning;
+- OpenAI and Anthropic adapters behind one normalized request contract;
+- LinkedIn post and article packs covering none, light, and deep research;
+- a deep agent-research approval checkpoint and supplied-research routes;
+- a replay harness that executes all six routes against both provider contracts;
+- offline CI, manual live-provider evaluation, and a repo-local conversational
+  skill;
+- the reviewed Voice Builder work package in
+  [`docs/work-package`](docs/work-package).
+
+Voice-source ingestion, attribution analysis, candidate evaluation, and
+deterministic voice activation remain planned work. Until they land, the engine
+uses the deliberately generic `default` placeholder profile.
+
+The detailed capability-by-capability comparison is in
+[`docs/linkedin-writer-migration-audit.md`](docs/linkedin-writer-migration-audit.md).
 
 The staged implementation and acceptance criteria are in
 [`docs/work-package/delivery-plan.md`](docs/work-package/delivery-plan.md) and
@@ -77,13 +89,12 @@ The staged implementation and acceptance criteria are in
 
 ## Quick start: from a new clone to finished content
 
-Requires Python 3.11 or newer.
+Requires Python 3.9 or newer.
 
-> **Current status:** this repository contains the tested foundation and complete
-> delivery plan. `doctor` and `plan` work today. The `voice` and `content` commands
-> below describe the end-to-end operator flow that the remaining
-> [work packages](docs/work-package/delivery-plan.md) will implement. They are
-> documented now so the intended user experience is explicit and testable.
+> **Current status:** content planning, all six LinkedIn routes, provider
+> adapters, research checkpoints, review, repository publication, learning,
+> replay evaluation, and CI work today. The Voice Builder commands in steps 3–5
+> remain the target interface for the next implementation stage.
 
 ### 1. Install and check the repository
 
@@ -92,49 +103,54 @@ git clone https://github.com/vadhoob90/Content_Creator.git
 cd Content_Creator
 python -m venv .venv
 source .venv/bin/activate
-python -m pip install -e .
+python -m pip install -e ".[providers,dev]"
 content-creator doctor
+content-creator eval
 ```
 
-`doctor` validates the provider catalogue, content pack, profile registry, and
-core rubric without making an LLM call.
+`doctor` validates the model catalogue, installed packs, default voice, and
+route cases without making an LLM call. `eval` replays all six LinkedIn routes
+against both provider contracts without using paid APIs.
 
 ### 2. Configure an LLM provider
 
-[`config/providers.json`](config/providers.json) maps the generic `fast`,
-`balanced`, and `deep` capability tiers to environment variables. Agents and the
-orchestrator refer to tiers, not vendor model names.
+[`config/models.yaml`](config/models.yaml) maps the generic `fast`, `balanced`,
+and `deep` capability tiers to ordered provider model candidates. Agents and
+the orchestrator refer to capability profiles, not vendor model names.
 
 For OpenAI:
 
 ```bash
 export OPENAI_API_KEY="<your API key>"
-export OPENAI_FAST_MODEL="<your fast OpenAI model>"
-export OPENAI_BALANCED_MODEL="<your balanced OpenAI model>"
-export OPENAI_DEEP_MODEL="<your deep OpenAI model>"
 ```
 
 For Anthropic:
 
 ```bash
 export ANTHROPIC_API_KEY="<your API key>"
-export ANTHROPIC_FAST_MODEL="<your fast Anthropic model>"
-export ANTHROPIC_BALANCED_MODEL="<your balanced Anthropic model>"
-export ANTHROPIC_DEEP_MODEL="<your deep Anthropic model>"
 ```
 
 Then verify the routing decision:
 
 ```bash
-content-creator plan --provider openai --complexity simple
-content-creator plan --provider anthropic --complexity deep
+content-creator plan \
+  "Write a short LinkedIn post. No research." \
+  --provider openai
+
+content-creator plan \
+  "Research 70 years of human-machine interaction for a LinkedIn article." \
+  --provider anthropic
 ```
 
-`plan` works today and does not call an LLM. The completed engine will also
-support a default provider, so normal content requests will not need to mention
-OpenAI or Anthropic.
+Deterministically clear requests do not call a model during planning. Ambiguous
+requests use the configured fast-tier Briefing Agent. The catalogue defines a
+default provider, so normal content requests do not need to name one.
 
-### 3. Prepare the voice source material
+Additional providers implement the normalized `Provider` interface, register
+with `ProviderRegistry`, and add capability profiles to `config/models.yaml`.
+See [`docs/guides/provider-configuration.md`](docs/guides/provider-configuration.md).
+
+### 3. Prepare voice source material (Voice Builder: planned)
 
 Only use material you are authorised to analyse. Put one public URL per line in
 a text file:
@@ -159,14 +175,14 @@ Private extracted source content will be kept in the ignored `.voice-cache/`
 directory. The versioned profile retains provenance metadata and hashes, rather
 than silently copying the source corpus into Git.
 
-### 4. Create and review a candidate voice
+### 4. Create and review a candidate voice (planned)
 
 The target command is:
 
 ```bash
 content-creator voice create \
   --name "Example Person" \
-  --authorised-by "Bharath" \
+  --authorised-by "Repository Owner" \
   --use linkedin-post \
   --use linkedin-article \
   --sources voice-material/example-person/source-urls.txt \
@@ -201,7 +217,7 @@ content-creator voice add-sources example-person \
 content-creator voice rebuild example-person
 ```
 
-### 5. Approve and activate the voice
+### 5. Approve and activate the voice (planned)
 
 When you are satisfied:
 
@@ -227,12 +243,12 @@ content-creator voice status example-person
 You can start with natural language in Codex or another supported agent surface:
 
 > Use the Content Creator workflow in this repository. Write a short LinkedIn
-> post in the `example-person` voice explaining why calculus matters to sixth-form
+> post in the `default` voice explaining why calculus matters to sixth-form
 > students. No research is required. Stop for my approval before finalising it.
 
 For a research-heavy request:
 
-> Use the Content Creator workflow in this repository. In the `example-person` voice,
+> Use the Content Creator workflow in this repository. In the `default` voice,
 > develop a LinkedIn article about how humans have interacted with machines over
 > the last 70 years. Use deep research, preserve source attribution, and stop for
 > my approval before finalising it.
@@ -243,32 +259,34 @@ selects the capability tier, and the configured provider adapter supplies the
 model. You can still request `--provider anthropic` or `--provider openai` when
 you deliberately want an override.
 
-The equivalent target CLI flow is:
+The executable CLI flow is:
 
 ```bash
-content-creator content run \
+content-creator run \
   "Explain why calculus matters to sixth-form students" \
-  --voice example-person \
+  --voice default \
   --pack linkedin-post \
-  --research none
+  --research none \
+  --provider anthropic
 
-content-creator content status <run-id>
-content-creator content approve <run-id>
-content-creator content finalize <run-id>
+content-creator status <run-id>
+content-creator publish <run-id> \
+  --feedback "Preserve the concrete opening."
 ```
 
-`approve` captures your acceptance. `finalize` writes the finished artifact to
-the pack's published directory and triggers a voice-scoped learning update.
-Finalisation does not post externally to LinkedIn or another platform.
+For deep agent research, inspect `runs/<run-id>/research.json` and resume with
+`content-creator approve-research <run-id>`. `publish` captures acceptance,
+writes the finished artifact to the pack's published directory, and triggers a
+voice-scoped learning update. It does not post externally.
 
 ### 7. What to build next
 
-The immediate engineering task is
-[WP-01: Extract the provider-neutral core](docs/work-package/delivery-plan.md#wp-01-extract-the-provider-neutral-core),
-followed by content packs and the voice lifecycle. Each work package has its own
-acceptance tests. The end-to-end quick start becomes executable as those stages
-land; until then, it serves as the operator contract the implementation must
-satisfy.
+The provider-neutral core and LinkedIn compatibility packs are implemented. The
+next substantial task is the versioned voice lifecycle beginning with
+[WP-03](docs/work-package/delivery-plan.md#wp-03-add-voice-domain-and-registry-models),
+followed by ingestion, attribution, voice analysis, evaluation, and
+deterministic activation. The direct `general-text` pack also still needs its
+end-to-end runner.
 
 ## Licence
 

@@ -1,0 +1,12 @@
+version: "1.0"
+name: no-research-overlay
+
+evidence_expectations:
+  - "Personal claims are framed as experience rather than universal evidence."
+  - "No unsupported factual claim is introduced."
+  - "The piece remains credible without external research."
+
+blocking_conditions:
+  - "Invented personal experience."
+  - "Personal observation presented as an established general fact."
+  - "Unsupported material statistic or historical claim."

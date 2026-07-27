@@ -13,7 +13,7 @@ models and emitted JSON Schema.
   },
   "authorisation": {
     "confirmed": true,
-    "attested_by": "Bharath",
+    "attested_by": "Repository Owner",
     "intended_uses": ["linkedin-post", "linkedin-article"],
     "expires_at": null,
     "revoked_at": null
@@ -125,7 +125,7 @@ hard_gates:
   "voice_id": "example-person",
   "candidate_version": "1.0.0-candidate",
   "activated_version": "1.0.0",
-  "approved_by": "bharath",
+  "approved_by": "repository-owner",
   "approved_at": "2026-08-10T14:35:00Z",
   "authorisation_hash": "sha256:...",
   "profile_hash": "sha256:...",
@@ -190,7 +190,7 @@ operation and recovery.
 ```bash
 content-creator voice create \
   --name "Example Person" \
-  --authorised-by "Bharath" \
+  --authorised-by "Repository Owner" \
   --use linkedin-post \
   --use linkedin-article \
   --sources source-urls.txt \
@@ -244,19 +244,20 @@ receipts and run snapshots. Reactivation requires a new explicit approval.
 ### Content creation
 
 ```bash
-content-creator content run \
+content-creator run \
   "Explain engineering career progression" \
   --voice example-person \
   --pack linkedin-post \
   --research none
 
-content-creator content status <run-id>
-content-creator content approve <run-id>
-content-creator content finalize <run-id>
+content-creator status <run-id>
+content-creator publish <run-id> \
+  --feedback "Preserve the concrete opening."
 ```
 
-`approve` records author acceptance. `finalize` writes the channel-ready
-repository artifact. External distribution is not part of the initial scope.
+`publish` records author acceptance, writes the channel-ready repository
+artifact, and triggers voice-scoped learning. External distribution is not part
+of the initial scope.
 
 ## Exit codes
 

@@ -1,0 +1,35 @@
+version: "1.0"
+name: core-editorial-rubric
+
+dimensions:
+  hook:
+    weight: 0.15
+    minimum_to_pass: 8
+  clarity:
+    weight: 0.25
+    minimum_to_pass: 8
+  evidence_integrity:
+    weight: 0.20
+    minimum_to_pass: 8
+  reader_value:
+    weight: 0.15
+    minimum_to_pass: 8
+  voice_authenticity:
+    weight: 0.25
+    minimum_to_pass: 8
+
+quality_gate:
+  minimum_weighted_score: 8.8
+  maximum_minor_issues: 2
+  blocking_issues_allowed: 0
+  substantive_issues_allowed: 0
+  require_deterministic_validation: true
+  require_previous_issues_resolved_or_author_rejected: true
+
+score_anchors:
+  5: "Usable material exists, but substantial rewriting is required."
+  6: "Direction is sound, with several significant weaknesses."
+  7: "Credible draft, but at least two substantive changes remain."
+  8: "Strong draft, but one substantive improvement remains."
+  9: "Ready for author review; only optional or cosmetic changes remain."
+  10: "Exceptional; no identifiable change would improve the piece."

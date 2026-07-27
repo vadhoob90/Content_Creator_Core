@@ -1,0 +1,36 @@
+- id: post-none
+  request: Write a simple LinkedIn post. No research.
+  topic: A simple writing workflow
+  format: post
+  research_depth: none
+  research_source: none
+- id: post-light
+  request: Write a researched LinkedIn post.
+  topic: A lightly researched post
+  format: post
+  research_depth: light
+  research_source: agent
+- id: post-deep
+  request: Write a deeply researched LinkedIn post.
+  topic: A deeply researched post
+  format: post
+  research_depth: deep
+  research_source: agent
+- id: article-none
+  request: Write a reflective LinkedIn article. No research.
+  topic: A reflective article
+  format: article
+  research_depth: none
+  research_source: none
+- id: article-light
+  request: Write a lightly researched LinkedIn article.
+  topic: A lightly researched article
+  format: article
+  research_depth: light
+  research_source: agent
+- id: human-machine-deep
+  request: Research how humans interacted with machines over the last 70 years.
+  topic: Seventy years of human-machine interaction
+  format: article
+  research_depth: deep
+  research_source: agent

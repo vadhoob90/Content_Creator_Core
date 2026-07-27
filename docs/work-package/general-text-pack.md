@@ -101,7 +101,7 @@ Conversationally:
 CLI:
 
 ```bash
-content-creator content run \
+content-creator run \
   "Explain how platform engineering changes team responsibilities" \
   --voice example-person \
   --pack general-text \
@@ -129,7 +129,7 @@ pack_options:
 ```
 
 ```bash
-content-creator content run --brief briefs/platform-engineering.yaml
+content-creator run --brief briefs/platform-engineering.yaml
 ```
 
 ## Specialising the pack

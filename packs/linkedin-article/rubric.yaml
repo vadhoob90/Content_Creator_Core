@@ -1,0 +1,18 @@
+version: "1.0"
+name: linkedin-article-overlay
+
+expectations:
+  hook:
+    - "The opening establishes a concrete stake within the first three sentences."
+  clarity:
+    - "Every major section advances the same thesis."
+    - "Section headings aid navigation without becoming perfectly parallel."
+  reader_value:
+    - "The article earns its length through evidence, explanation, or personal insight."
+  voice_authenticity:
+    - "Personal passages use only context supplied by the active voice profile or brief."
+    - "Cross-references to other articles appear after the main argument closes."
+
+length_guidance:
+  minimum_words: 800
+  maximum_words: 1800

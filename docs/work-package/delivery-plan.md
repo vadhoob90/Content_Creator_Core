@@ -5,6 +5,8 @@ the repository runnable and its tests green.
 
 ## WP-00: Create the new repository
 
+Status: **implemented**
+
 Deliverables:
 
 - `content-creator` package and CLI skeleton
@@ -22,6 +24,8 @@ Acceptance:
 Dependencies: none.
 
 ## WP-01: Extract the provider-neutral core
+
+Status: **implemented**
 
 Move and rename:
 
@@ -43,6 +47,9 @@ Acceptance:
 Dependencies: WP-00.
 
 ## WP-02: Add content packs
+
+Status: **partially implemented**. The LinkedIn compatibility packs and six
+routes are executable; the base `general-text` pack still needs a direct runner.
 
 Implement:
 

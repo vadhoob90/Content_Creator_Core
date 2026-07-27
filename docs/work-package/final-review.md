@@ -109,7 +109,7 @@ Build through WP-10 using:
 - Fake-provider evaluation
 - Deterministic approval, deactivation and recovery
 
-Then add LinkedIn article, migrate Bharath’s profile and prove a second
+Then add LinkedIn article, migrate the original author profile and prove a second
 non-LinkedIn content pack. This sequence tests the two most important
 abstractions before expanding scope.
 

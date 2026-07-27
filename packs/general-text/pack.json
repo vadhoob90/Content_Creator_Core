@@ -1,6 +1,8 @@
 {
   "id": "general-text",
   "version": "0.1.0",
+  "format": "text",
+  "destination": "content/general-text/published",
   "content_types": [
     "linkedin-post",
     "article",
@@ -16,5 +18,5 @@
     "publish",
     "learn"
   ],
-  "rubric": "../../rubrics/core.json"
+  "rubric": "../../rubrics/core.yaml"
 }

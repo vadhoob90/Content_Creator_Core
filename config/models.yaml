@@ -1,0 +1,46 @@
+defaults:
+  provider: anthropic
+  max_output_tokens: 6000
+
+providers:
+  openai:
+    profiles:
+      fast:
+        candidates:
+          - model: gpt-5.6-luna
+            reasoning_effort: low
+            capabilities: [structured_output]
+      balanced:
+        candidates:
+          - model: gpt-5.6-terra
+            reasoning_effort: medium
+            capabilities: [structured_output, web_search]
+      deep:
+        candidates:
+          - model: gpt-5.6-sol
+            reasoning_effort: high
+            capabilities: [structured_output, web_search]
+  anthropic:
+    profiles:
+      fast:
+        candidates:
+          - model: claude-haiku-4-5-20251001
+            capabilities: [structured_output]
+      balanced:
+        candidates:
+          - model: claude-sonnet-5
+            capabilities: [structured_output, web_search]
+      deep:
+        candidates:
+          - model: claude-opus-5
+            capabilities: [structured_output, web_search]
+
+roles:
+  briefing-agent: fast
+  researcher-light: balanced
+  researcher-deep: deep
+  writer-post: balanced
+  writer-article: deep
+  critic-post: balanced
+  critic-article: deep
+  learning-extractor: fast

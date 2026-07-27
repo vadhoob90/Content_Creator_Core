@@ -1,0 +1,8 @@
+{
+  "id": "linkedin-article",
+  "version": "1.0.0",
+  "format": "article",
+  "destination": "content/linkedin-article/published",
+  "rubric": "rubric.yaml",
+  "allowed_research": ["none", "light", "deep"]
+}

@@ -1,0 +1,15 @@
+version: "1.0"
+name: deep-research-overlay
+
+evidence_expectations:
+  - "Material claims are traceable to primary or authoritative sources."
+  - "The research covers multiple periods, perspectives, or explanatory frames."
+  - "Counterevidence and limitations are represented fairly."
+  - "Historical sequence and causal claims are checked explicitly."
+
+blocking_conditions:
+  - "Material claim has no source."
+  - "Source does not support the claim."
+  - "Important counterevidence is omitted."
+  - "Historical sequence is materially inaccurate."
+  - "Writer introduces evidence absent from the approved research brief."

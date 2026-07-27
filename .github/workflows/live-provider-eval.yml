@@ -1,0 +1,44 @@
+name: Live provider evaluation
+
+on:
+  workflow_dispatch:
+    inputs:
+      provider:
+        description: Provider to evaluate
+        required: true
+        type: choice
+        options:
+          - anthropic
+          - openai
+
+jobs:
+  live-eval:
+    runs-on: ubuntu-latest
+    environment: live-model-evaluation
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: python -m pip install -e ".[providers]"
+      - name: Verify provider credentials and adapter import
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          PROVIDER: ${{ inputs.provider }}
+        run: |
+          python -c "import os; assert os.getenv(('OPENAI' if os.environ['PROVIDER'] == 'openai' else 'ANTHROPIC') + '_API_KEY')"
+          python -c "from content_creator.providers.registry import ProviderRegistry; import os; ProviderRegistry().get(os.environ['PROVIDER'])"
+      - name: Run bounded flagship evaluation
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          PROVIDER: ${{ inputs.provider }}
+        run: content-creator eval --mode live --providers "$PROVIDER"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: live-provider-evaluation
+          path: |
+            .eval-results/
+            runs/

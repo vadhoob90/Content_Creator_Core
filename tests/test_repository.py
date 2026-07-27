@@ -1,7 +1,6 @@
 import json
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -33,8 +32,8 @@ def test_readme_covers_the_complete_operator_journey():
     assert "Current status:" in readme
     assert "content-creator voice create" in readme
     assert "content-creator voice approve" in readme
-    assert "content-creator content run" in readme
-    assert "triggers a voice-scoped learning update" in readme
+    assert "content-creator run" in readme
+    assert "voice-scoped learning update" in readme
 
 
 def test_work_package_uses_the_repository_cli_name():
@@ -59,3 +58,19 @@ def test_documentation_uses_an_explicit_fictional_voice_placeholder():
 
     assert "Example Person" in combined
     assert "example-person" in combined
+
+
+def test_migration_audit_tracks_all_linkedin_writer_capabilities():
+    audit = (
+        ROOT / "docs" / "linkedin-writer-migration-audit.md"
+    ).read_text(encoding="utf-8")
+
+    for capability in (
+        "Six post/article × research routes",
+        "OpenAI adapter",
+        "Anthropic adapter",
+        "Publication-triggered learning",
+        "Replay evaluation harness",
+        "Conversational invocation",
+    ):
+        assert capability in audit
