@@ -130,7 +130,7 @@ Activation rollback does not delete a version. It changes the registry pointer
 to the previous approved version and creates an audit event:
 
 ```bash
-content-creator voice rollback aisha-khan --to 1.0.0
+content-creator voice rollback example-person --to 1.0.0
 ```
 
 Repository rollout rollback returns conversational use to LinkedIn Writer.

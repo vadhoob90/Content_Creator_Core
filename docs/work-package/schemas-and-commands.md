@@ -8,8 +8,8 @@ models and emitted JSON Schema.
 ```json
 {
   "person": {
-    "display_name": "Aisha Khan",
-    "voice_id": "aisha-khan"
+    "display_name": "Example Person",
+    "voice_id": "example-person"
   },
   "authorisation": {
     "confirmed": true,
@@ -20,7 +20,7 @@ models and emitted JSON Schema.
   },
   "sources": {
     "urls": ["https://example.com/article"],
-    "documents": ["voice-material/aisha/speech.docx"]
+    "documents": ["voice-material/example-person/speech.docx"]
   },
   "representative_sources": [],
   "excluded_sources": [],
@@ -47,7 +47,7 @@ models and emitted JSON Schema.
     "evidence": ["Visible byline and structured metadata agree"],
     "needs_human_review": false
   },
-  "cache_path": ".voice-cache/aisha-khan/source-001.json",
+  "cache_path": ".voice-cache/example-person/source-001.json",
   "approved_for_analysis": true
 }
 ```
@@ -56,8 +56,8 @@ models and emitted JSON Schema.
 
 ```yaml
 schema_version: "1.0"
-id: aisha-khan
-display_name: Aisha Khan
+id: example-person
+display_name: Example Person
 version: 1.0.0-candidate
 status: awaiting_approval
 
@@ -122,7 +122,7 @@ hard_gates:
 
 ```json
 {
-  "voice_id": "aisha-khan",
+  "voice_id": "example-person",
   "candidate_version": "1.0.0-candidate",
   "activated_version": "1.0.0",
   "approved_by": "bharath",
@@ -141,7 +141,7 @@ hard_gates:
 ```json
 {
   "request": "Explain engineering career progression",
-  "voice_id": "aisha-khan",
+  "voice_id": "example-person",
   "content_pack": "linkedin-post",
   "objective": "explain",
   "audience": "technology leaders",
@@ -163,7 +163,7 @@ hard_gates:
     "version": "1.0.0"
   },
   "voice": {
-    "id": "aisha-khan",
+    "id": "example-person",
     "version": "1.0.0"
   },
   "component_hashes": {},
@@ -189,15 +189,15 @@ operation and recovery.
 
 ```bash
 content-creator voice create \
-  --name "Aisha Khan" \
+  --name "Example Person" \
   --authorised-by "Bharath" \
   --use linkedin-post \
   --use linkedin-article \
   --sources source-urls.txt \
-  --documents voice-material/aisha/
+  --documents voice-material/example-person/
 
 content-creator voice create \
-  --name "Aisha Khan" \
+  --name "Example Person" \
   --sources source-urls.txt \
   --no-build
 ```
@@ -205,22 +205,22 @@ content-creator voice create \
 ### Build and inspect
 
 ```bash
-content-creator voice build aisha-khan
-content-creator voice status aisha-khan
-content-creator voice show aisha-khan
-content-creator voice verify aisha-khan
+content-creator voice build example-person
+content-creator voice status example-person
+content-creator voice show example-person
+content-creator voice verify example-person
 ```
 
 ### Deterministic approval
 
 ```bash
-content-creator voice approve aisha-khan
+content-creator voice approve example-person
 ```
 
 Optional explicit editorial override:
 
 ```bash
-content-creator voice approve aisha-khan \
+content-creator voice approve example-person \
   --override-evaluation \
   --reason "Approved directly by the profile owner"
 ```
@@ -231,10 +231,10 @@ Authorisation, invalid schema and corrupted provenance are never overridable.
 
 ```bash
 content-creator voice list
-content-creator voice add-sources aisha-khan --sources additional-urls.txt
-content-creator voice rebuild aisha-khan
-content-creator voice diff aisha-khan --from 1.0.0 --to candidate
-content-creator voice deactivate aisha-khan \
+content-creator voice add-sources example-person --sources additional-urls.txt
+content-creator voice rebuild example-person
+content-creator voice diff example-person --from 1.0.0 --to candidate
+content-creator voice deactivate example-person \
   --reason "Authorisation withdrawn"
 ```
 
@@ -246,7 +246,7 @@ receipts and run snapshots. Reactivation requires a new explicit approval.
 ```bash
 content-creator content run \
   "Explain engineering career progression" \
-  --voice aisha-khan \
+  --voice example-person \
   --pack linkedin-post \
   --research none
 

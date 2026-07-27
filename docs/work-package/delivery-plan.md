@@ -297,10 +297,10 @@ Add:
 Acceptance:
 
 - “Create a voice…” starts or resumes the correct workflow
-- “Approve Aisha’s voice” calls the deterministic command
+- “Approve Example Person’s voice” calls the deterministic command
 - The agent cannot claim activation without successful command output
 - Manual commands provide the same result if the agent is unavailable
-- “Deactivate Aisha’s voice” calls the deterministic deactivation command
+- “Deactivate Example Person’s voice” calls the deterministic deactivation command
 
 Dependencies: WP-10 through WP-12.
 

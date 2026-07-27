@@ -95,7 +95,7 @@ silently ignored.
 
 Conversationally:
 
-> Using Aisha’s voice, create an 800-word technical explainer for a general
+> Using Example Person’s voice, create an 800-word technical explainer for a general
 > professional audience. Use the general text pack and light research.
 
 CLI:
@@ -103,7 +103,7 @@ CLI:
 ```bash
 content-creator content run \
   "Explain how platform engineering changes team responsibilities" \
-  --voice aisha-khan \
+  --voice example-person \
   --pack general-text \
   --objective explain \
   --audience "technology leaders" \
@@ -115,7 +115,7 @@ Or with a brief:
 
 ```yaml
 request: Explain how platform engineering changes team responsibilities
-voice_id: aisha-khan
+voice_id: example-person
 content_pack: general-text
 objective: explain
 audience: technology leaders

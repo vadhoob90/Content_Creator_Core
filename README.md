@@ -140,16 +140,16 @@ Only use material you are authorised to analyse. Put one public URL per line in
 a text file:
 
 ```text
-# voice-material/aisha/source-urls.txt
-https://example.com/aisha/article-one
-https://example.com/aisha/interview
+# voice-material/example-person/source-urls.txt
+https://example.com/example-person/article-one
+https://example.com/example-person/interview
 ```
 
 Put private source documents in the same voice-specific directory:
 
 ```text
 voice-material/
-└── aisha/
+└── example-person/
     ├── source-urls.txt
     ├── keynote-transcript.txt
     └── published-article.docx
@@ -165,18 +165,18 @@ The target command is:
 
 ```bash
 content-creator voice create \
-  --name "Aisha Khan" \
+  --name "Example Person" \
   --authorised-by "Bharath" \
   --use linkedin-post \
   --use linkedin-article \
-  --sources voice-material/aisha/source-urls.txt \
-  --documents voice-material/aisha/
+  --sources voice-material/example-person/source-urls.txt \
+  --documents voice-material/example-person/
 ```
 
 This single command will:
 
 1. ingest and deduplicate the supplied material;
-2. check whether Aisha is the author, co-author, interviewee, or merely the
+2. check whether Example Person is the author, co-author, interviewee, or merely the
    subject of each source;
 3. assess whether there is enough representative evidence;
 4. build the profile, constraints, voice-specific rubric, and evaluation cases;
@@ -186,9 +186,9 @@ This single command will:
 Inspect the candidate before approving it:
 
 ```bash
-content-creator voice status aisha-khan
-content-creator voice show aisha-khan
-content-creator voice verify aisha-khan
+content-creator voice status example-person
+content-creator voice show example-person
+content-creator voice verify example-person
 ```
 
 Review the claimed voice patterns, their supporting sources and counterexamples,
@@ -196,9 +196,9 @@ the prohibited behaviours, unsupported content types, and the evaluation report.
 If the candidate is weak, add better sources and rebuild:
 
 ```bash
-content-creator voice add-sources aisha-khan \
-  --sources voice-material/aisha/additional-urls.txt
-content-creator voice rebuild aisha-khan
+content-creator voice add-sources example-person \
+  --sources voice-material/example-person/additional-urls.txt
+content-creator voice rebuild example-person
 ```
 
 ### 5. Approve and activate the voice
@@ -206,7 +206,7 @@ content-creator voice rebuild aisha-khan
 When you are satisfied:
 
 ```bash
-content-creator voice approve aisha-khan
+content-creator voice approve example-person
 ```
 
 Approval is a deterministic operation rather than another creative-agent task.
@@ -219,7 +219,7 @@ Confirm the result:
 
 ```bash
 content-creator voice list
-content-creator voice status aisha-khan
+content-creator voice status example-person
 ```
 
 ### 6. Initiate content creation
@@ -227,12 +227,12 @@ content-creator voice status aisha-khan
 You can start with natural language in Codex or another supported agent surface:
 
 > Use the Content Creator workflow in this repository. Write a short LinkedIn
-> post in the `aisha-khan` voice explaining why calculus matters to sixth-form
+> post in the `example-person` voice explaining why calculus matters to sixth-form
 > students. No research is required. Stop for my approval before finalising it.
 
 For a research-heavy request:
 
-> Use the Content Creator workflow in this repository. In the `aisha-khan` voice,
+> Use the Content Creator workflow in this repository. In the `example-person` voice,
 > develop a LinkedIn article about how humans have interacted with machines over
 > the last 70 years. Use deep research, preserve source attribution, and stop for
 > my approval before finalising it.
@@ -248,7 +248,7 @@ The equivalent target CLI flow is:
 ```bash
 content-creator content run \
   "Explain why calculus matters to sixth-form students" \
-  --voice aisha-khan \
+  --voice example-person \
   --pack linkedin-post \
   --research none
 

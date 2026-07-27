@@ -43,3 +43,19 @@ def test_work_package_uses_the_repository_cli_name():
     for path in work_package.rglob("*"):
         if path.is_file():
             assert "content-studio" not in path.read_text(encoding="utf-8")
+
+
+def test_documentation_uses_an_explicit_fictional_voice_placeholder():
+    example_documents = [
+        ROOT / "README.md",
+        ROOT / "docs" / "work-package" / "README.md",
+        ROOT / "docs" / "work-package" / "schemas-and-commands.md",
+        ROOT / "docs" / "work-package" / "general-text-pack.md",
+    ]
+
+    combined = "\n".join(
+        path.read_text(encoding="utf-8") for path in example_documents
+    )
+
+    assert "Example Person" in combined
+    assert "example-person" in combined

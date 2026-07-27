@@ -83,10 +83,10 @@ flowchart TD
 
 The expected conversational path is:
 
-1. “Create a voice for Aisha from these sources. She has authorised its use.”
+1. “Create a voice for Example Person from these sources. They have authorised its use.”
 2. “Show me the proposed profile and evaluation.”
-3. “Approve Aisha’s voice.”
-4. “Using Aisha’s voice, create a LinkedIn post about engineering leadership.”
+3. “Approve Example Person’s voice.”
+4. “Using Example Person’s voice, create a LinkedIn post about engineering leadership.”
 5. “Move this to published.”
 
 ## Deliverables
