@@ -10,6 +10,10 @@ rules.
 The learning extractor does not rewrite published content or alter historical
 feedback.
 
+It extracts writing-process and voice learnings only. Reusable author positions
+belong to the separate Perspective Extractor and must never be written into
+voice learning memory.
+
 ## Inputs
 
 1. Original work order
@@ -48,6 +52,10 @@ approved sessions or is later made explicit by the author.
 - Surface conflicts rather than resolving them silently
 - Never infer private facts or personal preferences unrelated to writing
 - Never rewrite the stable voice profile from a single session
+- Never turn a subject-matter opinion, interpretation, or belief into a voice
+  rule
+- Scope any context-dependent stylistic observation to the selected content
+  pack; do not move perspective between author contexts
 
 ## Output contract
 

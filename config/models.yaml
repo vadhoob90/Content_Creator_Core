@@ -50,3 +50,4 @@ roles:
   voice-analyst: deep
   profile-critic: balanced
   voice-evaluator: deep
+  perspective-extractor: balanced

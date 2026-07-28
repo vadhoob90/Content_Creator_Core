@@ -10,6 +10,13 @@
 - Do not put provider credentials in briefs, profiles, logs or pack manifests.
 - Deactivation prevents new unpinned use while preserving receipts and
   historical run context.
+- Approved perspective entries may reveal personal or professional positions
+  and are Git-tracked by design. Review statements, evidence excerpts, and
+  counterpositions before committing them.
+- Keep confidential interview notes out of perspective provenance. Store a
+  minimal reference or approved excerpt rather than the full private source.
+- Perspective proposal queues remain inactive and are excluded from automatic
+  CI, but they are not encrypted storage.
 
 Before committing, inspect:
 

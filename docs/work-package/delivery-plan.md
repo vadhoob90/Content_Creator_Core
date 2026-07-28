@@ -386,3 +386,34 @@ Acceptance:
 - A new user can create, approve and use a fixture voice from a fresh clone
 
 Dependencies: WP-14.
+
+## WP-16: Add optional perspective provenance
+
+Status: **implemented**
+
+Implement:
+
+- Perspective contexts owned by a voice identity
+- No implicit cross-context inheritance
+- Provenance, qualifications, counterpositions, confidence, and lifecycle state
+- Deterministic candidate verification, approval, versioning, retirement, and
+  deactivation
+- Optional perspective and author-contribution fields in work orders
+- Exact perspective version and component hashes in resolved run context
+- Claim-provenance run artifact
+- Research, writer, and critic perspective boundaries
+- Publication-generated proposals that never update an active perspective
+- Explicit proposal staging and approval
+
+Acceptance:
+
+- A voice can run without a perspective
+- Two contexts for one person cannot load or update one another
+- Perspective is never treated as factual authority
+- Unsupported first-person positions fail validation
+- Publication creates only context-local candidates
+- Perspective changes require deterministic approval
+- Historical runs resolve their pinned perspective version
+- OpenAI and Anthropic receive the same normalized perspective contract
+
+Dependencies: WP-11, WP-12, and WP-15.

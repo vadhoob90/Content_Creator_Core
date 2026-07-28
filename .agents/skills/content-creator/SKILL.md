@@ -1,6 +1,6 @@
 ---
 name: content-creator
-description: Plan, research, draft, review, publish, and learn from content using the repository's provider-neutral workflow. Use for LinkedIn posts or articles, generic content runs, research checkpoints, revisions, run status, repository publication, and publication-triggered voice learning.
+description: Plan, research, draft, review, publish, and learn from content using the repository's provider-neutral workflow, including optional context-isolated author perspectives. Use for LinkedIn posts or articles, generic content runs, research checkpoints, revisions, run status, perspective creation or approval, repository publication, publication-triggered voice learning, and perspective proposals.
 ---
 
 # Content Creator
@@ -30,6 +30,34 @@ Resolve only active voices. Preserve the exact pack and voice version written
 to `runs/<run-id>/resolved-context.json`. Use `$voice-builder` when the user
 asks to create, approve, deactivate, or otherwise manage a voice.
 
+## Manage optional perspectives
+
+Treat perspective as an approved author position, never factual authority or
+part of linguistic voice. Do not infer a context from topic similarity.
+
+Create and approve a named context only from explicit author evidence:
+
+```bash
+content-creator perspective create \
+  --voice <voice-id> \
+  --context <context-id> \
+  --statement "<author-supplied position>" \
+  --evidence "<direct evidence>"
+
+content-creator perspective verify \
+  --voice <voice-id> --context <context-id>
+
+content-creator perspective approve \
+  --voice <voice-id> \
+  --context <context-id> \
+  --approved-by "<approver>"
+```
+
+Use `--perspective-context <context-id>` only when explicitly requested. Keep
+contexts isolated. Publication may create proposals; inspect with `perspective
+proposals`, stage one with `perspective stage-proposal`, then require another
+explicit deterministic approval. Never claim a proposal is active.
+
 ## Follow the route
 
 - Never add research to a `none` route.
@@ -38,8 +66,9 @@ asks to create, approve, deactivate, or otherwise manage a voice.
 - If a run reaches `awaiting_research_approval`, show `research.json` and wait
   for the author. Resume only with `content-creator approve-research <run-id>`.
 - Show `final.md` when the run is `ready` or `needs_author`.
-- Preserve work orders, route plans, research, drafts, validation, critiques,
-  quality decisions, and model selections under `runs/<run-id>/`.
+- Preserve work orders, route plans, claim provenance, research, drafts,
+  perspective evaluation, validation, critiques, quality decisions, and model
+  selections under `runs/<run-id>/`.
 
 ## Finalise
 
@@ -54,5 +83,9 @@ Publication writes only to the selected pack's repository destination. It does
 not post externally. It then records approval and updates only the active
 voice's learning memory. Explicit feedback may become active learning;
 publication-only inference remains provisional.
+
+When a run resolves a perspective context, publication may create proposals
+only in that context. Perspective proposals never become active without a
+separate author approval command.
 
 Do not commit or push unless the user explicitly asks.

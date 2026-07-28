@@ -20,6 +20,12 @@ from .domain import (
 from .intake import BriefingAgent
 from .learning import LearningMemory
 from .packs import PackRegistry
+from .perspective_evaluation import evaluate_perspective_output
+from .perspectives import (
+    PerspectiveExtraction,
+    PerspectiveProposalStore,
+    PerspectiveRegistry,
+)
 from .prompting import PromptAssembler
 from .providers import ProviderRegistry
 from .quality import evaluate_quality
@@ -64,6 +70,37 @@ class Orchestrator:
         )
         order.voice_version = resolved_voice["version"]
         order.resolved_voice = True
+        order.resolved_perspective = False
+        resolved_perspective = None
+        if order.perspective_context:
+            resolved_perspective = PerspectiveRegistry(
+                self.root, order.voice_id
+            ).resolve(order.perspective_context, order.perspective_version)
+            requested_entries = (
+                order.author_contribution.reusable_perspective_entry_ids
+                if order.author_contribution
+                else []
+            )
+            unknown_entries = sorted(
+                set(requested_entries)
+                - set(resolved_perspective["active_entry_ids"])
+            )
+            if unknown_entries:
+                raise OrchestrationError(
+                    "Unavailable perspective entries in {}: {}".format(
+                        order.perspective_context,
+                        ", ".join(unknown_entries),
+                    )
+                )
+            resolved_perspective["selected_entry_ids"] = (
+                requested_entries
+                if requested_entries
+                else resolved_perspective["active_entry_ids"]
+            )
+            order.perspective_version = resolved_perspective["version"]
+            order.resolved_perspective = True
+        else:
+            order.perspective_version = None
         if pack.format != order.format:
             raise OrchestrationError(
                 "Pack {} expects format {}, received {}".format(
@@ -84,12 +121,48 @@ class Orchestrator:
         self.store.write_artifact(
             state.id,
             "resolved-context.json",
-            resolved_context(self.root, order, pack, resolved_voice),
+            resolved_context(
+                self.root,
+                order,
+                pack,
+                resolved_voice,
+                resolved_perspective,
+            ),
+        )
+        self.store.write_artifact(
+            state.id,
+            "claim-provenance.json",
+            {
+                "author_contribution": (
+                    order.author_contribution.model_dump(mode="json")
+                    if order.author_contribution
+                    else None
+                ),
+                "perspective": resolved_perspective,
+                "research_record": (
+                    "not_required"
+                    if order.research_depth == ResearchDepth.NONE
+                    else "pending"
+                ),
+                "model_proposed_framing_is_author_position": False,
+            },
         )
         try:
             brief = self._research(state)
             if brief:
                 self.store.write_artifact(state.id, "research.json", brief)
+                provenance = json.loads(
+                    self.store.read_artifact(state.id, "claim-provenance.json")
+                )
+                provenance["research_record"] = {
+                    "status": "completed",
+                    "evidence_claim_count": len(brief.evidence),
+                    "tensions": brief.tensions,
+                    "gaps": brief.gaps,
+                }
+                self.store.write_artifact(
+                    state.id, "claim-provenance.json", provenance
+                )
             if state.route_plan.requires_research_checkpoint:
                 state.status = RunStatus.AWAITING_RESEARCH_APPROVAL
                 state.events.append(RunEvent(name="research_checkpoint"))
@@ -143,6 +216,8 @@ class Orchestrator:
             "voice_id": state.work_order.voice_id,
             "voice_version": state.work_order.voice_version,
             "content_pack": state.work_order.content_pack,
+            "perspective_context": state.work_order.perspective_context,
+            "perspective_version": state.work_order.perspective_version,
             "author_signal": "explicit_feedback" if feedback else "publication_approval",
             "feedback": feedback,
             "questions": {
@@ -151,6 +226,11 @@ class Orchestrator:
                 "exaggerated_habit": None,
                 "invented_experience": None,
                 "channel_appropriate": True,
+                "perspective_authentic": None,
+                "unsupported_author_position": None,
+                "perspective_qualifications_preserved": None,
+                "research_conflicts_surfaced": None,
+                "claim_provenance_clear": None,
             },
         }
         self.store.write_artifact(run_id, "assessment.json", assessment)
@@ -185,6 +265,54 @@ class Orchestrator:
             state.events.append(RunEvent(name="learnings_updated"))
         except Exception as exc:
             state.events.append(RunEvent(name="learning_update_failed", detail=str(exc)))
+
+        if state.work_order.perspective_context:
+            try:
+                perspective_extraction = self.runner.run(
+                    role="perspective-extractor",
+                    role_key="perspective-extractor",
+                    instruction=(
+                        "Propose only reusable author positions evidenced by this "
+                        "published run. Preserve qualifications and keep every proposal "
+                        "in the explicitly resolved context. Never activate a proposal."
+                    ),
+                    payload={
+                        "work_order": state.work_order.model_dump(mode="json"),
+                        "draft": draft,
+                        "assessment": assessment,
+                        "research": (
+                            json.loads(self.store.read_artifact(run_id, "research.json"))
+                            if (self.store.run_dir(run_id) / "research.json").exists()
+                            else None
+                        ),
+                    },
+                    order=state.work_order,
+                    output_model=PerspectiveExtraction,
+                    provider=state.work_order.provider,
+                )
+                self.store.write_artifact(
+                    run_id,
+                    "perspective-extraction.json",
+                    perspective_extraction,
+                )
+                proposal_paths = PerspectiveProposalStore(
+                    self.root,
+                    state.work_order.voice_id,
+                    state.work_order.perspective_context,
+                ).apply(run_id, perspective_extraction)
+                state.events.append(
+                    RunEvent(
+                        name="perspective_candidates_proposed",
+                        detail="count={}".format(len(proposal_paths)),
+                    )
+                )
+            except Exception as exc:
+                state.events.append(
+                    RunEvent(
+                        name="perspective_update_failed",
+                        detail=str(exc),
+                    )
+                )
 
         state.published_path = str(target.relative_to(self.root))
         state.status = RunStatus.PUBLISHED
@@ -263,6 +391,10 @@ class Orchestrator:
                 self.root, state.work_order, draft
             )
             validation_errors.extend(voice_evaluation["errors"])
+            perspective_evaluation = evaluate_perspective_output(
+                self.root, state.work_order, draft
+            )
+            validation_errors.extend(perspective_evaluation["errors"])
             self.store.write_artifact(
                 state.id,
                 "validation-{:02d}.json".format(revision),
@@ -272,6 +404,11 @@ class Orchestrator:
                 state.id,
                 "voice-evaluation-{:02d}.json".format(revision),
                 voice_evaluation,
+            )
+            self.store.write_artifact(
+                state.id,
+                "perspective-evaluation-{:02d}.json".format(revision),
+                perspective_evaluation,
             )
 
             state.status = RunStatus.REVIEWING

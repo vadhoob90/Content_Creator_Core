@@ -6,7 +6,7 @@ from enum import Enum
 from typing import Dict, List, Optional
 from uuid import uuid4
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 def utc_now() -> datetime:
@@ -49,6 +49,15 @@ class LearningStatus(str, Enum):
     REJECTED = "rejected"
 
 
+class AuthorContribution(BaseModel):
+    thesis: Optional[str] = None
+    intended_challenge: Optional[str] = None
+    personal_basis: Optional[str] = None
+    supplied_by_author: bool = False
+    reusable_perspective_entry_ids: List[str] = Field(default_factory=list)
+    provenance_notes: List[str] = Field(default_factory=list)
+
+
 class WorkOrder(BaseModel):
     request: str
     topic: str
@@ -56,6 +65,10 @@ class WorkOrder(BaseModel):
     voice_id: str = "default"
     voice_version: Optional[str] = None
     resolved_voice: bool = False
+    perspective_context: Optional[str] = None
+    perspective_version: Optional[str] = None
+    resolved_perspective: bool = False
+    author_contribution: Optional[AuthorContribution] = None
     format: str = "text"
     research_depth: ResearchDepth = ResearchDepth.NONE
     research_source: ResearchSource = ResearchSource.NONE
@@ -67,12 +80,27 @@ class WorkOrder(BaseModel):
     provider: Optional[str] = None
     pack_options: Dict[str, object] = Field(default_factory=dict)
 
-    @field_validator("content_pack", "voice_id")
+    @field_validator("content_pack", "voice_id", "perspective_context")
     @classmethod
     def validate_repository_id(cls, value):
         if value is not None and not re.fullmatch(r"[a-z0-9][a-z0-9-]{0,62}", value):
             raise ValueError("Repository ids must use lowercase letters, digits, and hyphens")
         return value
+
+    @model_validator(mode="after")
+    def validate_perspective_selection(self):
+        if self.perspective_version and not self.perspective_context:
+            raise ValueError("perspective_version requires perspective_context")
+        selected = (
+            self.author_contribution.reusable_perspective_entry_ids
+            if self.author_contribution
+            else []
+        )
+        if selected and not self.perspective_context:
+            raise ValueError(
+                "reusable perspective entries require perspective_context"
+            )
+        return self
 
 class PlanningDecision(BaseModel):
     needs_clarification: bool = False

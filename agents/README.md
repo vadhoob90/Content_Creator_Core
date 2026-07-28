@@ -17,6 +17,7 @@ not an autonomous workflow controller.
 | Voice analyst | Evidence-backed style-pattern candidates | Biography or approval |
 | Profile critic | Rejecting unsupported or caricatured patterns | Rewriting the candidate |
 | Voice evaluator | Transfer, channel, genericity and integrity evaluation | Activation |
+| Perspective extractor | Context-scoped perspective proposals after publication | Perspective approval or cross-context updates |
 | Orchestrator | Stage order, state, retries, pause and resume | Editorial judgement |
 
 The orchestrator is deterministic application code. The quality gate is

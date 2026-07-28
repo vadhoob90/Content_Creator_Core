@@ -156,6 +156,13 @@ hard_gates:
 {
   "request": "Explain engineering career progression",
   "voice_id": "example-person",
+  "perspective_context": "professional-training",
+  "perspective_version": null,
+  "author_contribution": {
+    "thesis": "Recognition matters more than memorising every rule.",
+    "supplied_by_author": true,
+    "reusable_perspective_entry_ids": ["training-001"]
+  },
   "content_pack": "linkedin-post",
   "objective": "explain",
   "audience": "technology leaders",
@@ -179,6 +186,12 @@ hard_gates:
   "voice": {
     "id": "example-person",
     "version": "1.0.0"
+  },
+  "perspective": {
+    "owner_voice_id": "example-person",
+    "context_id": "professional-training",
+    "version": "2.0.0",
+    "active_entry_ids": ["training-001"]
   },
   "component_hashes": {},
   "active_learning_ids": [],
@@ -268,6 +281,32 @@ content-creator status <run-id>
 content-creator publish <run-id> \
   --feedback "Preserve the concrete opening."
 ```
+
+### Perspective provenance
+
+```bash
+content-creator perspective create \
+  --voice example-person \
+  --context professional-training \
+  --statement "Training should teach recognition and escalation." \
+  --type principle \
+  --evidence "Direct author interview"
+
+content-creator perspective verify \
+  --voice example-person --context professional-training
+
+content-creator perspective approve \
+  --voice example-person \
+  --context professional-training \
+  --approved-by "Author"
+
+content-creator perspective proposals \
+  --voice example-person --context professional-training
+```
+
+Perspective contexts are optional and never inherit from one another. Published
+runs may create proposals, but staging and deterministic approval are required
+before future runs can use a change.
 
 `publish` records author acceptance, writes the channel-ready repository
 artifact, and triggers voice-scoped learning. External distribution is not part

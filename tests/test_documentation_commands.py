@@ -24,6 +24,47 @@ def test_documented_command_families_are_parseable():
         ["voice", "deactivate", "example-person", "--reason", "withdrawn"],
         ["voice", "reactivate", "example-person"],
         ["voice", "consolidate-learnings", "example-person"],
+        [
+            "perspective",
+            "create",
+            "--voice",
+            "default",
+            "--context",
+            "legal-training",
+        ],
+        ["perspective", "list", "--voice", "default"],
+        [
+            "perspective",
+            "status",
+            "--voice",
+            "default",
+            "--context",
+            "legal-training",
+        ],
+        [
+            "perspective",
+            "proposals",
+            "--voice",
+            "default",
+            "--context",
+            "legal-training",
+        ],
+        [
+            "perspective",
+            "compare-create",
+            "--run",
+            "run-id",
+            "--baseline",
+            "ordinary-chat.md",
+        ],
+        [
+            "perspective",
+            "compare-record",
+            "--run",
+            "run-id",
+            "--assessment",
+            "assessment.json",
+        ],
         ["status", "run-id"],
         ["approve-research", "run-id"],
         ["reject-research", "run-id"],
@@ -52,3 +93,10 @@ def test_local_documentation_links_resolve():
 def test_private_cache_is_ignored():
     ignore = (ROOT / ".gitignore").read_text(encoding="utf-8").splitlines()
     assert ".voice-cache/" in ignore
+
+
+def test_publication_perspective_proposals_do_not_trigger_offline_ci():
+    workflow = (ROOT / ".github" / "workflows" / "ci.yml").read_text(
+        encoding="utf-8"
+    )
+    assert "!profiles/*/perspectives/*/proposals/**" in workflow

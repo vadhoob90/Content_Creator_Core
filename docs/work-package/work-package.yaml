@@ -3,7 +3,8 @@ version: "1.0"
 status: implemented_with_manual_release_gates
 objective: >-
   Build a provider-neutral text-content engine with content packs and
-  evidence-backed, versioned, deterministically activated voice packages.
+  evidence-backed, versioned, deterministically activated voice packages and
+  optional context-isolated author perspectives.
 
 non_goals:
   - external publication
@@ -146,6 +147,18 @@ work_items:
       - documented_commands_are_tested
       - fresh_user_completes_fixture_journey
 
+  - id: WP-16
+    name: perspective_provenance
+    depends_on: [WP-11, WP-12, WP-15]
+    acceptance:
+      - perspective_is_optional
+      - contexts_do_not_inherit
+      - every_approved_entry_has_provenance
+      - resolved_context_pins_perspective_version
+      - publication_creates_candidates_only
+      - perspective_change_requires_deterministic_approval
+      - historical_perspective_versions_remain_resolvable
+
 definition_of_done:
   - fixture_voice_builds_from_all_supported_source_types
   - ambiguous_attribution_requires_review
@@ -157,5 +170,8 @@ definition_of_done:
   - general_text_pack_runs_directly
   - specialised_pack_extends_general_text_safely
   - learning_is_voice_scoped
+  - perspective_is_context_scoped
+  - perspective_is_not_factual_authority
+  - publication_cannot_activate_perspective
   - linkedin_regression_suite_passes
   - anthropic_and_openai_manual_evaluations_pass
