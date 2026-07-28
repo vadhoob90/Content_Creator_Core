@@ -39,6 +39,52 @@ def test_active_learning_enters_prompt_but_provisional_does_not(project):
     assert "Always use two paragraphs." not in prompt
 
 
+def test_repository_and_voice_learnings_are_composed_separately(project):
+    repository_memory = {
+        "version": 1,
+        "records": [
+            {
+                "id": "repository-a",
+                "run_id": "run-a",
+                "role": "writer",
+                "principle": "State the governing context early.",
+                "evidence": "Repository owner instruction",
+                "status": "active",
+                "confidence": 1,
+                "created_at": "2026-01-01T00:00:00Z",
+            }
+        ],
+    }
+    voice_memory = {
+        "version": 1,
+        "records": [
+            {
+                "id": "voice-a",
+                "run_id": "run-b",
+                "role": "writer",
+                "principle": "Prefer a restrained conclusion.",
+                "evidence": "Author instruction",
+                "status": "active",
+                "confidence": 1,
+                "created_at": "2026-01-01T00:00:00Z",
+            }
+        ],
+    }
+    (project / "learnings" / "memory.json").write_text(
+        json.dumps(repository_memory), encoding="utf-8"
+    )
+    (project / "profiles" / "default" / "learnings" / "memory.json").write_text(
+        json.dumps(voice_memory), encoding="utf-8"
+    )
+
+    prompt = PromptAssembler(project).system_prompt("writer")
+
+    assert "## Active repository learnings" in prompt
+    assert "State the governing context early." in prompt
+    assert "## Active voice learnings" in prompt
+    assert "Prefer a restrained conclusion." in prompt
+
+
 def test_learning_memory_deduplicates_same_role_and_principle(project):
     extraction = LearningExtraction.model_validate(
         {

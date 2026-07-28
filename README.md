@@ -3,8 +3,9 @@
 A provider-neutral foundation for creating researched or non-researched content
 in a person's approved voice.
 
-The repository separates four concerns:
+The repository separates six concerns:
 
+- **agents**: repository-owned editorial and domain behaviour;
 - **voice**: how a person sounds, including evidence, constraints, and learnings;
 - **perspective**: what the person has explicitly said or approved in a named
   subject context;
@@ -97,6 +98,10 @@ The detailed capability-by-capability comparison is in
 For production implementations, install a tagged engine release from a thin,
 separate repository. See the
 [versioned core and workspace guide](docs/guides/workspace-dependencies.md).
+Editable agents and the two learning scopes are described in the
+[repository agents guide](docs/guides/repository-agents.md).
+Existing v0.2 workspaces should follow the
+[v0.3 migration guide](docs/guides/migrating-to-v0.3.md).
 
 Voice construction uses a transparent, attribution-weighted
 [lightweight linguistic framework](docs/guides/linguistic-voice-framework.md)
@@ -136,9 +141,18 @@ content-creator eval
 ```
 
 `doctor` validates the model catalogue, installed packs, default voice, and
-route cases without making an LLM call. `eval` runs the LinkedIn and
+route cases without making an LLM call. `init` also scaffolds repository-owned
+agents and empty repository learning memory without overwriting existing files.
+`eval` runs the LinkedIn and
 `general-text` replay routes against both provider contracts without using paid
 APIs. Both commands should finish successfully before you continue.
+
+Inspect or compare the editable agent starting points:
+
+```bash
+content-creator agents status
+content-creator agents diff-template
+```
 
 ### 3. Choose an execution mode
 

@@ -10,6 +10,10 @@ def test_documented_command_families_are_parseable():
     parser = build_parser()
     commands = [
         ["init"],
+        ["init", "--agent-template", "standard"],
+        ["agents", "scaffold"],
+        ["agents", "status"],
+        ["agents", "diff-template"],
         ["doctor"],
         ["provider", "verify", "openai"],
         ["provider", "verify", "codex-native"],

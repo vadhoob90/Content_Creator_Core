@@ -4,49 +4,32 @@ import json
 from pathlib import Path
 from typing import Any, Dict, Iterable, Optional
 
+from .agent_resources import LEARNING_FILES, AgentWorkspace
 from .domain import WorkOrder
 from .packs import PackRegistry
 from .perspectives import PerspectiveEntry, PerspectiveRegistry
 from .resource_paths import ResourceResolver
 from .voices import VoiceRegistry
 
-ROLE_FILES = {
-    "briefing-agent": "briefing-agent.md",
-    "researcher": "researcher.md",
-    "writer": "writer.md",
-    "critic": "critic.md",
-    "learning-extractor": "learning-extractor.md",
-    "voice-analyst": "voice-analyst.md",
-    "profile-critic": "profile-critic.md",
-    "attribution-reviewer": "attribution-reviewer.md",
-    "voice-evaluator": "voice-evaluator.md",
-    "perspective-extractor": "perspective-extractor.md",
-}
-
-LEARNING_FILES = {
-    "researcher": "researcher-learnings.md",
-    "writer": "writer-learnings.md",
-    "critic": "critic-learnings.md",
-}
-
 
 class PromptAssembler:
     def __init__(self, root: Path):
         self.root = root.resolve()
         self.resources = ResourceResolver(self.root)
+        self.agent_workspace = AgentWorkspace(self.root)
 
     def system_prompt(self, role: str, order: Optional[WorkOrder] = None) -> str:
         parts = [
-            self._read(
-                self.resources.path(Path("agents") / ROLE_FILES[role])
-            )
+            self._read(self.agent_workspace.harness_path()),
+            self._read(self.agent_workspace.contract_path(role)),
+            "## Repository agent\n\n"
+            + self._read(self.agent_workspace.role_path(role)),
         ]
         if role in LEARNING_FILES:
             parts.append(
-                self._read(
-                    self.resources.path(
-                        Path("agents") / LEARNING_FILES[role]
-                    )
+                "## Repository learning policy\n\n"
+                + self._read(
+                    self.agent_workspace.learning_instructions_path(role)
                 )
             )
         if role in {"writer", "critic", "learning-extractor"}:
@@ -114,11 +97,29 @@ class PromptAssembler:
                 "## Perspective constraints\n\n"
                 + self._read(perspective_root / "constraints.json")
             )
-        active = self._active_learnings(
-            role, order.voice_id if order else "default"
+        repository_learnings = self._active_learnings(
+            self.root / "learnings" / "memory.json",
+            role,
         )
-        if active:
-            parts.append("## Active structured learnings\n\n" + "\n".join(active))
+        if repository_learnings:
+            parts.append(
+                "## Active repository learnings\n\n"
+                + "\n".join(repository_learnings)
+            )
+        voice_id = order.voice_id if order else "default"
+        voice_learnings = self._active_learnings(
+            self.root
+            / "profiles"
+            / voice_id
+            / "learnings"
+            / "memory.json",
+            role,
+        )
+        if voice_learnings:
+            parts.append(
+                "## Active voice learnings\n\n"
+                + "\n".join(voice_learnings)
+            )
         if order and role in {"writer", "critic"}:
             packs = PackRegistry(self.root)
             pack = packs.resolve(
@@ -164,10 +165,8 @@ class PromptAssembler:
             result.update(item)
         return result
 
-    def _active_learnings(self, role: str, voice_id: str = "default"):
-        path = self.resources.path(
-            Path("profiles") / voice_id / "learnings" / "memory.json"
-        )
+    @staticmethod
+    def _active_learnings(path: Path, role: str):
         if not path.exists():
             return []
         data = json.loads(path.read_text(encoding="utf-8"))

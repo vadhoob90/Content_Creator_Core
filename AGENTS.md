@@ -11,8 +11,8 @@ of the `content-creator` workflow.
 1. Create or validate a work order
 2. Resolve content pack, voice, research depth, and research source
 3. Ask only questions that materially change scope or route
-4. Follow the role contracts under `agents/`
-5. Load the selected voice profile and only its learnings
+4. Follow the core contracts and repository-owned agents
+5. Load repository learnings plus only the selected voice's learnings
 6. Apply the core rubric, selected pack rubric, and research overlay
 7. Preserve research, drafts, critiques, validation, and route artifacts
 8. Return the final draft for author review

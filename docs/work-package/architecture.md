@@ -11,7 +11,8 @@ flowchart TD
     O --> MR["Model registry"]
     O --> P["Content pack"]
     O --> V["Resolved voice package"]
-    O --> A["Specialised agents"]
+    O --> H["Core harness and role contracts"]
+    H --> A["Repository-owned agents"]
     O --> D["Deterministic tools and validators"]
     O --> S["Run and artifact store"]
 ```
@@ -33,10 +34,11 @@ content-creator/
 │   ├── providers/
 │   ├── voices/
 │   └── packs/
-├── agents/
-│   ├── briefing/
-│   │   ├── content-briefing.md
-│   │   └── voice-briefing.md
+├── contracts/
+│   ├── agent-harness.md
+│   └── roles/
+├── agents/                 # standard scaffold template
+│   ├── briefing-agent.md
 │   ├── researcher.md
 │   ├── writer.md
 │   ├── critic.md
@@ -55,6 +57,8 @@ content-creator/
 │   └── core.yaml
 ├── evals/
 ├── tests/
+├── learnings/
+│   └── memory.json
 ├── .voice-cache/
 └── runs/
 ```
@@ -65,10 +69,12 @@ version controlled.
 
 ## Content composition
 
-A content run resolves three policy layers:
+A content run resolves these policy layers:
 
 ```text
-core editorial policy
+core harness and role contract
+    + repository-owned agent
+    + repository and voice learnings
     + selected content-pack policy
     + selected voice-package policy
     + explicit run instructions
@@ -77,6 +83,7 @@ core editorial policy
 Merge rules are deterministic:
 
 - Integrity constraints cannot be overridden
+- Repository agents specialise but cannot replace core role contracts
 - Explicit author instructions override stylistic preferences
 - Content-pack rules apply only to their channel or artifact type
 - Voice rules apply only to the selected `voice_id`

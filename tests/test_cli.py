@@ -49,7 +49,11 @@ def test_doctor_uses_packaged_default_when_workspace_asset_is_missing(
 
 def test_init_provider_verify_and_pack_create(project, capsys, monkeypatch):
     assert main(["--root", str(project), "init"]) == 0
-    capsys.readouterr()
+    initialised = json.loads(capsys.readouterr().out)
+    assert initialised["agents"]["status"]["complete"] is True
+    assert (project / "agents" / "writer.md").exists()
+    assert (project / "learnings" / "memory.json").exists()
+    assert (project / "content-creator.yaml").exists()
     monkeypatch.setenv("OPENAI_API_KEY", "test-key")
     assert main(["--root", str(project), "provider", "verify", "openai"]) == 0
     capsys.readouterr()
@@ -69,6 +73,24 @@ def test_init_provider_verify_and_pack_create(project, capsys, monkeypatch):
     )
     capsys.readouterr()
     assert (project / "packs" / "internal-briefing" / "validators.yaml").exists()
+
+
+def test_agent_scaffold_preserves_repository_customisation(tmp_path, capsys):
+    agents = tmp_path / "agents"
+    agents.mkdir()
+    writer = agents / "writer.md"
+    writer.write_text("# Custom writer", encoding="utf-8")
+
+    assert main(["--root", str(tmp_path), "agents", "scaffold"]) == 0
+    result = json.loads(capsys.readouterr().out)
+
+    assert writer.read_text(encoding="utf-8") == "# Custom writer"
+    assert "writer.md" in result["preserved"]
+    assert result["status"]["complete"] is True
+
+    assert main(["--root", str(tmp_path), "agents", "diff-template"]) == 0
+    difference = json.loads(capsys.readouterr().out)
+    assert "writer.md" in difference["changed"]
 
 
 def test_yaml_brief_reaches_run_command(project, tmp_path, capsys, monkeypatch):

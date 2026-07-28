@@ -410,5 +410,13 @@ def test_fresh_fixture_voice_creates_versioned_content(project, capsys):
         (project / "runs" / state.id / "resolved-context.json").read_text()
     )
     assert state.status == RunStatus.READY
+    assert context["engine_version"] == "0.3.0"
     assert context["voice"]["version"] == "1.0.0"
+    assert context["component_hashes"]["agent_harness"].startswith("sha256:")
+    assert context["component_hashes"]["repository_agent_writer"].startswith(
+        "sha256:"
+    )
+    assert context["component_hashes"][
+        "repository_learning_memory"
+    ].startswith("sha256:")
     assert context["component_hashes"]["voice_profile"].startswith("sha256:")

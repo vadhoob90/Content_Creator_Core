@@ -23,6 +23,11 @@ Active structured learnings are added to later role prompts. Provisional
 entries remain recorded but inactive. `profiles/<voice-id>/voice.md` is not rewritten
 automatically; consolidation requires a deliberate, reviewed repository change.
 
+Repository-wide principles live separately in `learnings/memory.json`. They
+apply across voices in that content repository. Publication does not promote a
+voice learning into repository memory automatically; cross-voice promotion is
+a deliberate human-reviewed policy change.
+
 If extraction fails, publication is retained and the run records a
 `learning_update_failed` event. This prevents a model outage from losing an
 already approved piece.

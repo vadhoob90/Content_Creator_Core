@@ -8,7 +8,15 @@ REPO = Path(__file__).resolve().parents[1]
 
 @pytest.fixture
 def project(tmp_path):
-    for name in ("agents", "profiles", "rubrics", "config", "evals", "packs"):
+    for name in (
+        "agents",
+        "learnings",
+        "profiles",
+        "rubrics",
+        "config",
+        "evals",
+        "packs",
+    ):
         source = REPO / name
         if source.exists():
             shutil.copytree(source, tmp_path / name)

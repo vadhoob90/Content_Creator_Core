@@ -20,16 +20,18 @@ def test_required_notice_is_present():
 
 def test_packaged_core_resources_match_repository_sources():
     packaged = ROOT / "src" / "content_creator" / "resources"
-    for directory in (
-        "agents",
-        "config",
-        "evals",
-        "packs",
-        "rubrics",
-        "profiles/default",
-    ):
-        source_root = ROOT / directory
-        packaged_root = packaged / directory
+    mappings = {
+        "agents": "agent-templates/standard/agents",
+        "contracts": "contracts",
+        "config": "config",
+        "evals": "evals",
+        "packs": "packs",
+        "rubrics": "rubrics",
+        "profiles/default": "profiles/default",
+    }
+    for source_directory, packaged_directory in mappings.items():
+        source_root = ROOT / source_directory
+        packaged_root = packaged / packaged_directory
         source_files = {
             path.relative_to(source_root): path
             for path in source_root.rglob("*")

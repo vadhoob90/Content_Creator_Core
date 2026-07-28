@@ -1,0 +1,4 @@
+schema_version: "1.0"
+agent_template:
+  name: standard
+  version: "1.0.0"

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "content-creator"
-version = "0.2.0"
+version = "0.3.0"
 description = "Provider-neutral content creation and voice workflow"
 readme = "README.md"
 requires-python = ">=3.9"
@@ -35,8 +35,11 @@ where = ["src"]
 
 [tool.setuptools.package-data]
 "content_creator.resources" = [
-  "agents/*.md",
+  "agent-templates/standard/agents/*.md",
+  "agent-templates/standard/agents/*.json",
   "config/*.yaml",
+  "contracts/*.md",
+  "contracts/roles/*.md",
   "evals/cases/*.yaml",
   "packs/*/*.json",
   "packs/*/*.yaml",

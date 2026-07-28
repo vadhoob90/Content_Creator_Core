@@ -9,6 +9,7 @@ from typing import Optional
 
 import yaml
 
+from .agent_resources import STANDARD_TEMPLATE, AgentWorkspace
 from .configuration import Configuration
 from .domain import AuthorContribution, ResearchDepth, ResearchSource, WorkOrder
 from .evaluation import run_live_suite, run_replay_suite
@@ -62,7 +63,26 @@ def build_parser() -> argparse.ArgumentParser:
         help="Content workspace (default: current directory)",
     )
     sub = parser.add_subparsers(dest="command", required=True)
-    sub.add_parser("init", help="Initialise repository runtime directories")
+    initialise = sub.add_parser(
+        "init", help="Initialise a repository-owned content workspace"
+    )
+    initialise.add_argument(
+        "--agent-template",
+        default=STANDARD_TEMPLATE,
+        help="Packaged agent template to scaffold (default: standard)",
+    )
+
+    agents = sub.add_parser(
+        "agents", help="Scaffold and inspect repository-owned agents"
+    )
+    agent_sub = agents.add_subparsers(dest="agent_command", required=True)
+    for command in ("scaffold", "status", "diff-template"):
+        item = agent_sub.add_parser(command)
+        item.add_argument(
+            "--template",
+            default=STANDARD_TEMPLATE,
+            help="Packaged agent template (default: standard)",
+        )
 
     provider = sub.add_parser("provider", help="Verify provider configuration")
     provider_sub = provider.add_subparsers(dest="provider_command", required=True)
@@ -267,7 +287,39 @@ def main(argv=None) -> int:
                 registry,
                 json.dumps({"schema_version": "1.0", "profiles": {}}, indent=2),
             )
-        _print({"status": "ok", "root": str(root)})
+        agent_result = AgentWorkspace(root).scaffold(args.agent_template)
+        workspace_config = root / "content-creator.yaml"
+        if not workspace_config.exists():
+            metadata = agent_result["template_metadata"]
+            RunStore._atomic_text(
+                workspace_config,
+                yaml.safe_dump(
+                    {
+                        "schema_version": "1.0",
+                        "agent_template": {
+                            "name": metadata["name"],
+                            "version": metadata["version"],
+                        },
+                    },
+                    sort_keys=False,
+                ),
+            )
+        _print(
+            {
+                "status": "ok",
+                "root": str(root),
+                "agents": agent_result,
+            }
+        )
+        return 0
+    if args.command == "agents":
+        workspace = AgentWorkspace(root)
+        if args.agent_command == "scaffold":
+            _print(workspace.scaffold(args.template))
+        elif args.agent_command == "status":
+            _print(workspace.status(args.template))
+        else:
+            _print(workspace.diff_template(args.template))
         return 0
     if args.command == "provider":
         provider_name = args.provider_name
@@ -314,12 +366,14 @@ def main(argv=None) -> int:
             "route_cases": resources.path(
                 "evals/cases/route-matrix.yaml"
             ).exists(),
+            "repository_agents": AgentWorkspace(root).status(),
         }
         healthy = (
             checks["model_catalogue"]
             and bool(checks["content_packs"])
             and checks["default_voice"]
             and checks["route_cases"]
+            and checks["repository_agents"]["complete"]
         )
         _print({"status": "ok" if healthy else "error", "checks": checks})
         return 0 if healthy else 1
