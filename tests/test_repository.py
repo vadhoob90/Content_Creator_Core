@@ -18,6 +18,18 @@ def test_required_notice_is_present():
     assert notice.startswith("Required Notice:")
 
 
+def test_licensing_documents_distinguish_noncommercial_and_commercial_use():
+    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+    commercial_summary = (
+        ROOT / "COMMERCIAL-LICENSING.md"
+    ).read_text(encoding="utf-8")
+
+    assert "source-available" in readme
+    assert "Commercial use" in readme
+    assert "separate written commercial licence" in commercial_summary
+    assert "not a replacement for the licence" in commercial_summary
+
+
 def test_packaged_core_resources_match_repository_sources():
     packaged = ROOT / "src" / "content_creator" / "resources"
     mappings = {

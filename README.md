@@ -462,9 +462,14 @@ using the system for representative publishing.
 
 ## Licence
 
-The software is available under the
-[PolyForm Noncommercial License 1.0.0](LICENSE.md). It permits non-commercial
-use, modification, and distribution under its terms. It does not grant commercial
-use rights and is not an OSI-approved open-source licence.
+Content Creator is **source-available** under the
+[PolyForm Noncommercial License 1.0.0](LICENSE.md). It may be inspected, used,
+modified, and distributed for purposes permitted by that licence. It is not
+offered under an OSI-approved open-source licence.
+
+Commercial use, including incorporating Content Creator into a commercial
+product or service, requires a separate written commercial licence from the
+copyright holder. See [Commercial licensing](COMMERCIAL-LICENSING.md) for the
+plain-language summary; the licence itself controls if the two differ.
 
 Required Notice: Copyright 2026 Bharath Vadhoola
