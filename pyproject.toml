@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "content-creator"
-version = "0.1.0"
+version = "0.2.0"
 description = "Provider-neutral content creation and voice workflow"
 readme = "README.md"
 requires-python = ">=3.9"
@@ -33,6 +33,18 @@ content-creator = "content_creator.cli:main"
 [tool.setuptools.packages.find]
 where = ["src"]
 
+[tool.setuptools.package-data]
+"content_creator.resources" = [
+  "agents/*.md",
+  "config/*.yaml",
+  "evals/cases/*.yaml",
+  "packs/*/*.json",
+  "packs/*/*.yaml",
+  "profiles/default/*.md",
+  "profiles/default/learnings/*.json",
+  "rubrics/*.yaml",
+]
+
 [tool.pytest.ini_options]
 addopts = "-q"
 testpaths = ["tests"]
@@ -45,6 +57,7 @@ target-version = "py39"
 select = ["E", "F", "I", "UP", "B"]
 ignore = [
   "UP006",
+  "UP007",
   "UP032",
   "UP035",
   "UP045",

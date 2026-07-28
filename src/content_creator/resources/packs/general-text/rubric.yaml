@@ -1,0 +1,18 @@
+dimensions:
+  clarity:
+    weight: 0.25
+    description: The piece is understandable to its intended audience.
+  evidence_integrity:
+    weight: 0.25
+    description: Claims are supported and uncertainty is represented.
+  reader_value:
+    weight: 0.25
+    description: The reader receives a useful explanation or decision aid.
+  voice_authenticity:
+    weight: 0.25
+    description: The piece follows the selected voice without caricature.
+
+hard_gates:
+  - invented_personal_context
+  - unsupported_biographical_claims
+  - material_phrase_overlap

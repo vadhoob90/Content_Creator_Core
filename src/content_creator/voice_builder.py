@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field
 
 from .attribution import classify_attribution, isolate_attributed_text
 from .corpus import assess_corpus
-from .ingestion import content_hash, is_near_duplicate, read_source
+from .ingestion import content_hash, is_near_duplicate, normalize_text, read_source
 from .linguistics import build_linguistic_signature, extract_linguistic_features
 from .runner import AgentRunner
 from .storage import RunStore
@@ -45,6 +45,36 @@ class VoiceEvaluationJudgement(BaseModel):
     scores: dict = Field(default_factory=dict)
     hard_failures: List[str] = Field(default_factory=list)
     notes: List[str] = Field(default_factory=list)
+
+
+def _analysis_excerpt(text: str, limit: int = 6000) -> str:
+    """Bound agent input while sampling the beginning, middle, and end."""
+    if len(text) <= limit:
+        return text
+    section = limit // 3
+    midpoint = len(text) // 2
+    middle_start = max(0, midpoint - section // 2)
+    return "\n\n[...]\n\n".join(
+        (
+            text[:section],
+            text[middle_start : middle_start + section],
+            text[-section:],
+        )
+    )
+
+
+def _even_sample(records: List[SourceRecord], limit: int) -> List[SourceRecord]:
+    """Select a deterministic spread across an ordered corpus."""
+    if limit <= 0:
+        return []
+    if limit == 1:
+        return [records[-1]]
+    if len(records) <= limit:
+        return list(records)
+    return [
+        records[round(index * (len(records) - 1) / (limit - 1))]
+        for index in range(limit)
+    ]
 
 
 class VoiceBuilder:
@@ -84,10 +114,29 @@ class VoiceBuilder:
         locators = order.urls + order.documents
         for index, locator in enumerate(locators, start=1):
             source_id = "source-{:03d}".format(index)
+            cache_path = cache / "{}.txt".format(source_id)
+            cache_metadata_path = cache / "{}.meta.json".format(source_id)
             try:
-                kind, title, text = read_source(locator)
+                if locator.startswith(("http://", "https://")) and cache_path.exists():
+                    text = normalize_text(cache_path.read_text(encoding="utf-8"))
+                    kind = "webpage"
+                    title = locator
+                    if cache_metadata_path.exists():
+                        metadata = json.loads(
+                            cache_metadata_path.read_text(encoding="utf-8")
+                        )
+                        if metadata.get("locator") == locator:
+                            kind = metadata.get("kind", kind)
+                            title = metadata.get("title", title)
+                else:
+                    kind, title, text = read_source(locator)
                 duplicate = is_near_duplicate(text, normalized)
-                attribution = classify_attribution(text, order.display_name, kind)
+                attribution = classify_attribution(
+                    text,
+                    order.attribution_name,
+                    kind,
+                    order.author_aliases,
+                )
                 if attribution.needs_human_review and self.runner:
                     attribution = self.runner.run(
                         role="attribution-reviewer",
@@ -97,7 +146,8 @@ class VoiceBuilder:
                             "If uncertain, retain zero voice weight."
                         ),
                         payload={
-                            "person": order.display_name,
+                            "person": order.attribution_name,
+                            "aliases": order.author_aliases,
                             "kind": kind,
                             "title": title,
                             "excerpt": text[:2000],
@@ -107,17 +157,29 @@ class VoiceBuilder:
                     )
                 analysis_text, analysis_scope = isolate_attributed_text(
                     text,
-                    order.display_name,
+                    order.attribution_name,
                     attribution,
                     kind,
+                    order.author_aliases,
                 )
                 approved = (
                     attribution.voice_weight > 0
                     and not duplicate
                     and bool(analysis_text.strip())
                 )
-                cache_path = cache / "{}.txt".format(source_id)
                 RunStore._atomic_text(cache_path, text)
+                RunStore._atomic_text(
+                    cache_metadata_path,
+                    json.dumps(
+                        {
+                            "locator": locator,
+                            "kind": kind,
+                            "title": title,
+                            "content_hash": content_hash(text),
+                        },
+                        indent=2,
+                    ),
+                )
                 analysis_texts[source_id] = analysis_text
                 sources.append(
                     SourceRecord(
@@ -143,9 +205,23 @@ class VoiceBuilder:
                 "Rebuild has insufficient usable material; previous candidate preserved"
             )
         usable = [record for record in sources if record.approved_for_analysis]
-        held_out = [usable[-1]] if len(usable) >= 2 else []
-        analysis_records = usable[:-1] if held_out else usable
+        held_out_count = (
+            min(10, max(1, len(usable) // 10)) if len(usable) >= 2 else 0
+        )
+        held_out = _even_sample(usable, held_out_count) if held_out_count else []
+        held_out_ids = {record.id for record in held_out}
+        measurement_records = [
+            record for record in usable if record.id not in held_out_ids
+        ]
+        analysis_records = _even_sample(measurement_records, 50)
         corpus["held_out_source_ids"] = [record.id for record in held_out]
+        corpus["measurement_source_ids"] = [
+            record.id for record in measurement_records
+        ]
+        corpus["semantic_analysis_source_ids"] = [
+            record.id for record in analysis_records
+        ]
+        corpus["semantic_analysis_limit"] = 50
         signature = build_linguistic_signature(
             {
                 "id": record.id,
@@ -153,19 +229,22 @@ class VoiceBuilder:
                 "text": analysis_texts[record.id],
                 "weight": record.attribution.voice_weight,
             }
-            for record in analysis_records
+            for record in measurement_records
         )
         patterns = self._patterns(analysis_records, signature)
+        analysis_artifact = None
+        criticism_artifact = None
         if self.runner and analysis_records:
             payload = {
-                "person": order.display_name,
+                "person": order.attribution_name,
+                "voice_label": order.display_name,
                 "sources": [
                     {
                         "id": record.id,
                         "kind": record.kind,
                         "attribution_weight": record.attribution.voice_weight,
                         "analysis_scope": record.analysis_scope,
-                        "text": analysis_texts[record.id],
+                        "text": _analysis_excerpt(analysis_texts[record.id]),
                         "linguistic_features": extract_linguistic_features(
                             analysis_texts[record.id]
                         ),
@@ -188,6 +267,7 @@ class VoiceBuilder:
                 output_model=VoiceAnalysis,
                 provider=self.provider,
             )
+            analysis_artifact = analysis.model_dump(mode="json")
             criticism = self.runner.run(
                 role="profile-critic",
                 role_key="profile-critic",
@@ -204,6 +284,7 @@ class VoiceBuilder:
                 output_model=ProfileCriticism,
                 provider=self.provider,
             )
+            criticism_artifact = criticism.model_dump(mode="json")
             approved_ids = {record.id for record in analysis_records}
             patterns = []
             for pattern in analysis.patterns:
@@ -222,37 +303,33 @@ class VoiceBuilder:
                 patterns.append(pattern)
 
         candidate.mkdir(parents=True, exist_ok=True)
+        constraints = {
+            "never_invent_personal_context": True,
+            "never_copy_source_phrases": True,
+            "provisional_patterns_are_optional": True,
+        }
+        voice_rubric = {
+            "minimums": {
+                "characteristic_alignment": 8,
+                "naturalness": 8,
+                "personal_integrity": 10,
+                "channel_fit": 8,
+                "non_imitation": 10,
+            },
+            "hard_gates": [
+                "unsupported_personal_context",
+                "material_phrase_overlap",
+            ],
+        }
         profile = self._profile(order, patterns, corpus)
         RunStore._atomic_text(candidate / "profile.md", profile)
         RunStore._atomic_text(
             candidate / "constraints.json",
-            json.dumps(
-                {
-                    "never_invent_personal_context": True,
-                    "never_copy_source_phrases": True,
-                    "provisional_patterns_are_optional": True,
-                },
-                indent=2,
-            ),
+            json.dumps(constraints, indent=2),
         )
         RunStore._atomic_text(
             candidate / "voice-rubric.json",
-            json.dumps(
-                {
-                    "minimums": {
-                        "characteristic_alignment": 8,
-                        "naturalness": 8,
-                        "personal_integrity": 10,
-                        "channel_fit": 8,
-                        "non_imitation": 10,
-                    },
-                    "hard_gates": [
-                        "unsupported_personal_context",
-                        "material_phrase_overlap",
-                    ],
-                },
-                indent=2,
-            ),
+            json.dumps(voice_rubric, indent=2),
         )
         RunStore._atomic_text(
             candidate / "source-index.json",
@@ -269,6 +346,16 @@ class VoiceBuilder:
             candidate / "linguistic-signature.json",
             json.dumps(signature, indent=2),
         )
+        if analysis_artifact is not None:
+            RunStore._atomic_text(
+                candidate / "analyst-report.json",
+                json.dumps(analysis_artifact, indent=2),
+            )
+        if criticism_artifact is not None:
+            RunStore._atomic_text(
+                candidate / "critic-report.json",
+                json.dumps(criticism_artifact, indent=2),
+            )
         evaluation = {
             "schema_version": "1.0",
             "passed": corpus["sufficient"] and bool(patterns),
@@ -299,6 +386,8 @@ class VoiceBuilder:
                 ),
                 payload={
                     "profile": profile,
+                    "constraints": constraints,
+                    "voice_rubric": voice_rubric,
                     "linguistic_signature": signature,
                     "patterns": [
                         item.model_dump(mode="json") for item in patterns
@@ -306,7 +395,9 @@ class VoiceBuilder:
                     "held_out_sources": [
                         {
                             "id": record.id,
-                            "text": analysis_texts[record.id][:4000],
+                            "text": _analysis_excerpt(
+                                analysis_texts[record.id], 4000
+                            ),
                             "linguistic_features": extract_linguistic_features(
                                 analysis_texts[record.id]
                             ),
@@ -343,6 +434,10 @@ class VoiceBuilder:
             "linguistic_signature": "linguistic-signature.json",
             "evaluation_report": "evaluation-report.json",
         }
+        if analysis_artifact is not None:
+            components["analyst_report"] = "analyst-report.json"
+        if criticism_artifact is not None:
+            components["critic_report"] = "critic-report.json"
         component_hashes = {
             name: hash_file(candidate / filename) for name, filename in components.items()
         }
@@ -350,6 +445,8 @@ class VoiceBuilder:
         manifest = VoiceManifest(
             id=voice_id,
             display_name=order.display_name,
+            author_name=order.attribution_name,
+            author_aliases=order.author_aliases,
             version="candidate",
             status=(
                 VoiceStatus.AWAITING_APPROVAL
@@ -444,45 +541,108 @@ class VoiceBuilder:
 
     @staticmethod
     def _profile(order: VoiceWorkOrder, patterns: List[VoicePattern], corpus: dict) -> str:
+        status_counts = {}
+        for item in patterns:
+            status_counts[item.status] = status_counts.get(item.status, 0) + 1
         lines = [
             "# Voice Profile: {}".format(order.display_name),
             "",
-            "Use only the evidence-backed patterns below. Do not infer biography,",
-            "experience, beliefs, or personal anecdotes.",
-            "Linguistic measurements are descriptive ranges, not mechanical targets",
-            "or proof that a feature is unique to this person.",
+            "## At a glance",
             "",
-            "## Patterns",
+            "| Item | Current position |",
+            "|---|---|",
+            "| Lifecycle status | Candidate — not approved |",
+            "| Author identity | {} |".format(order.attribution_name),
+            "| Intended uses | {} |".format(
+                ", ".join(order.authorisation.intended_uses) or "Not specified"
+            ),
+            "| Usable sources | {:,} |".format(corpus["usable_source_count"]),
+            "| Attribution-weighted words | {:,} |".format(
+                corpus["attribution_weighted_word_count"]
+            ),
+            "| Proposed patterns | {} |".format(len(patterns)),
+            "",
+            "> Pattern statuses are model assessments retained for human review.",
+            "> Only an approved, activated version may guide publication.",
+            "",
+            "## Core safeguards",
+            "",
+            "- Do not infer biography, experience, beliefs, opinions or anecdotes.",
+            "- Do not copy or closely paraphrase source wording.",
+            "- Treat measurements as descriptive evidence, not numerical targets.",
+            "- Do not claim distinctiveness without a matched-register comparison.",
+            "- Obtain human guidance before using an unsupported channel.",
+            "",
+            "## Pattern status summary",
+            "",
         ]
-        for item in patterns:
+        if status_counts:
+            lines.extend(
+                "- **{}:** {}".format(
+                    status.replace("_", " ").title(), count
+                )
+                for status, count in sorted(status_counts.items())
+            )
+        else:
+            lines.append("- No patterns were proposed.")
+        lines.extend(["", "## Patterns for human review", ""])
+        current_category = None
+        for index, item in enumerate(patterns, start=1):
+            category = item.category.replace("-", " ").title()
+            if category != current_category:
+                lines.extend(["### {}".format(category), ""])
+                current_category = category
+            guidance_label = (
+                "Proposed guidance"
+                if item.status in {"rejected", "provisional", "for-review"}
+                else "Guidance"
+            )
             lines.extend(
                 [
-                    "- **{} / {} ({})**: {}".format(
-                        item.category,
-                        item.name,
-                        item.status,
-                        item.description,
+                    "#### {}. {}".format(index, item.name),
+                    "",
+                    "**Status:** {}".format(
+                        item.status.replace("_", " ").title()
                     ),
-                    "  - Guidance: {}".format(
-                        item.generation_guidance or "Use only when context supports it."
+                    "",
+                    "**Observation:** {}".format(
+                        item.observation or item.description
                     ),
-                    "  - Avoid: {}".format(
-                        item.anti_pattern or "Do not turn the observation into a mannerism."
+                    "",
+                    "**{}:** {}".format(
+                        guidance_label,
+                        item.generation_guidance
+                        or "Use only when context supports it.",
                     ),
-                    "  - Evidence: {}".format(
-                        ", ".join(item.supporting_source_ids)
+                    "",
+                    "**Avoid:** {}".format(
+                        item.anti_pattern
+                        or "Do not turn the observation into a mannerism."
                     ),
+                    "",
+                    "**Evidence:** {}".format(
+                        ", ".join(
+                            "`{}`".format(source_id)
+                            for source_id in item.supporting_source_ids
+                        )
+                    ),
+                    "",
                 ]
             )
         lines.extend(
             [
-                "",
                 "## Evidence limits",
                 "",
-                "- Usable sources: {}".format(corpus["usable_source_count"]),
-                "- Usable words: {}".format(corpus["usable_word_count"]),
-                "- Attribution-weighted words: {}".format(
+                "- Usable sources: {:,}".format(corpus["usable_source_count"]),
+                "- Usable words: {:,}".format(corpus["usable_word_count"]),
+                "- Attribution-weighted words: {:,}".format(
                     corpus["attribution_weighted_word_count"]
+                ),
+                "- Semantic analysis sources: {}".format(
+                    len(corpus.get("semantic_analysis_source_ids", []))
+                ),
+                "- Held-out evaluation sources: {}".format(
+                    len(corpus.get("held_out_source_ids", []))
                 ),
                 "- Unsupported channels require explicit human guidance.",
                 "- Without a matched-register baseline, observed features must not be",

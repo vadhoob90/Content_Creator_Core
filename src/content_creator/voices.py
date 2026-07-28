@@ -38,10 +38,16 @@ class Authorisation(BaseModel):
 class VoiceWorkOrder(BaseModel):
     display_name: str
     voice_id: str
+    author_name: Optional[str] = None
+    author_aliases: List[str] = Field(default_factory=list)
     authorisation: Authorisation
     urls: List[str] = Field(default_factory=list)
     documents: List[str] = Field(default_factory=list)
     target_audiences: List[str] = Field(default_factory=list)
+
+    @property
+    def attribution_name(self) -> str:
+        return self.author_name or self.display_name
 
 
 class AttributionResult(BaseModel):
@@ -89,6 +95,8 @@ class VoiceManifest(BaseModel):
     schema_version: str = "1.0"
     id: str
     display_name: str
+    author_name: Optional[str] = None
+    author_aliases: List[str] = Field(default_factory=list)
     version: str
     status: VoiceStatus
     candidate_hash: str

@@ -6,6 +6,8 @@ from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, Field
 
+from .resource_paths import ResourceResolver
+
 
 class PackError(ValueError):
     pass
@@ -49,12 +51,18 @@ class ContentPack(BaseModel):
 class PackRegistry:
     def __init__(self, root: Path):
         self.root = root.resolve()
+        self.resources = ResourceResolver(self.root)
         self._packs: Dict[str, ContentPack] = {}
+
+    def path(self, pack_id: str, filename: str = "pack.json") -> Path:
+        return self.resources.path(
+            Path("packs") / pack_id / filename
+        )
 
     def get(self, pack_id: str) -> ContentPack:
         if pack_id in self._packs:
             return self._packs[pack_id]
-        path = self.root / "packs" / pack_id / "pack.json"
+        path = self.path(pack_id)
         if not path.exists():
             raise PackError("Unknown content pack: {}".format(pack_id))
         pack = ContentPack.model_validate_json(path.read_text(encoding="utf-8"))
@@ -127,5 +135,5 @@ class PackRegistry:
     def list(self) -> List[ContentPack]:
         return [
             self.get(path.parent.name)
-            for path in sorted((self.root / "packs").glob("*/pack.json"))
+            for path in self.resources.matching("packs", "*/pack.json")
         ]

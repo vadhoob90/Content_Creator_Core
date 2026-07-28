@@ -4,8 +4,12 @@ from content_creator.configuration import Configuration
 from content_creator.prompting import PromptAssembler
 from content_creator.providers import FakeProvider, ProviderRegistry
 from content_creator.runner import AgentRunner
-from content_creator.voice_builder import VoiceBuilder
-from content_creator.voices import Authorisation, VoiceWorkOrder
+from content_creator.voice_builder import (
+    VoiceBuilder,
+    _analysis_excerpt,
+    _even_sample,
+)
+from content_creator.voices import Authorisation, SourceRecord, VoiceWorkOrder
 
 
 def test_agentic_voice_build_runs_independent_analysis_criticism_and_evaluation(
@@ -97,3 +101,50 @@ def test_agentic_voice_build_runs_independent_analysis_criticism_and_evaluation(
     evaluator_payload = json.loads(fake.requests[2].user.split("\nINPUT\n", 1)[1])
     assert "linguistic_signature" in critic_payload
     assert "linguistic_signature" in evaluator_payload
+    assert evaluator_payload["constraints"]["never_copy_source_phrases"]
+    assert "hard_gates" in evaluator_payload["voice_rubric"]
+    candidate = project / "profiles" / "example-person" / "candidate"
+    assert (candidate / "analyst-report.json").exists()
+    assert (candidate / "critic-report.json").exists()
+
+
+def test_analysis_excerpt_samples_the_full_source():
+    text = "A" * 7000 + "B" * 7000 + "C" * 7000
+
+    excerpt = _analysis_excerpt(text, limit=6000)
+
+    assert excerpt.startswith("A" * 100)
+    assert "B" * 100 in excerpt
+    assert excerpt.endswith("C" * 100)
+    assert len(excerpt) < 6100
+
+
+def test_even_sample_spreads_selection_across_ordered_corpus():
+    records = [
+        SourceRecord(
+            id="source-{:03d}".format(index),
+            kind="text",
+            locator="fixture-{}".format(index),
+            content_hash="sha256:{}".format(index),
+            title="Fixture {}".format(index),
+            word_count=100,
+            attribution={
+                "classification": "directly_authored",
+                "confidence": 1,
+                "voice_weight": 1,
+            },
+            approved_for_analysis=True,
+            cache_path=".voice-cache/source-{:03d}.txt".format(index),
+        )
+        for index in range(100)
+    ]
+
+    sampled = _even_sample(records, 5)
+
+    assert [record.id for record in sampled] == [
+        "source-000",
+        "source-025",
+        "source-050",
+        "source-074",
+        "source-099",
+    ]

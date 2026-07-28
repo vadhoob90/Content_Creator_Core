@@ -19,23 +19,27 @@ Create and inspect:
 
 ```bash
 content-creator voice create \
-  --name "Example Person" \
+  --voice-id example-person-general \
+  --label "Example Person — General" \
+  --author-name "Example Person" \
+  --author-alias "E. Person" \
   --authorised-by "Repository Owner" \
   --use general-text \
   --sources voice-material/example-person/urls.txt \
   --documents voice-material/example-person/
 
-content-creator voice status example-person
-content-creator voice show example-person
-content-creator voice signature example-person
-content-creator voice verify example-person
+content-creator voice status example-person-general
+content-creator voice show example-person-general
+content-creator voice signature example-person-general
+content-creator voice verify example-person-general
 ```
 
 Approve only after reviewing attribution, evidence limits, patterns,
 constraints, `linguistic-signature.json`, and the evaluation report:
 
 ```bash
-content-creator voice approve example-person --approved-by "Repository Owner"
+content-creator voice approve example-person-general \
+  --approved-by "Repository Owner"
 ```
 
 Approval makes no model call. It verifies component hashes, creates an approval
@@ -44,7 +48,7 @@ receipt, assigns a stable version, and atomically updates the registry.
 Deactivate without deleting history:
 
 ```bash
-content-creator voice deactivate example-person \
+content-creator voice deactivate example-person-general \
   --reason "Authorisation withdrawn"
 ```
 
@@ -54,3 +58,6 @@ approval is required to reactivate the voice.
 `--offline-analysis` exists for deterministic fixtures and development. It
 creates only a measured provisional rhythm profile and is not a substitute for
 agent-assisted interpretation, matched-register comparison, and human review.
+
+The voice ID and label are local configuration. Only `--author-name` and
+`--author-alias` values participate in authorship attribution.

@@ -27,6 +27,37 @@ def _voice_material(project):
     return material
 
 
+def test_voice_id_label_and_author_identity_are_separate(project, capsys):
+    assert (
+        main(
+            [
+                "--root",
+                str(project),
+                "voice",
+                "create",
+                "--voice-id",
+                "heather-general-legal",
+                "--label",
+                "Heather — General Legal",
+                "--author-name",
+                "Heather McRobie",
+                "--author-alias",
+                "H. McRobie",
+                "--authorised-by",
+                "Heather",
+                "--no-build",
+            ]
+        )
+        == 0
+    )
+    order = json.loads(capsys.readouterr().out)
+
+    assert order["voice_id"] == "heather-general-legal"
+    assert order["display_name"] == "Heather — General Legal"
+    assert order["author_name"] == "Heather McRobie"
+    assert order["author_aliases"] == ["H. McRobie"]
+
+
 def test_voice_build_approve_idempotency_deactivate_and_reactivate(project, capsys):
     material = _voice_material(project)
     assert (

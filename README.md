@@ -94,6 +94,10 @@ a personal voice.
 The detailed capability-by-capability comparison is in
 [`docs/linkedin-writer-migration-audit.md`](docs/linkedin-writer-migration-audit.md).
 
+For production implementations, install a tagged engine release from a thin,
+separate repository. See the
+[versioned core and workspace guide](docs/guides/workspace-dependencies.md).
+
 Voice construction uses a transparent, attribution-weighted
 [lightweight linguistic framework](docs/guides/linguistic-voice-framework.md)
 that separates spoken and written registers and treats measurements as evidence
@@ -245,7 +249,9 @@ Run:
 
 ```bash
 content-creator voice create \
-  --name "Example Person" \
+  --voice-id example-person \
+  --label "Example Person — General" \
+  --author-name "Example Person" \
   --authorised-by "Repository Owner" \
   --use linkedin-post \
   --use linkedin-article \

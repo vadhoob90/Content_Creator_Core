@@ -7,6 +7,7 @@ from typing import Any, Dict, Iterable, Optional
 from .domain import WorkOrder
 from .packs import PackRegistry
 from .perspectives import PerspectiveEntry, PerspectiveRegistry
+from .resource_paths import ResourceResolver
 from .voices import VoiceRegistry
 
 ROLE_FILES = {
@@ -31,12 +32,23 @@ LEARNING_FILES = {
 
 class PromptAssembler:
     def __init__(self, root: Path):
-        self.root = root
+        self.root = root.resolve()
+        self.resources = ResourceResolver(self.root)
 
     def system_prompt(self, role: str, order: Optional[WorkOrder] = None) -> str:
-        parts = [self._read(self.root / "agents" / ROLE_FILES[role])]
+        parts = [
+            self._read(
+                self.resources.path(Path("agents") / ROLE_FILES[role])
+            )
+        ]
         if role in LEARNING_FILES:
-            parts.append(self._read(self.root / "agents" / LEARNING_FILES[role]))
+            parts.append(
+                self._read(
+                    self.resources.path(
+                        Path("agents") / LEARNING_FILES[role]
+                    )
+                )
+            )
         if role in {"writer", "critic", "learning-extractor"}:
             voice_id = order.voice_id if order else "default"
             resolved = VoiceRegistry(self.root).resolve(
@@ -44,7 +56,7 @@ class PromptAssembler:
                 order.voice_version if order else None,
                 allow_inactive=bool(order and order.resolved_voice),
             )
-            profile_root = self.root / resolved["path"]
+            profile_root = self.resources.path(resolved["path"])
             profile = (
                 profile_root / "profile.md"
                 if (profile_root / "profile.md").exists()
@@ -108,19 +120,24 @@ class PromptAssembler:
         if active:
             parts.append("## Active structured learnings\n\n" + "\n".join(active))
         if order and role in {"writer", "critic"}:
-            pack = PackRegistry(self.root).resolve(
+            packs = PackRegistry(self.root)
+            pack = packs.resolve(
                 order.content_pack, order.pack_options
             )
-            rubric_paths = [self.root / "rubrics" / "core.yaml"]
+            rubric_paths = [self.resources.path("rubrics/core.yaml")]
             if pack.rubric:
                 rubric_paths.append(
-                    self.root / "packs" / order.content_pack / pack.rubric
+                    packs.path(order.content_pack, pack.rubric)
                 )
-            rubric_paths.extend(self.root / item for item in pack.rubrics)
+            rubric_paths.extend(
+                self.resources.path(item) for item in pack.rubrics
+            )
             rubric_paths.append(
-                self.root
-                / "rubrics"
-                / "research-{}.yaml".format(order.research_depth.value)
+                self.resources.path(
+                    "rubrics/research-{}.yaml".format(
+                        order.research_depth.value
+                    )
+                )
             )
             parts.append(
                 "## Rubrics\n\n"
@@ -130,7 +147,7 @@ class PromptAssembler:
             )
             overlay = pack.prompts.get(role)
             if overlay:
-                overlay_path = self.root / overlay
+                overlay_path = self.resources.path(overlay)
                 parts.append("## Pack instructions\n\n" + self._read(overlay_path))
         return "\n\n---\n\n".join(parts)
 
@@ -148,7 +165,9 @@ class PromptAssembler:
         return result
 
     def _active_learnings(self, role: str, voice_id: str = "default"):
-        path = self.root / "profiles" / voice_id / "learnings" / "memory.json"
+        path = self.resources.path(
+            Path("profiles") / voice_id / "learnings" / "memory.json"
+        )
         if not path.exists():
             return []
         data = json.loads(path.read_text(encoding="utf-8"))

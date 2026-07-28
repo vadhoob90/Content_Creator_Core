@@ -125,6 +125,24 @@ def test_analysis_text_removes_byline_and_isolates_target_speaker():
     assert interview_scope == "speaker-turns-only"
 
 
+def test_attribution_uses_author_identity_and_aliases_not_voice_label():
+    direct = classify_attribution(
+        "By Heather McRobie. A direct opening.",
+        "Heather McRobie",
+        "webpage",
+        aliases=["H. McRobie"],
+    )
+    alias = classify_attribution(
+        "By H. McRobie. Another opening.",
+        "Heather McRobie",
+        "webpage",
+        aliases=["H. McRobie"],
+    )
+
+    assert direct.classification == "directly_authored"
+    assert alias.classification == "directly_authored"
+
+
 def test_corpus_sufficiency_uses_attribution_weighted_analysis_words():
     interview = classify_attribution(
         "Example: An answer.",

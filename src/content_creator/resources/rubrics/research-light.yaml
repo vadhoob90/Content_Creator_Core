@@ -1,0 +1,12 @@
+version: "1.0"
+name: light-research-overlay
+
+evidence_expectations:
+  - "Material claims are traceable to reputable sources."
+  - "The research is proportionate to the narrow scope of the piece."
+  - "Important limitations are represented."
+
+blocking_conditions:
+  - "Material claim has no supporting source."
+  - "Source does not support the claim."
+  - "Writer introduces evidence absent from the research brief."

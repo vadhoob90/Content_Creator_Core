@@ -36,13 +36,15 @@ def test_plan_reports_provider_neutral_work_order(capsys):
     assert output["research_depth"] == "deep"
 
 
-def test_doctor_fails_when_a_required_asset_is_missing(project, capsys):
+def test_doctor_uses_packaged_default_when_workspace_asset_is_missing(
+    project, capsys
+):
     (project / "profiles" / "default" / "voice.md").unlink()
 
-    assert main(["--root", str(project), "doctor"]) == 1
+    assert main(["--root", str(project), "doctor"]) == 0
     output = json.loads(capsys.readouterr().out)
-    assert output["status"] == "error"
-    assert output["checks"]["default_voice"] is False
+    assert output["status"] == "ok"
+    assert output["checks"]["default_voice"] is True
 
 
 def test_init_provider_verify_and_pack_create(project, capsys, monkeypatch):

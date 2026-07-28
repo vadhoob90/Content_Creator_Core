@@ -10,6 +10,7 @@ import yaml
 from .domain import ResearchBrief, ResearchSource, RunStatus, WorkOrder
 from .orchestrator import Orchestrator
 from .providers import FakeProvider, ProviderRegistry
+from .resource_paths import ResourceResolver
 from .storage import RunStore
 
 
@@ -71,7 +72,8 @@ def _research() -> Dict:
 
 def load_cases(root: Path) -> List[Dict]:
     cases = []
-    for path in sorted((root / "evals" / "cases").glob("*.yaml")):
+    resources = ResourceResolver(root)
+    for path in resources.matching("evals/cases", "*.yaml"):
         data = yaml.safe_load(path.read_text(encoding="utf-8"))
         if isinstance(data, list):
             cases.extend(data)

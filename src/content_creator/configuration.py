@@ -7,6 +7,7 @@ from typing import Any, Dict, Optional
 import yaml
 
 from .domain import ModelSelection
+from .resource_paths import ResourceResolver
 
 
 class ConfigurationError(ValueError):
@@ -16,7 +17,8 @@ class ConfigurationError(ValueError):
 class Configuration:
     def __init__(self, root: Path, model_config: Optional[Path] = None):
         self.root = root.resolve()
-        path = model_config or self.root / "config" / "models.yaml"
+        self.resources = ResourceResolver(self.root)
+        path = model_config or self.resources.path("config/models.yaml")
         self.models = self._read_yaml(path)
 
     @staticmethod
@@ -80,4 +82,6 @@ class Configuration:
         )
 
     def rubric(self, name: str) -> Dict[str, Any]:
-        return self._read_yaml(self.root / "rubrics" / "{}.yaml".format(name))
+        return self._read_yaml(
+            self.resources.path("rubrics/{}.yaml".format(name))
+        )

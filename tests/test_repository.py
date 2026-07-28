@@ -18,6 +18,33 @@ def test_required_notice_is_present():
     assert notice.startswith("Required Notice:")
 
 
+def test_packaged_core_resources_match_repository_sources():
+    packaged = ROOT / "src" / "content_creator" / "resources"
+    for directory in (
+        "agents",
+        "config",
+        "evals",
+        "packs",
+        "rubrics",
+        "profiles/default",
+    ):
+        source_root = ROOT / directory
+        packaged_root = packaged / directory
+        source_files = {
+            path.relative_to(source_root): path
+            for path in source_root.rglob("*")
+            if path.is_file()
+        }
+        packaged_files = {
+            path.relative_to(packaged_root): path
+            for path in packaged_root.rglob("*")
+            if path.is_file()
+        }
+        assert source_files.keys() == packaged_files.keys()
+        for relative, source in source_files.items():
+            assert source.read_bytes() == packaged_files[relative].read_bytes()
+
+
 def test_readme_contains_end_to_end_diagram():
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
 

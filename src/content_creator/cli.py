@@ -28,6 +28,7 @@ from .perspectives import (
     PerspectiveRegistry,
 )
 from .providers import ProviderError, ProviderRegistry
+from .resource_paths import ResourceResolver
 from .storage import RunStore
 from .voice_builder import VoiceBuilder
 from .voices import (
@@ -54,7 +55,12 @@ def _print(value) -> None:
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="content-creator")
-    parser.add_argument("--root", help="Repository root (default: current directory)")
+    parser.add_argument(
+        "--root",
+        "--workspace",
+        dest="root",
+        help="Content workspace (default: current directory)",
+    )
     sub = parser.add_subparsers(dest="command", required=True)
     sub.add_parser("init", help="Initialise repository runtime directories")
 
@@ -85,7 +91,22 @@ def build_parser() -> argparse.ArgumentParser:
     voice = sub.add_parser("voice", help="Create, approve, and manage voices")
     voice_sub = voice.add_subparsers(dest="voice_command", required=True)
     voice_create = voice_sub.add_parser("create")
-    voice_create.add_argument("--name", required=True)
+    voice_create.add_argument(
+        "--name",
+        help="Legacy shorthand for author name, display label, and generated id",
+    )
+    voice_create.add_argument("--voice-id", help="Stable local voice identifier")
+    voice_create.add_argument("--label", help="Human-facing voice label")
+    voice_create.add_argument(
+        "--author-name",
+        help="Author/byline identity used for attribution",
+    )
+    voice_create.add_argument(
+        "--author-alias",
+        action="append",
+        default=[],
+        help="Additional authorised byline or transcript identity",
+    )
     voice_create.add_argument("--authorised-by")
     voice_create.add_argument("--use", action="append", default=[])
     voice_create.add_argument("--sources")
@@ -284,12 +305,15 @@ def main(argv=None) -> int:
     if args.command == "doctor":
         configuration = Configuration(root)
         packs = PackRegistry(root).list()
-        voice = root / "profiles" / "default" / "voice.md"
+        resources = ResourceResolver(root)
+        voice = resources.path("profiles/default/voice.md")
         checks = {
             "model_catalogue": bool(configuration.models),
             "content_packs": [pack.id for pack in packs],
             "default_voice": voice.exists(),
-            "route_cases": (root / "evals" / "cases" / "route-matrix.yaml").exists(),
+            "route_cases": resources.path(
+                "evals/cases/route-matrix.yaml"
+            ).exists(),
         }
         healthy = (
             checks["model_catalogue"]
@@ -499,10 +523,20 @@ def _voice_command(root: Path, args) -> int:
     registry = VoiceRegistry(root)
     command = args.voice_command
     if command == "create":
-        voice_id = voice_id_for(args.name)
+        author_name = args.author_name or args.name
+        if not author_name:
+            raise ValueError(
+                "--author-name is required (or use legacy --name)"
+            )
+        display_name = args.label or args.name or author_name
+        voice_id = voice_id_for(args.voice_id or display_name)
+        if args.voice_id and voice_id != args.voice_id:
+            raise ValueError("--voice-id must already be a repository-safe slug")
         order = VoiceWorkOrder(
-            display_name=args.name,
+            display_name=display_name,
             voice_id=voice_id,
+            author_name=author_name,
+            author_aliases=args.author_alias,
             authorisation=Authorisation(
                 confirmed=bool(args.authorised_by),
                 attested_by=args.authorised_by,

@@ -216,7 +216,9 @@ operation and recovery.
 
 ```bash
 content-creator voice create \
-  --name "Example Person" \
+  --voice-id example-person \
+  --label "Example Person — General" \
+  --author-name "Example Person" \
   --authorised-by "Repository Owner" \
   --use linkedin-post \
   --use linkedin-article \
@@ -224,7 +226,9 @@ content-creator voice create \
   --documents voice-material/example-person/
 
 content-creator voice create \
-  --name "Example Person" \
+  --voice-id example-person \
+  --label "Example Person — General" \
+  --author-name "Example Person" \
   --sources source-urls.txt \
   --no-build
 ```

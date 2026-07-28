@@ -7,6 +7,7 @@ from typing import Optional
 
 from .domain import WorkOrder
 from .packs import ContentPack
+from .resource_paths import ResourceResolver
 from .voices import hash_file
 
 
@@ -17,9 +18,12 @@ def resolved_context(
     voice: dict,
     perspective: Optional[dict] = None,
 ) -> dict:
+    resources = ResourceResolver(root)
     hashes = {
-        "core_rubric": hash_file(root / "rubrics" / "core.yaml"),
-        "pack_manifest": hash_file(root / "packs" / pack.id / "pack.json"),
+        "core_rubric": hash_file(resources.path("rubrics/core.yaml")),
+        "pack_manifest": hash_file(
+            resources.path(Path("packs") / pack.id / "pack.json")
+        ),
     }
     voice_root = root / voice["path"]
     manifest = voice_root / "manifest.json"

@@ -1,0 +1,11 @@
+{
+  "id": "linkedin-post",
+  "version": "1.0.0",
+  "extends": "general-text",
+  "format": "post",
+  "destination": "content/linkedin-post/published",
+  "defaults": {"length": "50:600"},
+  "validators": ["no-em-dash", "no-hashtags"],
+  "rubric": "rubric.yaml",
+  "allowed_research": ["none", "light", "deep"]
+}
