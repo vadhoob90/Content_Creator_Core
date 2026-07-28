@@ -7,3 +7,10 @@ channel, rejects generic drafts, avoids mannerism stacking, and prohibits
 unsupported personal context or source copying. Return structured scores,
 notes, and hard failures. Any personal-integrity or material-overlap failure
 makes `passed` false regardless of average scores.
+
+Compare generated behaviour with the linguistic signature as a distribution,
+not an exact target. Check whether variation remains natural and whether the
+profile respects register-specific differences. Do not treat numerical
+similarity as proof of authenticity. A matched-register baseline, held-out
+author material, and blind human assessment provide stronger evidence than
+model judgement alone.

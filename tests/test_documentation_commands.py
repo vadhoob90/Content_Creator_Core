@@ -18,6 +18,7 @@ def test_documented_command_families_are_parseable():
         ["voice", "list"],
         ["voice", "status", "example-person"],
         ["voice", "show", "example-person"],
+        ["voice", "signature", "example-person"],
         ["voice", "verify", "example-person"],
         ["voice", "approve", "example-person"],
         ["voice", "deactivate", "example-person", "--reason", "withdrawn"],

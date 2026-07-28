@@ -86,6 +86,11 @@ a personal voice.
 The detailed capability-by-capability comparison is in
 [`docs/linkedin-writer-migration-audit.md`](docs/linkedin-writer-migration-audit.md).
 
+Voice construction uses a transparent, attribution-weighted
+[lightweight linguistic framework](docs/guides/linguistic-voice-framework.md)
+that separates spoken and written registers and treats measurements as evidence
+rather than mechanical writing targets.
+
 The staged implementation and acceptance criteria are in
 [`docs/work-package/delivery-plan.md`](docs/work-package/delivery-plan.md) and
 [`docs/work-package/testing-and-acceptance.md`](docs/work-package/testing-and-acceptance.md).
@@ -221,11 +226,14 @@ sources remain cached locally.
 ```bash
 content-creator voice status example-person
 content-creator voice show example-person
+content-creator voice signature example-person
 content-creator voice verify example-person
 ```
 
 Review the claimed voice patterns, their supporting sources and counterexamples,
-the prohibited behaviours, unsupported content types, and the evaluation report.
+the attribution-weighted linguistic measurements, the prohibited behaviours,
+unsupported content types, and the evaluation report. Measurements describe
+ranges; they are not fixed writing targets or proof of authorship.
 If the candidate is weak, add better sources and rebuild:
 
 ```bash

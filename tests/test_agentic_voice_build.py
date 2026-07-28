@@ -13,7 +13,8 @@ def test_agentic_voice_build_runs_independent_analysis_criticism_and_evaluation(
 ):
     material = project / "example.txt"
     material.write_text(
-        "By Example Person. " + "Concrete explanations make decisions visible. " * 50,
+        "By Example Person. "
+        + "Concrete explanations make decisions visible. " * 120,
         encoding="utf-8",
     )
     responses = {
@@ -82,3 +83,17 @@ def test_agentic_voice_build_runs_independent_analysis_criticism_and_evaluation(
         "profile-critic",
         "voice-evaluator",
     ]
+    analyst_payload = json.loads(fake.requests[0].user.split("\nINPUT\n", 1)[1])
+    assert analyst_payload["linguistic_signature"]["framework"] == (
+        "lightweight-corpus-stylistics"
+    )
+    assert analyst_payload["sources"][0]["analysis_scope"] == (
+        "full-source-with-byline-removed"
+    )
+    assert "sentence_length_median" in analyst_payload["sources"][0][
+        "linguistic_features"
+    ]
+    critic_payload = json.loads(fake.requests[1].user.split("\nINPUT\n", 1)[1])
+    evaluator_payload = json.loads(fake.requests[2].user.split("\nINPUT\n", 1)[1])
+    assert "linguistic_signature" in critic_payload
+    assert "linguistic_signature" in evaluator_payload
