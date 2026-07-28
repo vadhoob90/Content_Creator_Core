@@ -36,15 +36,15 @@ def test_voice_id_label_and_author_identity_are_separate(project, capsys):
                 "voice",
                 "create",
                 "--voice-id",
-                "heather-general-legal",
+                "example-person-general",
                 "--label",
-                "Heather — General Legal",
+                "Example Person — General",
                 "--author-name",
-                "Heather McRobie",
+                "Example Person",
                 "--author-alias",
-                "H. McRobie",
+                "E. Person",
                 "--authorised-by",
-                "Heather",
+                "Example Owner",
                 "--no-build",
             ]
         )
@@ -52,10 +52,10 @@ def test_voice_id_label_and_author_identity_are_separate(project, capsys):
     )
     order = json.loads(capsys.readouterr().out)
 
-    assert order["voice_id"] == "heather-general-legal"
-    assert order["display_name"] == "Heather — General Legal"
-    assert order["author_name"] == "Heather McRobie"
-    assert order["author_aliases"] == ["H. McRobie"]
+    assert order["voice_id"] == "example-person-general"
+    assert order["display_name"] == "Example Person — General"
+    assert order["author_name"] == "Example Person"
+    assert order["author_aliases"] == ["E. Person"]
 
 
 def test_voice_build_approve_idempotency_deactivate_and_reactivate(project, capsys):

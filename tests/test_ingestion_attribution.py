@@ -127,16 +127,16 @@ def test_analysis_text_removes_byline_and_isolates_target_speaker():
 
 def test_attribution_uses_author_identity_and_aliases_not_voice_label():
     direct = classify_attribution(
-        "By Heather McRobie. A direct opening.",
-        "Heather McRobie",
+        "By Example Person. A direct opening.",
+        "Example Person",
         "webpage",
-        aliases=["H. McRobie"],
+        aliases=["E. Person"],
     )
     alias = classify_attribution(
-        "By H. McRobie. Another opening.",
-        "Heather McRobie",
+        "By E. Person. Another opening.",
+        "Example Person",
         "webpage",
-        aliases=["H. McRobie"],
+        aliases=["E. Person"],
     )
 
     assert direct.classification == "directly_authored"
