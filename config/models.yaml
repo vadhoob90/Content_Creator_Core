@@ -34,6 +34,40 @@ providers:
         candidates:
           - model: claude-opus-5
             capabilities: [structured_output, web_search]
+  codex-native:
+    profiles:
+      fast:
+        candidates:
+          - model: gpt-5.6-luna
+            reasoning_effort: low
+            capabilities: [structured_output]
+      balanced:
+        candidates:
+          - model: gpt-5.6-terra
+            reasoning_effort: medium
+            capabilities: [structured_output, web_search]
+      deep:
+        candidates:
+          - model: gpt-5.6-sol
+            reasoning_effort: high
+            capabilities: [structured_output, web_search]
+  claude-native:
+    profiles:
+      fast:
+        candidates:
+          - model: haiku
+            reasoning_effort: low
+            capabilities: [structured_output]
+      balanced:
+        candidates:
+          - model: sonnet
+            reasoning_effort: medium
+            capabilities: [structured_output, web_search]
+      deep:
+        candidates:
+          - model: opus
+            reasoning_effort: high
+            capabilities: [structured_output, web_search]
 
 roles:
   briefing-agent: fast

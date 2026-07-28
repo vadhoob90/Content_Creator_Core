@@ -44,6 +44,11 @@ def test_default_provider_can_be_selected_for_current_shell(project, monkeypatch
     assert Configuration(project).default_provider == "openai"
 
 
+def test_native_provider_can_be_selected_for_current_shell(project, monkeypatch):
+    monkeypatch.setenv("CONTENT_CREATOR_PROVIDER", "codex-native")
+    assert Configuration(project).default_provider == "codex-native"
+
+
 def test_runner_rejects_invalid_structured_output(project):
     runner = AgentRunner(
         Configuration(project),

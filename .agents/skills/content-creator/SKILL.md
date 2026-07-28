@@ -20,11 +20,14 @@ content-creator run "<request>" \
   --pack general-text \
   --voice <active-voice-id> \
   --research none \
-  --provider anthropic
+  --provider codex-native
 ```
 
-Provider choice changes only `--provider anthropic|openai`. Do not rewrite the
-author's request for a provider.
+Execution choice changes only
+`--provider anthropic|openai|codex-native|claude-native`. Do not rewrite the
+author's request for a provider. Native modes require a subscription login and
+must never fall back to API-key billing. When working interactively in Codex
+and the author has not selected a provider, prefer `codex-native`.
 
 Resolve only active voices. Preserve the exact pack and voice version written
 to `runs/<run-id>/resolved-context.json`. Use `$voice-builder` when the user

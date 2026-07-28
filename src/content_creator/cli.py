@@ -27,6 +27,7 @@ from .perspectives import (
     PerspectiveProvenance,
     PerspectiveRegistry,
 )
+from .providers import ProviderError, ProviderRegistry
 from .storage import RunStore
 from .voice_builder import VoiceBuilder
 from .voices import (
@@ -37,6 +38,8 @@ from .voices import (
     hash_file,
     voice_id_for,
 )
+
+PROVIDERS = ["anthropic", "openai", "codex-native", "claude-native"]
 
 
 def _root(value: Optional[str]) -> Path:
@@ -58,11 +61,11 @@ def build_parser() -> argparse.ArgumentParser:
     provider = sub.add_parser("provider", help="Verify provider configuration")
     provider_sub = provider.add_subparsers(dest="provider_command", required=True)
     provider_verify = provider_sub.add_parser("verify")
-    provider_verify.add_argument("provider_name", choices=["anthropic", "openai"])
+    provider_verify.add_argument("provider_name", choices=PROVIDERS)
 
     plan = sub.add_parser("plan", help="Turn natural language into a work order")
     plan.add_argument("request")
-    plan.add_argument("--provider", choices=["anthropic", "openai"])
+    plan.add_argument("--provider", choices=PROVIDERS)
 
     sub.add_parser("doctor", help="Validate offline configuration and assets")
     sub.add_parser("packs", help="List installed content packs")
@@ -88,7 +91,7 @@ def build_parser() -> argparse.ArgumentParser:
     voice_create.add_argument("--sources")
     voice_create.add_argument("--documents", action="append", default=[])
     voice_create.add_argument("--no-build", action="store_true")
-    voice_create.add_argument("--provider", choices=["anthropic", "openai"])
+    voice_create.add_argument("--provider", choices=PROVIDERS)
     voice_create.add_argument(
         "--offline-analysis",
         action="store_true",
@@ -98,7 +101,7 @@ def build_parser() -> argparse.ArgumentParser:
         item = voice_sub.add_parser(command)
         item.add_argument("voice_id")
         if command in {"build", "rebuild"}:
-            item.add_argument("--provider", choices=["anthropic", "openai"])
+            item.add_argument("--provider", choices=PROVIDERS)
             item.add_argument("--offline-analysis", action="store_true")
     voice_sub.add_parser("list")
     voice_approve = voice_sub.add_parser("approve")
@@ -217,7 +220,7 @@ def _add_run_arguments(parser) -> None:
     parser.add_argument("--research", choices=["none", "light", "deep"])
     parser.add_argument("--research-source", choices=["none", "supplied", "agent"])
     parser.add_argument("--research-file")
-    parser.add_argument("--provider", choices=["anthropic", "openai"])
+    parser.add_argument("--provider", choices=PROVIDERS)
     parser.add_argument("--objective")
     parser.add_argument("--audience")
     parser.add_argument("--language")
@@ -247,16 +250,37 @@ def main(argv=None) -> int:
         return 0
     if args.command == "provider":
         provider_name = args.provider_name
-        variable = "{}_API_KEY".format(provider_name.upper())
-        configured = bool(os.getenv(variable))
+        if provider_name in {"anthropic", "openai"}:
+            variable = "{}_API_KEY".format(provider_name.upper())
+            configured = bool(os.getenv(variable))
+            _print(
+                {
+                    "provider": provider_name,
+                    "configured": configured,
+                    "credential_variable": variable,
+                }
+            )
+            return 0 if configured else 8
+        try:
+            provider = ProviderRegistry(root=root).get(provider_name)
+            authentication = provider.verify()
+        except ProviderError as exc:
+            _print(
+                {
+                    "provider": provider_name,
+                    "configured": False,
+                    "error": str(exc),
+                }
+            )
+            return 8
         _print(
             {
                 "provider": provider_name,
-                "configured": configured,
-                "credential_variable": variable,
+                "configured": True,
+                **authentication,
             }
         )
-        return 0 if configured else 8
+        return 0
     if args.command == "doctor":
         configuration = Configuration(root)
         packs = PackRegistry(root).list()

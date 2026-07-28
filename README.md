@@ -74,7 +74,8 @@ executable. The repository contains:
 
 - a deterministic orchestrator, persistent run state, bounded revision loop,
   validation, quality gates, publication, and voice-scoped learning;
-- OpenAI and Anthropic adapters behind one normalized request contract;
+- OpenAI and Anthropic API adapters plus Codex and Claude native subscription
+  adapters behind one normalized request contract;
 - LinkedIn post and article packs covering none, light, and deep research;
 - a deep agent-research approval checkpoint and supplied-research routes;
 - a replay harness that executes all six LinkedIn routes plus direct
@@ -117,7 +118,7 @@ git clone https://github.com/vadhoob90/Content_Creator.git
 cd Content_Creator
 python -m venv .venv
 source .venv/bin/activate
-python -m pip install -e ".[providers,dev]"
+python -m pip install -e ".[dev]"
 ```
 
 On Windows PowerShell, activate with `.venv\Scripts\Activate.ps1`.
@@ -135,13 +136,48 @@ route cases without making an LLM call. `eval` runs the LinkedIn and
 `general-text` replay routes against both provider contracts without using paid
 APIs. Both commands should finish successfully before you continue.
 
-### 3. Configure one LLM provider
+### 3. Choose an execution mode
 
 [`config/models.yaml`](config/models.yaml) maps the generic `fast`, `balanced`,
 and `deep` capability tiers to ordered provider model candidates. Agents and
 the orchestrator refer to capability profiles, not vendor model names.
 
-For OpenAI:
+There are two execution modes:
+
+| Mode | Providers | Best for | Credentials |
+|---|---|---|---|
+| **Native (preferred)** | `codex-native`, `claude-native` | Normal local and interactive use | Existing ChatGPT or Claude subscription login |
+| **API** | `openai`, `anthropic` | CI, headless automation and metered workloads | Provider API key |
+
+Start with native mode. It avoids separate API-key setup and uses the relevant
+product subscription allowance.
+
+For Codex:
+
+```bash
+codex login
+export CONTENT_CREATOR_PROVIDER="codex-native"
+content-creator provider verify codex-native
+```
+
+For Claude Code:
+
+```bash
+claude auth login
+export CONTENT_CREATOR_PROVIDER="claude-native"
+content-creator provider verify claude-native
+```
+
+Native verification rejects API-key and Console authentication so that a run
+cannot silently fall back to usage-based billing.
+
+For API mode, install the provider SDKs:
+
+```bash
+python -m pip install -e ".[providers,dev]"
+```
+
+OpenAI API:
 
 ```bash
 export OPENAI_API_KEY="<your API key>"
@@ -149,7 +185,7 @@ export CONTENT_CREATOR_PROVIDER="openai"
 content-creator provider verify openai
 ```
 
-For Anthropic:
+Anthropic API:
 
 ```bash
 export ANTHROPIC_API_KEY="<your API key>"
@@ -157,17 +193,17 @@ export CONTENT_CREATOR_PROVIDER="anthropic"
 content-creator provider verify anthropic
 ```
 
-Choose one provider; you do not need both. Verify how a clear request will be
+Choose one provider; you do not need all four. Verify how a clear request will be
 routed without generating content:
 
 ```bash
 content-creator plan \
   "Write a short LinkedIn post. No research." \
-  --provider openai
+  --provider codex-native
 
 content-creator plan \
   "Research 70 years of human-machine interaction for a LinkedIn article." \
-  --provider anthropic
+  --provider claude-native
 ```
 
 Deterministically clear requests do not call a model during planning. Ambiguous
@@ -396,8 +432,9 @@ For a research-heavy request:
 You do not normally need to name a provider or model. The Briefing Agent turns
 your request into a structured brief, including research depth. The orchestrator
 selects the capability tier, and the configured provider adapter supplies the
-model. You can still request `--provider anthropic` or `--provider openai` when
-you deliberately want an override.
+model. You can still request `--provider codex-native`, `--provider
+claude-native`, `--provider anthropic`, or `--provider openai` when you
+deliberately want an override.
 
 For a quick trial, substitute `--voice default`. That profile is deliberately
 generic and is not evidence-backed; create and approve a real voice before

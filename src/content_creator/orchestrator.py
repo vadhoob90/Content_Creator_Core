@@ -50,7 +50,7 @@ class Orchestrator:
     ):
         self.root = root.resolve()
         self.configuration = Configuration(self.root)
-        self.registry = registry or ProviderRegistry()
+        self.registry = registry or ProviderRegistry(root=self.root)
         self.prompts = PromptAssembler(self.root)
         self.runner = AgentRunner(self.configuration, self.registry, self.prompts)
         self.intake = BriefingAgent(self.runner)

@@ -40,4 +40,5 @@ incremental learning memory.
 
 Use `content-creator doctor` for offline configuration checks,
 `content-creator eval` for the replay route matrix, and `pytest` for the
-software suite. Live provider evaluation is explicit and paid.
+software suite. Live provider evaluation is explicit and consumes either API
+spend or native subscription allowance.

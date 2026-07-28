@@ -12,6 +12,8 @@ def test_documented_command_families_are_parseable():
         ["init"],
         ["doctor"],
         ["provider", "verify", "openai"],
+        ["provider", "verify", "codex-native"],
+        ["provider", "verify", "claude-native"],
         ["pack", "list"],
         ["pack", "show", "general-text", "--resolved"],
         ["pack", "validate", "general-text"],

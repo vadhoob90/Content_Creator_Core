@@ -20,8 +20,13 @@ content-creator voice create \
   --authorised-by "<approver>" \
   --use general-text \
   --sources "<URL file>" \
-  --documents "<document directory>"
+  --documents "<document directory>" \
+  --provider codex-native
 ```
+
+Use native subscription execution by default in an interactive Codex session.
+Respect an explicit provider choice and never fall back from native mode to
+API-key billing.
 
 The command ingests, attributes, assesses, analyses, criticises, builds, and
 evaluates the candidate. A passing candidate must stop at `awaiting_approval`;
