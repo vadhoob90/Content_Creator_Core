@@ -126,6 +126,11 @@ Use fixtures and a scripted fake provider.
 - Profile critic finds planted unsupported rules
 - Channel confidence reflects corpus coverage
 - Held-out allocation is excluded from analysis
+- Linguistic measurements are deterministic and attribution weighted
+- Spoken and written registers remain separately inspectable
+- Speaker-labelled transcripts exclude interviewer turns
+- Numerical ranges remain descriptive rather than mandatory generation targets
+- Features are not called distinctive without a matched-register baseline
 
 ### Generated content
 

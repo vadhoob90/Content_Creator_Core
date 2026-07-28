@@ -7,7 +7,7 @@ import shutil
 from datetime import datetime, timezone
 from enum import Enum
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, Field
 
@@ -62,6 +62,8 @@ class SourceRecord(BaseModel):
     attribution: AttributionResult
     approved_for_analysis: bool
     cache_path: str
+    analysis_word_count: Optional[int] = None
+    analysis_scope: str = "full-source"
     error: Optional[str] = None
 
 
@@ -74,6 +76,13 @@ class VoicePattern(BaseModel):
     supporting_source_ids: List[str]
     counterexample_source_ids: List[str] = Field(default_factory=list)
     mandatory: bool = False
+    category: str = "uncategorised"
+    observation: Optional[str] = None
+    communicative_function: Optional[str] = None
+    contexts: Dict[str, List[str]] = Field(default_factory=dict)
+    generation_guidance: Optional[str] = None
+    anti_pattern: Optional[str] = None
+    linguistic_evidence: Dict[str, Any] = Field(default_factory=dict)
 
 
 class VoiceManifest(BaseModel):

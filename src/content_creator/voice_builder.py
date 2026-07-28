@@ -8,9 +8,10 @@ from typing import List, Optional
 
 from pydantic import BaseModel, Field
 
-from .attribution import classify_attribution
+from .attribution import classify_attribution, isolate_attributed_text
 from .corpus import assess_corpus
 from .ingestion import content_hash, is_near_duplicate, read_source
+from .linguistics import build_linguistic_signature, extract_linguistic_features
 from .runner import AgentRunner
 from .storage import RunStore
 from .voices import (
@@ -77,6 +78,7 @@ class VoiceBuilder:
             shutil.rmtree(candidate)
         cache = self.root / ".voice-cache" / voice_id
         sources: List[SourceRecord] = []
+        analysis_texts = {}
         normalized: List[str] = []
         errors = []
         locators = order.urls + order.documents
@@ -103,9 +105,20 @@ class VoiceBuilder:
                         output_model=AttributionResult,
                         provider=self.provider,
                     )
-                approved = attribution.voice_weight > 0 and not duplicate
+                analysis_text, analysis_scope = isolate_attributed_text(
+                    text,
+                    order.display_name,
+                    attribution,
+                    kind,
+                )
+                approved = (
+                    attribution.voice_weight > 0
+                    and not duplicate
+                    and bool(analysis_text.strip())
+                )
                 cache_path = cache / "{}.txt".format(source_id)
                 RunStore._atomic_text(cache_path, text)
+                analysis_texts[source_id] = analysis_text
                 sources.append(
                     SourceRecord(
                         id=source_id,
@@ -117,6 +130,8 @@ class VoiceBuilder:
                         attribution=attribution,
                         approved_for_analysis=approved,
                         cache_path=str(cache_path.relative_to(self.root)),
+                        analysis_word_count=len(analysis_text.split()),
+                        analysis_scope=analysis_scope,
                     )
                 )
                 normalized.append(text)
@@ -131,7 +146,16 @@ class VoiceBuilder:
         held_out = [usable[-1]] if len(usable) >= 2 else []
         analysis_records = usable[:-1] if held_out else usable
         corpus["held_out_source_ids"] = [record.id for record in held_out]
-        patterns = self._patterns(analysis_records)
+        signature = build_linguistic_signature(
+            {
+                "id": record.id,
+                "kind": record.kind,
+                "text": analysis_texts[record.id],
+                "weight": record.attribution.voice_weight,
+            }
+            for record in analysis_records
+        )
+        patterns = self._patterns(analysis_records, signature)
         if self.runner and analysis_records:
             payload = {
                 "person": order.display_name,
@@ -139,20 +163,26 @@ class VoiceBuilder:
                     {
                         "id": record.id,
                         "kind": record.kind,
-                        "text": (self.root / record.cache_path).read_text(
-                            encoding="utf-8"
+                        "attribution_weight": record.attribution.voice_weight,
+                        "analysis_scope": record.analysis_scope,
+                        "text": analysis_texts[record.id],
+                        "linguistic_features": extract_linguistic_features(
+                            analysis_texts[record.id]
                         ),
                     }
                     for record in analysis_records
                 ],
                 "corpus": corpus,
+                "linguistic_signature": signature,
             }
             analysis = self.runner.run(
                 role="voice-analyst",
                 role_key="voice-analyst",
                 instruction=(
                     "Identify style patterns supported by the authorised corpus. "
-                    "Cite source IDs and do not infer biography or beliefs."
+                    "Use the linguistic framework, distinguish observation from "
+                    "interpretation, cite source IDs, and do not infer biography "
+                    "or beliefs."
                 ),
                 payload=payload,
                 output_model=VoiceAnalysis,
@@ -166,6 +196,7 @@ class VoiceBuilder:
                 ),
                 payload={
                     "analysis": analysis.model_dump(mode="json"),
+                    "linguistic_signature": signature,
                     "approved_source_ids": [
                         record.id for record in analysis_records
                     ],
@@ -234,6 +265,10 @@ class VoiceBuilder:
         RunStore._atomic_text(
             candidate / "corpus-report.json", json.dumps(corpus, indent=2)
         )
+        RunStore._atomic_text(
+            candidate / "linguistic-signature.json",
+            json.dumps(signature, indent=2),
+        )
         evaluation = {
             "schema_version": "1.0",
             "passed": corpus["sufficient"] and bool(patterns),
@@ -249,6 +284,8 @@ class VoiceBuilder:
                 "unseen_topic_transfer": "manual_live_evaluation_required",
                 "caricature_rejection": True,
                 "phrase_overlap": True,
+                "linguistic_signature": bool(signature["source_profiles"]),
+                "matched_register_baseline": "not_supplied",
             },
         }
         if self.runner and patterns:
@@ -262,15 +299,17 @@ class VoiceBuilder:
                 ),
                 payload={
                     "profile": profile,
+                    "linguistic_signature": signature,
                     "patterns": [
                         item.model_dump(mode="json") for item in patterns
                     ],
                     "held_out_sources": [
                         {
                             "id": record.id,
-                            "text": (self.root / record.cache_path).read_text(
-                                encoding="utf-8"
-                            )[:4000],
+                            "text": analysis_texts[record.id][:4000],
+                            "linguistic_features": extract_linguistic_features(
+                                analysis_texts[record.id]
+                            ),
                         }
                         for record in held_out
                     ],
@@ -301,6 +340,7 @@ class VoiceBuilder:
             "sources": "source-index.json",
             "patterns": "patterns.json",
             "corpus": "corpus-report.json",
+            "linguistic_signature": "linguistic-signature.json",
             "evaluation_report": "evaluation-report.json",
         }
         component_hashes = {
@@ -353,21 +393,52 @@ class VoiceBuilder:
         return manifest
 
     @staticmethod
-    def _patterns(records: List[SourceRecord]) -> List[VoicePattern]:
+    def _patterns(
+        records: List[SourceRecord],
+        signature: dict,
+    ) -> List[VoicePattern]:
         if not records:
             return []
         ids = [record.id for record in records]
+        overall = signature.get("overall", {})
+        sentence_length = overall.get("sentence_length_median", {})
+        questions = overall.get("questions_per_100_sentences", {})
+        modes = sorted(signature.get("by_mode", {}))
         return [
             VoicePattern(
                 id="pattern-001",
-                name="Evidence-led clarity",
+                name="Observed sentence rhythm",
                 description=(
-                    "Prefer concrete explanations and traceable claims; treat this as "
-                    "provisional until the profile owner confirms it."
+                    "The analysis corpus has a median sentence length of {} words "
+                    "with an inter-source range of {} to {}. This is an observation, "
+                    "not a fixed generation target."
+                ).format(
+                    sentence_length.get("median", 0),
+                    sentence_length.get("q1", 0),
+                    sentence_length.get("q3", 0),
                 ),
-                status="confirmed" if len(ids) >= 2 else "provisional",
-                confidence=min(0.9, 0.55 + 0.1 * len(ids)),
+                status="provisional",
+                confidence=min(0.75, 0.45 + 0.08 * len(ids)),
                 supporting_source_ids=ids,
+                category="syntax-and-rhythm",
+                observation="Sentence length varies within the measured corpus.",
+                communicative_function=(
+                    "Potentially controls pace; human confirmation is required."
+                ),
+                contexts={"observed_modes": modes},
+                generation_guidance=(
+                    "Preserve natural sentence-length variation rather than matching "
+                    "one average."
+                ),
+                anti_pattern="Do not force every sentence into the measured range.",
+                linguistic_evidence={
+                    "sentence_length_median": str(
+                        sentence_length.get("median", 0)
+                    ),
+                    "questions_per_100_sentences": str(
+                        questions.get("weighted_mean", 0)
+                    ),
+                },
             )
         ]
 
@@ -378,13 +449,31 @@ class VoiceBuilder:
             "",
             "Use only the evidence-backed patterns below. Do not infer biography,",
             "experience, beliefs, or personal anecdotes.",
+            "Linguistic measurements are descriptive ranges, not mechanical targets",
+            "or proof that a feature is unique to this person.",
             "",
             "## Patterns",
         ]
-        lines.extend(
-            "- **{} ({})**: {}".format(item.name, item.status, item.description)
-            for item in patterns
-        )
+        for item in patterns:
+            lines.extend(
+                [
+                    "- **{} / {} ({})**: {}".format(
+                        item.category,
+                        item.name,
+                        item.status,
+                        item.description,
+                    ),
+                    "  - Guidance: {}".format(
+                        item.generation_guidance or "Use only when context supports it."
+                    ),
+                    "  - Avoid: {}".format(
+                        item.anti_pattern or "Do not turn the observation into a mannerism."
+                    ),
+                    "  - Evidence: {}".format(
+                        ", ".join(item.supporting_source_ids)
+                    ),
+                ]
+            )
         lines.extend(
             [
                 "",
@@ -392,7 +481,12 @@ class VoiceBuilder:
                 "",
                 "- Usable sources: {}".format(corpus["usable_source_count"]),
                 "- Usable words: {}".format(corpus["usable_word_count"]),
+                "- Attribution-weighted words: {}".format(
+                    corpus["attribution_weighted_word_count"]
+                ),
                 "- Unsupported channels require explicit human guidance.",
+                "- Without a matched-register baseline, observed features must not be",
+                "  described as distinctive to the person.",
             ]
         )
         return "\n".join(lines)

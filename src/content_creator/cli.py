@@ -83,7 +83,7 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Use deterministic fixture analysis instead of an LLM",
     )
-    for command in ("build", "rebuild", "status", "show", "verify"):
+    for command in ("build", "rebuild", "status", "show", "signature", "verify"):
         item = voice_sub.add_parser(command)
         item.add_argument("voice_id")
         if command in {"build", "rebuild"}:
@@ -481,6 +481,13 @@ def _voice_command(root: Path, args) -> int:
         return 0
     if command == "show":
         print((candidate / "profile.md").read_text(encoding="utf-8"))
+        return 0
+    if command == "signature":
+        _print(
+            json.loads(
+                (candidate / "linguistic-signature.json").read_text(encoding="utf-8")
+            )
+        )
         return 0
     if command == "verify":
         manifest = VoiceManifest.model_validate_json(manifest_path.read_text())

@@ -3,6 +3,11 @@
 Only analyse sources that the repository owner is authorised to use. A voice
 candidate is separate from an active voice and cannot create content.
 
+The build combines deterministic corpus-stylistic measurements with
+evidence-backed agent interpretation. See the
+[lightweight linguistic voice framework](linguistic-voice-framework.md) for the
+method, limitations, and evaluation model.
+
 ## Lifecycle
 
 ```text
@@ -22,11 +27,12 @@ content-creator voice create \
 
 content-creator voice status example-person
 content-creator voice show example-person
+content-creator voice signature example-person
 content-creator voice verify example-person
 ```
 
 Approve only after reviewing attribution, evidence limits, patterns,
-constraints, and the evaluation report:
+constraints, `linguistic-signature.json`, and the evaluation report:
 
 ```bash
 content-creator voice approve example-person --approved-by "Repository Owner"
@@ -46,5 +52,5 @@ Pinned historical runs still resolve their saved version. A new explicit
 approval is required to reactivate the voice.
 
 `--offline-analysis` exists for deterministic fixtures and development. It
-creates only a minimal provisional profile and is not a substitute for
-agent-assisted analysis and human review.
+creates only a measured provisional rhythm profile and is not a substitute for
+agent-assisted interpretation, matched-register comparison, and human review.

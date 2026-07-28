@@ -3,7 +3,7 @@ import zipfile
 from pypdf import PdfReader, PdfWriter
 from pypdf.generic import DecodedStreamObject, DictionaryObject, NameObject
 
-from content_creator.attribution import classify_attribution
+from content_creator.attribution import classify_attribution, isolate_attributed_text
 from content_creator.corpus import assess_corpus
 from content_creator.ingestion import content_hash, is_near_duplicate, read_source
 from content_creator.voices import SourceRecord
@@ -91,3 +91,63 @@ def test_attribution_matrix_and_corpus_gaps():
     assert report["supported_packs"]["general-text"] == "medium"
     assert report["gaps"]
     assert is_near_duplicate("same words", ["same words"])
+
+
+def test_analysis_text_removes_byline_and_isolates_target_speaker():
+    direct = classify_attribution(
+        "By Example Person. A direct opening.",
+        "Example Person",
+        "text",
+    )
+    direct_text, direct_scope = isolate_attributed_text(
+        "By Example Person. A direct opening.",
+        "Example Person",
+        direct,
+        "text",
+    )
+    interview = classify_attribution(
+        "Host: What changed?\nExample: The boundary became visible.\n"
+        "Host: Why?\nExample: We tested it.",
+        "Example Person",
+        "transcript",
+    )
+    interview_text, interview_scope = isolate_attributed_text(
+        "Host: What changed?\nExample: The boundary became visible.\n"
+        "Host: Why?\nExample: We tested it.",
+        "Example Person",
+        interview,
+        "transcript",
+    )
+
+    assert direct_text == "A direct opening."
+    assert direct_scope == "full-source-with-byline-removed"
+    assert interview_text == "The boundary became visible.\n\nWe tested it."
+    assert interview_scope == "speaker-turns-only"
+
+
+def test_corpus_sufficiency_uses_attribution_weighted_analysis_words():
+    interview = classify_attribution(
+        "Example: An answer.",
+        "Example Person",
+        "transcript",
+    )
+    record = SourceRecord(
+        id="source-1",
+        kind="transcript",
+        locator="fixture",
+        content_hash="sha256:x",
+        title="Fixture",
+        word_count=1000,
+        analysis_word_count=900,
+        analysis_scope="speaker-turns-only",
+        attribution=interview,
+        approved_for_analysis=True,
+        cache_path=".voice-cache/example/source-1.txt",
+    )
+
+    report = assess_corpus([record], ["general-text"])
+
+    assert report["usable_word_count"] == 900
+    assert report["attribution_weighted_word_count"] == 450
+    assert not report["sufficient"]
+    assert "attribution-weighted" in report["gaps"][0]

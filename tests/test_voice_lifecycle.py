@@ -19,9 +19,9 @@ def _voice_material(project):
     )
     first = material / "essay.txt"
     second = material / "transcript.txt"
-    first.write_text(sentence * 12, encoding="utf-8")
+    first.write_text(sentence * 24, encoding="utf-8")
     second.write_text(
-        "Example: " + sentence * 10,
+        "Example: " + sentence * 20,
         encoding="utf-8",
     )
     return material
@@ -252,6 +252,45 @@ def test_repeated_build_has_stable_candidate_hash(project):
         (project / "profiles" / "example-person" / "candidate" / "manifest.json").read_text()
     )
     assert second["candidate_hash"] == first["candidate_hash"]
+    candidate = project / "profiles" / "example-person" / "candidate"
+    signature = json.loads((candidate / "linguistic-signature.json").read_text())
+    assert signature["framework"] == "lightweight-corpus-stylistics"
+    assert "linguistic_signature" in second["components"]
+
+
+def test_cli_exposes_candidate_linguistic_signature(project, capsys):
+    material = _voice_material(project)
+    main(
+        [
+            "--root",
+            str(project),
+            "voice",
+            "create",
+            "--name",
+            "Example Person",
+            "--authorised-by",
+            "Owner",
+            "--documents",
+            str(material),
+            "--offline-analysis",
+        ]
+    )
+    capsys.readouterr()
+
+    assert (
+        main(
+            [
+                "--root",
+                str(project),
+                "voice",
+                "signature",
+                "example-person",
+            ]
+        )
+        == 0
+    )
+    signature = json.loads(capsys.readouterr().out)
+    assert signature["framework"] == "lightweight-corpus-stylistics"
 
 
 def test_failed_rebuild_preserves_previous_candidate(project):

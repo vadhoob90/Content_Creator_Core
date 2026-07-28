@@ -17,8 +17,11 @@ class IngestionError(RuntimeError):
 
 def normalize_text(value: str) -> str:
     value = html.unescape(value)
-    value = re.sub(r"\s+", " ", value).strip()
-    return value
+    value = value.replace("\r\n", "\n").replace("\r", "\n")
+    lines = [re.sub(r"[^\S\n]+", " ", line).strip() for line in value.splitlines()]
+    value = "\n".join(lines)
+    value = re.sub(r"\n{3,}", "\n\n", value)
+    return value.strip()
 
 
 def content_hash(value: str) -> str:
@@ -29,13 +32,26 @@ def _html_text(raw: str) -> Tuple[str, str]:
     title_match = re.search(r"<title[^>]*>(.*?)</title>", raw, re.I | re.S)
     title = normalize_text(re.sub(r"<[^>]+>", " ", title_match.group(1))) if title_match else ""
     raw = re.sub(r"<(script|style|nav|footer|header)[^>]*>.*?</\1>", " ", raw, flags=re.I | re.S)
+    raw = re.sub(
+        r"</?(?:article|aside|blockquote|br|div|h[1-6]|li|main|p|section)[^>]*>",
+        "\n\n",
+        raw,
+        flags=re.I,
+    )
     return title, normalize_text(re.sub(r"<[^>]+>", " ", raw))
 
 
 def _docx_text(path: Path) -> str:
     with zipfile.ZipFile(path) as archive:
         root = ElementTree.fromstring(archive.read("word/document.xml"))
-    return normalize_text(" ".join(node.text or "" for node in root.iter()))
+    paragraphs = []
+    for paragraph in (node for node in root.iter() if node.tag.endswith("}p")):
+        text = " ".join(
+            node.text or "" for node in paragraph.iter() if node.tag.endswith("}t")
+        )
+        if text.strip():
+            paragraphs.append(text)
+    return normalize_text("\n\n".join(paragraphs))
 
 
 def _pdf_text(path: Path) -> str:
@@ -43,7 +59,9 @@ def _pdf_text(path: Path) -> str:
         from pypdf import PdfReader
     except ImportError as exc:
         raise IngestionError("PDF support requires the pypdf dependency") from exc
-    return normalize_text(" ".join(page.extract_text() or "" for page in PdfReader(path).pages))
+    return normalize_text(
+        "\n\n".join(page.extract_text() or "" for page in PdfReader(path).pages)
+    )
 
 
 def read_source(locator: str) -> Tuple[str, str, str]:

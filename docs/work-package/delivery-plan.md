@@ -153,6 +153,7 @@ Status: **implemented**
 Metrics:
 
 - Usable source count and word count
+- Attribution-weighted analysable word count
 - Channel and content-type coverage
 - Time-period diversity
 - Direct versus indirect authorship
@@ -162,7 +163,8 @@ Metrics:
 Acceptance:
 
 - The system reports supported and unsupported content packs
-- There is no arbitrary single minimum that overrides source quality
+- A 500 attribution-weighted-word safety floor is necessary but not sufficient;
+  source quality and coverage still determine confidence
 - Insufficient corpora produce actionable gaps
 
 Dependencies: WP-05.
@@ -178,6 +180,12 @@ Add:
 - Pattern evidence and counterexamples
 - Stable, provisional and rejected statuses
 - Copying and caricature warnings
+- Deterministic lightweight corpus-stylistic measurements
+- Separate spoken and written register summaries
+- Observation, functional interpretation, contextual scope, generation guidance,
+  and anti-pattern fields
+- Explicit prohibition on distinctiveness claims without matched-register
+  comparison
 
 Acceptance:
 

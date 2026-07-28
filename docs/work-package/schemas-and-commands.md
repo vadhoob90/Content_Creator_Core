@@ -48,6 +48,8 @@ models and emitted JSON Schema.
     "needs_human_review": false
   },
   "cache_path": ".voice-cache/example-person/source-001.json",
+  "analysis_word_count": 1180,
+  "analysis_scope": "full-source-with-byline-removed",
   "approved_for_analysis": true
 }
 ```
@@ -65,6 +67,7 @@ components:
   profile: profile.md
   constraints: constraints.yaml
   rubric: voice-rubric.yaml
+  linguistic_signature: linguistic-signature.json
   learnings: learnings.json
   sources: source-index.json
   evaluations: evaluation-cases.yaml
@@ -88,7 +91,18 @@ authorisation:
   "id": "pattern-012",
   "name": "Concrete operational opening",
   "description": "Often opens technical explanations with a recognisable operational problem.",
-  "scope": ["long-form-technology"],
+  "category": "discourse-structure",
+  "observation": "Three eligible sources open with a concrete problem before stating the general claim.",
+  "communicative_function": "Makes an abstract argument immediately usable.",
+  "contexts": {
+    "supported": ["written-article"],
+    "uncertain": ["short-post", "spoken-interview"]
+  },
+  "generation_guidance": "When context permits, begin with a concrete problem and then widen to the claim.",
+  "anti_pattern": "Do not force every opening into the same anecdotal template.",
+  "linguistic_evidence": {
+    "support": "3_of_4_eligible_sources"
+  },
   "status": "confirmed",
   "confidence": 0.91,
   "supporting_source_ids": ["source-002", "source-005", "source-011"],

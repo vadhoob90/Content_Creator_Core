@@ -27,6 +27,11 @@ The command ingests, attributes, assesses, analyses, criticises, builds, and
 evaluates the candidate. A passing candidate must stop at `awaiting_approval`;
 an insufficient candidate remains `built` with actionable gaps.
 
+The build creates `linguistic-signature.json` using the repository's lightweight
+corpus-stylistics framework. It reports attribution-weighted measurements and
+keeps spoken and written registers separate. Treat these measurements as
+descriptive evidence, never as proof of authorship or rigid generation targets.
+
 ## Review and improve
 
 Run:
@@ -34,11 +39,14 @@ Run:
 ```bash
 content-creator voice status <voice-id>
 content-creator voice show <voice-id>
+content-creator voice signature <voice-id>
 content-creator voice verify <voice-id>
 ```
 
-Show the profile, evidence limits, source attribution, provisional patterns,
-and evaluation failures. To add material:
+Show the profile, evidence limits, source attribution, linguistic signature,
+provisional patterns, and evaluation failures. Do not call an observed feature
+distinctive unless a matched-register reference comparison supports that claim.
+To add material:
 
 ```bash
 content-creator voice add-sources <voice-id> --sources "<URL file>"
