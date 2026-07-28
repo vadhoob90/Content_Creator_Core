@@ -41,6 +41,12 @@ roles:
   researcher-deep: deep
   writer-post: balanced
   writer-article: deep
+  writer-text: balanced
   critic-post: balanced
   critic-article: deep
+  critic-text: balanced
   learning-extractor: fast
+  attribution-reviewer: fast
+  voice-analyst: deep
+  profile-critic: balanced
+  voice-evaluator: deep

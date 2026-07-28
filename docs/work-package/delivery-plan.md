@@ -48,8 +48,9 @@ Dependencies: WP-00.
 
 ## WP-02: Add content packs
 
-Status: **partially implemented**. The LinkedIn compatibility packs and six
-routes are executable; the base `general-text` pack still needs a direct runner.
+Status: **implemented**. `general-text` runs directly; specialised packs use
+single-base inheritance, protected integrity validators, isolated overlays, and
+validated run overrides. The six LinkedIn routes remain regression tested.
 
 Implement:
 
@@ -73,6 +74,8 @@ Dependencies: WP-01.
 
 ## WP-03: Add voice-domain and registry models
 
+Status: **implemented**
+
 Implement:
 
 - `VoiceWorkOrder`
@@ -92,6 +95,8 @@ Acceptance:
 Dependencies: WP-01.
 
 ## WP-04: Implement source ingestion
+
+Status: **implemented**
 
 Implement deterministic ingestion for:
 
@@ -120,6 +125,8 @@ Dependencies: WP-03.
 
 ## WP-05: Implement attribution checking
 
+Status: **implemented**
+
 Implement deterministic checks:
 
 - Visible and structured bylines
@@ -141,6 +148,8 @@ Dependencies: WP-04.
 
 ## WP-06: Implement corpus assessment
 
+Status: **implemented**
+
 Metrics:
 
 - Usable source count and word count
@@ -160,6 +169,8 @@ Dependencies: WP-05.
 
 ## WP-07: Implement voice analysis and criticism
 
+Status: **implemented**
+
 Add:
 
 - Voice analyst prompt and structured schema
@@ -178,6 +189,8 @@ Acceptance:
 Dependencies: WP-06 and provider core.
 
 ## WP-08: Implement Voice Build
+
+Status: **implemented**
 
 Command:
 
@@ -205,6 +218,9 @@ Dependencies: WP-07.
 
 ## WP-09: Implement voice evaluation
 
+Status: **implemented for deterministic and candidate gates**. The bounded
+live provider evaluation remains a manual release check.
+
 Tests:
 
 - Held-out source discrimination
@@ -225,6 +241,8 @@ Acceptance:
 Dependencies: WP-08.
 
 ## WP-10: Implement deterministic approval and activation
+
+Status: **implemented**
 
 Command:
 
@@ -258,6 +276,8 @@ Dependencies: WP-09.
 
 ## WP-11: Resolve voices during content creation
 
+Status: **implemented**
+
 Implement:
 
 - Required `voice_id` in `ContentBrief`
@@ -276,6 +296,8 @@ Dependencies: WP-02 and WP-10.
 
 ## WP-12: Add profile-scoped learning
 
+Status: **implemented**
+
 Implement:
 
 - Voice, pack, topic and event scope
@@ -293,6 +315,8 @@ Acceptance:
 Dependencies: WP-11.
 
 ## WP-13: Add conversational skills
+
+Status: **implemented**
 
 Add:
 
@@ -313,6 +337,10 @@ Dependencies: WP-10 through WP-12.
 
 ## WP-14: Complete evaluation and CI
 
+Status: **implemented for offline and manual workflows**. Live OpenAI,
+Anthropic, and ingestion runs require credentials or a public URL and must be
+recorded as release evidence.
+
 Implement:
 
 - Shared core and provider tests
@@ -331,6 +359,8 @@ Acceptance:
 Dependencies: all implementation tasks.
 
 ## WP-15: Documentation and release
+
+Status: **implemented**
 
 Deliver:
 

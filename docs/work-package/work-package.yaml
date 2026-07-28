@@ -1,6 +1,6 @@
 id: content-creator-voice-builder
 version: "1.0"
-status: proposed
+status: implemented_with_manual_release_gates
 objective: >-
   Build a provider-neutral text-content engine with content packs and
   evidence-backed, versioned, deterministically activated voice packages.

@@ -10,7 +10,7 @@ from content_creator.runner import AgentRunner
 
 def test_explicit_intake_does_not_need_model():
     order = BriefingAgent().plan("Write a LinkedIn article with deep research")
-    assert order.format.value == "article"
+    assert order.format == "article"
     assert order.research_depth.value == "deep"
     assert order.research_source.value == "agent"
 
@@ -23,8 +23,8 @@ def test_no_research_is_respected():
 
 def test_replay_harness_runs_both_provider_contracts(project):
     report = run_replay_suite(project, ["anthropic", "openai"])
-    assert report["total"] == 12
-    assert report["passed"] == 12
+    assert report["total"] == 14
+    assert report["passed"] == 14
     assert (project / ".eval-results" / "route-matrix.json").exists()
 
 

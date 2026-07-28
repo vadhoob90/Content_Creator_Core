@@ -1,8 +1,11 @@
 {
   "id": "linkedin-article",
   "version": "1.0.0",
+  "extends": "general-text",
   "format": "article",
   "destination": "content/linkedin-article/published",
+  "defaults": {"length": "800:1800"},
+  "validators": ["no-em-dash", "no-hashtags"],
   "rubric": "rubric.yaml",
   "allowed_research": ["none", "light", "deep"]
 }

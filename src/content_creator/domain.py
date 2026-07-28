@@ -6,16 +6,11 @@ from enum import Enum
 from typing import Dict, List, Optional
 from uuid import uuid4
 
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, Field, field_validator
 
 
 def utc_now() -> datetime:
     return datetime.now(timezone.utc)
-
-
-class ContentFormat(str, Enum):
-    POST = "post"
-    ARTICLE = "article"
 
 
 class ResearchDepth(str, Enum):
@@ -57,9 +52,11 @@ class LearningStatus(str, Enum):
 class WorkOrder(BaseModel):
     request: str
     topic: str
-    content_pack: Optional[str] = None
+    content_pack: str = "general-text"
     voice_id: str = "default"
-    format: ContentFormat = ContentFormat.POST
+    voice_version: Optional[str] = None
+    resolved_voice: bool = False
+    format: str = "text"
     research_depth: ResearchDepth = ResearchDepth.NONE
     research_source: ResearchSource = ResearchSource.NONE
     audience: str = "professional audience"
@@ -68,6 +65,7 @@ class WorkOrder(BaseModel):
     constraints: List[str] = Field(default_factory=list)
     supplied_research_path: Optional[str] = None
     provider: Optional[str] = None
+    pack_options: Dict[str, object] = Field(default_factory=dict)
 
     @field_validator("content_pack", "voice_id")
     @classmethod
@@ -75,17 +73,6 @@ class WorkOrder(BaseModel):
         if value is not None and not re.fullmatch(r"[a-z0-9][a-z0-9-]{0,62}", value):
             raise ValueError("Repository ids must use lowercase letters, digits, and hyphens")
         return value
-
-    @model_validator(mode="after")
-    def resolve_default_pack(self):
-        if self.content_pack is None:
-            self.content_pack = (
-                "linkedin-article"
-                if self.format == ContentFormat.ARTICLE
-                else "linkedin-post"
-            )
-        return self
-
 
 class PlanningDecision(BaseModel):
     needs_clarification: bool = False
@@ -168,6 +155,9 @@ class LearningExtraction(BaseModel):
 class LearningRecord(LearningCandidate):
     id: str = Field(default_factory=lambda: uuid4().hex)
     run_id: str
+    voice_id: str = "default"
+    voice_version: Optional[str] = None
+    content_pack: Optional[str] = None
     created_at: datetime = Field(default_factory=utc_now)
 
 

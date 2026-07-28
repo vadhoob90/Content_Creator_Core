@@ -39,6 +39,11 @@ def test_model_selector_fails_closed_when_capability_is_missing(project):
         raise AssertionError("Expected ConfigurationError")
 
 
+def test_default_provider_can_be_selected_for_current_shell(project, monkeypatch):
+    monkeypatch.setenv("CONTENT_CREATOR_PROVIDER", "openai")
+    assert Configuration(project).default_provider == "openai"
+
+
 def test_runner_rejects_invalid_structured_output(project):
     runner = AgentRunner(
         Configuration(project),

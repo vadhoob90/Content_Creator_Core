@@ -17,14 +17,18 @@ Work from the repository root and preserve every run artifact.
 
 ```bash
 content-creator run "<request>" \
-  --pack linkedin-post \
-  --voice default \
+  --pack general-text \
+  --voice <active-voice-id> \
   --research none \
   --provider anthropic
 ```
 
 Provider choice changes only `--provider anthropic|openai`. Do not rewrite the
 author's request for a provider.
+
+Resolve only active voices. Preserve the exact pack and voice version written
+to `runs/<run-id>/resolved-context.json`. Use `$voice-builder` when the user
+asks to create, approve, deactivate, or otherwise manage a voice.
 
 ## Follow the route
 

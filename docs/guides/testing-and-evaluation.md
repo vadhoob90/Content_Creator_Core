@@ -2,13 +2,16 @@
 
 The project separates software correctness from output assessment.
 
-`pytest` covers routing, candidate selection, quality calculation, mechanical
-validation, both adapter request shapes, all six primary routes, supplied
+`pytest` covers routing, pack inheritance and isolation, candidate selection,
+quality calculation, mechanical validation, source ingestion, attribution,
+voice building and activation, version resolution, phrase overlap, both adapter
+request shapes, all six LinkedIn routes, the direct general-text route, supplied
 research, research pause/resume and rejection, failure persistence, bounded
-revision, publication safety, and learning status.
+revision, publication safety, documentation commands, and learning status.
 
 `content-creator eval` is the offline harness. It executes the committed route
-matrix with deterministic responses for both provider contracts. This checks
+matrix with deterministic responses for both provider contracts. This includes
+six LinkedIn cases plus direct general text and checks
 route conformance and artifact production without API keys, cost, or model
 drift. Results go to `.eval-results/`.
 
@@ -21,8 +24,9 @@ flagship cases:
 The live report records status, quality score, revisions, latency, models, and
 token use. It does not publish content. Live evaluation is manual in GitHub
 Actions and protected by an environment. Offline CI is path-filtered, so
-changes only under `content/*/drafting/` or
-`profiles/*/learnings/` do not invoke the harness.
+ordinary content changes and publication-triggered learning updates do not
+invoke the expensive harness. Documentation has its own offline command and
+link checks.
 
 Replay proves system behavior, not prose quality. Human assessment is captured
 at publication through the approval event and optional `--feedback`.

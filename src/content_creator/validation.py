@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 import re
-from typing import List
+from typing import List, Optional
 
-from .domain import ContentFormat, ResearchBrief, ResearchDepth, WorkOrder
+from .domain import ResearchBrief, ResearchDepth, WorkOrder
 
 BANNED_PHRASES = (
     "in today's fast-paced world",
@@ -13,25 +13,49 @@ BANNED_PHRASES = (
 )
 
 
-def validate_draft(draft: str, order: WorkOrder) -> List[str]:
+def validate_draft(
+    draft: str, order: WorkOrder, validators: Optional[List[str]] = None
+) -> List[str]:
     errors = []
+    enabled = set(
+        validators
+        or [
+            "word-count",
+            "citation-integrity",
+            "banned-phrase",
+            "no-em-dash",
+            "no-hashtags",
+        ]
+    )
     words = re.findall(r"\b[\w’'-]+\b", draft)
     lowered = draft.lower()
 
-    if "—" in draft:
+    if "no-em-dash" in enabled and "—" in draft:
         errors.append("Em dashes are not allowed")
-    if re.search(r"(?<!\w)#\w+", draft):
+    if "no-hashtags" in enabled and re.search(r"(?<!\w)#\w+", draft):
         errors.append("Hashtags are not allowed")
-    for phrase in BANNED_PHRASES:
-        if phrase in lowered:
-            errors.append("Banned phrase: {}".format(phrase))
+    if "banned-phrase" in enabled:
+        for phrase in BANNED_PHRASES:
+            if phrase in lowered:
+                errors.append("Banned phrase: {}".format(phrase))
 
-    if order.format == ContentFormat.ARTICLE and not 800 <= len(words) <= 1800:
-        errors.append("Article must be between 800 and 1800 words")
-    if order.format == ContentFormat.POST and not 50 <= len(words) <= 600:
-        errors.append("Post must be between 50 and 600 words")
-    if order.research_depth != ResearchDepth.NONE and not re.search(
+    length = order.pack_options.get("length")
+    if (
+        "word-count" in enabled
+        and isinstance(length, str)
+        and re.fullmatch(r"\d+:\d+", length)
+    ):
+        minimum, maximum = (int(item) for item in length.split(":"))
+        if not minimum <= len(words) <= maximum:
+            errors.append(
+                "Content must be between {} and {} words".format(minimum, maximum)
+            )
+    if (
+        "citation-integrity" in enabled
+        and order.research_depth != ResearchDepth.NONE
+        and not re.search(
         r"https?://|]\(https?://", draft
+        )
     ):
         errors.append("Research-backed drafts must include at least one source link")
     return errors

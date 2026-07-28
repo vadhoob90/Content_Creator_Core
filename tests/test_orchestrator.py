@@ -40,6 +40,9 @@ def test_six_primary_routes(project, format_, depth, source):
         WorkOrder(
             request="write",
             topic="topic",
+            content_pack=(
+                "linkedin-article" if format_ == "article" else "linkedin-post"
+            ),
             format=format_,
             research_depth=depth,
             research_source=source,
@@ -50,6 +53,28 @@ def test_six_primary_routes(project, format_, depth, source):
         state = orchestrator.resume_research(state.id, True)
     assert state.status == RunStatus.READY
     assert (project / state.final_draft_path).exists()
+
+
+def test_general_text_runs_end_to_end_and_snapshots_context(project):
+    orchestrator = make_orchestrator(
+        project,
+        {"writer": [valid_draft()], "critic": [passing_critique()]},
+    )
+    state = orchestrator.start(
+        WorkOrder(
+            request="Explain a useful system",
+            topic="A useful system",
+            content_pack="general-text",
+            format="text",
+            pack_options={"length": "50:600"},
+        )
+    )
+    context = json.loads(
+        (project / "runs" / state.id / "resolved-context.json").read_text()
+    )
+    assert state.status == RunStatus.READY
+    assert context["content_pack"] == {"id": "general-text", "version": "1.0.0"}
+    assert context["voice"]["version"] == "placeholder"
 
 
 @pytest.mark.parametrize(
@@ -77,6 +102,9 @@ def test_supplied_research_skips_researcher_and_checkpoint(project, format_, dep
         WorkOrder(
             request="write",
             topic="topic",
+            content_pack=(
+                "linkedin-article" if format_ == "article" else "linkedin-post"
+            ),
             format=format_,
             research_depth=depth,
             research_source="supplied",
@@ -97,6 +125,8 @@ def test_research_rejection_stops_before_writer(project):
         WorkOrder(
             request="write",
             topic="topic",
+            content_pack="linkedin-post",
+            format="post",
             research_depth="deep",
             research_source="agent",
         )
@@ -116,7 +146,14 @@ def test_revision_limit_preserves_latest_draft(project):
         },
         max_revisions=2,
     )
-    state = orchestrator.start(WorkOrder(request="write", topic="topic"))
+    state = orchestrator.start(
+        WorkOrder(
+            request="write",
+            topic="topic",
+            content_pack="linkedin-post",
+            format="post",
+        )
+    )
     assert state.status == RunStatus.NEEDS_AUTHOR
     assert state.revision == 2
     assert (project / state.final_draft_path).exists()
@@ -127,7 +164,14 @@ def test_failure_is_persisted(project):
         project, {"writer": [ProviderError("provider down")]}
     )
     with pytest.raises(ProviderError):
-        orchestrator.start(WorkOrder(request="write", topic="topic"))
+        orchestrator.start(
+            WorkOrder(
+                request="write",
+                topic="topic",
+                content_pack="linkedin-post",
+                format="post",
+            )
+        )
     states = list((project / "runs").glob("*/state.json"))
     saved = json.loads(states[0].read_text(encoding="utf-8"))
     assert saved["status"] == "failed"
@@ -146,6 +190,8 @@ def test_invalid_research_brief_fails_before_drafting(project):
             WorkOrder(
                 request="write",
                 topic="topic",
+                content_pack="linkedin-post",
+                format="post",
                 research_depth="light",
                 research_source="agent",
             )
@@ -174,7 +220,14 @@ def test_publish_updates_learning_and_refuses_overwrite(project):
             "learning-extractor": [extraction],
         },
     )
-    state = orchestrator.start(WorkOrder(request="write", topic="Unique topic"))
+    state = orchestrator.start(
+        WorkOrder(
+            request="write",
+            topic="Unique topic",
+            content_pack="linkedin-post",
+            format="post",
+        )
+    )
     state = orchestrator.publish(
         state.id, filename="published-test.md", feedback="Use concrete openings"
     )
@@ -209,7 +262,14 @@ def test_publish_without_explicit_feedback_keeps_inference_provisional(project):
             "learning-extractor": [extraction],
         },
     )
-    state = orchestrator.start(WorkOrder(request="write", topic="topic"))
+    state = orchestrator.start(
+        WorkOrder(
+            request="write",
+            topic="topic",
+            content_pack="linkedin-post",
+            format="post",
+        )
+    )
     orchestrator.publish(state.id, filename="x.md")
     memory = json.loads(
         (
@@ -227,7 +287,14 @@ def test_publish_never_overwrites_existing_file(project):
     orchestrator = make_orchestrator(
         project, {"writer": [valid_draft()], "critic": [passing_critique()]}
     )
-    state = orchestrator.start(WorkOrder(request="write", topic="topic"))
+    state = orchestrator.start(
+        WorkOrder(
+            request="write",
+            topic="topic",
+            content_pack="linkedin-post",
+            format="post",
+        )
+    )
     with pytest.raises(StorageError):
         orchestrator.publish(state.id, filename="existing.md")
     assert target.read_text(encoding="utf-8") == "existing"
@@ -242,7 +309,14 @@ def test_learning_failure_does_not_lose_approved_publication(project):
             "learning-extractor": [ProviderError("learning unavailable")],
         },
     )
-    state = orchestrator.start(WorkOrder(request="write", topic="topic"))
+    state = orchestrator.start(
+        WorkOrder(
+            request="write",
+            topic="topic",
+            content_pack="linkedin-post",
+            format="post",
+        )
+    )
     state = orchestrator.publish(state.id, filename="safe.md")
     assert state.status == RunStatus.PUBLISHED
     assert (

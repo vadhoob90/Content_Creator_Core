@@ -28,7 +28,18 @@ receive the same normalized request. Provider-specific structured-output and
 search syntax remains inside `src/content_creator/providers/`.
 
 Credentials come from `OPENAI_API_KEY` or `ANTHROPIC_API_KEY`. Do not place
-credentials in YAML.
+credentials in YAML. Set `CONTENT_CREATOR_PROVIDER=openai` or
+`CONTENT_CREATOR_PROVIDER=anthropic` to choose the default for the current
+shell without editing the catalogue.
+
+The committed OpenAI tiers follow the current GPT-5.6 family: Luna for fast,
+Terra for balanced, and Sol for deep work. The Anthropic tiers use Claude Haiku
+4.5, Sonnet 5, and Opus 5. Verify availability for the account before a live
+run. Model IDs and capabilities are checked against the providers' official
+guidance:
+
+- [OpenAI model guidance](https://developers.openai.com/api/docs/guides/latest-model)
+- [Anthropic models overview](https://platform.claude.com/docs/en/about-claude/models/overview)
 
 To add another provider:
 

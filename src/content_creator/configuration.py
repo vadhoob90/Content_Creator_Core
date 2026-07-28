@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from pathlib import Path
 from typing import Any, Dict, Optional
 
@@ -29,7 +30,15 @@ class Configuration:
 
     @property
     def default_provider(self) -> str:
-        return str(self.models["defaults"]["provider"])
+        provider = os.getenv(
+            "CONTENT_CREATOR_PROVIDER",
+            str(self.models["defaults"]["provider"]),
+        )
+        if provider not in self.models["providers"]:
+            raise ConfigurationError(
+                "Unknown default provider: {}".format(provider)
+            )
+        return provider
 
     @property
     def max_output_tokens(self) -> int:

@@ -49,17 +49,17 @@ Content Creator contains a clearly labelled `default` placeholder profile for
 offline tests. A real voice must enter through the authorised, versioned Voice
 Builder lifecycle rather than being silently embedded in the generic template.
 
-## Still outstanding
+## Capabilities added after migration
 
-These capabilities did not exist in LinkedIn Writer and therefore cannot be
-migrated from it:
+These capabilities did not exist in LinkedIn Writer and were implemented
+directly in Content Creator:
 
 - source ingestion for voice creation;
 - author/subject/co-author attribution checking;
 - corpus sufficiency assessment;
 - candidate voice analysis and criticism;
-- held-out voice evaluation;
+- held-out allocation and deterministic voice-output integrity evaluation;
 - deterministic voice approval, activation, and deactivation;
 - a direct executable route for the base `general-text` pack.
 
-They remain covered by the staged Voice Builder work package.
+Bounded live provider and ingestion evaluations remain manual release checks.

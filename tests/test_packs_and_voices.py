@@ -8,6 +8,8 @@ from content_creator.learning import LearningMemory
 from content_creator.orchestrator import OrchestrationError, Orchestrator
 from content_creator.packs import PackRegistry
 from content_creator.prompting import PromptAssembler
+from content_creator.validation import validate_draft
+from content_creator.voices import hash_file
 
 
 def test_linkedin_capabilities_live_in_content_packs(project):
@@ -42,9 +44,42 @@ def test_repository_identifiers_reject_path_traversal(field):
 
 def test_prompt_and_learning_memory_are_scoped_to_selected_voice(project):
     profile = project / "profiles" / "second-voice"
+    version = profile / "versions" / "1.0.0"
     (profile / "learnings").mkdir(parents=True)
-    (profile / "voice.md").write_text(
+    version.mkdir(parents=True)
+    (version / "profile.md").write_text(
         "# Voice Profile: Second Voice\n\nUse grounded examples.",
+        encoding="utf-8",
+    )
+    (version / "manifest.json").write_text(
+        json.dumps(
+            {
+                "id": "second-voice",
+                "display_name": "Second Voice",
+                "version": "1.0.0",
+                "status": "active",
+                "candidate_hash": "sha256:fixture",
+                "components": {"profile": "profile.md"},
+                "component_hashes": {
+                    "profile": hash_file(version / "profile.md")
+                },
+                "supported_packs": {"general-text": "medium"},
+                "authorisation": {"confirmed": True},
+            }
+        ),
+        encoding="utf-8",
+    )
+    (project / "profiles" / "registry.json").write_text(
+        json.dumps(
+            {
+                "profiles": {
+                    "second-voice": {
+                        "status": "active",
+                        "active_version": "1.0.0",
+                    }
+                }
+            }
+        ),
         encoding="utf-8",
     )
     (profile / "learnings" / "memory.json").write_text(
@@ -75,4 +110,41 @@ def test_prompt_and_learning_memory_are_scoped_to_selected_voice(project):
     assert "Default Placeholder" not in prompt
     assert LearningMemory(project, "second-voice").path == (
         profile / "learnings" / "memory.json"
+    )
+
+
+def test_general_text_resolves_and_forbidden_override_fails(project):
+    registry = PackRegistry(project)
+    pack = registry.resolve("general-text", {"length": "300:500"})
+    assert pack.defaults["length"] == "300:500"
+
+    with pytest.raises(Exception, match="Forbidden pack override"):
+        registry.resolve("general-text", {"provider_api_key": "secret"})
+
+
+def test_child_pack_preserves_integrity_validators(project):
+    registry = PackRegistry(project)
+    base = registry.resolve("general-text")
+    child = registry.resolve("linkedin-post")
+
+    assert set(base.integrity_validators) <= set(child.integrity_validators)
+
+
+def test_linkedin_validator_does_not_leak_into_general_text(project):
+    registry = PackRegistry(project)
+    general = registry.resolve("general-text", {"length": "1:20"})
+    linkedin = registry.resolve("linkedin-post", {"length": "1:20"})
+    order = WorkOrder(
+        request="write",
+        topic="topic",
+        content_pack="general-text",
+        format="text",
+        pack_options={"length": "1:20"},
+    )
+
+    assert "Hashtags are not allowed" not in validate_draft(
+        "# Heading is valid here", order, general.validators
+    )
+    assert "Hashtags are not allowed" in validate_draft(
+        "#growth is not valid here", order, linkedin.validators
     )

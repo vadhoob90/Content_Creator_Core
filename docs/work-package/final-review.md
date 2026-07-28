@@ -2,8 +2,8 @@
 
 ## Review outcome
 
-Ready for implementation as a new repository, subject to the scope and gates in
-this work package.
+Implemented in the Content Creator repository, subject to the manual live
+provider and ingestion release checks in this work package.
 
 The proposal is internally coherent:
 
@@ -98,9 +98,9 @@ store, retention policy and access controls.
 
 These are not required to prove the architecture.
 
-## Recommended first implementation slice
+## Delivered implementation slice
 
-Build through WP-10 using:
+The implementation builds through WP-10 using:
 
 - One fixture voice corpus
 - HTML, PDF, DOCX and transcript fixtures
@@ -109,13 +109,12 @@ Build through WP-10 using:
 - Fake-provider evaluation
 - Deterministic approval, deactivation and recovery
 
-Then add LinkedIn article, migrate the original author profile and prove a second
-non-LinkedIn content pack. This sequence tests the two most important
-abstractions before expanding scope.
+LinkedIn article and direct `general-text` are also executable. Personal source
+material from LinkedIn Writer was deliberately not migrated; each real voice
+must enter through the authorised build and approval lifecycle.
 
 ## Final recommendation
 
-Proceed with a new repository. Do not modify LinkedIn Writer into the generic
-engine in place. Use this repository as the behavioural baseline and migrate
-only after the new core, voice lifecycle and LinkedIn pack pass the defined
-acceptance suite.
+Use this repository as the generic engine and keep LinkedIn Writer as the
+behavioural baseline. Record bounded OpenAI, Anthropic, and live-ingestion
+workflow results before declaring a production release.

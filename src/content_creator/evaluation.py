@@ -7,13 +7,7 @@ from typing import Dict, Iterable, List
 
 import yaml
 
-from .domain import (
-    ContentFormat,
-    ResearchBrief,
-    ResearchSource,
-    RunStatus,
-    WorkOrder,
-)
+from .domain import ResearchBrief, ResearchSource, RunStatus, WorkOrder
 from .orchestrator import Orchestrator
 from .providers import FakeProvider, ProviderRegistry
 from .storage import RunStore
@@ -37,13 +31,21 @@ def _passing_critique() -> Dict:
 
 def _draft(order: WorkOrder) -> str:
     link = " [Source](https://example.org/source)." if order.research_depth.value != "none" else "."
-    if order.format == ContentFormat.ARTICLE:
+    if order.format == "article":
         paragraph = (
             "The useful question is not whether tools change work, but which choices "
             "they make newly visible. A good system keeps judgment with the person "
             "using it and makes its assumptions inspectable{}".format(link)
         )
         return "\n\n".join([paragraph] * 50)
+    if order.format == "text":
+        paragraph = (
+            "A useful general explanation makes its assumptions visible, gives the "
+            "reader a concrete example, and separates evidence from judgment. The "
+            "structure should serve the question instead of borrowing conventions "
+            "from a particular social channel{}".format(link)
+        )
+        return "\n\n".join([paragraph] * 10)
     return (
         "The fastest writing workflow is not always the one with the fewest steps.\n\n"
         "A small amount of structure can protect the part that matters: judgment. "
@@ -85,6 +87,7 @@ def run_replay_suite(root: Path, providers: Iterable[str]) -> Dict:
             order = WorkOrder(
                 request=case["request"],
                 topic=case["topic"],
+                content_pack=case.get("content_pack"),
                 format=case["format"],
                 research_depth=case["research_depth"],
                 research_source=case["research_source"],
@@ -133,6 +136,7 @@ def run_live_suite(root: Path, providers: Iterable[str]) -> Dict:
             order = WorkOrder(
                 request=case["request"],
                 topic=case["topic"],
+                content_pack=case.get("content_pack"),
                 format=case["format"],
                 research_depth=case["research_depth"],
                 research_source=case["research_source"],

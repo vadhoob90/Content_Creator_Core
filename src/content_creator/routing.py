@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from .domain import ContentFormat, ResearchDepth, ResearchSource, RoutePlan, WorkOrder
+from .domain import ResearchDepth, ResearchSource, RoutePlan, WorkOrder
 
 
 class RoutingError(ValueError):
@@ -36,10 +36,7 @@ def build_route(order: WorkOrder) -> RoutePlan:
 
     stages.extend(["draft", "validate", "critic", "quality-gate"])
     profiles["writer"] = (
-        "deep"
-        if order.format == ContentFormat.ARTICLE
-        and order.research_depth == ResearchDepth.DEEP
-        else "balanced"
+        "deep" if order.research_depth == ResearchDepth.DEEP else "balanced"
     )
     profiles["critic"] = (
         "deep" if order.research_depth == ResearchDepth.DEEP else "balanced"
@@ -47,7 +44,7 @@ def build_route(order: WorkOrder) -> RoutePlan:
 
     return RoutePlan(
         route="{}-{}-{}".format(
-            order.format.value, order.research_depth.value, order.research_source.value
+            order.format, order.research_depth.value, order.research_source.value
         ),
         stages=stages,
         requires_research_checkpoint=checkpoint,

@@ -8,11 +8,13 @@ version = "0.1.0"
 description = "Provider-neutral content creation and voice workflow"
 readme = "README.md"
 requires-python = ">=3.9"
-license = { file = "LICENSE.md" }
+license = "LicenseRef-PolyForm-Noncommercial-1.0.0"
+license-files = ["LICENSE.md", "NOTICE"]
 authors = [{ name = "Bharath Vadhoola" }]
 dependencies = [
   "pydantic>=2.8,<3",
   "PyYAML>=6,<7",
+  "pypdf>=5,<7",
 ]
 
 [project.optional-dependencies]

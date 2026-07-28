@@ -1,0 +1,29 @@
+name: Documentation checks
+
+on:
+  pull_request:
+    paths:
+      - "README.md"
+      - "docs/**"
+      - "tests/test_documentation_commands.py"
+      - ".github/workflows/documentation.yml"
+  push:
+    paths:
+      - "README.md"
+      - "docs/**"
+      - "tests/test_documentation_commands.py"
+      - ".github/workflows/documentation.yml"
+
+jobs:
+  documentation:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: python -m pip install -e ".[dev]"
+      - run: pytest tests/test_documentation_commands.py tests/test_repository.py
+
+# Content under content/** and publication-triggered learning files are
+# intentionally excluded so ordinary writing work does not start CI.

@@ -62,3 +62,39 @@ def test_learning_memory_deduplicates_same_role_and_principle(project):
         ).read_text(encoding="utf-8")
     )
     assert len(saved["records"]) == 1
+
+
+def test_learning_conflict_is_surfaced_and_consolidation_is_candidate(project):
+    memory = LearningMemory(project)
+    first = LearningExtraction.model_validate(
+        {
+            "candidates": [
+                {
+                    "role": "writer",
+                    "principle": "Always begin with a concrete example.",
+                    "evidence": "Explicit",
+                    "status": "active",
+                    "confidence": 1,
+                }
+            ]
+        }
+    )
+    second = LearningExtraction.model_validate(
+        {
+            "candidates": [
+                {
+                    "role": "writer",
+                    "principle": "Never begin with a concrete example.",
+                    "evidence": "Explicit",
+                    "status": "active",
+                    "confidence": 1,
+                }
+            ]
+        }
+    )
+    memory.apply("run-1", first, explicit_feedback="yes")
+    memory.apply("run-2", second, explicit_feedback="yes")
+    saved = json.loads(memory.path.read_text(encoding="utf-8"))
+    assert saved["records"][1]["conflicts_with"]
+    candidate = memory.consolidate_candidate()
+    assert json.loads(candidate.read_text())["status"] == "candidate"

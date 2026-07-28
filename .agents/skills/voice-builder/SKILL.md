@@ -1,0 +1,69 @@
+---
+name: voice-builder
+description: Create, inspect, evaluate, approve, deactivate, or reactivate an evidence-backed writing voice from authorised URLs, text, HTML, PDF, DOCX, and transcript sources in a Content Creator repository. Use when a user asks to create someone's voice, add voice sources, approve a voice, check voice status, or change which voice version may create content.
+---
+
+# Voice Builder
+
+Work from the repository root. Never claim that a candidate is active until the
+deterministic approval command succeeds.
+
+## Create a candidate
+
+1. Confirm that the user is authorised to analyse the sources.
+2. Put URLs in a text file and private documents outside Git-tracked paths.
+3. Run:
+
+```bash
+content-creator voice create \
+  --name "<display name>" \
+  --authorised-by "<approver>" \
+  --use general-text \
+  --sources "<URL file>" \
+  --documents "<document directory>"
+```
+
+The command ingests, attributes, assesses, analyses, criticises, builds, and
+evaluates the candidate. A passing candidate must stop at `awaiting_approval`;
+an insufficient candidate remains `built` with actionable gaps.
+
+## Review and improve
+
+Run:
+
+```bash
+content-creator voice status <voice-id>
+content-creator voice show <voice-id>
+content-creator voice verify <voice-id>
+```
+
+Show the profile, evidence limits, source attribution, provisional patterns,
+and evaluation failures. To add material:
+
+```bash
+content-creator voice add-sources <voice-id> --sources "<URL file>"
+content-creator voice rebuild <voice-id>
+```
+
+## Approve deterministically
+
+Only after explicit human approval, run:
+
+```bash
+content-creator voice approve <voice-id> --approved-by "<approver>"
+```
+
+Report the activated version from the receipt. Do not substitute an LLM call,
+file edit, or registry edit for this command.
+
+## Deactivate or reactivate
+
+Run the deterministic command matching the user's explicit instruction:
+
+```bash
+content-creator voice deactivate <voice-id> --reason "<reason>"
+content-creator voice reactivate <voice-id> --approved-by "<approver>"
+```
+
+Deactivation blocks future unpinned runs but preserves historical versions.
+Reactivation creates a new approval receipt.

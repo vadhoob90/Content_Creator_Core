@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Dict, Optional
 
 from .configuration import Configuration
+from .context import resolved_context
 from .domain import (
     Critique,
     LearningExtraction,
@@ -26,6 +27,8 @@ from .routing import build_route
 from .runner import AgentRunner
 from .storage import RunStore, StorageError, slugify
 from .validation import validate_draft, validate_research_brief
+from .voice_evaluation import evaluate_voice_output
+from .voices import VoiceRegistry
 
 
 class OrchestrationError(RuntimeError):
@@ -53,11 +56,18 @@ class Orchestrator:
         return self.intake.plan(request, provider=provider)
 
     def start(self, order: WorkOrder) -> RunState:
-        pack = self.packs.get(order.content_pack)
-        if pack.format != order.format.value:
+        pack = self.packs.resolve(order.content_pack, order.pack_options)
+        order.pack_options = {**pack.defaults, "destination": pack.destination}
+        order.resolved_voice = False
+        resolved_voice = VoiceRegistry(self.root).resolve(
+            order.voice_id, order.voice_version
+        )
+        order.voice_version = resolved_voice["version"]
+        order.resolved_voice = True
+        if pack.format != order.format:
             raise OrchestrationError(
                 "Pack {} expects format {}, received {}".format(
-                    pack.id, pack.format, order.format.value
+                    pack.id, pack.format, order.format
                 )
             )
         if order.research_depth.value not in pack.allowed_research:
@@ -71,6 +81,11 @@ class Orchestrator:
         self.store.create(state)
         self.store.write_artifact(state.id, "work-order.json", order)
         self.store.write_artifact(state.id, "route-plan.json", state.route_plan)
+        self.store.write_artifact(
+            state.id,
+            "resolved-context.json",
+            resolved_context(self.root, order, pack, resolved_voice),
+        )
         try:
             brief = self._research(state)
             if brief:
@@ -125,8 +140,18 @@ class Orchestrator:
         assessment = {
             "run_id": run_id,
             "published_path": str(target.relative_to(self.root)),
+            "voice_id": state.work_order.voice_id,
+            "voice_version": state.work_order.voice_version,
+            "content_pack": state.work_order.content_pack,
             "author_signal": "explicit_feedback" if feedback else "publication_approval",
             "feedback": feedback,
+            "questions": {
+                "plausibly_approvable": True,
+                "passages_not_in_voice": None,
+                "exaggerated_habit": None,
+                "invented_experience": None,
+                "channel_appropriate": True,
+            },
         }
         self.store.write_artifact(run_id, "assessment.json", assessment)
 
@@ -151,7 +176,11 @@ class Orchestrator:
             )
             self.store.write_artifact(run_id, "learning-extraction.json", extraction)
             LearningMemory(self.root, state.work_order.voice_id).apply(
-                run_id, extraction, explicit_feedback=feedback
+                run_id,
+                extraction,
+                explicit_feedback=feedback,
+                voice_version=state.work_order.voice_version,
+                content_pack=state.work_order.content_pack,
             )
             state.events.append(RunEvent(name="learnings_updated"))
         except Exception as exc:
@@ -202,6 +231,9 @@ class Orchestrator:
     def _draft_and_review(
         self, state: RunState, brief: Optional[ResearchBrief]
     ) -> RunState:
+        pack = self.packs.resolve(
+            state.work_order.content_pack, state.work_order.pack_options
+        )
         previous_critique: Optional[Critique] = None
         prior_score: Optional[float] = None
         stagnant_rounds = 0
@@ -211,7 +243,7 @@ class Orchestrator:
             self.store.save_state(state)
             draft = self.runner.run(
                 role="writer",
-                role_key="writer-{}".format(state.work_order.format.value),
+                role_key="writer-{}".format(state.work_order.format),
                 instruction=(
                     "Write or revise the piece. Address the prior critique, but preserve "
                     "the author's intent. Return only publishable Markdown."
@@ -224,18 +256,29 @@ class Orchestrator:
             self.store.write_artifact(
                 state.id, "draft-{:02d}.md".format(revision), draft
             )
-            validation_errors = validate_draft(draft, state.work_order)
+            validation_errors = validate_draft(
+                draft, state.work_order, pack.validators
+            )
+            voice_evaluation = evaluate_voice_output(
+                self.root, state.work_order, draft
+            )
+            validation_errors.extend(voice_evaluation["errors"])
             self.store.write_artifact(
                 state.id,
                 "validation-{:02d}.json".format(revision),
                 {"errors": validation_errors},
+            )
+            self.store.write_artifact(
+                state.id,
+                "voice-evaluation-{:02d}.json".format(revision),
+                voice_evaluation,
             )
 
             state.status = RunStatus.REVIEWING
             self.store.save_state(state)
             critique = self.runner.run(
                 role="critic",
-                role_key="critic-{}".format(state.work_order.format.value),
+                role_key="critic-{}".format(state.work_order.format),
                 instruction=(
                     "Assess this draft independently against the supplied rubrics. "
                     "Return issues and scores; do not decide whether to publish."

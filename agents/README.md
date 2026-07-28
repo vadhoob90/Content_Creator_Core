@@ -13,6 +13,10 @@ not an autonomous workflow controller.
 | Writer | Drafting and revision | Research or approval |
 | Critic | Editorial assessment | Revision loops or publication |
 | Learning extractor | Evidence-backed learning candidates | Rewriting history or publishing |
+| Attribution reviewer | Resolving evidentially ambiguous authorship | Guessing identity or activation |
+| Voice analyst | Evidence-backed style-pattern candidates | Biography or approval |
+| Profile critic | Rejecting unsupported or caricatured patterns | Rewriting the candidate |
+| Voice evaluator | Transfer, channel, genericity and integrity evaluation | Activation |
 | Orchestrator | Stage order, state, retries, pause and resume | Editorial judgement |
 
 The orchestrator is deterministic application code. The quality gate is

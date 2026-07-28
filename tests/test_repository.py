@@ -29,11 +29,11 @@ def test_readme_contains_end_to_end_diagram():
 def test_readme_covers_the_complete_operator_journey():
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
 
-    assert "Current status:" in readme
+    assert "installation to your first finished piece" in readme
     assert "content-creator voice create" in readme
     assert "content-creator voice approve" in readme
     assert "content-creator run" in readme
-    assert "voice-scoped learning update" in readme
+    assert "updates only that voice’s learning memory" in readme
 
 
 def test_work_package_uses_the_repository_cli_name():

@@ -1,0 +1,28 @@
+name: Live ingestion evaluation
+
+on:
+  workflow_dispatch:
+    inputs:
+      url:
+        description: Public URL authorised for an ingestion smoke test
+        required: true
+        type: string
+
+jobs:
+  live-ingestion:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: python -m pip install -e .
+      - name: Extract and report metadata without retaining source text
+        env:
+          TEST_URL: ${{ inputs.url }}
+        run: >-
+          python -c "import json, os;
+          from content_creator.ingestion import content_hash, read_source;
+          kind, title, body = read_source(os.environ['TEST_URL']);
+          print(json.dumps({'kind': kind, 'title': title,
+          'words': len(body.split()), 'hash': content_hash(body)}))"

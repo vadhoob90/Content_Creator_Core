@@ -29,7 +29,9 @@ def test_blocking_issue_fails_even_with_high_scores(project):
 
 
 def test_mechanical_validation():
-    order = WorkOrder(request="x", topic="x")
+    order = WorkOrder(
+        request="x", topic="x", pack_options={"length": "50:600"}
+    )
     errors = validate_draft("Too short — #growth", order)
     assert "Em dashes are not allowed" in errors
     assert "Hashtags are not allowed" in errors

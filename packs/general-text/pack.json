@@ -1,8 +1,27 @@
 {
+  "schema_version": "1.0",
   "id": "general-text",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "format": "text",
   "destination": "content/general-text/published",
+  "allowed_research": ["none", "light", "deep"],
+  "defaults": {
+    "objective": "explain",
+    "audience": "general professional",
+    "language": "en-GB",
+    "length": "300:1200"
+  },
+  "allowed_run_overrides": [
+    "objective",
+    "audience",
+    "language",
+    "length",
+    "research",
+    "structure",
+    "destination"
+  ],
+  "validators": ["output-schema", "word-count", "citation-integrity", "banned-phrase"],
+  "integrity_validators": ["personal-integrity", "provenance", "phrase-overlap"],
   "content_types": [
     "linkedin-post",
     "article",
@@ -18,5 +37,5 @@
     "publish",
     "learn"
   ],
-  "rubric": "../../rubrics/core.yaml"
+  "rubric": "rubric.yaml"
 }

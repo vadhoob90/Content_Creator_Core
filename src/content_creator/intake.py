@@ -3,7 +3,6 @@ from __future__ import annotations
 from typing import Optional
 
 from .domain import (
-    ContentFormat,
     PlanningDecision,
     ResearchDepth,
     ResearchSource,
@@ -24,9 +23,7 @@ class BriefingAgent:
 
     def plan(self, request: str, provider: Optional[str] = None) -> WorkOrder:
         lowered = request.lower()
-        content_format = (
-            ContentFormat.ARTICLE if "article" in lowered else ContentFormat.POST
-        )
+        content_format = "article" if "article" in lowered else "post"
 
         explicit_none = any(
             phrase in lowered
@@ -75,7 +72,7 @@ class BriefingAgent:
             topic=request,
             content_pack=(
                 "linkedin-article"
-                if content_format == ContentFormat.ARTICLE
+                if content_format == "article"
                 else "linkedin-post"
             ),
             format=content_format,

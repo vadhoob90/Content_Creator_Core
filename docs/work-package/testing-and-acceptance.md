@@ -3,6 +3,18 @@
 Software tests establish correctness. Evaluations establish whether an LLM
 output satisfies evidence-backed quality and voice criteria. Both are required.
 
+## Implementation status
+
+The offline software, fixture-integration, pack, voice-lifecycle, ingestion,
+attribution, overlap, route replay, documentation-command, and isolation suites
+are implemented. Offline CI never calls a paid model and intentionally ignores
+ordinary files under `content/**` and publication-triggered learning updates.
+
+The repository also contains manually triggered workflows for bounded OpenAI,
+Anthropic, and live URL-ingestion evaluation. A release is not complete until
+those workflows have been run successfully in the target GitHub environment;
+their results cannot be manufactured by the offline harness.
+
 ## Unit tests
 
 ### Core
@@ -156,11 +168,14 @@ Feedback is stored as structured events with voice, version, pack and run IDs.
 | Provider adapter | Shared provider contract suite |
 | Content pack | Core plus that pack’s routes and evaluations |
 | Voice profile | Schema, provenance, overlap, isolation and voice replay |
-| Learning memory | Schema, provenance, conflict and prompt compilation |
-| Content artifacts only | Markdown and repository-integrity checks |
+| Learning memory | No automatic workflow; local schema, provenance, conflict and prompt compilation |
+| Content artifacts only | No automatic workflow; ordinary writing must not start CI |
 | Documentation | Link, command and example validation |
 
 No automatic CI job calls a paid model or external search service.
+Publishing a piece or updating its incremental learning memory does not start
+CI. Those checks run locally and whenever engine, test, pack, profile, or
+workflow code changes.
 
 ## Non-functional acceptance
 

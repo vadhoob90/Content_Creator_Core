@@ -70,15 +70,18 @@ executable. The repository contains:
 - OpenAI and Anthropic adapters behind one normalized request contract;
 - LinkedIn post and article packs covering none, light, and deep research;
 - a deep agent-research approval checkpoint and supplied-research routes;
-- a replay harness that executes all six routes against both provider contracts;
+- a replay harness that executes all six LinkedIn routes plus direct
+  `general-text` against both provider contracts;
 - offline CI, manual live-provider evaluation, and a repo-local conversational
   skill;
-- the reviewed Voice Builder work package in
+- executable Voice Builder commands and the supporting work package in
   [`docs/work-package`](docs/work-package).
 
-Voice-source ingestion, attribution analysis, candidate evaluation, and
-deterministic voice activation remain planned work. Until they land, the engine
-uses the deliberately generic `default` placeholder profile.
+Voice-source ingestion, deterministic attribution, corpus assessment,
+agent-assisted voice analysis and criticism, candidate evaluation, versioned
+approval, deactivation, and pinned runtime resolution are implemented. The
+generic `default` profile remains available for a quick trial without creating
+a personal voice.
 
 The detailed capability-by-capability comparison is in
 [`docs/linkedin-writer-migration-audit.md`](docs/linkedin-writer-migration-audit.md).
@@ -87,16 +90,11 @@ The staged implementation and acceptance criteria are in
 [`docs/work-package/delivery-plan.md`](docs/work-package/delivery-plan.md) and
 [`docs/work-package/testing-and-acceptance.md`](docs/work-package/testing-and-acceptance.md).
 
-## Quick start: from a new clone to finished content
+## Quick start: installation to your first finished piece
 
 Requires Python 3.9 or newer.
 
-> **Current status:** content planning, all six LinkedIn routes, provider
-> adapters, research checkpoints, review, repository publication, learning,
-> replay evaluation, and CI work today. The Voice Builder commands in steps 3–5
-> remain the target interface for the next implementation stage.
-
-### 1. Install and check the repository
+### 1. Clone and install
 
 ```bash
 git clone https://github.com/vadhoob90/Content_Creator.git
@@ -104,15 +102,24 @@ cd Content_Creator
 python -m venv .venv
 source .venv/bin/activate
 python -m pip install -e ".[providers,dev]"
+```
+
+On Windows PowerShell, activate with `.venv\Scripts\Activate.ps1`.
+
+### 2. Initialise and check the installation
+
+```bash
+content-creator init
 content-creator doctor
 content-creator eval
 ```
 
 `doctor` validates the model catalogue, installed packs, default voice, and
-route cases without making an LLM call. `eval` replays all six LinkedIn routes
-against both provider contracts without using paid APIs.
+route cases without making an LLM call. `eval` runs the LinkedIn and
+`general-text` replay routes against both provider contracts without using paid
+APIs. Both commands should finish successfully before you continue.
 
-### 2. Configure an LLM provider
+### 3. Configure one LLM provider
 
 [`config/models.yaml`](config/models.yaml) maps the generic `fast`, `balanced`,
 and `deep` capability tiers to ordered provider model candidates. Agents and
@@ -122,15 +129,20 @@ For OpenAI:
 
 ```bash
 export OPENAI_API_KEY="<your API key>"
+export CONTENT_CREATOR_PROVIDER="openai"
+content-creator provider verify openai
 ```
 
 For Anthropic:
 
 ```bash
 export ANTHROPIC_API_KEY="<your API key>"
+export CONTENT_CREATOR_PROVIDER="anthropic"
+content-creator provider verify anthropic
 ```
 
-Then verify the routing decision:
+Choose one provider; you do not need both. Verify how a clear request will be
+routed without generating content:
 
 ```bash
 content-creator plan \
@@ -150,7 +162,7 @@ Additional providers implement the normalized `Provider` interface, register
 with `ProviderRegistry`, and add capability profiles to `config/models.yaml`.
 See [`docs/guides/provider-configuration.md`](docs/guides/provider-configuration.md).
 
-### 3. Prepare voice source material (Voice Builder: planned)
+### 4. Prepare authorised voice material
 
 Only use material you are authorised to analyse. Put one public URL per line in
 a text file:
@@ -175,9 +187,9 @@ Private extracted source content will be kept in the ignored `.voice-cache/`
 directory. The versioned profile retains provenance metadata and hashes, rather
 than silently copying the source corpus into Git.
 
-### 4. Create and review a candidate voice (planned)
+### 5. Create a candidate voice
 
-The target command is:
+Run:
 
 ```bash
 content-creator voice create \
@@ -189,17 +201,22 @@ content-creator voice create \
   --documents voice-material/example-person/
 ```
 
-This single command will:
+This command:
 
 1. ingest and deduplicate the supplied material;
-2. check whether Example Person is the author, co-author, interviewee, or merely the
-   subject of each source;
+2. check whether Example Person is the author, co-author, interviewee, or
+   merely the subject of each source;
 3. assess whether there is enough representative evidence;
-4. build the profile, constraints, voice-specific rubric, and evaluation cases;
-5. test the candidate against held-out material; and
-6. stop at `awaiting_approval`. It will not activate its own result.
+4. ask the Voice Analyst for evidence-backed patterns;
+5. ask the independent Profile Critic to challenge them;
+6. build and evaluate the candidate package; and
+7. stop at `awaiting_approval` when the gates pass, or `built` with actionable
+   gaps when they do not. It will not activate its own result.
 
-Inspect the candidate before approving it:
+If a URL fails, fix it or add another source and run `voice rebuild`; completed
+sources remain cached locally.
+
+### 6. Review the candidate
 
 ```bash
 content-creator voice status example-person
@@ -217,12 +234,16 @@ content-creator voice add-sources example-person \
 content-creator voice rebuild example-person
 ```
 
-### 5. Approve and activate the voice (planned)
+Do not continue until `voice status` reports `awaiting_approval` and
+`voice verify` reports `"valid": true`.
+
+### 7. Approve and activate the voice
 
 When you are satisfied:
 
 ```bash
-content-creator voice approve example-person
+content-creator voice approve example-person \
+  --approved-by "Repository Owner"
 ```
 
 Approval is a deterministic operation rather than another creative-agent task.
@@ -238,17 +259,83 @@ content-creator voice list
 content-creator voice status example-person
 ```
 
-### 6. Initiate content creation
+The receipt reports the exact activated version, such as `1.0.0`.
+
+### 8. Create your first piece
+
+For a simple LinkedIn post:
+
+```bash
+content-creator run \
+  "Explain why calculus matters to sixth-form students" \
+  --voice example-person \
+  --pack linkedin-post \
+  --research none
+```
+
+For a general document rather than LinkedIn:
+
+```bash
+content-creator run \
+  "Write a 500-word explanation of why calculus matters" \
+  --voice example-person \
+  --pack general-text \
+  --length 450:550 \
+  --research none
+```
+
+The command prints a run ID. Check the result:
+
+```bash
+content-creator status <run-id>
+cat runs/<run-id>/final.md
+cat runs/<run-id>/resolved-context.json
+```
+
+The resolved context records the exact content-pack and voice versions used.
+
+### 9. Handle a deep-research checkpoint
+
+Deep agent research deliberately stops before drafting:
+
+```bash
+content-creator run \
+  "Research how humans interacted with machines over the last 70 years" \
+  --voice example-person \
+  --pack linkedin-article \
+  --research deep
+
+cat runs/<run-id>/research.json
+content-creator approve-research <run-id>
+```
+
+Use `reject-research` instead when the evidence or scope is not acceptable.
+
+### 10. Approve and publish inside the repository
+
+After reviewing `final.md`:
+
+```bash
+content-creator publish <run-id> \
+  --feedback "Preserve the concrete opening."
+```
+
+This copies the finished piece to the selected pack’s `published` directory,
+records the assessment, and updates only that voice’s learning memory. It never
+posts to LinkedIn or another external service and never overwrites an existing
+file.
+
+### Using the workflow conversationally
 
 You can start with natural language in Codex or another supported agent surface:
 
 > Use the Content Creator workflow in this repository. Write a short LinkedIn
-> post in the `default` voice explaining why calculus matters to sixth-form
+> post in the `example-person` voice explaining why calculus matters to sixth-form
 > students. No research is required. Stop for my approval before finalising it.
 
 For a research-heavy request:
 
-> Use the Content Creator workflow in this repository. In the `default` voice,
+> Use the Content Creator workflow in this repository. In the `example-person` voice,
 > develop a LinkedIn article about how humans have interacted with machines over
 > the last 70 years. Use deep research, preserve source attribution, and stop for
 > my approval before finalising it.
@@ -259,34 +346,9 @@ selects the capability tier, and the configured provider adapter supplies the
 model. You can still request `--provider anthropic` or `--provider openai` when
 you deliberately want an override.
 
-The executable CLI flow is:
-
-```bash
-content-creator run \
-  "Explain why calculus matters to sixth-form students" \
-  --voice default \
-  --pack linkedin-post \
-  --research none \
-  --provider anthropic
-
-content-creator status <run-id>
-content-creator publish <run-id> \
-  --feedback "Preserve the concrete opening."
-```
-
-For deep agent research, inspect `runs/<run-id>/research.json` and resume with
-`content-creator approve-research <run-id>`. `publish` captures acceptance,
-writes the finished artifact to the pack's published directory, and triggers a
-voice-scoped learning update. It does not post externally.
-
-### 7. What to build next
-
-The provider-neutral core and LinkedIn compatibility packs are implemented. The
-next substantial task is the versioned voice lifecycle beginning with
-[WP-03](docs/work-package/delivery-plan.md#wp-03-add-voice-domain-and-registry-models),
-followed by ingestion, attribution, voice analysis, evaluation, and
-deterministic activation. The direct `general-text` pack also still needs its
-end-to-end runner.
+For a quick trial, substitute `--voice default`. That profile is deliberately
+generic and is not evidence-backed; create and approve a real voice before
+using the system for representative publishing.
 
 ## Licence
 
