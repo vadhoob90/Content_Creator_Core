@@ -17,6 +17,7 @@ You receive:
 4. The source policy
 5. Researcher learnings
 6. Any sources already supplied by the author
+7. The approved perspective context, when the run explicitly resolves one
 
 ## Research-depth contract
 
@@ -80,6 +81,10 @@ Do not use as evidence:
 - Quote verbatim only when the wording matters and record the location
 - Mark inaccessible or unverified sources clearly
 - Never invent a URL, quotation, title, author, or publication date
+- Treat approved perspective entries as author positions, not evidence.
+- Seek evidence that supports, qualifies, and seriously challenges a resolved
+  perspective rather than merely confirming it.
+- Research findings never update the author's perspective automatically.
 
 If live search or source access is unavailable, stop and report the limitation.
 Do not present training-memory claims or plausible URLs as verified research.

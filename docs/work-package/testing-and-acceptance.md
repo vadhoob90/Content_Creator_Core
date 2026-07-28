@@ -118,6 +118,26 @@ Use fixtures and a scripted fake provider.
 - Voice isolation is preserved
 - Profile consolidation creates a candidate rather than editing active state
 
+### Perspective provenance
+
+- Empty and populated perspective contexts
+- Candidate verification and idempotent activation
+- Two isolated contexts owned by one voice
+- Optional runs with no perspective
+- Exact active and pinned version resolution
+- Component tamper rejection
+- Context deactivation and historical resolution
+- Unsupported first-person position rejection
+- Author-contribution provenance
+- Perspective treated as position rather than factual authority
+- Publication proposal creation without active mutation
+- Proposal deduplication and explicit staging
+- Qualification, supersession, retirement, and version history
+- Equivalent OpenAI and Anthropic request contracts
+- Blind A/B packet creation against an ordinary-chat baseline
+- Structured capture of voice authenticity, originality, factual reliability,
+  publishability, revision effort, and author preference
+
 ## Evaluation suites
 
 ### Voice construction
@@ -173,6 +193,8 @@ Feedback is stored as structured events with voice, version, pack and run IDs.
 | Provider adapter | Shared provider contract suite |
 | Content pack | Core plus that pack’s routes and evaluations |
 | Voice profile | Schema, provenance, overlap, isolation and voice replay |
+| Perspective profile | Schema, provenance, context isolation, lifecycle and prompt compilation |
+| Perspective proposal queue | No automatic workflow; proposals arise from ordinary publication and remain inactive |
 | Learning memory | No automatic workflow; local schema, provenance, conflict and prompt compilation |
 | Content artifacts only | No automatic workflow; ordinary writing must not start CI |
 | Documentation | Link, command and example validation |
@@ -188,7 +210,7 @@ workflow code changes.
 - Activation is atomic and idempotent
 - Logs do not expose private source text or credentials
 - Repeated deterministic fixture runs produce identical manifests and hashes
-- Every content run identifies its pack and voice versions
+- Every content run identifies its pack, voice, and optional perspective versions
 - No command silently overwrites active profiles or final content
 - A manual recovery command exists for every conversational action
 
@@ -215,3 +237,5 @@ The complete programme is done when:
 16. Offline CI is green
 17. Manual Anthropic and OpenAI flagship evaluations complete successfully
 18. Documentation commands are exercised by automated tests
+19. Multiple perspective contexts for one author remain isolated
+20. Publication can propose but cannot activate a perspective change

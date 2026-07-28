@@ -6,6 +6,7 @@ from typing import Any, Dict, Iterable, Optional
 
 from .domain import WorkOrder
 from .packs import PackRegistry
+from .perspectives import PerspectiveEntry, PerspectiveRegistry
 from .voices import VoiceRegistry
 
 ROLE_FILES = {
@@ -18,6 +19,7 @@ ROLE_FILES = {
     "profile-critic": "profile-critic.md",
     "attribution-reviewer": "attribution-reviewer.md",
     "voice-evaluator": "voice-evaluator.md",
+    "perspective-extractor": "perspective-extractor.md",
 }
 
 LEARNING_FILES = {
@@ -49,6 +51,57 @@ class PromptAssembler:
                 else profile_root / "voice.md"
             )
             parts.append(self._read(profile))
+        if (
+            order
+            and order.perspective_context
+            and role
+            in {
+                "researcher",
+                "writer",
+                "critic",
+                "learning-extractor",
+                "perspective-extractor",
+            }
+        ):
+            perspective = PerspectiveRegistry(
+                self.root, order.voice_id
+            ).resolve(
+                order.perspective_context,
+                order.perspective_version,
+                allow_inactive=order.resolved_perspective,
+            )
+            perspective_root = self.root / perspective["path"]
+            selected_ids = (
+                order.author_contribution.reusable_perspective_entry_ids
+                if order.author_contribution
+                else []
+            )
+            if selected_ids:
+                entries = [
+                    PerspectiveEntry.model_validate(item)
+                    for item in json.loads(
+                        (perspective_root / "entries.json").read_text(
+                            encoding="utf-8"
+                        )
+                    )
+                    if item.get("id") in selected_ids
+                ]
+                perspective_profile = PerspectiveRegistry.render_profile(
+                    order.perspective_context,
+                    entries,
+                )
+            else:
+                perspective_profile = self._read(
+                    perspective_root / "perspective.md"
+                )
+            parts.append(
+                "## Approved perspective context\n\n"
+                + perspective_profile
+            )
+            parts.append(
+                "## Perspective constraints\n\n"
+                + self._read(perspective_root / "constraints.json")
+            )
         active = self._active_learnings(
             role, order.voice_id if order else "default"
         )

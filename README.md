@@ -6,6 +6,8 @@ in a person's approved voice.
 The repository separates four concerns:
 
 - **voice**: how a person sounds, including evidence, constraints, and learnings;
+- **perspective**: what the person has explicitly said or approved in a named
+  subject context;
 - **content packs**: what is being produced, such as a LinkedIn post or article;
 - **workflow**: briefing, optional research, drafting, review, approval, and learning;
 - **models**: which provider and capability tier executes each task.
@@ -21,6 +23,7 @@ flowchart TD
         VE --> VA["Human approval"]
         VA --> AC["Deterministic activation"]
         AC --> AV["Active versioned voice"]
+        AV --> PC["Optional approved<br/>perspective contexts"]
     end
 
     subgraph Content["2. Create, approve, and learn from content"]
@@ -29,6 +32,7 @@ flowchart TD
         BR --> OR["Orchestrator"]
         PK["Content pack<br/>LinkedIn, article, briefing note"] --> OR
         AV --> OR
+        PC --> OR
         OR --> RD{"Research needed?"}
         RD -- "No" --> DR["Draft"]
         RD -- "Yes" --> RS["Research"]
@@ -38,6 +42,9 @@ flowchart TD
         HA --> PB["Published content"]
         PB --> VL["Voice-scoped learnings"]
         VL --> AV
+        PB --> PP["Context-scoped<br/>perspective proposals"]
+        PP --> PPA["Perspective approval"]
+        PPA --> PC
     end
 
     subgraph Models["3. Route work without coupling to one LLM company"]
@@ -90,6 +97,10 @@ Voice construction uses a transparent, attribution-weighted
 [lightweight linguistic framework](docs/guides/linguistic-voice-framework.md)
 that separates spoken and written registers and treats measurements as evidence
 rather than mechanical writing targets.
+
+Optional [perspective provenance](docs/guides/perspective-provenance.md) keeps
+approved author positions separate from voice, research, and other subject
+contexts.
 
 The staged implementation and acceptance criteria are in
 [`docs/work-package/delivery-plan.md`](docs/work-package/delivery-plan.md) and
@@ -269,6 +280,32 @@ content-creator voice status example-person
 
 The receipt reports the exact activated version, such as `1.0.0`.
 
+#### Optional: create a subject-specific perspective
+
+Voice approval records how the person communicates. If a piece should express
+the person's established view, create a separate context:
+
+```bash
+content-creator perspective create \
+  --voice example-person \
+  --context professional-training \
+  --statement "Training should teach recognition and escalation." \
+  --type principle \
+  --evidence "Direct author interview"
+
+content-creator perspective verify \
+  --voice example-person --context professional-training
+
+content-creator perspective approve \
+  --voice example-person \
+  --context professional-training \
+  --approved-by "Repository Owner"
+```
+
+Perspective is optional. Different contexts for the same person never inherit
+from one another. See the
+[perspective provenance guide](docs/guides/perspective-provenance.md).
+
 ### 8. Create your first piece
 
 For a simple LinkedIn post:
@@ -280,6 +317,11 @@ content-creator run \
   --pack linkedin-post \
   --research none
 ```
+
+Add `--perspective-context professional-training` only when the piece should
+use that approved position. Use `--thesis "..." --author-supplied` to record a
+new thesis supplied for the current run; it does not automatically become a
+reusable perspective.
 
 For a general document rather than LinkedIn:
 
@@ -300,7 +342,9 @@ cat runs/<run-id>/final.md
 cat runs/<run-id>/resolved-context.json
 ```
 
-The resolved context records the exact content-pack and voice versions used.
+The resolved context records the exact content-pack, voice, and optional
+perspective versions used. `claim-provenance.json` separates author input,
+approved perspective, research, and model-proposed framing.
 
 ### 9. Handle a deep-research checkpoint
 
@@ -329,9 +373,10 @@ content-creator publish <run-id> \
 ```
 
 This copies the finished piece to the selected pack’s `published` directory,
-records the assessment, and updates only that voice’s learning memory. It never
-posts to LinkedIn or another external service and never overwrites an existing
-file.
+records the assessment, and updates only that voice’s learning memory. If the
+run explicitly resolved a perspective context, publication may also create
+proposals inside that context; proposals require separate deterministic
+approval. It never posts externally and never overwrites an existing file.
 
 ### Using the workflow conversationally
 

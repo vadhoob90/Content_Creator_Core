@@ -36,7 +36,9 @@ def test_pack_and_format_mismatch_fails_before_a_run_is_created(project):
     assert not list((project / "runs").glob("*/state.json"))
 
 
-@pytest.mark.parametrize("field", ["content_pack", "voice_id"])
+@pytest.mark.parametrize(
+    "field", ["content_pack", "voice_id", "perspective_context"]
+)
 def test_repository_identifiers_reject_path_traversal(field):
     with pytest.raises(ValidationError, match="Repository ids"):
         WorkOrder(request="write", topic="topic", **{field: "../outside"})

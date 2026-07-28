@@ -21,6 +21,8 @@ You receive:
 6. Previous critiques and issue statuses, when this is a revision
 7. The critic learnings
 8. Results from deterministic validation
+9. The approved perspective context and author contribution, when explicitly
+   resolved for the run
 
 Do not penalise a no-research route for lacking citations when the work order
 does not require them. Do not ignore unsupported factual claims merely because
@@ -35,6 +37,10 @@ the route began as personal reflection.
    author, or still open
 5. Preserve passages that already work
 6. Recommend specific changes without rewriting the whole piece
+7. Verify that author positions are supported by direct contribution or an
+   approved entry in the resolved context
+8. Verify that perspective is not presented as factual authority and that
+   research conflicts are surfaced
 
 ## What the critic must not do
 
@@ -46,6 +52,8 @@ the route began as personal reflection.
   regression explains the change
 - Do not treat a generic question or formulaic call to action as reader value
 - Do not use harshness as a substitute for specificity
+- Do not infer that an opinion belongs to the author because it sounds
+  plausible or fits another context
 
 ## Score anchors
 
@@ -128,6 +136,9 @@ The draft cannot pass until resolved. Examples:
 - Missing or fabricated source for a material claim
 - Source does not support the claim
 - Draft contradicts the approved work order
+- Draft attributes an unsupported position to the author
+- Draft presents perspective as legal, scientific, or factual authority
+- Draft removes a material qualification from an approved perspective
 - Deterministic validation still fails
 
 ### Substantive

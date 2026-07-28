@@ -16,6 +16,9 @@ The proposal is internally coherent:
 - Approval and activation use an idempotent deterministic command
 - Every content run snapshots exact resolved dependencies
 - Learning is isolated by voice and cannot rewrite an active profile directly
+- Optional author perspectives are versioned separately from voice
+- Perspective contexts do not inherit or update one another
+- Publication can propose but cannot activate a perspective change
 - The current LinkedIn repository remains the regression baseline
 
 ## Amendments made during final review
@@ -51,6 +54,15 @@ explicit data. These are non-overridable activation gates.
 
 Source records now capture why material may be analysed and whether the system
 retains full local text or only metadata and hashes.
+
+### Added perspective provenance
+
+The original design conflated authentic expression with authentic thought.
+Perspective is now an optional, context-isolated package owned by a voice
+identity but versioned independently. Author positions carry provenance,
+qualifications and counterpositions; research may challenge them but cannot
+become them. Publication creates proposals only, and deterministic author
+approval is required before reuse.
 
 ### Clarified evaluation thresholds
 

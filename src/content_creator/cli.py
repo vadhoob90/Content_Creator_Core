@@ -10,12 +10,23 @@ from typing import Optional
 import yaml
 
 from .configuration import Configuration
-from .domain import ResearchDepth, ResearchSource, WorkOrder
+from .domain import AuthorContribution, ResearchDepth, ResearchSource, WorkOrder
 from .evaluation import run_live_suite, run_replay_suite
 from .intake import ClarificationRequired
 from .learning import LearningMemory
 from .orchestrator import Orchestrator
 from .packs import PackRegistry
+from .perspective_assessment import (
+    create_blind_comparison,
+    record_blind_comparison,
+)
+from .perspectives import (
+    PerspectiveEntry,
+    PerspectiveManifest,
+    PerspectiveProposalStore,
+    PerspectiveProvenance,
+    PerspectiveRegistry,
+)
 from .storage import RunStore
 from .voice_builder import VoiceBuilder
 from .voices import (
@@ -112,6 +123,55 @@ def build_parser() -> argparse.ArgumentParser:
     voice_consolidate = voice_sub.add_parser("consolidate-learnings")
     voice_consolidate.add_argument("voice_id")
 
+    perspective = sub.add_parser(
+        "perspective",
+        help="Manage context-isolated author perspectives",
+    )
+    perspective_sub = perspective.add_subparsers(
+        dest="perspective_command", required=True
+    )
+    perspective_create = perspective_sub.add_parser("create")
+    perspective_create.add_argument("--voice", required=True)
+    perspective_create.add_argument("--context", required=True)
+    perspective_create.add_argument("--display-name")
+    perspective_create.add_argument("--statement")
+    perspective_create.add_argument("--type", default="position")
+    perspective_create.add_argument("--topic", action="append", default=[])
+    perspective_create.add_argument("--qualification", action="append", default=[])
+    perspective_create.add_argument("--counterposition", action="append", default=[])
+    perspective_create.add_argument("--evidence")
+    perspective_list = perspective_sub.add_parser("list")
+    perspective_list.add_argument("--voice", required=True)
+    for command in ("status", "show", "verify", "proposals"):
+        item = perspective_sub.add_parser(command)
+        item.add_argument("--voice", required=True)
+        item.add_argument("--context", required=True)
+    perspective_approve = perspective_sub.add_parser("approve")
+    perspective_approve.add_argument("--voice", required=True)
+    perspective_approve.add_argument("--context", required=True)
+    perspective_approve.add_argument(
+        "--approved-by", default="repository-owner"
+    )
+    perspective_deactivate = perspective_sub.add_parser("deactivate")
+    perspective_deactivate.add_argument("--voice", required=True)
+    perspective_deactivate.add_argument("--context", required=True)
+    perspective_deactivate.add_argument("--reason", required=True)
+    perspective_stage = perspective_sub.add_parser("stage-proposal")
+    perspective_stage.add_argument("--voice", required=True)
+    perspective_stage.add_argument("--context", required=True)
+    perspective_stage.add_argument("--proposal", required=True)
+    perspective_retire = perspective_sub.add_parser("retire")
+    perspective_retire.add_argument("--voice", required=True)
+    perspective_retire.add_argument("--context", required=True)
+    perspective_retire.add_argument("--entry", required=True)
+    perspective_retire.add_argument("--reason", required=True)
+    perspective_compare = perspective_sub.add_parser("compare-create")
+    perspective_compare.add_argument("--run", required=True)
+    perspective_compare.add_argument("--baseline", required=True)
+    perspective_record = perspective_sub.add_parser("compare-record")
+    perspective_record.add_argument("--run", required=True)
+    perspective_record.add_argument("--assessment", required=True)
+
     run = sub.add_parser("run", help="Create a run and execute its route")
     _add_run_arguments(run)
 
@@ -146,6 +206,13 @@ def _add_run_arguments(parser) -> None:
     parser.add_argument("--pack")
     parser.add_argument("--voice", default="default")
     parser.add_argument("--voice-version")
+    parser.add_argument("--perspective-context")
+    parser.add_argument("--perspective-version")
+    parser.add_argument("--thesis")
+    parser.add_argument("--intended-challenge")
+    parser.add_argument("--personal-basis")
+    parser.add_argument("--author-supplied", action="store_true")
+    parser.add_argument("--perspective-entry", action="append", default=[])
     parser.add_argument("--format", choices=["text", "post", "article"])
     parser.add_argument("--research", choices=["none", "light", "deep"])
     parser.add_argument("--research-source", choices=["none", "supplied", "agent"])
@@ -258,6 +325,8 @@ def main(argv=None) -> int:
         return 0
     if args.command == "voice":
         return _voice_command(root, args)
+    if args.command == "perspective":
+        return _perspective_command(root, args)
     if args.command == "eval":
         runner = run_live_suite if args.mode == "live" else run_replay_suite
         report = runner(root, args.providers)
@@ -332,6 +401,24 @@ def main(argv=None) -> int:
                 return 3
             order.voice_id = args.voice
             order.voice_version = args.voice_version
+        if args.perspective_context:
+            order.perspective_context = args.perspective_context
+        if args.perspective_version:
+            order.perspective_version = args.perspective_version
+        if (
+            args.thesis
+            or args.intended_challenge
+            or args.personal_basis
+            or args.perspective_entry
+        ):
+            order.author_contribution = AuthorContribution(
+                thesis=args.thesis,
+                intended_challenge=args.intended_challenge,
+                personal_basis=args.personal_basis,
+                supplied_by_author=args.author_supplied,
+                reusable_perspective_entry_ids=args.perspective_entry,
+                provenance_notes=["Supplied through the run command"],
+            )
         _print(orchestrator.start(order))
         return 0
     if args.command == "status":
@@ -498,6 +585,127 @@ def _voice_command(root: Path, args) -> int:
         ]
         _print({"voice_id": args.voice_id, "valid": not mismatches, "mismatches": mismatches})
         return 0 if not mismatches else 6
+    return 2
+
+
+def _perspective_command(root: Path, args) -> int:
+    command = args.perspective_command
+    if command == "compare-create":
+        baseline = Path(args.baseline)
+        if not baseline.is_absolute():
+            baseline = root / baseline
+        _print(
+            create_blind_comparison(
+                root,
+                args.run,
+                baseline,
+            )
+        )
+        return 0
+    if command == "compare-record":
+        assessment = Path(args.assessment)
+        if not assessment.is_absolute():
+            assessment = root / assessment
+        _print(
+            record_blind_comparison(
+                root,
+                args.run,
+                assessment,
+            )
+        )
+        return 0
+    registry = PerspectiveRegistry(root, args.voice)
+    if command == "create":
+        entries = []
+        if args.statement:
+            if not args.evidence:
+                raise ValueError(
+                    "--evidence is required when creating a perspective statement"
+                )
+            entries.append(
+                PerspectiveEntry(
+                    type=args.type,
+                    statement=args.statement,
+                    topics=args.topic,
+                    qualifications=args.qualification,
+                    counterpositions=args.counterposition,
+                    provenance=[
+                        PerspectiveProvenance(
+                            kind="direct_author_input",
+                            reference=args.evidence,
+                        )
+                    ],
+                )
+            )
+        _print(
+            registry.stage(
+                args.context,
+                entries,
+                display_name=args.display_name,
+            )
+        )
+        return 0
+    if command == "list":
+        _print(registry.list())
+        return 0
+    context_root = registry.context_root(args.context)
+    candidate = context_root / "candidate"
+    manifest_path = candidate / "manifest.json"
+    if command == "status":
+        manifest = (
+            PerspectiveManifest.model_validate_json(manifest_path.read_text())
+            if manifest_path.exists()
+            else None
+        )
+        _print(
+            {
+                "voice_id": args.voice,
+                "context_id": args.context,
+                "candidate": manifest.status.value if manifest else None,
+                "active": registry.list().get(args.context),
+            }
+        )
+        return 0
+    if command == "show":
+        directory = candidate
+        if not directory.exists():
+            resolved = registry.resolve(args.context)
+            directory = root / resolved["path"]
+        print((directory / "perspective.md").read_text(encoding="utf-8"))
+        return 0
+    if command == "verify":
+        manifest = PerspectiveManifest.model_validate_json(
+            manifest_path.read_text(encoding="utf-8")
+        )
+        mismatches = [
+            name
+            for name, filename in manifest.components.items()
+            if hash_file(candidate / filename) != manifest.component_hashes[name]
+        ]
+        _print(
+            {
+                "voice_id": args.voice,
+                "context_id": args.context,
+                "valid": not mismatches,
+                "mismatches": mismatches,
+            }
+        )
+        return 0 if not mismatches else 6
+    if command == "approve":
+        _print(registry.activate(args.context, args.approved_by))
+        return 0
+    if command == "deactivate":
+        _print(registry.deactivate(args.context, args.reason))
+        return 0
+    if command == "proposals":
+        _print(PerspectiveProposalStore(root, args.voice, args.context).list())
+        return 0
+    if command == "stage-proposal":
+        _print(registry.stage_proposal(args.context, args.proposal))
+        return 0
+    if command == "retire":
+        _print(registry.retire_entry(args.context, args.entry, args.reason))
+        return 0
     return 2
 
 
