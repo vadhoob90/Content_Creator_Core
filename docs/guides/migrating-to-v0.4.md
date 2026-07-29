@@ -4,9 +4,6 @@ Version 0.4 adds thin-workspace generation, explicit voice onboarding,
 starter-voice safeguards, external local-directory ingestion, and deliberate
 provider selection.
 
-Do not update a production dependency to `v0.4.0` until that immutable tag has
-been published.
-
 ## What remains compatible
 
 Existing approved voices and perspectives remain valid. New manifest fields
@@ -72,9 +69,7 @@ rerunning the generator does not silently replace downstream guidance. Adapt
 the new checkpoint instructions deliberately when an existing workspace needs
 them.
 
-## 4. Update the dependency after release
-
-After `v0.4.0` exists:
+## 4. Update the dependency
 
 ```toml
 dependencies = [

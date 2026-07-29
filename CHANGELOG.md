@@ -6,7 +6,9 @@ The project follows semantic versioning. Entries marked **Unreleased** are
 present on the development branch but are not available from an immutable
 release tag.
 
-## [0.4.0] - Unreleased
+## [Unreleased]
+
+## [0.4.0] - 2026-07-29
 
 ### Added
 

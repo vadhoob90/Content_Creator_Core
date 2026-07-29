@@ -14,12 +14,31 @@ checkpoints, and author approval. Read
 
 ## Create your content workspace
 
-Most people should not clone this repository. Version `0.4.0` is currently
-unreleased. To evaluate the workspace generator from the development branch:
+### Ask an AI coding assistant to set it up
+
+If Codex, Claude Code, or another assistant can run terminal commands and write
+files on your computer, paste this prompt:
+
+> Use [Content Creator
+> Core](https://github.com/vadhoob90/Content_Creator_Core) to create a new thin
+> content workspace for me. Do not clone or copy the Core repository. Follow
+> its workspace-creation guide, ask me only for the author and content choices
+> you need, generate the workspace locally, install its dependencies, and run
+> its validation tests.
+
+The assistant should guide you through the workspace location, author identity,
+content packs, provider, and starter versus source-derived voice decision. A
+regular chat session without terminal and filesystem access can explain the
+commands but cannot create the repository on your computer.
+
+### Set it up from the terminal
+
+Most people should not clone this repository. Install the immutable `v0.4.0`
+Core release and generate a thin workspace:
 
 ```bash
 uv tool install \
-  "content-creator @ git+https://github.com/vadhoob90/Content_Creator_Core.git@main"
+  "content-creator @ git+https://github.com/vadhoob90/Content_Creator_Core.git@v0.4.0"
 
 content-creator workspace create Content_Creator_Alice \
   --name "Content Creator Alice" \
@@ -27,11 +46,8 @@ content-creator workspace create Content_Creator_Alice \
   --voice-id alice-general \
   --pack linkedin-post \
   --pack linkedin-article \
-  --core-ref main
+  --core-ref v0.4.0
 ```
-
-`main` is a moving development preview, not a production dependency. After
-`v0.4.0` is published, install and pin that immutable tag instead.
 
 The generated repository owns Alice's voices, sources, perspectives, learning,
 agents, drafts, tests, and publications. It pins Core rather than copying the
