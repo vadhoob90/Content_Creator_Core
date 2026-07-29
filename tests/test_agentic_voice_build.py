@@ -108,6 +108,52 @@ def test_agentic_voice_build_runs_independent_analysis_criticism_and_evaluation(
     assert (candidate / "critic-report.json").exists()
 
 
+def test_confirmed_local_documents_do_not_require_embedded_bylines(project):
+    material = project / "unpublished-draft.md"
+    material.write_text(
+        (
+            "A local draft can be valid voice evidence before publication. "
+            "The authorisation record supplies the authorship attestation. "
+        )
+        * 80,
+        encoding="utf-8",
+    )
+    builder = VoiceBuilder(project)
+    builder.save_work_order(
+        VoiceWorkOrder(
+            display_name="Example Person",
+            voice_id="example-person",
+            author_name="Example Person",
+            authorisation=Authorisation(
+                confirmed=True,
+                attested_by="Example Person",
+                intended_uses=["general-text"],
+            ),
+            documents=[str(material)],
+        )
+    )
+
+    manifest = builder.build("example-person")
+    candidate = project / "profiles" / "example-person" / "candidate"
+    sources = json.loads((candidate / "source-index.json").read_text())
+    corpus = json.loads((candidate / "corpus-report.json").read_text())
+
+    assert manifest.status.value == "awaiting_approval"
+    assert sources[0]["attribution"] == {
+        "classification": "directly_authored",
+        "confidence": 1.0,
+        "voice_weight": 1.0,
+        "evidence": [
+            "Local document authorship attested by Example Person"
+        ],
+        "needs_human_review": False,
+    }
+    assert sources[0]["analysis_scope"] == "full-source-author-attested"
+    assert sources[0]["approved_for_analysis"] is True
+    assert corpus["usable_source_count"] == 1
+    assert corpus["sufficient"] is True
+
+
 def test_analysis_excerpt_samples_the_full_source():
     text = "A" * 7000 + "B" * 7000 + "C" * 7000
 

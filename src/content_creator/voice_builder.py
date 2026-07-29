@@ -131,12 +131,29 @@ class VoiceBuilder:
                 else:
                     kind, title, text = read_source(locator)
                 duplicate = is_near_duplicate(text, normalized)
-                attribution = classify_attribution(
-                    text,
-                    order.attribution_name,
-                    kind,
-                    order.author_aliases,
+                locally_attested = (
+                    locator in order.documents
+                    and order.authorisation.confirmed
                 )
+                if locally_attested:
+                    attribution = AttributionResult(
+                        classification="directly_authored",
+                        confidence=1.0,
+                        voice_weight=1.0,
+                        evidence=[
+                            "Local document authorship attested by {}".format(
+                                order.authorisation.attested_by
+                                or "the repository owner"
+                            )
+                        ],
+                    )
+                else:
+                    attribution = classify_attribution(
+                        text,
+                        order.attribution_name,
+                        kind,
+                        order.author_aliases,
+                    )
                 if attribution.needs_human_review and self.runner:
                     attribution = self.runner.run(
                         role="attribution-reviewer",
@@ -162,6 +179,8 @@ class VoiceBuilder:
                     kind,
                     order.author_aliases,
                 )
+                if locally_attested and analysis_text == text.strip():
+                    analysis_scope = "full-source-author-attested"
                 approved = (
                     attribution.voice_weight > 0
                     and not duplicate
