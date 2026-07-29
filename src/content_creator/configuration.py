@@ -85,3 +85,24 @@ class Configuration:
         return self._read_yaml(
             self.resources.path("rubrics/{}.yaml".format(name))
         )
+
+    @property
+    def perspective_policy(self) -> Dict[str, Any]:
+        path = self.root / "content-creator.yaml"
+        data = self._read_yaml(path) if path.exists() else {}
+        configured = data.get("perspective", {}) or {}
+        if not isinstance(configured, dict):
+            raise ConfigurationError("perspective configuration must be a mapping")
+        policy = {
+            "mode": "explicit",
+            "allow_multiple": False,
+            "ask_when_ambiguous": True,
+            "show_resolution": True,
+            "conflict_policy": "propose-update",
+        }
+        policy.update(configured)
+        if policy["mode"] not in {"explicit", "automatic", "disabled"}:
+            raise ConfigurationError(
+                "perspective.mode must be explicit, automatic, or disabled"
+            )
+        return policy

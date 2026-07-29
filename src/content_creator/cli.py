@@ -11,7 +11,13 @@ import yaml
 
 from .agent_resources import STANDARD_TEMPLATE, AgentWorkspace
 from .configuration import Configuration
-from .domain import AuthorContribution, ResearchDepth, ResearchSource, WorkOrder
+from .domain import (
+    AuthorContribution,
+    PerspectiveSelection,
+    ResearchDepth,
+    ResearchSource,
+    WorkOrder,
+)
 from .evaluation import run_live_suite, run_replay_suite
 from .intake import ClarificationRequired
 from .learning import LearningMemory
@@ -22,6 +28,7 @@ from .perspective_assessment import (
     record_blind_comparison,
 )
 from .perspectives import (
+    PerspectiveCatalogueStore,
     PerspectiveEntry,
     PerspectiveManifest,
     PerspectiveProposalStore,
@@ -186,6 +193,12 @@ def build_parser() -> argparse.ArgumentParser:
     perspective_create.add_argument("--evidence")
     perspective_list = perspective_sub.add_parser("list")
     perspective_list.add_argument("--voice", required=True)
+    perspective_catalogue = perspective_sub.add_parser("catalogue")
+    perspective_catalogue.add_argument("--voice", required=True)
+    perspective_verify_catalogue = perspective_sub.add_parser(
+        "verify-catalogue"
+    )
+    perspective_verify_catalogue.add_argument("--voice", required=True)
     for command in ("status", "show", "verify", "proposals"):
         item = perspective_sub.add_parser(command)
         item.add_argument("--voice", required=True)
@@ -250,8 +263,9 @@ def _add_run_arguments(parser) -> None:
     parser.add_argument("--pack")
     parser.add_argument("--voice", default="default")
     parser.add_argument("--voice-version")
-    parser.add_argument("--perspective-context")
+    parser.add_argument("--perspective-context", action="append", default=[])
     parser.add_argument("--perspective-version")
+    parser.add_argument("--no-perspective", action="store_true")
     parser.add_argument("--thesis")
     parser.add_argument("--intended-challenge")
     parser.add_argument("--personal-basis")
@@ -503,9 +517,29 @@ def main(argv=None) -> int:
                 return 3
             order.voice_id = args.voice
             order.voice_version = args.voice_version
-        if args.perspective_context:
-            order.perspective_context = args.perspective_context
+        if args.no_perspective:
+            order.perspective_mode = "disabled"
+            order.perspective_context = None
+            order.perspective_version = None
+            order.perspective_selections = []
+        elif args.perspective_context:
+            order.perspective_selections = [
+                PerspectiveSelection(
+                    context_id=context,
+                    version=(
+                        args.perspective_version
+                        if index == 0 and len(args.perspective_context) == 1
+                        else None
+                    ),
+                )
+                for index, context in enumerate(args.perspective_context)
+            ]
+            order.perspective_context = order.perspective_selections[0].context_id
         if args.perspective_version:
+            if len(args.perspective_context) != 1:
+                raise ValueError(
+                    "--perspective-version requires exactly one --perspective-context"
+                )
             order.perspective_version = args.perspective_version
         if (
             args.thesis
@@ -727,6 +761,17 @@ def _perspective_command(root: Path, args) -> int:
         )
         return 0
     registry = PerspectiveRegistry(root, args.voice)
+    if command == "catalogue":
+        _print(
+            PerspectiveCatalogueStore(root, args.voice).load().model_dump(
+                mode="json"
+            )
+        )
+        return 0
+    if command == "verify-catalogue":
+        result = PerspectiveCatalogueStore(root, args.voice).verify()
+        _print(result)
+        return 0 if result["valid"] else 6
     if command == "create":
         entries = []
         if args.statement:

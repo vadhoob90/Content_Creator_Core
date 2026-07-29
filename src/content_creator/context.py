@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Optional
+from typing import List, Optional
 
 from .agent_resources import LEARNING_FILES, ROLE_FILES, AgentWorkspace
 from .domain import WorkOrder
@@ -18,7 +18,7 @@ def resolved_context(
     order: WorkOrder,
     pack: ContentPack,
     voice: dict,
-    perspective: Optional[dict] = None,
+    perspectives: Optional[List[dict]] = None,
 ) -> dict:
     resources = ResourceResolver(root)
     hashes = {
@@ -82,14 +82,25 @@ def resolved_context(
         "active_voice_learning_ids": voice_learning_ids,
         "resolved_at": datetime.now(timezone.utc).isoformat(),
     }
-    if perspective:
-        result["perspective"] = perspective
-        perspective_root = root / perspective["path"]
-        manifest = perspective_root / "manifest.json"
-        hashes["perspective_manifest"] = hash_file(manifest)
-        data = json.loads(manifest.read_text(encoding="utf-8"))
-        for name, value in data.get("component_hashes", {}).items():
-            hashes["perspective_{}".format(name)] = value
+    resolved_perspectives = perspectives or []
+    if resolved_perspectives:
+        result["perspective"] = resolved_perspectives[0]
+        result["perspectives"] = resolved_perspectives
+        for index, perspective in enumerate(resolved_perspectives):
+            perspective_root = root / perspective["path"]
+            manifest = perspective_root / "manifest.json"
+            context_id = perspective["context_id"]
+            if index == 0:
+                hashes["perspective_manifest"] = hash_file(manifest)
+            hashes["perspective_{}_manifest".format(context_id)] = hash_file(
+                manifest
+            )
+            data = json.loads(manifest.read_text(encoding="utf-8"))
+            for name, value in data.get("component_hashes", {}).items():
+                if index == 0:
+                    hashes["perspective_{}".format(name)] = value
+                hashes["perspective_{}_{}".format(context_id, name)] = value
     else:
         result["perspective"] = None
+        result["perspectives"] = []
     return result

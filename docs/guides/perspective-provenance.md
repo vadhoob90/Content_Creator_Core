@@ -109,6 +109,65 @@ model-proposed framing is not automatically an author position.
 The writer and critic receive only the resolved context. The researcher treats
 perspective as a hypothesis to support, qualify, or challenge.
 
+## Automatic catalogue resolution
+
+The default remains explicit for backward compatibility. A workspace may opt
+into automatic resolution in `content-creator.yaml`:
+
+```yaml
+perspective:
+  mode: automatic
+  allow_multiple: true
+  ask_when_ambiguous: true
+  show_resolution: true
+  conflict_policy: propose-update
+```
+
+Store routing metadata at
+`profiles/<voice-id>/perspectives/catalogue.json`:
+
+```json
+{
+  "schema_version": "1.0",
+  "routing_only": true,
+  "contexts": [
+    {
+      "context_id": "professional-training",
+      "display_name": "Professional training",
+      "summary": "Positions about training design and escalation.",
+      "use_when": ["training design", "professional escalation"],
+      "avoid_when": ["neutral scheduling information"],
+      "related_contexts": []
+    }
+  ]
+}
+```
+
+The model sees only this catalogue during routing. It may select zero, one, or
+several active contexts, subject to workspace policy. The engine validates
+every selected id against the active perspective registry, pins exact versions,
+and then loads only the selected full perspectives. Catalogue summaries never
+become author claims.
+
+Use repeated explicit overrides when needed:
+
+```bash
+content-creator run "Create the training piece" \
+  --perspective-context professional-training \
+  --perspective-context organisational-change
+```
+
+Disable perspective use for a run with `--no-perspective`. Resolution is
+preserved in `perspective-resolution.json`; resolved versions remain in
+`resolved-context.json` and `claim-provenance.json`.
+
+Inspect and verify the catalogue:
+
+```bash
+content-creator perspective catalogue --voice experienced-lawyer
+content-creator perspective verify-catalogue --voice experienced-lawyer
+```
+
 ## Publication and updates
 
 Publication never edits an active perspective. When a run uses a perspective
