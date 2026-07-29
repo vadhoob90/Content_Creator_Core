@@ -145,7 +145,7 @@ def test_candidate_and_unknown_voice_cannot_resolve(project):
         ]
     )
     registry = VoiceRegistry(project)
-    with pytest.raises(VoiceError, match="Unknown voice"):
+    with pytest.raises(VoiceError, match="not complete"):
         registry.resolve("candidate-person")
     with pytest.raises(VoiceError, match="Unknown voice"):
         registry.resolve("missing-person")

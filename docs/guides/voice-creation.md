@@ -1,5 +1,10 @@
 # Voice creation
 
+This guide covers the source-derived route for an author who can provide
+previous writing. For a new author without suitable material, or to understand
+the initial decision checkpoint, start with
+[Voice onboarding](voice-onboarding.md).
+
 Only analyse sources that the repository owner is authorised to use. A voice
 candidate is separate from an active voice and cannot create content.
 

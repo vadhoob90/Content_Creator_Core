@@ -20,6 +20,7 @@ from .voices import (
     VoiceManifest,
     VoicePattern,
     VoiceStatus,
+    VoiceStrategy,
     VoiceWorkOrder,
     hash_file,
     hash_json,
@@ -101,6 +102,11 @@ class VoiceBuilder:
 
     def build(self, voice_id: str) -> VoiceManifest:
         order = self.load_work_order(voice_id)
+        if order.strategy != VoiceStrategy.SOURCE_DERIVED:
+            raise VoiceBuildError(
+                "Starter voices are activated from their template; select "
+                "source-derived onboarding before building from evidence"
+            )
         voice_root = self.root / "profiles" / voice_id
         final_candidate = voice_root / "candidate"
         candidate = voice_root / ".candidate-staging"
@@ -477,6 +483,9 @@ class VoiceBuilder:
             component_hashes=component_hashes,
             supported_packs=corpus["supported_packs"],
             authorisation=order.authorisation,
+            strategy=VoiceStrategy.SOURCE_DERIVED,
+            evidence_status="author-sources",
+            perspectives_allowed=True,
         )
         RunStore._atomic_text(
             candidate / "manifest.json", manifest.model_dump_json(indent=2)

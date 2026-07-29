@@ -73,9 +73,17 @@ class Orchestrator:
         order.voice_version = resolved_voice["version"]
         order.resolved_voice = True
         order.resolved_perspective = False
+        effective_perspective_policy = dict(
+            self.configuration.perspective_policy
+        )
+        if not resolved_voice.get("perspectives_allowed", True):
+            effective_perspective_policy["mode"] = "disabled"
+            effective_perspective_policy["force_disabled_reason"] = (
+                "starter-voice-without-author-evidence"
+            )
         perspective_resolution = PerspectiveResolver(
             self.root, self.runner
-        ).resolve(order, self.configuration.perspective_policy)
+        ).resolve(order, effective_perspective_policy)
         if perspective_resolution.needs_clarification:
             raise OrchestrationError(
                 perspective_resolution.clarification_question
@@ -188,7 +196,7 @@ class Orchestrator:
                     ).path.exists()
                     else None
                 ),
-                "policy": self.configuration.perspective_policy,
+                "policy": effective_perspective_policy,
             },
         )
         self.store.write_artifact(

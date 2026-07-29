@@ -42,6 +42,7 @@ def test_packaged_core_resources_match_repository_sources():
         "packs": "packs",
         "rubrics": "rubrics",
         "profiles/default": "profiles/default",
+        "profiles/starter": "profiles/starter",
     }
     for source_directory, packaged_directory in mappings.items():
         source_root = ROOT / source_directory
@@ -69,14 +70,28 @@ def test_readme_contains_end_to_end_diagram():
     assert "Capability router" in readme
 
 
-def test_readme_covers_the_complete_operator_journey():
+def test_readme_prioritises_the_thin_workspace_operator_journey():
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
 
-    assert "installation to your first finished piece" in readme
-    assert "content-creator voice create" in readme
-    assert "content-creator voice approve" in readme
-    assert "content-creator run" in readme
-    assert "updates only that voice’s learning memory" in readme
+    assert "content-creator workspace create" in readme
+    assert "--strategy source-derived" in readme
+    assert "--strategy starter" in readme
+    assert "voice approve alice-general" in readme
+    assert "content-creator --workspace . run" in readme
+    assert "updates only that voice's" in readme
+    assert "[Core development README](docs/core/README.md)" in readme
+
+
+def test_core_development_readme_covers_clone_and_validation():
+    guide = (ROOT / "docs" / "core" / "README.md").read_text(
+        encoding="utf-8"
+    )
+
+    assert "git clone" in guide
+    assert 'python -m pip install -e ".[dev]"' in guide
+    assert "ruff check ." in guide
+    assert "pytest" in guide
+    assert "Core versus a thin workspace" in guide
 
 
 def test_work_package_uses_the_repository_cli_name():

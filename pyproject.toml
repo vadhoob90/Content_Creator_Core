@@ -45,6 +45,7 @@ where = ["src"]
   "packs/*/*.yaml",
   "profiles/default/*.md",
   "profiles/default/learnings/*.json",
+  "profiles/starter/*.md",
   "rubrics/*.yaml",
 ]
 

@@ -4,6 +4,7 @@ import argparse
 import difflib
 import json
 import os
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
@@ -30,6 +31,7 @@ from .perspective_assessment import (
 from .perspectives import (
     PerspectiveCatalogueStore,
     PerspectiveEntry,
+    PerspectiveError,
     PerspectiveManifest,
     PerspectiveProposalStore,
     PerspectiveProvenance,
@@ -42,9 +44,13 @@ from .voice_builder import VoiceBuilder
 from .voices import (
     Authorisation,
     VoiceManifest,
+    VoiceOnboardingRecord,
     VoiceRegistry,
+    VoiceStrategy,
     VoiceWorkOrder,
     hash_file,
+    load_voice_onboarding,
+    save_voice_onboarding,
     voice_id_for,
 )
 from .workspace import (
@@ -174,6 +180,24 @@ def build_parser() -> argparse.ArgumentParser:
 
     voice = sub.add_parser("voice", help="Create, approve, and manage voices")
     voice_sub = voice.add_subparsers(dest="voice_command", required=True)
+    voice_onboard = voice_sub.add_parser(
+        "onboard",
+        help="Choose a starter or source-derived voice route",
+    )
+    voice_onboard.add_argument("voice_id")
+    voice_onboard.add_argument(
+        "--strategy",
+        choices=["starter", "source-derived"],
+        required=True,
+    )
+    voice_onboard.add_argument("--author-name", required=True)
+    voice_onboard.add_argument("--label")
+    voice_onboard.add_argument(
+        "--selected-by",
+        default="repository-owner",
+        help="Person making the onboarding choice",
+    )
+    voice_onboard.add_argument("--use", action="append", default=[])
     voice_create = voice_sub.add_parser("create")
     voice_create.add_argument(
         "--name",
@@ -654,6 +678,73 @@ def _voice_command(root: Path, args) -> int:
     builder = VoiceBuilder(root, runner=runner, provider=getattr(args, "provider", None))
     registry = VoiceRegistry(root)
     command = args.voice_command
+    if command == "onboard":
+        voice_id = voice_id_for(args.voice_id)
+        if voice_id != args.voice_id:
+            raise ValueError("voice_id must already be a repository-safe slug")
+        display_name = args.label or "{} — General".format(args.author_name)
+        intended_uses = args.use or ["general-text"]
+        if args.strategy == VoiceStrategy.STARTER.value:
+            resolved = registry.activate_starter(
+                voice_id=voice_id,
+                display_name=display_name,
+                author_name=args.author_name,
+                selected_by=args.selected_by,
+                intended_uses=intended_uses,
+            )
+            _print(
+                {
+                    "status": "starter-active",
+                    "voice": resolved,
+                    "perspective_mode": "disabled",
+                    "perspective_disabled_reason": (
+                        "starter-voice-without-author-evidence"
+                    ),
+                    "next_step": (
+                        "Create content with --voice {}. Re-run voice onboard "
+                        "with --strategy source-derived when author evidence "
+                        "is available."
+                    ).format(voice_id),
+                }
+            )
+            return 0
+        selected_at = datetime.now(timezone.utc).isoformat()
+        order = VoiceWorkOrder(
+            display_name=display_name,
+            voice_id=voice_id,
+            author_name=args.author_name,
+            authorisation=Authorisation(
+                confirmed=True,
+                attested_by=args.selected_by,
+                intended_uses=intended_uses,
+            ),
+            strategy=VoiceStrategy.SOURCE_DERIVED,
+        )
+        builder.save_work_order(order)
+        record = VoiceOnboardingRecord(
+            voice_id=voice_id,
+            display_name=display_name,
+            author_name=args.author_name,
+            status="collecting-sources",
+            strategy=VoiceStrategy.SOURCE_DERIVED,
+            selected_by=args.selected_by,
+            selected_at=selected_at,
+            perspective_mode="pending-source-derived-activation",
+        )
+        save_voice_onboarding(root, record)
+        _print(
+            {
+                "status": record.status,
+                "voice_id": voice_id,
+                "strategy": record.strategy,
+                "perspective_mode": record.perspective_mode,
+                "next_steps": [
+                    "Add authorised writing with voice add-sources.",
+                    "Build, review, verify, and approve the candidate voice.",
+                ],
+            }
+        )
+        return 0
     if command == "create":
         author_name = args.author_name or args.name
         if not author_name:
@@ -676,8 +767,22 @@ def _voice_command(root: Path, args) -> int:
             ),
             urls=_source_lines(args.sources),
             documents=_documents(args.documents),
+            strategy=VoiceStrategy.SOURCE_DERIVED,
         )
         builder.save_work_order(order)
+        save_voice_onboarding(
+            root,
+            VoiceOnboardingRecord(
+                voice_id=voice_id,
+                display_name=display_name,
+                author_name=author_name,
+                status="collecting-sources",
+                strategy=VoiceStrategy.SOURCE_DERIVED,
+                selected_by=args.authorised_by,
+                selected_at=datetime.now(timezone.utc).isoformat(),
+                perspective_mode="pending-source-derived-activation",
+            ),
+        )
         _print(order if args.no_build else builder.build(voice_id))
         return 0
     if command in {"build", "rebuild"}:
@@ -749,15 +854,31 @@ def _voice_command(root: Path, args) -> int:
     manifest_path = candidate / "manifest.json"
     if command == "status":
         active = registry.list().get(args.voice_id)
+        onboarding = load_voice_onboarding(root, args.voice_id)
         candidate_status = (
             VoiceManifest.model_validate_json(manifest_path.read_text()).status.value
             if manifest_path.exists()
             else None
         )
-        _print({"voice_id": args.voice_id, "candidate": candidate_status, "active": active})
+        _print(
+            {
+                "voice_id": args.voice_id,
+                "onboarding": (
+                    onboarding.model_dump(mode="json")
+                    if onboarding
+                    else None
+                ),
+                "candidate": candidate_status,
+                "active": active,
+            }
+        )
         return 0
     if command == "show":
-        print((candidate / "profile.md").read_text(encoding="utf-8"))
+        directory = candidate
+        if not directory.exists():
+            resolved = registry.resolve(args.voice_id)
+            directory = root / resolved["path"]
+        print((directory / "profile.md").read_text(encoding="utf-8"))
         return 0
     if command == "signature":
         _print(
@@ -767,11 +888,16 @@ def _voice_command(root: Path, args) -> int:
         )
         return 0
     if command == "verify":
+        directory = candidate
+        if not manifest_path.exists():
+            resolved = registry.resolve(args.voice_id)
+            directory = root / resolved["path"]
+            manifest_path = directory / "manifest.json"
         manifest = VoiceManifest.model_validate_json(manifest_path.read_text())
         mismatches = [
             name
             for name, filename in manifest.components.items()
-            if hash_file(candidate / filename) != manifest.component_hashes[name]
+            if hash_file(directory / filename) != manifest.component_hashes[name]
         ]
         _print({"voice_id": args.voice_id, "valid": not mismatches, "mismatches": mismatches})
         return 0 if not mismatches else 6
@@ -804,6 +930,12 @@ def _perspective_command(root: Path, args) -> int:
             )
         )
         return 0
+    resolved_voice = VoiceRegistry(root).resolve(args.voice)
+    if not resolved_voice.get("perspectives_allowed", True):
+        raise PerspectiveError(
+            "Perspectives are disabled for starter voice {} until a "
+            "source-derived voice is reviewed and activated".format(args.voice)
+        )
     registry = PerspectiveRegistry(root, args.voice)
     if command == "catalogue":
         _print(
