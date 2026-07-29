@@ -48,7 +48,7 @@ class PromptAssembler:
             parts.append(self._read(profile))
         if (
             order
-            and order.perspective_context
+            and order.perspective_selections
             and role
             in {
                 "researcher",
@@ -58,45 +58,50 @@ class PromptAssembler:
                 "perspective-extractor",
             }
         ):
-            perspective = PerspectiveRegistry(
-                self.root, order.voice_id
-            ).resolve(
-                order.perspective_context,
-                order.perspective_version,
-                allow_inactive=order.resolved_perspective,
-            )
-            perspective_root = self.root / perspective["path"]
-            selected_ids = (
-                order.author_contribution.reusable_perspective_entry_ids
-                if order.author_contribution
-                else []
-            )
-            if selected_ids:
-                entries = [
-                    PerspectiveEntry.model_validate(item)
-                    for item in json.loads(
-                        (perspective_root / "entries.json").read_text(
-                            encoding="utf-8"
+            for index, selection in enumerate(order.perspective_selections):
+                perspective = PerspectiveRegistry(
+                    self.root, order.voice_id
+                ).resolve(
+                    selection.context_id,
+                    selection.version,
+                    allow_inactive=order.resolved_perspective,
+                )
+                perspective_root = self.root / perspective["path"]
+                selected_ids = (
+                    order.author_contribution.reusable_perspective_entry_ids
+                    if order.author_contribution and index == 0
+                    else []
+                )
+                if selected_ids:
+                    entries = [
+                        PerspectiveEntry.model_validate(item)
+                        for item in json.loads(
+                            (perspective_root / "entries.json").read_text(
+                                encoding="utf-8"
+                            )
                         )
+                        if item.get("id") in selected_ids
+                    ]
+                    perspective_profile = PerspectiveRegistry.render_profile(
+                        selection.context_id,
+                        entries,
                     )
-                    if item.get("id") in selected_ids
-                ]
-                perspective_profile = PerspectiveRegistry.render_profile(
-                    order.perspective_context,
-                    entries,
+                else:
+                    perspective_profile = self._read(
+                        perspective_root / "perspective.md"
+                    )
+                parts.append(
+                    "## Approved perspective context: {}\n\n".format(
+                        selection.context_id
+                    )
+                    + perspective_profile
                 )
-            else:
-                perspective_profile = self._read(
-                    perspective_root / "perspective.md"
+                parts.append(
+                    "## Perspective constraints: {}\n\n".format(
+                        selection.context_id
+                    )
+                    + self._read(perspective_root / "constraints.json")
                 )
-            parts.append(
-                "## Approved perspective context\n\n"
-                + perspective_profile
-            )
-            parts.append(
-                "## Perspective constraints\n\n"
-                + self._read(perspective_root / "constraints.json")
-            )
         repository_learnings = self._active_learnings(
             self.root / "learnings" / "memory.json",
             role,

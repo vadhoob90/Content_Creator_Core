@@ -25,6 +25,12 @@ class ResearchSource(str, Enum):
     AGENT = "agent"
 
 
+class PerspectiveMode(str, Enum):
+    EXPLICIT = "explicit"
+    AUTOMATIC = "automatic"
+    DISABLED = "disabled"
+
+
 class RunStatus(str, Enum):
     PLANNED = "planned"
     RESEARCHING = "researching"
@@ -58,6 +64,22 @@ class AuthorContribution(BaseModel):
     provenance_notes: List[str] = Field(default_factory=list)
 
 
+class PerspectiveSelection(BaseModel):
+    context_id: str
+    version: Optional[str] = None
+    reason: str = "explicitly selected"
+    confidence: float = Field(default=1.0, ge=0, le=1)
+
+    @field_validator("context_id")
+    @classmethod
+    def validate_context_id(cls, value):
+        if not re.fullmatch(r"[a-z0-9][a-z0-9-]{0,62}", value):
+            raise ValueError(
+                "Perspective context ids must use lowercase letters, digits, and hyphens"
+            )
+        return value
+
+
 class WorkOrder(BaseModel):
     request: str
     topic: str
@@ -68,6 +90,8 @@ class WorkOrder(BaseModel):
     perspective_context: Optional[str] = None
     perspective_version: Optional[str] = None
     resolved_perspective: bool = False
+    perspective_mode: Optional[PerspectiveMode] = None
+    perspective_selections: List[PerspectiveSelection] = Field(default_factory=list)
     author_contribution: Optional[AuthorContribution] = None
     format: str = "text"
     research_depth: ResearchDepth = ResearchDepth.NONE
@@ -89,6 +113,16 @@ class WorkOrder(BaseModel):
 
     @model_validator(mode="after")
     def validate_perspective_selection(self):
+        if self.perspective_context and not self.perspective_selections:
+            self.perspective_selections = [
+                PerspectiveSelection(
+                    context_id=self.perspective_context,
+                    version=self.perspective_version,
+                )
+            ]
+        elif self.perspective_selections and not self.perspective_context:
+            self.perspective_context = self.perspective_selections[0].context_id
+            self.perspective_version = self.perspective_selections[0].version
         if self.perspective_version and not self.perspective_context:
             raise ValueError("perspective_version requires perspective_context")
         selected = (
@@ -100,6 +134,15 @@ class WorkOrder(BaseModel):
             raise ValueError(
                 "reusable perspective entries require perspective_context"
             )
+        if selected and len(self.perspective_selections) > 1:
+            raise ValueError(
+                "explicit perspective entry selection supports one context"
+            )
+        context_ids = [
+            selection.context_id for selection in self.perspective_selections
+        ]
+        if len(context_ids) != len(set(context_ids)):
+            raise ValueError("Perspective contexts must be unique")
         return self
 
 class PlanningDecision(BaseModel):

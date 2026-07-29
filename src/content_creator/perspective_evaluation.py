@@ -17,21 +17,25 @@ def evaluate_perspective_output(root: Path, order: WorkOrder, draft: str) -> dic
     errors = []
     markers = _POSITION_MARKER.findall(draft)
     resolved = None
+    resolved_perspectives = []
     active_entries = []
-    if order.perspective_context:
-        resolved = PerspectiveRegistry(root, order.voice_id).resolve(
-            order.perspective_context,
-            order.perspective_version,
+    for selection in order.perspective_selections:
+        item = PerspectiveRegistry(root, order.voice_id).resolve(
+            selection.context_id,
+            selection.version,
             allow_inactive=order.resolved_perspective,
         )
         entries = json.loads(
-            (root / resolved["path"] / "entries.json").read_text(encoding="utf-8")
+            (root / item["path"] / "entries.json").read_text(encoding="utf-8")
         )
-        active_entries = [
-            item
-            for item in entries
-            if item.get("status") == PerspectiveEntryStatus.APPROVED.value
-        ]
+        active_entries.extend(
+            entry
+            for entry in entries
+            if entry.get("status") == PerspectiveEntryStatus.APPROVED.value
+        )
+        resolved_perspectives.append(item)
+    if resolved_perspectives:
+        resolved = resolved_perspectives[0]
 
     contribution = order.author_contribution
     request_supplies_position = bool(_POSITION_MARKER.search(order.request))
@@ -68,5 +72,6 @@ def evaluate_perspective_output(root: Path, order: WorkOrder, draft: str) -> dic
         "errors": errors,
         "position_markers": markers,
         "perspective": resolved,
+        "perspectives": resolved_perspectives,
         "selected_entry_ids": requested_ids,
     }

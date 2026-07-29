@@ -24,7 +24,8 @@ flowchart TD
         VE --> VA["Human approval"]
         VA --> AC["Deterministic activation"]
         AC --> AV["Active versioned voice"]
-        AV --> PC["Optional approved<br/>perspective contexts"]
+        AV --> CAT["Routing-only<br/>perspective catalogue"]
+        CAT --> PC["Approved versioned<br/>perspective contexts"]
     end
 
     subgraph Content["2. Create, approve, and learn from content"]
@@ -108,9 +109,10 @@ Voice construction uses a transparent, attribution-weighted
 that separates spoken and written registers and treats measurements as evidence
 rather than mechanical writing targets.
 
-Optional [perspective provenance](docs/guides/perspective-provenance.md) keeps
-approved author positions separate from voice, research, and other subject
-contexts.
+[Perspective provenance](docs/guides/perspective-provenance.md) keeps approved
+author positions separate from voice, research, and other subject contexts.
+Perspective use is explicit by default; workspaces may opt into automatic,
+catalogue-based selection of zero, one, or several approved contexts.
 
 The staged implementation and acceptance criteria are in
 [`docs/work-package/delivery-plan.md`](docs/work-package/delivery-plan.md) and
@@ -358,8 +360,9 @@ content-creator perspective approve \
   --approved-by "Repository Owner"
 ```
 
-Perspective is optional. Different contexts for the same person never inherit
-from one another. See the
+Perspective use is explicit by default. Different contexts for the same person
+never inherit from one another. A workspace may instead enable automatic
+catalogue resolution while keeping the same approval and isolation rules. See the
 [perspective provenance guide](docs/guides/perspective-provenance.md).
 
 ### 8. Create your first piece
@@ -374,10 +377,11 @@ content-creator run \
   --research none
 ```
 
-Add `--perspective-context professional-training` only when the piece should
-use that approved position. Use `--thesis "..." --author-supplied` to record a
-new thesis supplied for the current run; it does not automatically become a
-reusable perspective.
+Add `--perspective-context professional-training` when an explicit-mode run
+should use that approved position. Automatic-mode workspaces select only from
+their routing-only catalogue; use `--no-perspective` for a neutral override.
+Use `--thesis "..." --author-supplied` to record a new thesis supplied for the
+current run; it does not automatically become a reusable perspective.
 
 For a general document rather than LinkedIn:
 
@@ -398,9 +402,10 @@ cat runs/<run-id>/final.md
 cat runs/<run-id>/resolved-context.json
 ```
 
-The resolved context records the exact content-pack, voice, and optional
-perspective versions used. `claim-provenance.json` separates author input,
-approved perspective, research, and model-proposed framing.
+The resolved context records the exact content-pack, voice, and perspective
+versions used. `perspective-resolution.json` records catalogue selections,
+reasons, confidence, and the catalogue hash. `claim-provenance.json` separates
+author input, approved perspective, research, and model-proposed framing.
 
 ### 9. Handle a deep-research checkpoint
 
@@ -430,9 +435,11 @@ content-creator publish <run-id> \
 
 This copies the finished piece to the selected pack’s `published` directory,
 records the assessment, and updates only that voice’s learning memory. If the
-run explicitly resolved a perspective context, publication may also create
-proposals inside that context; proposals require separate deterministic
-approval. It never posts externally and never overwrites an existing file.
+run resolved perspective contexts, publication may also create proposals inside
+those contexts. Direct contradictions can be proposed as `qualify`, `replace`,
+or `supersede` changes against exact entry ids. Proposals require separate
+deterministic approval. Publication never posts externally and never overwrites
+an existing file.
 
 ### Using the workflow conversationally
 

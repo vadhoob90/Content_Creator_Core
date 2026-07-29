@@ -22,9 +22,11 @@ from .learning import LearningMemory
 from .packs import PackRegistry
 from .perspective_evaluation import evaluate_perspective_output
 from .perspectives import (
+    PerspectiveCatalogueStore,
     PerspectiveExtraction,
     PerspectiveProposalStore,
     PerspectiveRegistry,
+    PerspectiveResolver,
 )
 from .prompting import PromptAssembler
 from .providers import ProviderRegistry
@@ -34,7 +36,7 @@ from .runner import AgentRunner
 from .storage import RunStore, StorageError, slugify
 from .validation import validate_draft, validate_research_brief
 from .voice_evaluation import evaluate_voice_output
-from .voices import VoiceRegistry
+from .voices import VoiceRegistry, hash_file
 
 
 class OrchestrationError(RuntimeError):
@@ -71,11 +73,21 @@ class Orchestrator:
         order.voice_version = resolved_voice["version"]
         order.resolved_voice = True
         order.resolved_perspective = False
-        resolved_perspective = None
-        if order.perspective_context:
+        perspective_resolution = PerspectiveResolver(
+            self.root, self.runner
+        ).resolve(order, self.configuration.perspective_policy)
+        if perspective_resolution.needs_clarification:
+            raise OrchestrationError(
+                perspective_resolution.clarification_question
+                or "Perspective selection requires clarification"
+            )
+        order.perspective_mode = perspective_resolution.mode
+        order.perspective_selections = perspective_resolution.selected
+        resolved_perspectives = []
+        for selection in order.perspective_selections:
             resolved_perspective = PerspectiveRegistry(
                 self.root, order.voice_id
-            ).resolve(order.perspective_context, order.perspective_version)
+            ).resolve(selection.context_id, selection.version)
             requested_entries = (
                 order.author_contribution.reusable_perspective_entry_ids
                 if order.author_contribution
@@ -88,7 +100,7 @@ class Orchestrator:
             if unknown_entries:
                 raise OrchestrationError(
                     "Unavailable perspective entries in {}: {}".format(
-                        order.perspective_context,
+                        selection.context_id,
                         ", ".join(unknown_entries),
                     )
                 )
@@ -97,10 +109,21 @@ class Orchestrator:
                 if requested_entries
                 else resolved_perspective["active_entry_ids"]
             )
-            order.perspective_version = resolved_perspective["version"]
+            selection.version = resolved_perspective["version"]
+            resolved_perspective["selection_reason"] = selection.reason
+            resolved_perspective["selection_confidence"] = selection.confidence
+            resolved_perspectives.append(resolved_perspective)
+        if order.perspective_selections:
+            first = order.perspective_selections[0]
+            order.perspective_context = first.context_id
+            order.perspective_version = first.version
             order.resolved_perspective = True
         else:
+            order.perspective_context = None
             order.perspective_version = None
+        resolved_perspective = (
+            resolved_perspectives[0] if resolved_perspectives else None
+        )
         if pack.format != order.format:
             raise OrchestrationError(
                 "Pack {} expects format {}, received {}".format(
@@ -126,8 +149,47 @@ class Orchestrator:
                 order,
                 pack,
                 resolved_voice,
-                resolved_perspective,
+                resolved_perspectives,
             ),
+        )
+        self.store.write_artifact(
+            state.id,
+            "perspective-resolution.json",
+            {
+                **perspective_resolution.model_dump(mode="json"),
+                "selected": [
+                    {
+                        **item.model_dump(mode="json"),
+                        "version": resolved["version"],
+                    }
+                    for item, resolved in zip(
+                        order.perspective_selections, resolved_perspectives
+                    )
+                ],
+                "catalogue": (
+                    str(
+                        PerspectiveCatalogueStore(
+                            self.root, order.voice_id
+                        ).path.relative_to(self.root)
+                    )
+                    if PerspectiveCatalogueStore(
+                        self.root, order.voice_id
+                    ).path.exists()
+                    else None
+                ),
+                "catalogue_hash": (
+                    hash_file(
+                        PerspectiveCatalogueStore(
+                            self.root, order.voice_id
+                        ).path
+                    )
+                    if PerspectiveCatalogueStore(
+                        self.root, order.voice_id
+                    ).path.exists()
+                    else None
+                ),
+                "policy": self.configuration.perspective_policy,
+            },
         )
         self.store.write_artifact(
             state.id,
@@ -139,6 +201,7 @@ class Orchestrator:
                     else None
                 ),
                 "perspective": resolved_perspective,
+                "perspectives": resolved_perspectives,
                 "research_record": (
                     "not_required"
                     if order.research_depth == ResearchDepth.NONE
@@ -218,6 +281,10 @@ class Orchestrator:
             "content_pack": state.work_order.content_pack,
             "perspective_context": state.work_order.perspective_context,
             "perspective_version": state.work_order.perspective_version,
+            "perspective_selections": [
+                item.model_dump(mode="json")
+                for item in state.work_order.perspective_selections
+            ],
             "author_signal": "explicit_feedback" if feedback else "publication_approval",
             "feedback": feedback,
             "questions": {
@@ -266,15 +333,26 @@ class Orchestrator:
         except Exception as exc:
             state.events.append(RunEvent(name="learning_update_failed", detail=str(exc)))
 
-        if state.work_order.perspective_context:
+        for selection in state.work_order.perspective_selections:
             try:
+                extraction_order = state.work_order.model_copy(deep=True)
+                extraction_order.perspective_context = selection.context_id
+                extraction_order.perspective_version = selection.version
+                extraction_order.perspective_selections = [selection]
                 perspective_extraction = self.runner.run(
                     role="perspective-extractor",
                     role_key="perspective-extractor",
                     instruction=(
                         "Propose only reusable author positions evidenced by this "
                         "published run. Preserve qualifications and keep every proposal "
-                        "in the explicitly resolved context. Never activate a proposal."
+                        "in the explicitly resolved context. Compare direct author input "
+                        "and explicit feedback with active entries. When they conflict, "
+                        "use qualify, replace, or supersede and name the exact target "
+                        "entry id. Never activate a proposal. Conflict policy: {}."
+                    ).format(
+                        self.configuration.perspective_policy.get(
+                            "conflict_policy", "propose-update"
+                        )
                     ),
                     payload={
                         "work_order": state.work_order.model_dump(mode="json"),
@@ -286,19 +364,25 @@ class Orchestrator:
                             else None
                         ),
                     },
-                    order=state.work_order,
+                    order=extraction_order,
                     output_model=PerspectiveExtraction,
                     provider=state.work_order.provider,
                 )
                 self.store.write_artifact(
                     run_id,
-                    "perspective-extraction.json",
+                    (
+                        "perspective-extraction.json"
+                        if len(state.work_order.perspective_selections) == 1
+                        else "perspective-extraction-{}.json".format(
+                            selection.context_id
+                        )
+                    ),
                     perspective_extraction,
                 )
                 proposal_paths = PerspectiveProposalStore(
                     self.root,
                     state.work_order.voice_id,
-                    state.work_order.perspective_context,
+                    selection.context_id,
                 ).apply(run_id, perspective_extraction)
                 state.events.append(
                     RunEvent(
