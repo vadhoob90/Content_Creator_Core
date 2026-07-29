@@ -34,6 +34,15 @@ content-creator voice signature example-person-general
 content-creator voice verify example-person-general
 ```
 
+Local files supplied through `--documents` are treated as directly authored
+when `--authorised-by` confirms the work order. They do not need an embedded
+byline, so unpublished drafts and exported documents can be used as voice
+evidence. The attestation is recorded in `source-index.json`.
+
+Remote URLs and transcripts still use evidence-based attribution. Do not place
+third-party or co-authored material in an attested local document set unless its
+contribution is suitable for full voice weighting.
+
 Approve only after reviewing attribution, evidence limits, patterns,
 constraints, `linguistic-signature.json`, and the evaluation report:
 
