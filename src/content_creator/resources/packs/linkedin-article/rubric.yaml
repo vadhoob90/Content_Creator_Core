@@ -3,15 +3,13 @@ name: linkedin-article-overlay
 
 expectations:
   hook:
-    - "The opening establishes a concrete stake within the first three sentences."
+    - "The opening fits the objective, audience, and active voice."
   clarity:
-    - "Every major section advances the same thesis."
-    - "Section headings aid navigation without becoming perfectly parallel."
+    - "The article has a coherent thesis and navigable structure."
   reader_value:
-    - "The article earns its length through evidence, explanation, or personal insight."
+    - "The article fulfils the reader value defined by the work order."
   voice_authenticity:
-    - "Personal passages use only context supplied by the active voice profile or brief."
-    - "Cross-references to other articles appear after the main argument closes."
+    - "The draft follows the active voice and uses only supplied personal context."
 
 length_guidance:
   minimum_words: 800

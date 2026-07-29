@@ -5,7 +5,7 @@
   "format": "article",
   "destination": "content/linkedin-article/published",
   "defaults": {"length": "800:1800"},
-  "validators": ["no-em-dash", "no-hashtags"],
+  "validators": [],
   "rubric": "rubric.yaml",
   "allowed_research": ["none", "light", "deep"]
 }
