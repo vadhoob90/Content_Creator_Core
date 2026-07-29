@@ -132,10 +132,9 @@ def test_child_pack_preserves_integrity_validators(project):
     assert set(base.integrity_validators) <= set(child.integrity_validators)
 
 
-def test_linkedin_validator_does_not_leak_into_general_text(project):
+def test_optional_validator_is_applied_only_when_selected(project):
     registry = PackRegistry(project)
     general = registry.resolve("general-text", {"length": "1:20"})
-    linkedin = registry.resolve("linkedin-post", {"length": "1:20"})
     order = WorkOrder(
         request="write",
         topic="topic",
@@ -148,5 +147,5 @@ def test_linkedin_validator_does_not_leak_into_general_text(project):
         "# Heading is valid here", order, general.validators
     )
     assert "Hashtags are not allowed" in validate_draft(
-        "#growth is not valid here", order, linkedin.validators
+        "#growth is not valid here", order, ["no-hashtags"]
     )

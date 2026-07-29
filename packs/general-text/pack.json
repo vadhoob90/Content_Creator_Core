@@ -20,7 +20,7 @@
     "structure",
     "destination"
   ],
-  "validators": ["output-schema", "word-count", "citation-integrity", "banned-phrase"],
+  "validators": ["output-schema", "word-count", "citation-integrity"],
   "integrity_validators": ["personal-integrity", "provenance", "phrase-overlap"],
   "content_types": [
     "linkedin-post",

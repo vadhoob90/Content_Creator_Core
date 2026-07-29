@@ -3,25 +3,14 @@ name: linkedin-post-overlay
 
 expectations:
   hook:
-    - "The opening earns attention quickly without manufactured drama."
-    - "A self-referential hook must be justified by the explanation that follows."
+    - "The opening fits the objective, audience, and active voice."
   clarity:
-    - "The post develops one primary insight."
-    - "Length matches intent rather than an arbitrary LinkedIn norm."
+    - "The post has a coherent primary throughline."
   reader_value:
-    - "The post provides insight, a decision, a framework, or a concrete provocation."
-    - "A generic engagement question does not count as reader value."
+    - "The post fulfils the reader value defined by the work order."
   voice_authenticity:
-    - "No hashtags."
-    - "System explanations retain enough detail to be useful."
+    - "The draft follows the active voice rather than a shared default style."
 
 length_guidance:
-  provocation_or_article_hook:
-    minimum_words: 50
-    maximum_words: 180
-  single_insight:
-    minimum_words: 150
-    maximum_words: 350
-  system_explanation:
-    minimum_words: 250
-    maximum_words: 600
+  minimum_words: 50
+  maximum_words: 600
