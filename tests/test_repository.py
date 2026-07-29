@@ -12,22 +12,24 @@ def test_general_pack_references_existing_rubric():
     assert rubric_path.is_file()
 
 
-def test_required_notice_is_present():
+def test_copyright_notice_is_present():
     notice = (ROOT / "NOTICE").read_text(encoding="utf-8")
 
-    assert notice.startswith("Required Notice:")
+    assert "Copyright © 2026 Bharath Vadhoola" in notice
+    assert "GNU Affero General Public License" in notice
 
 
-def test_licensing_documents_distinguish_noncommercial_and_commercial_use():
+def test_licensing_documents_describe_agpl_and_legacy_releases():
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
-    commercial_summary = (
-        ROOT / "COMMERCIAL-LICENSING.md"
-    ).read_text(encoding="utf-8")
+    licensing_summary = (ROOT / "LICENSING.md").read_text(encoding="utf-8")
+    contributing = (ROOT / "CONTRIBUTING.md").read_text(encoding="utf-8")
 
-    assert "source-available" in readme
-    assert "Commercial use" in readme
-    assert "separate written commercial licence" in commercial_summary
-    assert "not a replacement for the licence" in commercial_summary
+    assert "AGPL-3.0-or-later" in readme
+    assert "Commercial use is permitted" in readme
+    assert "PolyForm Noncommercial License 1.0.0" in licensing_summary
+    assert "Earlier licence grants are not revoked" in licensing_summary
+    assert "not a substitute for the licence" in licensing_summary
+    assert "does not accept external code contributions" in contributing
 
 
 def test_packaged_core_resources_match_repository_sources():

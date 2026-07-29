@@ -8,7 +8,7 @@ version = "0.3.0"
 description = "Provider-neutral content creation and voice workflow"
 readme = "README.md"
 requires-python = ">=3.9"
-license = "LicenseRef-PolyForm-Noncommercial-1.0.0"
+license = "AGPL-3.0-or-later"
 license-files = ["LICENSE.md", "NOTICE"]
 authors = [{ name = "Bharath Vadhoola" }]
 dependencies = [
