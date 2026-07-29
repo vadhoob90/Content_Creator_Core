@@ -43,6 +43,7 @@ def test_packaged_core_resources_match_repository_sources():
         "rubrics": "rubrics",
         "profiles/default": "profiles/default",
         "profiles/starter": "profiles/starter",
+        ".agents/skills": "skills",
     }
     for source_directory, packaged_directory in mappings.items():
         source_root = ROOT / source_directory

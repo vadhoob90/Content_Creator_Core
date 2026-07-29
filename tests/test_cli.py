@@ -54,7 +54,10 @@ def test_init_provider_verify_and_pack_create(project, capsys, monkeypatch):
     assert main(["--root", str(project), "init"]) == 0
     initialised = json.loads(capsys.readouterr().out)
     assert initialised["agents"]["status"]["complete"] is True
+    assert ".agents/skills/content-creator/SKILL.md" in initialised["skills"]["created"]
+    assert ".agents/skills/voice-builder/SKILL.md" in initialised["skills"]["created"]
     assert (project / "agents" / "writer.md").exists()
+    assert (project / ".agents" / "skills" / "content-creator" / "SKILL.md").exists()
     assert (project / "learnings" / "memory.json").exists()
     assert (project / "content-creator.yaml").exists()
     monkeypatch.setenv("OPENAI_API_KEY", "test-key")
