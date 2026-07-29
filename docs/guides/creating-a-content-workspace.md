@@ -81,6 +81,7 @@ Content_Creator_Alice/
 ├── profiles/
 │   ├── registry.json
 │   └── alice-general/
+│       ├── onboarding.json
 │       └── learnings/
 │           └── memory.json
 ├── voice-material/
@@ -134,8 +135,21 @@ uv run content-creator --workspace . doctor
 uv run pytest
 ```
 
-The generated README contains the exact voice-creation command for the selected
-author, voice ID, and content packs.
+The generated README begins with an author checkpoint. The author chooses
+whether to derive a voice from previous writing or begin with the neutral Clear
+Professional Starter. `profiles/alice-general/onboarding.json` remains
+`undecided` until that choice is recorded.
+
+### Use previous writing
+
+```bash
+uv run content-creator --workspace . voice onboard alice-general \
+  --strategy source-derived \
+  --author-name "Alice Example" \
+  --selected-by "Alice Example" \
+  --use linkedin-post \
+  --use linkedin-article
+```
 
 Add public URLs to:
 
@@ -143,9 +157,29 @@ Add public URLs to:
 voice-material/alice-general/source-urls.txt
 ```
 
-Place private, directly authored Markdown, text, DOCX, PDF, or HTML documents in
-the same directory. Then follow the generated README to create, review, verify,
-and approve the voice.
+Place private, directly authored Markdown, text, DOCX, PDF, or HTML documents
+in the same directory. Then follow the generated README to add the sources,
+build, review, verify, and approve the candidate.
+
+### Begin without previous writing
+
+```bash
+uv run content-creator --workspace . voice onboard alice-general \
+  --strategy starter \
+  --author-name "Alice Example" \
+  --selected-by "Alice Example" \
+  --use linkedin-post \
+  --use linkedin-article
+```
+
+This activates a versioned neutral writing policy without claiming to represent
+Alice's established voice. Core disables perspective creation and resolution
+for the starter because no author positions have yet been evidenced.
+
+Approved writing can later be supplied to the source-derived route. The
+starter remains active while the candidate is reviewed; explicit candidate
+approval restores the workspace's configured perspective policy. See
+[Voice onboarding](voice-onboarding.md).
 
 After activation, open the repository in Codex or Claude Code and make a
 natural-language content request. `AGENTS.md` and `CLAUDE.md` establish the

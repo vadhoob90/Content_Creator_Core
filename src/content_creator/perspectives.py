@@ -117,6 +117,7 @@ class PerspectiveResolution(BaseModel):
     selected: List[PerspectiveSelection] = Field(default_factory=list)
     needs_clarification: bool = False
     clarification_question: Optional[str] = None
+    disabled_reason: Optional[str] = None
 
 
 class PerspectiveCatalogueStore:
@@ -197,13 +198,26 @@ class PerspectiveResolver:
         order: WorkOrder,
         policy: Dict[str, Any],
     ) -> PerspectiveResolution:
-        mode = order.perspective_mode or PerspectiveMode(policy["mode"])
+        forced_disabled_reason = policy.get("force_disabled_reason")
+        mode = (
+            PerspectiveMode.DISABLED
+            if forced_disabled_reason
+            else order.perspective_mode or PerspectiveMode(policy["mode"])
+        )
         if mode == PerspectiveMode.DISABLED:
             if order.perspective_selections:
                 raise PerspectiveError(
-                    "Perspective contexts cannot be supplied when perspective use is disabled"
+                    "Perspective contexts cannot be supplied when perspective use "
+                    "is disabled{}".format(
+                        ": {}".format(forced_disabled_reason)
+                        if forced_disabled_reason
+                        else ""
+                    )
                 )
-            return PerspectiveResolution(mode=mode)
+            return PerspectiveResolution(
+                mode=mode,
+                disabled_reason=forced_disabled_reason,
+            )
         if order.perspective_selections:
             return PerspectiveResolution(
                 mode=PerspectiveMode.EXPLICIT,

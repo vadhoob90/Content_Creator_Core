@@ -242,6 +242,31 @@ class WorkspaceScaffolder:
         _write_if_missing(
             self.root,
             self.root
+            / "profiles"
+            / resolved_voice_id
+            / "onboarding.json",
+            json.dumps(
+                {
+                    "schema_version": "1.0",
+                    "voice_id": resolved_voice_id,
+                    "display_name": label,
+                    "author_name": author,
+                    "status": "undecided",
+                    "strategy": None,
+                    "template_id": None,
+                    "selected_by": None,
+                    "selected_at": None,
+                    "perspective_mode": "pending",
+                    "perspective_disabled_reason": None,
+                },
+                indent=2,
+            ),
+            created,
+            preserved,
+        )
+        _write_if_missing(
+            self.root,
+            self.root
             / "voice-material"
             / resolved_voice_id
             / "source-urls.txt",
@@ -288,8 +313,8 @@ class WorkspaceScaffolder:
                 "uv sync --dev",
                 "uv run content-creator --workspace . doctor",
                 (
-                    "Add authorised writing to voice-material/{}/ and follow "
-                    "the README voice-creation command."
+                    "Open the README and choose the source-derived or starter "
+                    "voice route for {}."
                 ).format(resolved_voice_id),
             ],
         }
@@ -388,12 +413,20 @@ belong here.
 Treat natural requests to create or revise supported content as an invocation
 of the installed Content Creator workflow.
 
-1. Create or validate a work order.
-2. Resolve the content pack, research depth, and research source.
-3. Use only an active, verified voice; the intended voice is `{voice_id}`.
-4. Load only the selected voice's learnings and resolved perspectives.
-5. Preserve generated artifacts under `runs/<run-id>/`.
-6. Return the final draft for author review.
+1. Read `profiles/{voice_id}/onboarding.json`.
+2. If its status is `undecided`, stop and ask the author to choose:
+   build a source-derived voice from their writing, or use the neutral starter.
+   Never choose on their behalf.
+3. For the starter route, run `voice onboard --strategy starter`. Treat it as
+   a neutral writing policy, never as the author's established voice.
+   Perspectives are disabled by Core while it is active.
+4. For the source-derived route, run `voice onboard --strategy source-derived`,
+   collect authorised sources, and complete review and activation.
+5. Create or validate a work order and resolve the pack and research route.
+6. Use only an active, verified voice; the intended voice is `{voice_id}`.
+7. Load only permitted voice learnings and perspectives.
+8. Preserve generated artifacts under `runs/<run-id>/`.
+9. Return the final draft for author review.
 
 An instruction to move the active draft into its published directory is author
 approval for repository-local publication and learning extraction. It does not
@@ -463,23 +496,44 @@ uv run content-creator --workspace . provider verify codex-native
 
 For Claude Code, use `claude-native` after authenticating Claude.
 
-## Create and approve the voice
+## Choose how to begin
+
+Before creating content, choose one route. If you are using chat, the assistant
+must ask this question when onboarding is still undecided:
+
+```text
+Do you want to build a personalised voice from writing you can provide, or
+begin with the neutral Clear Professional Starter?
+```
+
+The starter is a writing policy, not a representation of {author_name}'s
+established voice. It cannot invent experience, identity, opinions, or
+perspectives.
+
+### Route A: build a voice from previous writing
+
+Record the choice:
+
+```bash
+uv run content-creator --workspace . voice onboard {voice_id} \\
+  --strategy source-derived \\
+  --author-name "{author_name}" \\
+  --label "{voice_label}" \\
+  --selected-by "{author_name}" \\
+{intended_uses}
+```
 
 Add authorised URLs to
 `voice-material/{voice_id}/source-urls.txt`. Put private, directly authored
 Markdown, text, DOCX, PDF, or HTML files in the same directory.
 
-Then create the candidate:
+Add the material and build the candidate:
 
 ```bash
-uv run content-creator --workspace . voice create \\
-  --voice-id {voice_id} \\
-  --label "{voice_label}" \\
-  --author-name "{author_name}" \\
-  --authorised-by "{author_name}" \\
-{intended_uses} \\
+uv run content-creator --workspace . voice add-sources {voice_id} \\
   --sources voice-material/{voice_id}/source-urls.txt \\
   --documents voice-material/{voice_id}/
+uv run content-creator --workspace . voice build {voice_id}
 ```
 
 Review and approve it:
@@ -491,6 +545,27 @@ uv run content-creator --workspace . voice verify {voice_id}
 uv run content-creator --workspace . voice approve {voice_id} \\
   --approved-by "{author_name}"
 ```
+
+### Route B: begin without previous writing
+
+Activate the neutral starter:
+
+```bash
+uv run content-creator --workspace . voice onboard {voice_id} \\
+  --strategy starter \\
+  --author-name "{author_name}" \\
+  --label "{voice_label}" \\
+  --selected-by "{author_name}" \\
+{intended_uses}
+```
+
+This activates a versioned starter profile and automatically disables
+perspective creation, selection, and extraction for that voice. Runs record
+that no author evidence was used.
+
+When approved writing becomes available, repeat Route A. The starter remains
+usable while the candidate is reviewed. Activating the source-derived version
+re-enables the workspace's normal perspective policy.
 
 ## Create content using chat
 

@@ -121,8 +121,9 @@ Run context records hashes of every resolved contract, agent, and learning
 memory used.
 
 The installed package still supplies generic model configuration, packs,
-rubrics, evaluation machinery, and the placeholder voice. A workspace may add
-or override those policies deliberately. For example,
+rubrics, evaluation machinery, the legacy test placeholder, and the Clear
+Professional Starter used by explicit onboarding. A workspace may add or
+override those policies deliberately. For example,
 `packs/legal-note/pack.json` adds a legal pack, while
 `packs/general-text/pack.json` overrides the packaged general-text policy.
 

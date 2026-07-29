@@ -4,6 +4,7 @@ import pytest
 import yaml
 
 from content_creator.cli import main
+from content_creator.voices import VoiceError, VoiceRegistry
 
 
 def _create_arguments(destination):
@@ -56,6 +57,7 @@ def test_workspace_create_generates_complete_thin_repository(
         "agents/writer.md",
         "learnings/memory.json",
         "profiles/registry.json",
+        "profiles/alice-general/onboarding.json",
         "profiles/alice-general/learnings/memory.json",
         "voice-material/alice-general/source-urls.txt",
         "content/linkedin-post/published/.gitkeep",
@@ -76,10 +78,24 @@ def test_workspace_create_generates_complete_thin_repository(
     )
     assert configuration["perspective"]["mode"] == "automatic"
     assert configuration["perspective"]["allow_multiple"] is True
+    onboarding = json.loads(
+        (
+            destination / "profiles" / "alice-general" / "onboarding.json"
+        ).read_text(encoding="utf-8")
+    )
+    assert onboarding["status"] == "undecided"
+    assert onboarding["strategy"] is None
+    with pytest.raises(VoiceError, match="onboarding decision required"):
+        VoiceRegistry(destination).resolve("alice-general")
+    with pytest.raises(VoiceError, match="default test profile is unavailable"):
+        VoiceRegistry(destination).resolve("default")
 
     readme = (destination / "README.md").read_text(encoding="utf-8")
     assert "Create content using chat" in readme
-    assert "voice create" in readme
+    assert "Choose how to begin" in readme
+    assert "--strategy source-derived" in readme
+    assert "--strategy starter" in readme
+    assert "automatically disables" in readme
     assert "--use linkedin-post" in readme
     assert "--use linkedin-article" in readme
 
