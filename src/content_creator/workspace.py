@@ -31,6 +31,23 @@ def _write_if_missing(
     created.append(relative)
 
 
+def scaffold_skills(root: Path) -> Dict[str, List[str]]:
+    created: List[str] = []
+    preserved: List[str] = []
+    skills_root = Path(__file__).with_name("resources") / "skills"
+    for source in sorted(skills_root.rglob("*")):
+        if source.is_file():
+            relative = source.relative_to(skills_root)
+            _write_if_missing(
+                root,
+                root / ".agents" / "skills" / relative,
+                source.read_text(encoding="utf-8"),
+                created,
+                preserved,
+            )
+    return {"created": created, "preserved": preserved}
+
+
 def initialise_workspace(
     root: Path,
     agent_template: str = STANDARD_TEMPLATE,
@@ -55,6 +72,7 @@ def initialise_workspace(
         )
 
     agent_result = AgentWorkspace(root).scaffold(agent_template)
+    skill_result = scaffold_skills(root)
     workspace_config = root / "content-creator.yaml"
     if not workspace_config.exists():
         metadata = agent_result["template_metadata"]
@@ -90,6 +108,7 @@ def initialise_workspace(
         "status": "ok",
         "root": str(root),
         "agents": agent_result,
+        "skills": skill_result,
     }
 
 
@@ -186,24 +205,14 @@ class WorkspaceScaffolder:
                 if item.startswith("learnings/")
                 else "agents/{}".format(item)
             )
+        created.extend(base["skills"]["created"])
+        preserved.extend(base["skills"]["preserved"])
         for path in base_paths:
             relative = str(path.relative_to(self.root))
             if base_path_existed[path]:
                 preserved.append(relative)
             else:
                 created.append(relative)
-
-        skills_root = Path(__file__).with_name("resources") / "skills"
-        for source in sorted(skills_root.rglob("*")):
-            if source.is_file():
-                relative = source.relative_to(skills_root)
-                _write_if_missing(
-                    self.root,
-                    self.root / ".agents" / "skills" / relative,
-                    source.read_text(encoding="utf-8"),
-                    created,
-                    preserved,
-                )
 
         package_name = slugify(display_name)
         dependency = "content-creator @ git+{}@{}".format(
