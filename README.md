@@ -462,14 +462,25 @@ using the system for representative publishing.
 
 ## Licence
 
-Content Creator is **source-available** under the
-[PolyForm Noncommercial License 1.0.0](LICENSE.md). It may be inspected, used,
-modified, and distributed for purposes permitted by that licence. It is not
-offered under an OSI-approved open-source licence.
+Content Creator is free and open-source software licensed under the
+[GNU Affero General Public License, version 3 or (at your option) any later
+version](LICENSE.md) (`AGPL-3.0-or-later`).
 
-Commercial use, including incorporating Content Creator into a commercial
-product or service, requires a separate written commercial licence from the
-copyright holder. See [Commercial licensing](COMMERCIAL-LICENSING.md) for the
-plain-language summary; the licence itself controls if the two differ.
+Commercial use is permitted under the AGPL. If you modify the program and make
+the modified version available for users to interact with remotely over a
+network, the AGPL requires you to offer those users the corresponding source
+code of that version. The licence text controls; see [Licensing](LICENSING.md)
+for a plain-language overview and the treatment of earlier releases.
 
-Required Notice: Copyright 2026 Bharath Vadhoola
+External code contributions are not currently accepted. Bug reports and
+feature requests are welcome through GitHub Issues; please read
+[Contributing](CONTRIBUTING.md) before submitting anything.
+
+Copyright © 2026 Bharath Vadhoola
+
+## Independence
+
+This repository is maintained in a personal capacity. It is not an official
+product of, affiliated with, or endorsed by any employer or public body. Any
+views expressed in the project documentation are those of the project
+maintainers.
