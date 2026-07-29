@@ -47,6 +47,12 @@ from .voices import (
     hash_file,
     voice_id_for,
 )
+from .workspace import (
+    DEFAULT_CORE_REF,
+    DEFAULT_CORE_URL,
+    WorkspaceScaffolder,
+    initialise_workspace,
+)
 
 PROVIDERS = ["anthropic", "openai", "codex-native", "claude-native"]
 
@@ -77,6 +83,57 @@ def build_parser() -> argparse.ArgumentParser:
         "--agent-template",
         default=STANDARD_TEMPLATE,
         help="Packaged agent template to scaffold (default: standard)",
+    )
+
+    workspace = sub.add_parser(
+        "workspace",
+        help="Create a complete thin repository that consumes Content Creator Core",
+    )
+    workspace_sub = workspace.add_subparsers(
+        dest="workspace_command",
+        required=True,
+    )
+    workspace_create = workspace_sub.add_parser(
+        "create",
+        help="Scaffold a new author-owned content repository",
+    )
+    workspace_create.add_argument(
+        "directory",
+        help="Destination directory; created when it does not exist",
+    )
+    workspace_create.add_argument(
+        "--name",
+        help="Repository display name (default: destination directory name)",
+    )
+    workspace_create.add_argument("--author-name", required=True)
+    workspace_create.add_argument("--voice-id")
+    workspace_create.add_argument("--voice-label")
+    workspace_create.add_argument(
+        "--pack",
+        action="append",
+        default=[],
+        help="Content pack to enable; repeat for several (default: general-text)",
+    )
+    workspace_create.add_argument(
+        "--agent-template",
+        default=STANDARD_TEMPLATE,
+        help="Packaged agent template to scaffold (default: standard)",
+    )
+    workspace_create.add_argument(
+        "--core-url",
+        default=DEFAULT_CORE_URL,
+        help="Git URL for the Content Creator Core dependency",
+    )
+    workspace_create.add_argument(
+        "--core-ref",
+        default=DEFAULT_CORE_REF,
+        help="Immutable Core tag or commit to pin (default: installed version tag)",
+    )
+    workspace_create.add_argument(
+        "--perspective-mode",
+        choices=["automatic", "explicit", "disabled"],
+        default="automatic",
+        help="Perspective selection policy for the new workspace",
     )
 
     agents = sub.add_parser(
@@ -288,42 +345,29 @@ def main(argv=None) -> int:
     args = build_parser().parse_args(argv)
     root = _root(args.root)
     if args.command == "init":
-        for path in (
-            root / "profiles",
-            root / "runs",
-            root / ".voice-cache",
-            root / "content" / "general-text" / "published",
-        ):
-            path.mkdir(parents=True, exist_ok=True)
-        registry = root / "profiles" / "registry.json"
-        if not registry.exists():
-            RunStore._atomic_text(
-                registry,
-                json.dumps({"schema_version": "1.0", "profiles": {}}, indent=2),
+        _print(initialise_workspace(root, args.agent_template))
+        return 0
+    if args.command == "workspace":
+        destination = Path(args.directory).expanduser()
+        if not destination.is_absolute():
+            destination = (
+                root / destination
+                if args.root
+                else Path.cwd() / destination
             )
-        agent_result = AgentWorkspace(root).scaffold(args.agent_template)
-        workspace_config = root / "content-creator.yaml"
-        if not workspace_config.exists():
-            metadata = agent_result["template_metadata"]
-            RunStore._atomic_text(
-                workspace_config,
-                yaml.safe_dump(
-                    {
-                        "schema_version": "1.0",
-                        "agent_template": {
-                            "name": metadata["name"],
-                            "version": metadata["version"],
-                        },
-                    },
-                    sort_keys=False,
-                ),
-            )
+        destination = destination.resolve()
         _print(
-            {
-                "status": "ok",
-                "root": str(root),
-                "agents": agent_result,
-            }
+            WorkspaceScaffolder(destination).create(
+                name=args.name or destination.name,
+                author_name=args.author_name,
+                voice_id=args.voice_id,
+                voice_label=args.voice_label,
+                packs=args.pack,
+                agent_template=args.agent_template,
+                core_url=args.core_url,
+                core_ref=args.core_ref,
+                perspective_mode=args.perspective_mode,
+            )
         )
         return 0
     if args.command == "agents":

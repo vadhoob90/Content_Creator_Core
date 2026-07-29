@@ -40,7 +40,29 @@ dependencies = [
 Commit the consumer lockfile. Upgrade deliberately by changing the tag,
 refreshing the lock, and running downstream tests.
 
-## Initialise a repository
+## Generate a new repository
+
+Use the complete generator for a new author, client, team, or brand workspace:
+
+```bash
+content-creator workspace create Content_Creator_Alice \
+  --name "Content Creator Alice" \
+  --author-name "Alice Example" \
+  --voice-id alice-general \
+  --pack linkedin-post \
+  --pack linkedin-article
+```
+
+The generator creates the consumer dependency, repository configuration,
+editable agents, learning scopes, author source inventory, content
+destinations, repository guidance, smoke tests, and personalised onboarding. It
+does not copy the Core implementation. See the
+[complete workspace creation guide](creating-a-content-workspace.md).
+
+## Initialise an existing repository
+
+Use the low-level initializer only when adapting a repository that already owns
+its dependency, README, guidance, source layout, and tests:
 
 ```bash
 content-creator --workspace . init --agent-template standard
