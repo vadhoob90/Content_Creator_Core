@@ -2,3 +2,10 @@ schema_version: "1.0"
 agent_template:
   name: standard
   version: "1.0.0"
+coordinator:
+  name: Content Creator Coordinator
+  default_voice:
+  default_pack: general-text
+  ask_before_voice_change: true
+  require_final_review: true
+  external_publication: disabled

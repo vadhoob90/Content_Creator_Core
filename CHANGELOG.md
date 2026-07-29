@@ -8,6 +8,24 @@ release tag.
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-07-29
+
+### Added
+
+- A deterministic Content Creator Coordinator interface for agent hosts.
+- Machine-readable workspace context, capability, run-list, and next-action
+  commands.
+- Workspace-scoped coordinator defaults that reduce repetitive questions
+  without overriding explicit author choices.
+- Packaged Content Creator and Voice Builder skills in generated workspaces.
+- Whole-workspace voice verification through `voice verify-all`.
+
+### Changed
+
+- Generated repository guidance now begins from persisted coordinator context.
+- Voice onboarding guidance distinguishes a stylistically different voice from
+  a subject-matter perspective.
+
 ## [0.4.0] - 2026-07-29
 
 ### Added

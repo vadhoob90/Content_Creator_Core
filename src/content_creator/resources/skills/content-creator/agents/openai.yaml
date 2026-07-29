@@ -1,0 +1,4 @@
+interface:
+  display_name: "Content Creator"
+  short_description: "Create governed content in an approved voice"
+  default_prompt: "Use $content-creator to create content with an approved voice and optional perspective context."

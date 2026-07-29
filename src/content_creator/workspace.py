@@ -64,6 +64,14 @@ def initialise_workspace(
                 "name": metadata["name"],
                 "version": metadata["version"],
             },
+            "coordinator": {
+                "name": "Content Creator Coordinator",
+                "default_voice": None,
+                "default_pack": "general-text",
+                "ask_before_voice_change": True,
+                "require_final_review": True,
+                "external_publication": "disabled",
+            },
         }
         if perspective_mode:
             configuration["perspective"] = {
@@ -148,6 +156,22 @@ class WorkspaceScaffolder:
             agent_template=agent_template,
             perspective_mode=perspective_mode,
         )
+        if not base_path_existed[self.root / "content-creator.yaml"]:
+            workspace_configuration = yaml.safe_load(
+                (self.root / "content-creator.yaml").read_text(
+                    encoding="utf-8"
+                )
+            )
+            workspace_configuration["coordinator"]["default_voice"] = (
+                resolved_voice_id
+            )
+            workspace_configuration["coordinator"]["default_pack"] = (
+                selected_packs[0]
+            )
+            RunStore._atomic_text(
+                self.root / "content-creator.yaml",
+                yaml.safe_dump(workspace_configuration, sort_keys=False),
+            )
         created: List[str] = []
         preserved: List[str] = []
         for item in base["agents"]["created"]:
@@ -168,6 +192,18 @@ class WorkspaceScaffolder:
                 preserved.append(relative)
             else:
                 created.append(relative)
+
+        skills_root = Path(__file__).with_name("resources") / "skills"
+        for source in sorted(skills_root.rglob("*")):
+            if source.is_file():
+                relative = source.relative_to(skills_root)
+                _write_if_missing(
+                    self.root,
+                    self.root / ".agents" / "skills" / relative,
+                    source.read_text(encoding="utf-8"),
+                    created,
+                    preserved,
+                )
 
         package_name = slugify(display_name)
         dependency = "content-creator @ git+{}@{}".format(
@@ -417,20 +453,24 @@ belong here.
 Treat natural requests to create or revise supported content as an invocation
 of the installed Content Creator workflow.
 
-1. Read `profiles/{voice_id}/onboarding.json`.
-2. If its status is `undecided`, stop and ask the author to choose:
+1. Run `content-creator --workspace . coordinator context` and use Core's
+   persisted workspace state rather than chat memory.
+2. Read `profiles/{voice_id}/onboarding.json`.
+3. If its status is `undecided`, stop and ask the author to choose:
    build a source-derived voice from their writing, or use the neutral starter.
    Never choose on their behalf.
-3. For the starter route, run `voice onboard --strategy starter`. Treat it as
+4. For the starter route, run `voice onboard --strategy starter`. Treat it as
    a neutral writing policy, never as the author's established voice.
    Perspectives are disabled by Core while it is active.
-4. For the source-derived route, run `voice onboard --strategy source-derived`,
+5. For the source-derived route, run `voice onboard --strategy source-derived`,
    collect authorised sources, and complete review and activation.
-5. Create or validate a work order and resolve the pack and research route.
-6. Use only an active, verified voice; the intended voice is `{voice_id}`.
-7. Load only permitted voice learnings and perspectives.
-8. Preserve generated artifacts under `runs/<run-id>/`.
-9. Return the final draft for author review.
+6. Create or validate a work order and resolve the pack and research route.
+7. Use only an active, verified voice; the intended voice is `{voice_id}`.
+8. Load only permitted voice learnings and perspectives.
+9. Preserve generated artifacts under `runs/<run-id>/`.
+10. Use `coordinator next-actions <run-id>` before offering an approval or
+    publication action.
+11. Return the final draft for author review.
 
 An instruction to move the active draft into its published directory is author
 approval for repository-local publication and learning extraction. It does not

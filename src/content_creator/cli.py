@@ -12,6 +12,7 @@ import yaml
 
 from .agent_resources import STANDARD_TEMPLATE, AgentWorkspace
 from .configuration import Configuration, ConfigurationError
+from .coordinator import ContentCoordinator
 from .domain import (
     AuthorContribution,
     PerspectiveSelection,
@@ -171,6 +172,22 @@ def build_parser() -> argparse.ArgumentParser:
     sub.add_parser("doctor", help="Validate offline configuration and assets")
     sub.add_parser("packs", help="List installed content packs")
 
+    coordinator = sub.add_parser(
+        "coordinator",
+        help="Expose deterministic context and next actions to agent hosts",
+    )
+    coordinator_sub = coordinator.add_subparsers(
+        dest="coordinator_command",
+        required=True,
+    )
+    coordinator_sub.add_parser("capabilities")
+    coordinator_context = coordinator_sub.add_parser("context")
+    coordinator_context.add_argument("--run-limit", type=int, default=10)
+    coordinator_runs = coordinator_sub.add_parser("runs")
+    coordinator_runs.add_argument("--limit", type=int, default=20)
+    coordinator_next = coordinator_sub.add_parser("next-actions")
+    coordinator_next.add_argument("run_id")
+
     pack = sub.add_parser("pack", help="Inspect content packs")
     pack_sub = pack.add_subparsers(dest="pack_command", required=True)
     pack_sub.add_parser("list")
@@ -238,6 +255,10 @@ def build_parser() -> argparse.ArgumentParser:
             item.add_argument("--provider", choices=PROVIDERS)
             item.add_argument("--offline-analysis", action="store_true")
     voice_sub.add_parser("list")
+    voice_sub.add_parser(
+        "verify-all",
+        help="Verify every candidate and active voice in the workspace",
+    )
     voice_approve = voice_sub.add_parser("approve")
     voice_approve.add_argument("voice_id")
     voice_approve.add_argument("--approved-by", default="repository-owner")
@@ -494,6 +515,17 @@ def _main(argv=None) -> int:
         )
         _print({"status": "ok" if healthy else "error", "checks": checks})
         return 0 if healthy else 1
+    if args.command == "coordinator":
+        coordinator = ContentCoordinator(root)
+        if args.coordinator_command == "capabilities":
+            _print(coordinator.capabilities())
+        elif args.coordinator_command == "context":
+            _print(coordinator.context(args.run_limit))
+        elif args.coordinator_command == "runs":
+            _print(coordinator.runs(args.limit))
+        else:
+            _print(coordinator.next_actions(args.run_id))
+        return 0
     if args.command == "packs":
         _print([pack.model_dump(mode="json") for pack in PackRegistry(root).list()])
         return 0
@@ -826,6 +858,16 @@ def _voice_command(root: Path, args) -> int:
     if command == "list":
         _print(registry.list())
         return 0
+    if command == "verify-all":
+        voice_ids = set(registry.list())
+        voice_ids.update(
+            path.parent.parent.name
+            for path in (root / "profiles").glob("*/candidate/manifest.json")
+        )
+        reports = [_verify_voice(root, registry, voice_id) for voice_id in sorted(voice_ids)]
+        valid = all(report["valid"] for report in reports)
+        _print({"valid": valid, "voices": reports})
+        return 0 if valid else 6
     if command == "approve":
         if args.override_evaluation and not args.reason:
             raise ValueError("--override-evaluation requires --reason")
@@ -923,20 +965,35 @@ def _voice_command(root: Path, args) -> int:
         )
         return 0
     if command == "verify":
-        directory = candidate
-        if not manifest_path.exists():
-            resolved = registry.resolve(args.voice_id)
-            directory = root / resolved["path"]
-            manifest_path = directory / "manifest.json"
-        manifest = VoiceManifest.model_validate_json(manifest_path.read_text())
-        mismatches = [
-            name
-            for name, filename in manifest.components.items()
-            if hash_file(directory / filename) != manifest.component_hashes[name]
-        ]
-        _print({"voice_id": args.voice_id, "valid": not mismatches, "mismatches": mismatches})
-        return 0 if not mismatches else 6
+        report = _verify_voice(root, registry, args.voice_id)
+        _print(report)
+        return 0 if report["valid"] else 6
     return 2
+
+
+def _verify_voice(
+    root: Path,
+    registry: VoiceRegistry,
+    voice_id: str,
+) -> dict:
+    directory = root / "profiles" / voice_id / "candidate"
+    manifest_path = directory / "manifest.json"
+    if not manifest_path.exists():
+        resolved = registry.resolve(voice_id)
+        directory = root / resolved["path"]
+        manifest_path = directory / "manifest.json"
+    manifest = VoiceManifest.model_validate_json(manifest_path.read_text())
+    mismatches = [
+        name
+        for name, filename in manifest.components.items()
+        if not (directory / filename).exists()
+        or hash_file(directory / filename) != manifest.component_hashes[name]
+    ]
+    return {
+        "voice_id": voice_id,
+        "valid": not mismatches,
+        "mismatches": mismatches,
+    }
 
 
 def _perspective_command(root: Path, args) -> int:

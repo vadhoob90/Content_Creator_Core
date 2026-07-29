@@ -33,12 +33,12 @@ commands but cannot create the repository on your computer.
 
 ### Set it up from the terminal
 
-Most people should not clone this repository. Install the immutable `v0.4.0`
+Most people should not clone this repository. Install the immutable `v0.5.0`
 Core release and generate a thin workspace:
 
 ```bash
 uv tool install \
-  "content-creator @ git+https://github.com/vadhoob90/Content_Creator_Core.git@v0.4.0"
+  "content-creator @ git+https://github.com/vadhoob90/Content_Creator_Core.git@v0.5.0"
 
 content-creator workspace create Content_Creator_Alice \
   --name "Content Creator Alice" \
@@ -46,7 +46,7 @@ content-creator workspace create Content_Creator_Alice \
   --voice-id alice-general \
   --pack linkedin-post \
   --pack linkedin-article \
-  --core-ref v0.4.0
+  --core-ref v0.5.0
 ```
 
 The generated repository owns Alice's voices, sources, perspectives, learning,
@@ -141,9 +141,18 @@ Open the thin workspace in Codex or Claude Code and ask naturally:
 > Write a short LinkedIn post explaining why calculus matters to sixth-form
 > students. No external research is required.
 
-The workspace guidance resolves the voice, pack, research route, evidence, and
-approval points. It preserves the run artifacts and returns the draft for
-review. It does not publish externally.
+The packaged Content Creator Coordinator first reads deterministic workspace
+context, then resolves the voice, pack, research route, evidence, and approval
+points. It preserves the run artifacts and asks Core for valid next actions
+rather than reconstructing state from chat memory. It does not publish
+externally.
+
+Inspect the same interface directly:
+
+```bash
+uv run content-creator --workspace . coordinator context
+uv run content-creator --workspace . coordinator next-actions <run-id>
+```
 
 The equivalent CLI request is:
 
@@ -180,7 +189,8 @@ flowchart TD
     EW --> VB
     AV --> PE["Approved perspective catalogue"]
 
-    R["Natural-language request"] --> BA["Briefing Agent"]
+    R["Natural-language request"] --> CO["Content Creator Coordinator"]
+    CO --> BA["Briefing Agent"]
     BA --> OR["Orchestrator"]
     PK["Content pack"] --> OR
     AV --> OR
@@ -207,6 +217,7 @@ perspectives, research state, agent instructions, and learning memories used.
 - [How voice is derived](docs/guides/how-voice-is-derived.md)
 - [Perspective provenance](docs/guides/perspective-provenance.md)
 - [Repository-owned agents](docs/guides/repository-agents.md)
+- [Content Creator Coordinator](docs/guides/content-coordinator.md)
 - [Provider configuration](docs/guides/provider-configuration.md)
 - [Versioned Core dependencies](docs/guides/workspace-dependencies.md)
 - [Changelog](CHANGELOG.md)
