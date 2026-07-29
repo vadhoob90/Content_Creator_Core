@@ -125,8 +125,8 @@ Requires Python 3.9 or newer.
 ### 1. Clone and install
 
 ```bash
-git clone https://github.com/vadhoob90/Content_Creator.git
-cd Content_Creator
+git clone https://github.com/vadhoob90/Content_Creator_Core.git
+cd Content_Creator_Core
 python -m venv .venv
 source .venv/bin/activate
 python -m pip install -e ".[dev]"
