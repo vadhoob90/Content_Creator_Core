@@ -63,3 +63,35 @@ deterministic lifecycle operations.
 Core packages Codex-compatible `content-creator` and `voice-builder` skills into
 new workspaces. Other hosts can use the same coordinator JSON interface without
 copying routing or approval logic into a prompt.
+
+## Direct terminal use
+
+Most authors can work conversationally. The same deterministic interface is
+available from the terminal when inspecting or automating a workspace:
+
+```bash
+uv run content-creator --workspace . coordinator context
+uv run content-creator --workspace . coordinator runs
+uv run content-creator --workspace . coordinator next-actions <run-id>
+```
+
+Create a run directly:
+
+```bash
+uv run content-creator --workspace . run \
+  "Explain why calculus matters to sixth-form students" \
+  --voice alice-general \
+  --pack linkedin-post \
+  --research none
+```
+
+After the author reviews the resolved draft, save an approved copy inside the
+repository:
+
+```bash
+uv run content-creator --workspace . publish <run-id> \
+  --feedback "Preserve the concrete opening."
+```
+
+Repository publication never overwrites an existing file, updates only the
+selected voice's learning memory, and does not post to an external platform.

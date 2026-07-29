@@ -63,24 +63,41 @@ def test_packaged_core_resources_match_repository_sources():
             assert source.read_bytes() == packaged_files[relative].read_bytes()
 
 
-def test_readme_contains_end_to_end_diagram():
+def test_readme_is_a_streamlined_operator_journey():
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
 
-    assert "```mermaid" in readme
-    assert "Voice Builder" in readme
-    assert "Capability router" in readme
+    assert "### 1. Create an author workspace" in readme
+    assert "### 2. Choose a voice route" in readme
+    assert "### 3. Ask for content naturally" in readme
+    assert "```bash" not in readme
+    assert (
+        "[Create a thin content workspace]"
+        "(docs/guides/creating-a-content-workspace.md)" in readme
+    )
+    assert "[Voice onboarding](docs/guides/voice-onboarding.md)" in readme
+    assert (
+        "[Content Creator Coordinator]"
+        "(docs/guides/content-coordinator.md)" in readme
+    )
 
 
-def test_readme_prioritises_the_thin_workspace_operator_journey():
-    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+def test_linked_guides_preserve_detailed_operator_commands():
+    workspace_guide = (
+        ROOT / "docs" / "guides" / "creating-a-content-workspace.md"
+    ).read_text(encoding="utf-8")
+    voice_guide = (
+        ROOT / "docs" / "guides" / "voice-onboarding.md"
+    ).read_text(encoding="utf-8")
+    coordinator_guide = (
+        ROOT / "docs" / "guides" / "content-coordinator.md"
+    ).read_text(encoding="utf-8")
 
-    assert "content-creator workspace create" in readme
-    assert "--strategy source-derived" in readme
-    assert "--strategy starter" in readme
-    assert "voice approve alice-general" in readme
-    assert "content-creator --workspace . run" in readme
-    assert "updates only that voice's" in readme
-    assert "[Core development README](docs/core/README.md)" in readme
+    assert "content-creator workspace create" in workspace_guide
+    assert "--strategy source-derived" in voice_guide
+    assert "--strategy starter" in voice_guide
+    assert "voice approve example-person-general" in voice_guide
+    assert "content-creator --workspace . run" in coordinator_guide
+    assert "selected voice's learning memory" in coordinator_guide
 
 
 def test_core_development_readme_covers_clone_and_validation():

@@ -1,252 +1,140 @@
 # Content Creator
 
-Content Creator helps a person create consistent, reviewable content in a thin,
-author-owned workspace while reusable orchestration remains in Core.
+Content Creator helps people produce consistent, reviewable content without
+giving an AI control of their identity, opinions, or publication decisions.
 
-The LLM supplies intelligence; the scaffolding supplies direction, memory,
-boundaries and accountability.
+Each author works in a small, independent repository containing their voices,
+agents, learning, drafts, and approved content. This Core repository supplies
+the reusable workflow, validation, and safety boundaries.
 
-ChatGPT and Claude already provide capable conversation, instructions, files,
-and memory. Content Creator adds a provider-neutral publication workflow with
-explicit voice provenance, scoped learning, immutable versions, research
-checkpoints, and author approval. Read
-[Why not just use ChatGPT or Claude?](docs/guides/why-not-just-chat.md).
+Read [Why not just use ChatGPT or Claude?](docs/guides/why-not-just-chat.md) for
+the design rationale.
 
-## Create your content workspace
+## The quickest way to start
 
-### Ask an AI coding assistant to set it up
-
-If Codex, Claude Code, or another assistant can run terminal commands and write
-files on your computer, paste this prompt:
+Give this request to Codex, Claude Code, or another coding assistant with
+terminal and filesystem access:
 
 > Use [Content Creator
-> Core](https://github.com/vadhoob90/Content_Creator_Core) to create a new thin
-> content workspace for me. Do not clone or copy the Core repository. Follow
-> its workspace-creation guide, ask me only for the author and content choices
-> you need, generate the workspace locally, install its dependencies, and run
-> its validation tests.
+> Core](https://github.com/vadhoob90/Content_Creator_Core) to create a thin
+> content workspace for me. Do not clone or copy Core. Follow its
+> workspace-creation guide, ask me for the author and content choices you
+> need, install the workspace, and validate it.
 
-The assistant should guide you through the workspace location, author identity,
-content packs, provider, and starter versus source-derived voice decision. A
-regular chat session without terminal and filesystem access can explain the
-commands but cannot create the repository on your computer.
+The assistant will ask about the author, intended content, writing evidence,
+and model provider. It will then create a separate workspace pinned to an
+immutable Core release.
 
-### Set it up from the terminal
+Prefer doing it yourself? Follow
+[Create a thin content workspace](docs/guides/creating-a-content-workspace.md)
+for the complete terminal instructions and configuration options.
 
-Most people should not clone this repository. Install the immutable `v0.5.0`
-Core release and generate a thin workspace:
+## How it works
 
-```bash
-uv tool install \
-  "content-creator @ git+https://github.com/vadhoob90/Content_Creator_Core.git@v0.5.0"
+### 1. Create an author workspace
 
-content-creator workspace create Content_Creator_Alice \
-  --name "Content Creator Alice" \
-  --author-name "Alice Example" \
-  --voice-id alice-general \
-  --pack linkedin-post \
-  --pack linkedin-article \
-  --core-ref v0.5.0
-```
+The generated repository belongs to the author. It keeps their editorial
+material separate from the reusable engine and can have its own writer,
+researcher, critic, policies, and learning.
 
-The generated repository owns Alice's voices, sources, perspectives, learning,
-agents, drafts, tests, and publications. It pins Core rather than copying the
-engine. Enter it and check the installation:
+Core is installed as a versioned dependency; its source code is not copied
+into each content repository.
 
-```bash
-cd Content_Creator_Alice
-uv sync --dev
-uv run content-creator --workspace . doctor
-uv run pytest
-```
+### 2. Choose a voice route
 
-Select a provider deliberately. The choice is persisted in the workspace:
+The author chooses one of two starting points:
 
-```bash
-uv run content-creator --workspace . provider select codex-native
-uv run content-creator --workspace . provider verify codex-native
-```
+- **Use previous writing** to build a reviewable voice candidate from
+  authorised documents or URLs.
+- **Start without previous writing** using the neutral Clear Professional
+  Starter, which does not claim to imitate the author.
 
-See [Create a thin content workspace](docs/guides/creating-a-content-workspace.md)
-for all options and the generated repository layout.
+No candidate becomes active without human approval. A new subject also does
+not automatically require a new voice; it may be better represented as a
+separately governed perspective.
 
-## First checkpoint: choose a voice route
+See [Voice onboarding](docs/guides/voice-onboarding.md) for the commands and
+lifecycle, or [How voice is derived](docs/guides/how-voice-is-derived.md) for
+the underlying analysis and safeguards.
 
-The generated workspace begins with voice onboarding marked `undecided`. The
-author—not the assistant—chooses one of two routes.
+### 3. Ask for content naturally
 
-### Use previous writing
-
-Choose this route when the author can provide documents, Markdown files, or
-authorised URLs:
-
-```bash
-uv run content-creator --workspace . voice onboard alice-general \
-  --strategy source-derived \
-  --author-name "Alice Example" \
-  --selected-by "Alice Example" \
-  --use linkedin-post \
-  --use linkedin-article
-```
-
-Point Core at an existing local directory. Files are read recursively in place;
-they are not uploaded to GitHub or copied into the workspace:
-
-```bash
-uv run content-creator --workspace . voice add-sources alice-general \
-  --documents "/absolute/path/to/my-writing"
-uv run content-creator --workspace . voice build alice-general
-uv run content-creator --workspace . voice show alice-general
-uv run content-creator --workspace . voice verify alice-general
-uv run content-creator --workspace . voice approve alice-general \
-  --approved-by "Alice Example"
-```
-
-Public URLs may instead be listed in
-`voice-material/alice-general/source-urls.txt`. Uploaded documents and local
-work-order paths are ignored by Git; versioned artifacts retain privacy-safe
-references and content hashes.
-
-### Begin without previous writing
-
-Choose the Clear Professional Starter:
-
-```bash
-uv run content-creator --workspace . voice onboard alice-general \
-  --strategy starter \
-  --author-name "Alice Example" \
-  --selected-by "Alice Example" \
-  --use linkedin-post \
-  --use linkedin-article
-```
-
-The starter is a neutral writing policy, not a synthetic version of Alice's
-personality, experience, opinions, or established voice. Core automatically
-disables perspectives while it is active and records that no author evidence
-was used.
-
-Approved writing can later become evidence for a source-derived candidate.
-Activating that candidate replaces the starter as the active version and
-restores the workspace's normal perspective policy. Core never performs that
-transition silently.
-
-Read [Voice onboarding](docs/guides/voice-onboarding.md) for the lifecycle,
-safeguards, and transition procedure. The detailed derivation algorithm is in
-[How Content Creator derives a voice](docs/guides/how-voice-is-derived.md).
-
-## Create content
-
-Open the thin workspace in Codex or Claude Code and ask naturally:
+Open the author workspace in a supported coding assistant and describe what
+you need:
 
 > Write a short LinkedIn post explaining why calculus matters to sixth-form
 > students. No external research is required.
 
-The packaged Content Creator Coordinator first reads deterministic workspace
-context, then resolves the voice, pack, research route, evidence, and approval
-points. It preserves the run artifacts and asks Core for valid next actions
-rather than reconstructing state from chat memory. It does not publish
-externally.
+The Content Creator Coordinator reads the workspace state, proposes the
+appropriate voice and format, follows the required research and review
+checkpoints, and preserves the run artifacts.
 
-Inspect the same interface directly:
+The result always comes back for human review. “Publish” means saving an
+approved copy inside the author repository; Core does not post to external
+platforms.
 
-```bash
-uv run content-creator --workspace . coordinator context
-uv run content-creator --workspace . coordinator next-actions <run-id>
-```
+See [Content Creator Coordinator](docs/guides/content-coordinator.md) for
+conversational and direct terminal use.
 
-The equivalent CLI request is:
+## What the author controls
 
-```bash
-uv run content-creator --workspace . run \
-  "Explain why calculus matters to sixth-form students" \
-  --voice alice-general \
-  --pack linkedin-post \
-  --research none
-```
+The author workspace owns:
 
-After review, repository-local publication is explicit:
+- voice evidence, candidates, approvals, and immutable versions;
+- perspectives and their provenance;
+- repository-specific agents and editorial policies;
+- repository-wide and voice-scoped learning;
+- research, drafts, critiques, and run history; and
+- approved content.
 
-```bash
-uv run content-creator --workspace . publish <run-id> \
-  --feedback "Preserve the concrete opening."
-```
+Core owns the reusable orchestration, schemas, provider adapters, validation,
+checkpoints, safety rules, prompt composition, and workspace generator.
 
-Publication never overwrites an existing file and updates only that voice's
-learning memory.
+## Important boundaries
 
-## How the system fits together
+- The author remains the final editorial authority.
+- Core does not invent personal experience, beliefs, facts, or voice evidence.
+- Voices and learning are isolated from one another.
+- No-research requests remain no-research.
+- Voice activation and repository publication require explicit approval.
+- External publication is not supported.
 
-```mermaid
-flowchart TD
-    W["Generate thin workspace"] --> D{"Voice onboarding checkpoint"}
-    D -->|"Previous writing"| VB["Voice Builder"]
-    VB --> VC["Candidate voice"]
-    VC --> VA["Author review and approval"]
-    VA --> AV["Active source-derived voice"]
-    D -->|"No previous writing"| SV["Clear Professional Starter"]
-    SV --> PD["Perspectives disabled"]
-    SV --> EW["Approved writing accumulates"]
-    EW --> VB
-    AV --> PE["Approved perspective catalogue"]
+## Guides
 
-    R["Natural-language request"] --> CO["Content Creator Coordinator"]
-    CO --> BA["Briefing Agent"]
-    BA --> OR["Orchestrator"]
-    PK["Content pack"] --> OR
-    AV --> OR
-    SV --> OR
-    PE --> OR
-    OR --> CR["Capability router"]
-    CR --> PR["OpenAI, Anthropic, Codex, Claude, or another adapter"]
-    OR --> Q{"Research needed?"}
-    Q -->|"No"| DR["Draft and review"]
-    Q -->|"Yes"| RS["Research and checkpoint"]
-    RS --> DR
-    DR --> HA["Human approval"]
-    HA --> PB["Repository publication"]
-    PB --> LM["Voice-scoped learning"]
-```
-
-Every run records the exact content pack, voice strategy and version, allowed
-perspectives, research state, agent instructions, and learning memories used.
-
-## Learn more
+Start here:
 
 - [Create a thin content workspace](docs/guides/creating-a-content-workspace.md)
 - [Voice onboarding](docs/guides/voice-onboarding.md)
+- [Content Creator Coordinator](docs/guides/content-coordinator.md)
+
+Understand and operate the system:
+
 - [How voice is derived](docs/guides/how-voice-is-derived.md)
 - [Perspective provenance](docs/guides/perspective-provenance.md)
 - [Repository-owned agents](docs/guides/repository-agents.md)
-- [Content Creator Coordinator](docs/guides/content-coordinator.md)
+- [Learning and publication](docs/guides/learning-and-publication.md)
 - [Provider configuration](docs/guides/provider-configuration.md)
+- [Privacy and sources](docs/guides/privacy-and-sources.md)
+- [Testing and evaluation](docs/guides/testing-and-evaluation.md)
+- [Troubleshooting](docs/guides/troubleshooting.md)
 - [Versioned Core dependencies](docs/guides/workspace-dependencies.md)
 - [Changelog](CHANGELOG.md)
-- [Migrating to v0.4](docs/guides/migrating-to-v0.4.md)
 
 ## Work on Content Creator Core
 
-Clone Core only when you want to understand or change the reusable engine,
-provider adapters, contracts, validation, packaged resources, or workspace
-generator.
-
-The [Core development README](docs/core/README.md) explains how to clone,
-install, navigate, test, modify, and validate this repository without confusing
-Core-owned mechanisms with downstream editorial policy.
-
-## Licence
-
-Content Creator is free and open-source software licensed under the
-[GNU Affero General Public License, version 3 or (at your option) any later
-version](LICENSE.md) (`AGPL-3.0-or-later`).
-
-Commercial use is permitted under the AGPL. If you modify the program and make
-the modified version available for users to interact with remotely over a
-network, the AGPL requires you to offer those users the corresponding source
-code of that version. The licence text controls; see
-[Licensing](LICENSING.md) for a plain-language overview.
+Clone this repository only when you want to inspect or change the reusable
+engine. The [Core development guide](docs/core/README.md) covers installation,
+architecture, testing, and releases.
 
 External code contributions are not currently accepted. Bug reports and
 feature requests are welcome through GitHub Issues; read
 [Contributing](CONTRIBUTING.md) first.
+
+## Licence
+
+Content Creator is free and open-source software licensed under the
+[GNU Affero General Public License, version 3 or later](LICENSE.md)
+(`AGPL-3.0-or-later`). Commercial use is permitted subject to the licence
+terms. See [Licensing](LICENSING.md) for a plain-language overview.
 
 Copyright © 2026 Bharath Vadhoola
