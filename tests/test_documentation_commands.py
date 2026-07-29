@@ -11,6 +11,15 @@ def test_documented_command_families_are_parseable():
     commands = [
         ["init"],
         ["init", "--agent-template", "standard"],
+        [
+            "workspace",
+            "create",
+            "Content_Creator_Alice",
+            "--author-name",
+            "Alice Example",
+            "--pack",
+            "linkedin-post",
+        ],
         ["agents", "scaffold"],
         ["agents", "status"],
         ["agents", "diff-template"],

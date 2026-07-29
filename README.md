@@ -3,6 +3,9 @@
 A provider-neutral foundation for creating researched or non-researched content
 in a person's approved voice.
 
+The LLM supplies intelligence; the scaffolding supplies direction, memory,
+boundaries and accountability.
+
 **Why not just use a chat application?** ChatGPT and Claude already offer
 projects, instructions, memory, files, and style customisation. Content Creator
 adds a provider-neutral, reviewable publication process with explicit provenance,
@@ -18,6 +21,27 @@ The repository separates six concerns:
 - **content packs**: what is being produced, such as a LinkedIn post or article;
 - **workflow**: briefing, optional research, drafting, review, approval, and learning;
 - **models**: which provider and capability tier executes each task.
+
+## Create a new author workspace
+
+Most users should not clone Core. Generate a thin repository that pins Core and
+contains only author-owned voices, perspectives, sources, learnings, agents,
+content, and tests:
+
+```bash
+content-creator workspace create Content_Creator_Alice \
+  --name "Content Creator Alice" \
+  --author-name "Alice Example" \
+  --voice-id alice-general \
+  --pack linkedin-post \
+  --pack linkedin-article
+```
+
+The command creates the dependency, configuration, repository guidance, source
+inventory, voice-scoped learning, content destinations, smoke tests, and a
+personalised README with chat and CLI onboarding. It preserves every existing
+file when rerun. See
+[Create a thin content workspace](docs/guides/creating-a-content-workspace.md).
 
 ## How the system fits together
 
@@ -128,7 +152,7 @@ The staged implementation and acceptance criteria are in
 [`docs/work-package/delivery-plan.md`](docs/work-package/delivery-plan.md) and
 [`docs/work-package/testing-and-acceptance.md`](docs/work-package/testing-and-acceptance.md).
 
-## Quick start: installation to your first finished piece
+## Core contributor quick start: installation to your first finished piece
 
 Requires Python 3.9 or newer.
 
