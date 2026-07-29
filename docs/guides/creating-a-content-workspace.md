@@ -9,17 +9,12 @@ material owned by that workspace.
 
 ## Install Core
 
-Version `0.4.0`, which introduces the generator, is currently unreleased. For
-a development evaluation:
+Install the immutable `v0.4.0` release:
 
 ```bash
 uv tool install \
-  "content-creator @ git+https://github.com/vadhoob90/Content_Creator_Core.git@main"
+  "content-creator @ git+https://github.com/vadhoob90/Content_Creator_Core.git@v0.4.0"
 ```
-
-Use `--core-ref main` when generating the preview workspace. Do not use a
-moving branch for production. After `v0.4.0` is published, install and pin that
-immutable tag.
 
 ## Generate the repository
 
@@ -33,7 +28,7 @@ content-creator workspace create Content_Creator_Alice \
   --voice-label "Alice — General" \
   --pack linkedin-post \
   --pack linkedin-article \
-  --core-ref main
+  --core-ref v0.4.0
 ```
 
 Without `--pack`, the command enables `general-text`.
