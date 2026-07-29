@@ -3,6 +3,12 @@
 A provider-neutral foundation for creating researched or non-researched content
 in a person's approved voice.
 
+**Why not just use a chat application?** ChatGPT and Claude already offer
+projects, instructions, memory, files, and style customisation. Content Creator
+adds a provider-neutral, reviewable publication process with explicit provenance,
+scope, approval, versioning, and learning boundaries. Read
+[Why not just use ChatGPT or Claude?](docs/guides/why-not-just-chat.md).
+
 The repository separates six concerns:
 
 - **agents**: repository-owned editorial and domain behaviour;
