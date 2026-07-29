@@ -104,10 +104,14 @@ Editable agents and the two learning scopes are described in the
 Existing v0.2 workspaces should follow the
 [v0.3 migration guide](docs/guides/migrating-to-v0.3.md).
 
-Voice construction uses a transparent, attribution-weighted
+Start with the top-down guide to
+[how Content Creator derives a voice](docs/guides/how-voice-is-derived.md).
+It explains the complete path from authorised sources to an approved immutable
+version, then drills into attribution, corpus weighting, deterministic
+measurements, model-assisted interpretation, evaluation, algorithms, safeguards,
+and limitations. The supporting
 [lightweight linguistic framework](docs/guides/linguistic-voice-framework.md)
-that separates spoken and written registers and treats measurements as evidence
-rather than mechanical writing targets.
+documents the measurement model in a shorter form.
 
 [Perspective provenance](docs/guides/perspective-provenance.md) keeps approved
 author positions separate from voice, research, and other subject contexts.
