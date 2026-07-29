@@ -54,6 +54,8 @@ def test_workspace_create_generates_complete_thin_repository(
         "content-creator.yaml",
         ".gitignore",
         ".env.example",
+        ".agents/skills/content-creator/SKILL.md",
+        ".agents/skills/voice-builder/SKILL.md",
         "agents/writer.md",
         "learnings/memory.json",
         "profiles/registry.json",
@@ -78,6 +80,9 @@ def test_workspace_create_generates_complete_thin_repository(
     )
     assert configuration["perspective"]["mode"] == "automatic"
     assert configuration["perspective"]["allow_multiple"] is True
+    assert configuration["coordinator"]["default_voice"] == "alice-general"
+    assert configuration["coordinator"]["default_pack"] == "linkedin-post"
+    assert configuration["coordinator"]["external_publication"] == "disabled"
     onboarding = json.loads(
         (
             destination / "profiles" / "alice-general" / "onboarding.json"

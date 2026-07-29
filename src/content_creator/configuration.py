@@ -123,3 +123,36 @@ class Configuration:
                 "perspective.mode must be explicit, automatic, or disabled"
             )
         return policy
+
+    @property
+    def coordinator_policy(self) -> Dict[str, Any]:
+        path = self.root / "content-creator.yaml"
+        data = self._read_yaml(path) if path.exists() else {}
+        configured = data.get("coordinator", {}) or {}
+        if not isinstance(configured, dict):
+            raise ConfigurationError(
+                "coordinator configuration must be a mapping"
+            )
+        policy = {
+            "name": "Content Creator Coordinator",
+            "default_voice": None,
+            "default_pack": "general-text",
+            "ask_before_voice_change": True,
+            "require_final_review": True,
+            "external_publication": "disabled",
+            "review_reminder": None,
+        }
+        policy.update(configured)
+        if policy["external_publication"] != "disabled":
+            raise ConfigurationError(
+                "coordinator.external_publication must be disabled"
+            )
+        if not isinstance(policy["ask_before_voice_change"], bool):
+            raise ConfigurationError(
+                "coordinator.ask_before_voice_change must be a boolean"
+            )
+        if not isinstance(policy["require_final_review"], bool):
+            raise ConfigurationError(
+                "coordinator.require_final_review must be a boolean"
+            )
+        return policy

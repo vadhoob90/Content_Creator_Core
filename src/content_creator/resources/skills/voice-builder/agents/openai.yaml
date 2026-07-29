@@ -1,0 +1,4 @@
+interface:
+  display_name: "Voice Builder"
+  short_description: "Build and activate an evidence-backed writing voice"
+  default_prompt: "Use $voice-builder to create, evaluate, approve, or manage a writing voice from authorised sources."
