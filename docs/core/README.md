@@ -164,7 +164,7 @@ For an authenticated native smoke test:
 
 ```bash
 codex login
-export CONTENT_CREATOR_PROVIDER=codex-native
+content-creator provider select codex-native
 content-creator provider verify codex-native
 ```
 
@@ -172,7 +172,7 @@ Or:
 
 ```bash
 claude auth login
-export CONTENT_CREATOR_PROVIDER=claude-native
+content-creator provider select claude-native
 content-creator provider verify claude-native
 ```
 
@@ -180,10 +180,16 @@ API providers require the relevant optional dependency and credential:
 
 ```bash
 python -m pip install -e ".[providers,dev]"
-export CONTENT_CREATOR_PROVIDER=openai
+content-creator provider select openai
 export OPENAI_API_KEY="<key>"
 content-creator provider verify openai
 ```
+
+Core deliberately ships without a provider default. Select one in
+`content-creator.yaml`, pass `--provider`, or set
+`CONTENT_CREATOR_PROVIDER` for a temporary shell override. This prevents a
+missing environment variable from silently changing a native workflow into a
+metered API workflow.
 
 Never make a paid live-provider call merely to validate deterministic logic.
 
@@ -209,6 +215,8 @@ Do not make production consumers follow the moving `main` branch.
 - [Repository-owned agents](../guides/repository-agents.md)
 - [Provider configuration](../guides/provider-configuration.md)
 - [Versioned workspaces](../guides/workspace-dependencies.md)
+- [Migrating to v0.4](../guides/migrating-to-v0.4.md)
+- [Changelog](../../CHANGELOG.md)
 - [Delivery plan](../work-package/delivery-plan.md)
 - [Testing and acceptance](../work-package/testing-and-acceptance.md)
 

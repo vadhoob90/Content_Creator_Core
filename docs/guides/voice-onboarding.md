@@ -44,14 +44,18 @@ content-creator --workspace . voice onboard example-person-general \
 This records the decision and creates an empty authorised voice work order. It
 does not fabricate a candidate from no evidence.
 
-Add writing and build:
+Point Core at an existing directory and build:
 
 ```bash
 content-creator --workspace . voice add-sources example-person-general \
-  --sources voice-material/example-person-general/source-urls.txt \
-  --documents voice-material/example-person-general/
+  --documents "/absolute/path/to/my-writing"
 content-creator --workspace . voice build example-person-general
 ```
+
+Directories are searched recursively for Markdown, text, DOCX, PDF, and HTML
+files. Originals remain where they are and are not uploaded to GitHub. Public
+URLs can still be supplied through
+`voice-material/example-person-general/source-urls.txt`.
 
 Review, verify, and approve the candidate:
 

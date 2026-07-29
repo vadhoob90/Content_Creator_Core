@@ -380,6 +380,10 @@ outputs/
 runs/
 .eval-results/
 .voice-cache/
+profiles/*/work-order.json
+voice-material/**/*
+!voice-material/**/
+!voice-material/**/source-urls.txt
 content/*/drafting/
 """
 
@@ -490,11 +494,13 @@ For subscription-backed Codex:
 
 ```bash
 codex login
-export CONTENT_CREATOR_PROVIDER=codex-native
+uv run content-creator --workspace . provider select codex-native
 uv run content-creator --workspace . provider verify codex-native
 ```
 
-For Claude Code, use `claude-native` after authenticating Claude.
+For Claude Code, authenticate and select `claude-native` instead. Core has no
+implicit provider default: the workspace records this choice so opening a new
+terminal cannot silently switch to a metered API provider.
 
 ## Choose how to begin
 
@@ -523,16 +529,31 @@ uv run content-creator --workspace . voice onboard {voice_id} \\
 {intended_uses}
 ```
 
-Add authorised URLs to
-`voice-material/{voice_id}/source-urls.txt`. Put private, directly authored
-Markdown, text, DOCX, PDF, or HTML files in the same directory.
-
-Add the material and build the candidate:
+If you already have writing on this computer, point Core directly at its
+directory. The files may remain outside this Git repository and are read in
+place; supported files are discovered recursively:
 
 ```bash
 uv run content-creator --workspace . voice add-sources {voice_id} \\
-  --sources voice-material/{voice_id}/source-urls.txt \\
-  --documents voice-material/{voice_id}/
+  --documents "/absolute/path/to/my-writing"
+```
+
+Core does not copy those originals into the repository. Private filesystem
+paths remain in the ignored operational work order and cache; versioned voice
+artifacts retain only `local-document:<filename>` references and content
+hashes.
+
+For authorised public sources, add URLs to
+`voice-material/{voice_id}/source-urls.txt` and run:
+
+```bash
+uv run content-creator --workspace . voice add-sources {voice_id} \\
+  --sources voice-material/{voice_id}/source-urls.txt
+```
+
+Build the candidate:
+
+```bash
 uv run content-creator --workspace . voice build {voice_id}
 ```
 

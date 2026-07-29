@@ -32,10 +32,27 @@ class Configuration:
 
     @property
     def default_provider(self) -> str:
-        provider = os.getenv(
-            "CONTENT_CREATOR_PROVIDER",
-            str(self.models["defaults"]["provider"]),
-        )
+        provider = os.getenv("CONTENT_CREATOR_PROVIDER")
+        if not provider:
+            workspace_config = self.root / "content-creator.yaml"
+            workspace = (
+                self._read_yaml(workspace_config)
+                if workspace_config.exists()
+                else {}
+            )
+            configured = workspace.get("provider", {}) or {}
+            if not isinstance(configured, dict):
+                raise ConfigurationError(
+                    "provider configuration must be a mapping"
+                )
+            provider = configured.get("default")
+        if not provider:
+            provider = self.models.get("defaults", {}).get("provider")
+        if not provider:
+            raise ConfigurationError(
+                "No provider selected. Set CONTENT_CREATOR_PROVIDER, pass "
+                "--provider, or set provider.default in content-creator.yaml"
+            )
         if provider not in self.models["providers"]:
             raise ConfigurationError(
                 "Unknown default provider: {}".format(provider)

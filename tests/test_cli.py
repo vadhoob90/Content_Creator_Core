@@ -1,7 +1,10 @@
 import json
 
+import yaml
+
 import content_creator.cli as cli
 from content_creator.cli import main
+from content_creator.configuration import ConfigurationError
 
 
 def test_doctor_validates_repository(capsys):
@@ -75,6 +78,28 @@ def test_init_provider_verify_and_pack_create(project, capsys, monkeypatch):
     assert (project / "packs" / "internal-briefing" / "validators.yaml").exists()
 
 
+def test_provider_select_persists_workspace_choice(project, capsys):
+    assert (
+        main(
+            [
+                "--root",
+                str(project),
+                "provider",
+                "select",
+                "codex-native",
+            ]
+        )
+        == 0
+    )
+    output = json.loads(capsys.readouterr().out)
+    configuration = yaml.safe_load(
+        (project / "content-creator.yaml").read_text(encoding="utf-8")
+    )
+
+    assert output["provider"] == "codex-native"
+    assert configuration["provider"]["default"] == "codex-native"
+
+
 def test_agent_scaffold_preserves_repository_customisation(tmp_path, capsys):
     agents = tmp_path / "agents"
     agents.mkdir()
@@ -91,6 +116,27 @@ def test_agent_scaffold_preserves_repository_customisation(tmp_path, capsys):
     assert main(["--root", str(tmp_path), "agents", "diff-template"]) == 0
     difference = json.loads(capsys.readouterr().out)
     assert "writer.md" in difference["changed"]
+
+
+def test_configuration_errors_are_reported_without_a_traceback(
+    project, capsys, monkeypatch
+):
+    class FailingOrchestrator:
+        def __init__(self, root):
+            self.root = root
+
+        def plan_request(self, request, provider=None):
+            raise ConfigurationError("No provider selected")
+
+    monkeypatch.setattr(cli, "Orchestrator", FailingOrchestrator)
+
+    assert main(["--root", str(project), "plan", "Ambiguous request"]) == 8
+    output = json.loads(capsys.readouterr().out)
+    assert output == {
+        "status": "error",
+        "error_type": "ConfigurationError",
+        "error": "No provider selected",
+    }
 
 
 def test_yaml_brief_reaches_run_command(project, tmp_path, capsys, monkeypatch):

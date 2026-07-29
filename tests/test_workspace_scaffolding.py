@@ -96,6 +96,12 @@ def test_workspace_create_generates_complete_thin_repository(
     assert "--strategy source-derived" in readme
     assert "--strategy starter" in readme
     assert "automatically disables" in readme
+    assert '"/absolute/path/to/my-writing"' in readme
+    assert "discovered recursively" in readme
+    ignore = (destination / ".gitignore").read_text(encoding="utf-8")
+    assert "profiles/*/work-order.json" in ignore
+    assert "voice-material/**/*" in ignore
+    assert "!voice-material/**/source-urls.txt" in ignore
     assert "--use linkedin-post" in readme
     assert "--use linkedin-article" in readme
 

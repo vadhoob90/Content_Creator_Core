@@ -1,4 +1,5 @@
 import json
+from pathlib import Path
 
 import pytest
 from conftest import passing_critique, valid_draft
@@ -56,6 +57,72 @@ def test_voice_id_label_and_author_identity_are_separate(project, capsys):
     assert order["display_name"] == "Example Person — General"
     assert order["author_name"] == "Example Person"
     assert order["author_aliases"] == ["E. Person"]
+
+
+def test_external_directory_is_recursive_and_versioned_paths_are_private(
+    project, capsys
+):
+    archive = project.parent / "private-author-archive"
+    essays = archive / "essays"
+    talks = archive / "talks" / "conference"
+    essays.mkdir(parents=True)
+    talks.mkdir(parents=True)
+    sentence = (
+        "A useful explanation makes the underlying decision visible and gives "
+        "the reader a concrete way to apply it. "
+    )
+    (essays / "article.md").write_text(sentence * 30, encoding="utf-8")
+    (talks / "keynote.txt").write_text(sentence * 25, encoding="utf-8")
+    (archive / "ignored.csv").write_text("not,supported", encoding="utf-8")
+
+    assert (
+        main(
+            [
+                "--root",
+                str(project),
+                "voice",
+                "create",
+                "--voice-id",
+                "external-author",
+                "--author-name",
+                "External Author",
+                "--authorised-by",
+                "External Author",
+                "--documents",
+                str(archive),
+                "--offline-analysis",
+            ]
+        )
+        == 0
+    )
+    capsys.readouterr()
+    work_order = json.loads(
+        (
+            project / "profiles" / "external-author" / "work-order.json"
+        ).read_text(encoding="utf-8")
+    )
+    assert len(work_order["documents"]) == 2
+    assert all(Path(item).is_absolute() for item in work_order["documents"])
+    source_index = json.loads(
+        (
+            project
+            / "profiles"
+            / "external-author"
+            / "candidate"
+            / "source-index.json"
+        ).read_text(encoding="utf-8")
+    )
+    assert {item["locator"] for item in source_index} == {
+        "local-document:article.md",
+        "local-document:keynote.txt",
+    }
+    candidate = project / "profiles" / "external-author" / "candidate"
+    versioned_text = "\n".join(
+        path.read_text(encoding="utf-8")
+        for path in candidate.rglob("*")
+        if path.is_file()
+    )
+    assert str(archive) not in versioned_text
 
 
 def test_voice_build_approve_idempotency_deactivate_and_reactivate(project, capsys):

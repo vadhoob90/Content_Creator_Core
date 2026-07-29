@@ -11,4 +11,6 @@ outputs/
 runs/
 .eval-results/
 .voice-cache/
+voice-material/
+profiles/*/work-order.json
 content/*/drafting/

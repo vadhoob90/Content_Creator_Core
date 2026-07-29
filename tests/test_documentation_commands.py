@@ -25,6 +25,7 @@ def test_documented_command_families_are_parseable():
         ["agents", "diff-template"],
         ["doctor"],
         ["provider", "verify", "openai"],
+        ["provider", "select", "codex-native"],
         ["provider", "verify", "codex-native"],
         ["provider", "verify", "claude-native"],
         ["pack", "list"],
@@ -114,9 +115,11 @@ def test_local_documentation_links_resolve():
     assert not broken
 
 
-def test_private_cache_is_ignored():
+def test_private_voice_material_and_operational_paths_are_ignored():
     ignore = (ROOT / ".gitignore").read_text(encoding="utf-8").splitlines()
     assert ".voice-cache/" in ignore
+    assert "voice-material/" in ignore
+    assert "profiles/*/work-order.json" in ignore
 
 
 def test_publication_perspective_proposals_do_not_trigger_offline_ci():
