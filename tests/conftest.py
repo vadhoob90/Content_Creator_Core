@@ -2,6 +2,7 @@ import shutil
 from pathlib import Path
 
 import pytest
+import yaml
 
 REPO = Path(__file__).resolve().parents[1]
 
@@ -20,6 +21,14 @@ def project(tmp_path):
         source = REPO / name
         if source.exists():
             shutil.copytree(source, tmp_path / name)
+    models = tmp_path / "config" / "models.yaml"
+    if models.exists():
+        configuration = yaml.safe_load(models.read_text(encoding="utf-8"))
+        configuration["defaults"]["provider"] = "anthropic"
+        models.write_text(
+            yaml.safe_dump(configuration, sort_keys=False),
+            encoding="utf-8",
+        )
     (tmp_path / "content" / "linkedin-post" / "published").mkdir(parents=True)
     (tmp_path / "content" / "linkedin-article" / "published").mkdir(parents=True)
     return tmp_path

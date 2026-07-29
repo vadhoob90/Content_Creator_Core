@@ -33,12 +33,16 @@ Pin a content repository to a release rather than the moving `main` branch:
 name = "example-content-workspace"
 version = "0.1.0"
 dependencies = [
-  "content-creator @ git+https://github.com/vadhoob90/Content_Creator_Core.git@v0.4.0",
+  "content-creator @ git+https://github.com/vadhoob90/Content_Creator_Core.git@v0.3.0",
 ]
 ```
 
 Commit the consumer lockfile. Upgrade deliberately by changing the tag,
 refreshing the lock, and running downstream tests.
+
+The workspace generator is scheduled for `v0.4.0`, which is currently
+unreleased. Development evaluations may use `main` or a reviewed commit
+explicitly; production workspaces should wait for and pin the immutable tag.
 
 ## Generate a new repository
 

@@ -1,3 +1,4 @@
+import pytest
 import yaml
 
 from content_creator.configuration import Configuration, ConfigurationError
@@ -47,6 +48,31 @@ def test_default_provider_can_be_selected_for_current_shell(project, monkeypatch
 def test_native_provider_can_be_selected_for_current_shell(project, monkeypatch):
     monkeypatch.setenv("CONTENT_CREATOR_PROVIDER", "codex-native")
     assert Configuration(project).default_provider == "codex-native"
+
+
+def test_default_provider_requires_deliberate_selection(project, monkeypatch):
+    monkeypatch.delenv("CONTENT_CREATOR_PROVIDER", raising=False)
+    path = project / "config" / "models.yaml"
+    data = yaml.safe_load(path.read_text(encoding="utf-8"))
+    data["defaults"]["provider"] = None
+    path.write_text(yaml.safe_dump(data), encoding="utf-8")
+
+    with pytest.raises(ConfigurationError, match="No provider selected"):
+        _ = Configuration(project).default_provider
+
+
+def test_workspace_can_persist_an_explicit_provider(project, monkeypatch):
+    monkeypatch.delenv("CONTENT_CREATOR_PROVIDER", raising=False)
+    path = project / "config" / "models.yaml"
+    data = yaml.safe_load(path.read_text(encoding="utf-8"))
+    data["defaults"]["provider"] = None
+    path.write_text(yaml.safe_dump(data), encoding="utf-8")
+    (project / "content-creator.yaml").write_text(
+        yaml.safe_dump({"provider": {"default": "claude-native"}}),
+        encoding="utf-8",
+    )
+
+    assert Configuration(project).default_provider == "claude-native"
 
 
 def test_runner_rejects_invalid_structured_output(project):

@@ -14,20 +14,24 @@ checkpoints, and author approval. Read
 
 ## Create your content workspace
 
-Most people should not clone this repository. Install a released version of
-Core and generate a thin workspace:
+Most people should not clone this repository. Version `0.4.0` is currently
+unreleased. To evaluate the workspace generator from the development branch:
 
 ```bash
 uv tool install \
-  "content-creator @ git+https://github.com/vadhoob90/Content_Creator_Core.git@v0.4.0"
+  "content-creator @ git+https://github.com/vadhoob90/Content_Creator_Core.git@main"
 
 content-creator workspace create Content_Creator_Alice \
   --name "Content Creator Alice" \
   --author-name "Alice Example" \
   --voice-id alice-general \
   --pack linkedin-post \
-  --pack linkedin-article
+  --pack linkedin-article \
+  --core-ref main
 ```
+
+`main` is a moving development preview, not a production dependency. After
+`v0.4.0` is published, install and pin that immutable tag instead.
 
 The generated repository owns Alice's voices, sources, perspectives, learning,
 agents, drafts, tests, and publications. It pins Core rather than copying the
@@ -38,6 +42,13 @@ cd Content_Creator_Alice
 uv sync --dev
 uv run content-creator --workspace . doctor
 uv run pytest
+```
+
+Select a provider deliberately. The choice is persisted in the workspace:
+
+```bash
+uv run content-creator --workspace . provider select codex-native
+uv run content-creator --workspace . provider verify codex-native
 ```
 
 See [Create a thin content workspace](docs/guides/creating-a-content-workspace.md)
@@ -62,18 +73,23 @@ uv run content-creator --workspace . voice onboard alice-general \
   --use linkedin-article
 ```
 
-Add the material, build a candidate, review it, and activate it:
+Point Core at an existing local directory. Files are read recursively in place;
+they are not uploaded to GitHub or copied into the workspace:
 
 ```bash
 uv run content-creator --workspace . voice add-sources alice-general \
-  --sources voice-material/alice-general/source-urls.txt \
-  --documents voice-material/alice-general/
+  --documents "/absolute/path/to/my-writing"
 uv run content-creator --workspace . voice build alice-general
 uv run content-creator --workspace . voice show alice-general
 uv run content-creator --workspace . voice verify alice-general
 uv run content-creator --workspace . voice approve alice-general \
   --approved-by "Alice Example"
 ```
+
+Public URLs may instead be listed in
+`voice-material/alice-general/source-urls.txt`. Uploaded documents and local
+work-order paths are ignored by Git; versioned artifacts retain privacy-safe
+references and content hashes.
 
 ### Begin without previous writing
 
@@ -177,6 +193,8 @@ perspectives, research state, agent instructions, and learning memories used.
 - [Repository-owned agents](docs/guides/repository-agents.md)
 - [Provider configuration](docs/guides/provider-configuration.md)
 - [Versioned Core dependencies](docs/guides/workspace-dependencies.md)
+- [Changelog](CHANGELOG.md)
+- [Migrating to v0.4](docs/guides/migrating-to-v0.4.md)
 
 ## Work on Content Creator Core
 

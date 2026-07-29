@@ -31,13 +31,17 @@ content-creator voice create \
   --authorised-by "Repository Owner" \
   --use general-text \
   --sources voice-material/example-person/urls.txt \
-  --documents voice-material/example-person/
+  --documents "/absolute/path/to/my-writing"
 
 content-creator voice status example-person-general
 content-creator voice show example-person-general
 content-creator voice signature example-person-general
 content-creator voice verify example-person-general
 ```
+
+`--documents` accepts a file or directory and may be repeated. Directories are
+searched recursively for `.md`, `.txt`, `.docx`, `.pdf`, and `.html` files.
+Core reads originals in place; it does not copy or upload them.
 
 Local files supplied through `--documents` are treated as directly authored
 when `--authorised-by` confirms the work order. They do not need an embedded

@@ -6,7 +6,7 @@ vendor model. `config/models.yaml` maps each provider's `fast`, `balanced`, and
 
 Selection is deterministic:
 
-1. Use the work-order provider or the configured default
+1. Use the work-order provider, shell override, or explicit workspace default
 2. Resolve the role to a profile
 3. Filter candidates by required capabilities such as `structured_output` and
    `web_search`
@@ -43,9 +43,19 @@ operation. Provider-specific structured-output and search syntax remains inside
 `src/content_creator/providers/`.
 
 API credentials come from `OPENAI_API_KEY` or `ANTHROPIC_API_KEY`. Do not place
-credentials in YAML. Set `CONTENT_CREATOR_PROVIDER` to `openai`, `anthropic`,
-`codex-native`, or `claude-native` to choose the default for the current shell
-without editing the catalogue.
+credentials in YAML. Core deliberately ships without a provider default.
+
+Persist a deliberate workspace choice:
+
+```bash
+content-creator provider select codex-native
+```
+
+This writes `provider.default` to `content-creator.yaml`. Alternatively, pass
+`--provider` for one command or set `CONTENT_CREATOR_PROVIDER` to `openai`,
+`anthropic`, `codex-native`, or `claude-native` for a temporary shell override.
+If none is supplied, Core exits cleanly rather than choosing a potentially
+metered provider.
 
 Native modes deliberately remove API-key variables from their child processes
 and fail unless the CLI reports subscription-backed authentication. This
@@ -68,6 +78,7 @@ For Codex:
 
 ```bash
 codex login
+content-creator provider select codex-native
 content-creator provider verify codex-native
 ```
 
@@ -75,6 +86,7 @@ For Claude Code:
 
 ```bash
 claude auth login
+content-creator provider select claude-native
 content-creator provider verify claude-native
 ```
 

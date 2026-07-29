@@ -78,6 +78,12 @@ def _even_sample(records: List[SourceRecord], limit: int) -> List[SourceRecord]:
     ]
 
 
+def _public_locator(locator: str) -> str:
+    if locator.startswith(("http://", "https://")):
+        return locator
+    return "local-document:{}".format(Path(locator).name)
+
+
 class VoiceBuilder:
     def __init__(
         self,
@@ -210,7 +216,7 @@ class VoiceBuilder:
                     SourceRecord(
                         id=source_id,
                         kind=kind,
-                        locator=locator,
+                        locator=_public_locator(locator),
                         content_hash=content_hash(text),
                         title=title,
                         word_count=len(text.split()),
@@ -223,7 +229,12 @@ class VoiceBuilder:
                 )
                 normalized.append(text)
             except Exception as exc:
-                errors.append({"locator": locator, "error": str(exc)})
+                errors.append(
+                    {
+                        "locator": _public_locator(locator),
+                        "error": str(exc).replace(locator, _public_locator(locator)),
+                    }
+                )
         corpus = assess_corpus(sources, order.authorisation.intended_uses)
         if final_candidate.exists() and not corpus["sufficient"]:
             raise VoiceBuildError(

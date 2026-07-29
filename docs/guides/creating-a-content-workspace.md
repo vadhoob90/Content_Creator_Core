@@ -7,17 +7,19 @@ Do not clone Content Creator Core and delete reusable files. The generated
 repository pins Core as a dependency and contains only the mutable editorial
 material owned by that workspace.
 
-## Install a released Core version
+## Install Core
 
-Install the CLI from an immutable Core tag:
+Version `0.4.0`, which introduces the generator, is currently unreleased. For
+a development evaluation:
 
 ```bash
 uv tool install \
-  "content-creator @ git+https://github.com/vadhoob90/Content_Creator_Core.git@v0.4.0"
+  "content-creator @ git+https://github.com/vadhoob90/Content_Creator_Core.git@main"
 ```
 
-A development installation may use a reviewed commit instead. Do not use a
-moving branch for a production workspace.
+Use `--core-ref main` when generating the preview workspace. Do not use a
+moving branch for production. After `v0.4.0` is published, install and pin that
+immutable tag.
 
 ## Generate the repository
 
@@ -30,7 +32,8 @@ content-creator workspace create Content_Creator_Alice \
   --voice-id alice-general \
   --voice-label "Alice — General" \
   --pack linkedin-post \
-  --pack linkedin-article
+  --pack linkedin-article \
+  --core-ref main
 ```
 
 Without `--pack`, the command enables `general-text`.
@@ -157,9 +160,20 @@ Add public URLs to:
 voice-material/alice-general/source-urls.txt
 ```
 
-Place private, directly authored Markdown, text, DOCX, PDF, or HTML documents
-in the same directory. Then follow the generated README to add the sources,
-build, review, verify, and approve the candidate.
+For local writing, point directly to any directory on the author's computer:
+
+```bash
+uv run content-creator --workspace . voice add-sources alice-general \
+  --documents "/absolute/path/to/my-writing"
+```
+
+Supported Markdown, text, DOCX, PDF, and HTML files are discovered recursively.
+They are read in place rather than copied into the Git repository. Operational
+work orders and extracted cache text are ignored; versioned source indexes use
+privacy-safe local references rather than absolute filesystem paths.
+
+Then follow the generated README to build, review, verify, and approve the
+candidate.
 
 ### Begin without previous writing
 

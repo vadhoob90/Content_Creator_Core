@@ -11,7 +11,7 @@ from typing import Optional
 import yaml
 
 from .agent_resources import STANDARD_TEMPLATE, AgentWorkspace
-from .configuration import Configuration
+from .configuration import Configuration, ConfigurationError
 from .domain import (
     AuthorContribution,
     PerspectiveSelection,
@@ -156,6 +156,11 @@ def build_parser() -> argparse.ArgumentParser:
 
     provider = sub.add_parser("provider", help="Verify provider configuration")
     provider_sub = provider.add_subparsers(dest="provider_command", required=True)
+    provider_select = provider_sub.add_parser(
+        "select",
+        help="Persist the workspace's deliberate default provider",
+    )
+    provider_select.add_argument("provider_name", choices=PROVIDERS)
     provider_verify = provider_sub.add_parser("verify")
     provider_verify.add_argument("provider_name", choices=PROVIDERS)
 
@@ -365,7 +370,7 @@ def _add_run_arguments(parser) -> None:
     parser.add_argument("--length", help="Word range such as 700:900")
 
 
-def main(argv=None) -> int:
+def _main(argv=None) -> int:
     args = build_parser().parse_args(argv)
     root = _root(args.root)
     if args.command == "init":
@@ -405,6 +410,36 @@ def main(argv=None) -> int:
         return 0
     if args.command == "provider":
         provider_name = args.provider_name
+        if args.provider_command == "select":
+            path = root / "content-creator.yaml"
+            configuration = (
+                yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+                if path.exists()
+                else {}
+            )
+            if not isinstance(configuration, dict):
+                raise ConfigurationError(
+                    "content-creator.yaml must contain a mapping"
+                )
+            provider_configuration = configuration.get("provider", {}) or {}
+            if not isinstance(provider_configuration, dict):
+                raise ConfigurationError(
+                    "provider configuration must be a mapping"
+                )
+            provider_configuration["default"] = provider_name
+            configuration["provider"] = provider_configuration
+            RunStore._atomic_text(
+                path,
+                yaml.safe_dump(configuration, sort_keys=False),
+            )
+            _print(
+                {
+                    "status": "ok",
+                    "provider": provider_name,
+                    "persisted_to": str(path),
+                }
+            )
+            return 0
         if provider_name in {"anthropic", "openai"}:
             variable = "{}_API_KEY".format(provider_name.upper())
             configured = bool(os.getenv(variable))
@@ -657,11 +692,11 @@ def _source_lines(path: Optional[str]) -> list:
 def _documents(values: list) -> list:
     result = []
     for value in values:
-        path = Path(value)
+        path = Path(value).expanduser().resolve()
         if path.is_dir():
             result.extend(
                 str(item)
-                for item in sorted(path.iterdir())
+                for item in sorted(path.rglob("*"))
                 if item.is_file()
                 and item.suffix.lower()
                 in {".txt", ".md", ".html", ".pdf", ".docx"}
@@ -1043,7 +1078,23 @@ def _perspective_command(root: Path, args) -> int:
 
 
 def command_needs_model(args) -> bool:
-    return args.voice_command in {"create", "build", "rebuild"}
+    return args.voice_command in {"build", "rebuild"} or (
+        args.voice_command == "create" and not args.no_build
+    )
+
+
+def main(argv=None) -> int:
+    try:
+        return _main(argv)
+    except (ConfigurationError, ProviderError) as exc:
+        _print(
+            {
+                "status": "error",
+                "error_type": exc.__class__.__name__,
+                "error": str(exc),
+            }
+        )
+        return 8
 
 
 if __name__ == "__main__":
