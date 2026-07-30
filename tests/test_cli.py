@@ -1,5 +1,6 @@
 import json
 
+import pytest
 import yaml
 
 import content_creator.cli as cli
@@ -18,6 +19,24 @@ def test_doctor_validates_repository(capsys):
         "linkedin-post",
     ]
     assert output["checks"]["default_voice"] is True
+
+
+def test_default_help_is_calm_and_advanced_commands_remain_discoverable(capsys):
+    parser = cli.build_parser()
+    with pytest.raises(SystemExit) as result:
+        parser.parse_args(["--help"])
+    assert result.value.code == 0
+    help_text = capsys.readouterr().out
+    assert "start" in help_text
+    assert "overview" in help_text
+    assert "==SUPPRESS==" not in help_text
+    assert "voice               " not in help_text
+
+    assert main(["advanced"]) == 0
+    advanced = capsys.readouterr().out
+    assert "voice" in advanced
+    assert "coordinator" in advanced
+    assert parser.parse_args(["voice", "list"]).command == "voice"
 
 
 def test_plan_reports_provider_neutral_work_order(capsys):

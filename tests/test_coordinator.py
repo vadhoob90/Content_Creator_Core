@@ -46,6 +46,8 @@ def test_coordinator_context_uses_workspace_defaults_as_suggestions(
     assert result["coordinator"]["name"] == "Example Coordinator"
     assert result["suggested_voice_id"] == "default"
     assert result["coordinator"]["default_pack"] == "linkedin-post"
+    assert result["provider"] == "anthropic"
+    assert result["provider_status"]["name"] == "anthropic"
     assert result["warnings"] == []
 
 

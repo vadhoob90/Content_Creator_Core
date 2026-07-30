@@ -462,8 +462,8 @@ belong here.
 Treat natural requests to create or revise supported content as an invocation
 of the installed Content Creator workflow.
 
-1. Run `content-creator --workspace . coordinator context` and use Core's
-   persisted workspace state rather than chat memory.
+1. Run `content-creator --workspace . start` and use the next action derived
+   from Core's persisted workspace state rather than chat memory.
 2. Read `profiles/{voice_id}/onboarding.json`.
 3. If its status is `undecided`, stop and ask the author to choose:
    build a source-derived voice from their writing, or use the neutral starter.
@@ -536,6 +536,7 @@ Install [uv](https://docs.astral.sh/uv/), then run:
 ```bash
 uv sync --dev
 uv run content-creator --workspace . doctor
+uv run content-creator --workspace . overview
 uv run pytest
 ```
 
@@ -553,8 +554,14 @@ terminal cannot silently switch to a metered API provider.
 
 ## Choose how to begin
 
-Before creating content, choose one route. If you are using chat, the assistant
-must ask this question when onboarding is still undecided:
+Run the guided entry point:
+
+```bash
+uv run content-creator --workspace . start
+```
+
+Before creating content, choose one voice route. If you are using chat, the
+assistant must ask this question when onboarding is still undecided:
 
 ```text
 Do you want to build a personalised voice from writing you can provide, or
@@ -659,6 +666,15 @@ Move the active draft into the published directory.
 This does not post to an external platform.
 
 ## Create content using the CLI
+
+Preview Core's proposed decisions without creating a run:
+
+```bash
+uv run content-creator --workspace . start \\
+  "Write a useful piece for my professional audience"
+```
+
+Then create the reviewed route explicitly:
 
 ```bash
 uv run content-creator --workspace . run \\

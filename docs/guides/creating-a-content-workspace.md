@@ -9,11 +9,11 @@ material owned by that workspace.
 
 ## Install Core
 
-Install the immutable `v0.5.0` release:
+Install the immutable `v0.6.0` release:
 
 ```bash
 uv tool install \
-  "content-creator @ git+https://github.com/vadhoob90/Content_Creator_Core.git@v0.5.0"
+  "content-creator @ git+https://github.com/vadhoob90/Content_Creator_Core.git@v0.6.0"
 ```
 
 ## Generate the repository
@@ -28,7 +28,7 @@ content-creator workspace create Content_Creator_Alice \
   --voice-label "Alice — General" \
   --pack linkedin-post \
   --pack linkedin-article \
-  --core-ref v0.5.0
+  --core-ref v0.6.0
 ```
 
 Without `--pack`, the command enables `general-text`.

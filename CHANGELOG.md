@@ -8,6 +8,21 @@ release tag.
 
 ## [Unreleased]
 
+### Added
+
+- Human-readable `overview` and guided, non-mutating `start` entry points.
+- Typed coordinator workspace, provider, voice, run, warning, and recommended
+  action state.
+- Preview-first, immutable workspace dependency upgrades with validation and
+  rollback.
+- A task-oriented documentation index and registry-distribution release ADR.
+
+### Changed
+
+- Default help emphasizes the author command surface while preserving advanced
+  command families and all existing CLI invocations.
+- Offline doctor checks are reusable by the coordinator and overview.
+
 ## [0.5.0] - 2026-07-29
 
 ### Added

@@ -11,7 +11,7 @@ from typing import Optional
 import yaml
 
 from .agent_resources import STANDARD_TEMPLATE, AgentWorkspace
-from .configuration import Configuration, ConfigurationError
+from .configuration import ConfigurationError
 from .coordinator import ContentCoordinator
 from .domain import (
     AuthorContribution,
@@ -21,6 +21,8 @@ from .domain import (
     WorkOrder,
 )
 from .evaluation import run_live_suite, run_replay_suite
+from .experience import render_overview, render_start
+from .health import WorkspaceHealth
 from .intake import ClarificationRequired
 from .learning import LearningMemory
 from .orchestrator import Orchestrator
@@ -39,8 +41,8 @@ from .perspectives import (
     PerspectiveRegistry,
 )
 from .providers import ProviderError, ProviderRegistry
-from .resource_paths import ResourceResolver
 from .storage import RunStore
+from .upgrade import WorkspaceUpgradeError, WorkspaceUpgrader
 from .voice_builder import VoiceBuilder
 from .voices import (
     Authorisation,
@@ -64,6 +66,20 @@ from .workspace import (
 PROVIDERS = ["anthropic", "openai", "codex-native", "claude-native"]
 
 
+class _AuthorHelpFormatter(argparse.HelpFormatter):
+    def _format_action(self, action):
+        if isinstance(action, argparse._SubParsersAction):
+            choices = action._choices_actions
+            action._choices_actions = [
+                item for item in choices if item.help != argparse.SUPPRESS
+            ]
+            try:
+                return super()._format_action(action)
+            finally:
+                action._choices_actions = choices
+        return super()._format_action(action)
+
+
 def _root(value: Optional[str]) -> Path:
     return Path(value or ".").resolve()
 
@@ -75,16 +91,23 @@ def _print(value) -> None:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="content-creator")
+    parser = argparse.ArgumentParser(
+        prog="content-creator",
+        formatter_class=_AuthorHelpFormatter,
+    )
     parser.add_argument(
         "--root",
         "--workspace",
         dest="root",
         help="Content workspace (default: current directory)",
     )
-    sub = parser.add_subparsers(dest="command", required=True)
+    sub = parser.add_subparsers(
+        dest="command",
+        required=True,
+        metavar="{start,overview,workspace,doctor,run,status,publish,advanced}",
+    )
     initialise = sub.add_parser(
-        "init", help="Initialise a repository-owned content workspace"
+        "init", help=argparse.SUPPRESS
     )
     initialise.add_argument(
         "--agent-template",
@@ -142,9 +165,23 @@ def build_parser() -> argparse.ArgumentParser:
         default="automatic",
         help="Perspective selection policy for the new workspace",
     )
+    workspace_upgrade = workspace_sub.add_parser(
+        "upgrade",
+        help="Preview or apply an immutable Core dependency upgrade",
+    )
+    workspace_upgrade.add_argument(
+        "--to",
+        required=True,
+        help="Immutable semantic version tag or full reviewed commit SHA",
+    )
+    workspace_upgrade.add_argument(
+        "--apply",
+        action="store_true",
+        help="Apply the previewed dependency and lockfile update",
+    )
 
     agents = sub.add_parser(
-        "agents", help="Scaffold and inspect repository-owned agents"
+        "agents", help=argparse.SUPPRESS
     )
     agent_sub = agents.add_subparsers(dest="agent_command", required=True)
     for command in ("scaffold", "status", "diff-template"):
@@ -155,7 +192,7 @@ def build_parser() -> argparse.ArgumentParser:
             help="Packaged agent template (default: standard)",
         )
 
-    provider = sub.add_parser("provider", help="Verify provider configuration")
+    provider = sub.add_parser("provider", help=argparse.SUPPRESS)
     provider_sub = provider.add_subparsers(dest="provider_command", required=True)
     provider_select = provider_sub.add_parser(
         "select",
@@ -165,16 +202,30 @@ def build_parser() -> argparse.ArgumentParser:
     provider_verify = provider_sub.add_parser("verify")
     provider_verify.add_argument("provider_name", choices=PROVIDERS)
 
-    plan = sub.add_parser("plan", help="Turn natural language into a work order")
+    plan = sub.add_parser("plan", help=argparse.SUPPRESS)
     plan.add_argument("request")
     plan.add_argument("--provider", choices=PROVIDERS)
 
+    start = sub.add_parser(
+        "start",
+        help="Inspect the workspace and guide the author to the next task",
+    )
+    start.add_argument("request", nargs="?")
+    start.add_argument("--provider", choices=PROVIDERS)
+    start.add_argument("--json", action="store_true")
+    overview = sub.add_parser(
+        "overview",
+        help="Show workspace health, incomplete work, and the next action",
+    )
+    overview.add_argument("--json", action="store_true")
+    overview.add_argument("--run-limit", type=int, default=5)
+
     sub.add_parser("doctor", help="Validate offline configuration and assets")
-    sub.add_parser("packs", help="List installed content packs")
+    sub.add_parser("packs", help=argparse.SUPPRESS)
 
     coordinator = sub.add_parser(
         "coordinator",
-        help="Expose deterministic context and next actions to agent hosts",
+        help=argparse.SUPPRESS,
     )
     coordinator_sub = coordinator.add_subparsers(
         dest="coordinator_command",
@@ -188,7 +239,7 @@ def build_parser() -> argparse.ArgumentParser:
     coordinator_next = coordinator_sub.add_parser("next-actions")
     coordinator_next.add_argument("run_id")
 
-    pack = sub.add_parser("pack", help="Inspect content packs")
+    pack = sub.add_parser("pack", help=argparse.SUPPRESS)
     pack_sub = pack.add_subparsers(dest="pack_command", required=True)
     pack_sub.add_parser("list")
     pack_show = pack_sub.add_parser("show")
@@ -200,7 +251,7 @@ def build_parser() -> argparse.ArgumentParser:
     pack_create.add_argument("pack_id")
     pack_create.add_argument("--extends", default="general-text")
 
-    voice = sub.add_parser("voice", help="Create, approve, and manage voices")
+    voice = sub.add_parser("voice", help=argparse.SUPPRESS)
     voice_sub = voice.add_subparsers(dest="voice_command", required=True)
     voice_onboard = voice_sub.add_parser(
         "onboard",
@@ -283,7 +334,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     perspective = sub.add_parser(
         "perspective",
-        help="Manage context-isolated author perspectives",
+        help=argparse.SUPPRESS,
     )
     perspective_sub = perspective.add_subparsers(
         dest="perspective_command", required=True
@@ -342,11 +393,11 @@ def build_parser() -> argparse.ArgumentParser:
     status = sub.add_parser("status", help="Show persisted run state")
     status.add_argument("run_id")
 
-    resume = sub.add_parser("approve-research", help="Resume a deep-research run")
+    resume = sub.add_parser("approve-research", help=argparse.SUPPRESS)
     resume.add_argument("run_id")
     resume.add_argument("--notes")
 
-    reject = sub.add_parser("reject-research", help="Stop after the research checkpoint")
+    reject = sub.add_parser("reject-research", help=argparse.SUPPRESS)
     reject.add_argument("run_id")
     reject.add_argument("--notes")
 
@@ -355,10 +406,20 @@ def build_parser() -> argparse.ArgumentParser:
     publish.add_argument("--filename")
     publish.add_argument("--feedback")
 
-    evaluate = sub.add_parser("eval", help="Run replay or live evaluation")
+    evaluate = sub.add_parser("eval", help=argparse.SUPPRESS)
     evaluate.add_argument("--mode", choices=["replay", "live"], default="replay")
     evaluate.add_argument(
         "--providers", nargs="+", default=["anthropic", "openai"]
+    )
+    sub.add_parser(
+        "advanced",
+        help="Show lifecycle, automation, and administration command families",
+        description=(
+            "Advanced command families remain stable: init, agents, provider, "
+            "plan, coordinator, pack, packs, voice, perspective, "
+            "approve-research, reject-research, and eval. Use "
+            "'content-creator <family> --help' for detailed help."
+        ),
     )
     return parser
 
@@ -394,10 +455,26 @@ def _add_run_arguments(parser) -> None:
 def _main(argv=None) -> int:
     args = build_parser().parse_args(argv)
     root = _root(args.root)
+    if args.command == "advanced":
+        print(
+            "Advanced commands:\n"
+            "  init, agents, provider, plan, coordinator, pack, packs, voice,\n"
+            "  perspective, approve-research, reject-research, eval\n\n"
+            "Use: content-creator <command> --help"
+        )
+        return 0
     if args.command == "init":
         _print(initialise_workspace(root, args.agent_template))
         return 0
     if args.command == "workspace":
+        if args.workspace_command == "upgrade":
+            upgrader = WorkspaceUpgrader(root)
+            _print(
+                upgrader.apply(args.to)
+                if args.apply
+                else upgrader.preview(args.to)
+            )
+            return 0
         destination = Path(args.directory).expanduser()
         if not destination.is_absolute():
             destination = (
@@ -493,28 +570,58 @@ def _main(argv=None) -> int:
         )
         return 0
     if args.command == "doctor":
-        configuration = Configuration(root)
-        packs = PackRegistry(root).list()
-        resources = ResourceResolver(root)
-        voice = resources.path("profiles/default/voice.md")
-        checks = {
-            "model_catalogue": bool(configuration.models),
-            "content_packs": [pack.id for pack in packs],
-            "default_voice": voice.exists(),
-            "route_cases": resources.path(
-                "evals/cases/route-matrix.yaml"
-            ).exists(),
-            "repository_agents": AgentWorkspace(root).status(),
-        }
-        healthy = (
-            checks["model_catalogue"]
-            and bool(checks["content_packs"])
-            and checks["default_voice"]
-            and checks["route_cases"]
-            and checks["repository_agents"]["complete"]
-        )
-        _print({"status": "ok" if healthy else "error", "checks": checks})
-        return 0 if healthy else 1
+        report = WorkspaceHealth(root).report()
+        _print(report)
+        return 0 if report["status"] == "ok" else 1
+    if args.command == "overview":
+        snapshot = ContentCoordinator(root).snapshot(args.run_limit)
+        if args.json:
+            _print(snapshot)
+        else:
+            print(render_overview(snapshot))
+        return 0
+    if args.command == "start":
+        coordinator = ContentCoordinator(root)
+        snapshot = coordinator.snapshot()
+        if not args.request or not snapshot.is_workspace:
+            if args.json:
+                _print(snapshot)
+            else:
+                print(render_start(snapshot))
+            return 0
+        try:
+            order = Orchestrator(root).plan_request(
+                args.request,
+                provider=args.provider,
+            )
+        except ClarificationRequired as exc:
+            if args.json:
+                _print(
+                    {
+                        "needs_clarification": True,
+                        "questions": exc.questions,
+                        "workspace": snapshot.model_dump(mode="json"),
+                    }
+                )
+            else:
+                print(render_start(snapshot, questions=exc.questions))
+            return 3
+        if args.json:
+            _print(
+                {
+                    "workspace": snapshot.model_dump(mode="json"),
+                    "work_order": order.model_dump(mode="json"),
+                    "mutates_workspace": False,
+                    "approval_points": [
+                        "research checkpoint when required",
+                        "final author review",
+                        "repository-local publication",
+                    ],
+                }
+            )
+        else:
+            print(render_start(snapshot, order=order))
+        return 0
     if args.command == "coordinator":
         coordinator = ContentCoordinator(root)
         if args.coordinator_command == "capabilities":
@@ -1143,7 +1250,7 @@ def command_needs_model(args) -> bool:
 def main(argv=None) -> int:
     try:
         return _main(argv)
-    except (ConfigurationError, ProviderError) as exc:
+    except (ConfigurationError, ProviderError, WorkspaceUpgradeError) as exc:
         _print(
             {
                 "status": "error",
