@@ -40,6 +40,29 @@ dependencies = [
 Commit the consumer lockfile. Upgrade deliberately by changing the tag,
 refreshing the lock, and running downstream tests.
 
+From v0.6, preview that change with:
+
+```bash
+content-creator --workspace . workspace upgrade --to v0.6.0
+```
+
+The preview shows the dependency and lockfile operation, packaged template
+differences, preserved repository-owned paths, validation commands, and manual
+follow-up. It does not modify the workspace.
+
+Apply the reviewed preview explicitly:
+
+```bash
+content-creator --workspace . workspace upgrade --to v0.6.0 --apply
+```
+
+Core accepts only a semantic-version tag or full 40-character reviewed commit,
+never `main`, another branch, or an abbreviated commit. The apply workflow
+refreshes the lock, runs doctor, verifies all voices, runs workspace tests, and
+restores the dependency and lockfile if validation fails. New packaged
+template files may be added, but existing repository-owned agents and skills
+are preserved for manual review.
+
 The workspace generator is available from `v0.4.0`. Production workspaces should
 pin that immutable tag or a later reviewed release rather than `main`.
 

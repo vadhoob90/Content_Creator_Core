@@ -24,6 +24,11 @@ def test_documented_command_families_are_parseable():
         ["agents", "status"],
         ["agents", "diff-template"],
         ["doctor"],
+        ["overview"],
+        ["overview", "--json"],
+        ["start"],
+        ["start", "Write a useful article"],
+        ["advanced"],
         ["provider", "verify", "openai"],
         ["provider", "select", "codex-native"],
         ["provider", "verify", "codex-native"],
@@ -96,6 +101,8 @@ def test_documented_command_families_are_parseable():
         ["publish", "run-id"],
         ["run", "--brief", "brief.yaml"],
         ["eval"],
+        ["workspace", "upgrade", "--to", "v0.6.0"],
+        ["workspace", "upgrade", "--to", "v0.6.0", "--apply"],
     ]
     for command in commands:
         assert parser.parse_args(command).command
