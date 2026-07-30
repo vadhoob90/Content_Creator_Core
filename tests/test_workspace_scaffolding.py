@@ -40,9 +40,7 @@ def test_workspace_create_generates_complete_thin_repository(
     assert result["status"] == "ok"
     assert result["voice_id"] == "alice-general"
     assert result["packs"] == ["linkedin-post", "linkedin-article"]
-    assert result["core_dependency"].endswith(
-        "Content_Creator_Core.git@v0.4.0"
-    )
+    assert result["core_dependency"] == "content-creator==0.4.0"
     assert "content-creator.yaml" in result["created"]
     assert "profiles/registry.json" in result["created"]
 
@@ -70,11 +68,7 @@ def test_workspace_create_generates_complete_thin_repository(
     assert not (destination / "src" / "content_creator").exists()
 
     pyproject = (destination / "pyproject.toml").read_text(encoding="utf-8")
-    assert (
-        "content-creator @ "
-        "git+https://github.com/vadhoob90/Content_Creator_Core.git@v0.4.0"
-        in pyproject
-    )
+    assert "content-creator==0.4.0" in pyproject
     configuration = yaml.safe_load(
         (destination / "content-creator.yaml").read_text(encoding="utf-8")
     )
@@ -156,6 +150,8 @@ def test_workspace_create_defaults_to_general_text(tmp_path, capsys):
                 "Example Author",
                 "--core-ref",
                 "reviewed-commit",
+                "--core-source",
+                "git",
                 "--perspective-mode",
                 "explicit",
             ]
@@ -171,6 +167,33 @@ def test_workspace_create_defaults_to_general_text(tmp_path, capsys):
     assert (
         destination / "content" / "general-text" / "published" / ".gitkeep"
     ).exists()
+
+
+def test_workspace_create_can_pin_a_reviewed_git_commit(tmp_path, capsys):
+    destination = tmp_path / "git-workspace"
+    commit = "a" * 40
+
+    assert (
+        main(
+            [
+                "workspace",
+                "create",
+                str(destination),
+                "--author-name",
+                "Example Author",
+                "--core-source",
+                "git",
+                "--core-ref",
+                commit,
+            ]
+        )
+        == 0
+    )
+    result = json.loads(capsys.readouterr().out)
+
+    assert result["core_dependency"].endswith(
+        "Content_Creator_Core.git@{}".format(commit)
+    )
 
 
 def test_workspace_create_rejects_unknown_pack(tmp_path):

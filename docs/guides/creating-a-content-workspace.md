@@ -12,8 +12,7 @@ material owned by that workspace.
 Install the immutable `v0.6.0` release:
 
 ```bash
-uv tool install \
-  "content-creator @ git+https://github.com/vadhoob90/Content_Creator_Core.git@v0.6.0"
+uv tool install content-creator==0.6.0
 ```
 
 ## Generate the repository
@@ -33,12 +32,14 @@ content-creator workspace create Content_Creator_Alice \
 
 Without `--pack`, the command enables `general-text`.
 
-The generator pins the tag corresponding to the installed Core version. Use an
-explicit reviewed tag or commit when necessary:
+The generated workspace should pin the same registry version. Use an explicit
+reviewed Git tag or commit only when consuming a private fork or diagnosing a
+release:
 
 ```bash
 content-creator workspace create Content_Creator_Alice \
   --author-name "Alice Example" \
+  --core-source git \
   --core-ref 0123456789abcdef
 ```
 
@@ -49,6 +50,8 @@ Other useful options are:
 --perspective-mode automatic
 --perspective-mode explicit
 --perspective-mode disabled
+--core-source registry
+--core-source git
 --core-url <private fork or canonical Core URL>
 ```
 

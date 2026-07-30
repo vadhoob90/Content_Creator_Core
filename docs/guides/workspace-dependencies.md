@@ -26,14 +26,15 @@ The content repository owns policy and behaviour:
 
 ## Consumer dependency
 
-Pin a content repository to a release rather than the moving `main` branch:
+Pin a content repository to a package release rather than the moving `main`
+branch:
 
 ```toml
 [project]
 name = "example-content-workspace"
 version = "0.1.0"
 dependencies = [
-  "content-creator @ git+https://github.com/vadhoob90/Content_Creator_Core.git@v0.5.0",
+  "content-creator==0.6.0",
 ]
 ```
 
@@ -63,8 +64,9 @@ restores the dependency and lockfile if validation fails. New packaged
 template files may be added, but existing repository-owned agents and skills
 are preserved for manual review.
 
-The workspace generator is available from `v0.4.0`. Production workspaces should
-pin that immutable tag or a later reviewed release rather than `main`.
+The workspace generator is available from `v0.4.0`. Production workspaces
+should pin a reviewed package release. The corresponding immutable Git tag
+remains the source-provenance record and fallback installation route.
 
 ## Generate a new repository
 
