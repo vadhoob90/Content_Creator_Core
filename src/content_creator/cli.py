@@ -58,6 +58,7 @@ from .voices import (
 )
 from .workspace import (
     DEFAULT_CORE_REF,
+    DEFAULT_CORE_SOURCE,
     DEFAULT_CORE_URL,
     WorkspaceScaffolder,
     initialise_workspace,
@@ -148,6 +149,12 @@ def build_parser() -> argparse.ArgumentParser:
         "--agent-template",
         default=STANDARD_TEMPLATE,
         help="Packaged agent template to scaffold (default: standard)",
+    )
+    workspace_create.add_argument(
+        "--core-source",
+        choices=["registry", "git"],
+        default=DEFAULT_CORE_SOURCE,
+        help="Install Core from the package registry (default) or Git",
     )
     workspace_create.add_argument(
         "--core-url",
@@ -491,6 +498,7 @@ def _main(argv=None) -> int:
                 voice_label=args.voice_label,
                 packs=args.pack,
                 agent_template=args.agent_template,
+                core_source=args.core_source,
                 core_url=args.core_url,
                 core_ref=args.core_ref,
                 perspective_mode=args.perspective_mode,

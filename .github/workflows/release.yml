@@ -1,0 +1,106 @@
+name: Release package
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build and validate distributions
+    if: github.repository == 'vadhoob90/Content_Creator_Core'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.11"
+      - name: Verify tag matches package version
+        run: |
+          package_version="$(python -c 'from pathlib import Path; scope = {}; exec(Path("src/content_creator/version.py").read_text(), scope); print(scope["VERSION"])')"
+          test "v${package_version}" = "${GITHUB_REF_NAME}"
+          echo "PACKAGE_VERSION=${package_version}" >> "${GITHUB_ENV}"
+      - name: Build wheel and source distribution
+        run: |
+          python -m pip install --disable-pip-version-check build twine
+          python -m build
+          python -m twine check dist/*
+      - name: Validate package resources and metadata
+        run: |
+          mkdir -p release
+          python scripts/validate_distribution.py \
+            dist \
+            --expected-version "${PACKAGE_VERSION}" \
+            | tee release/manifest.json
+          sha256sum dist/* > release/SHA256SUMS
+      - name: Test the built wheel in a clean environment
+        run: |
+          python -m venv /tmp/content-creator-release-test
+          /tmp/content-creator-release-test/bin/python -m pip install \
+            --disable-pip-version-check \
+            dist/content_creator-"${PACKAGE_VERSION}"-py3-none-any.whl \
+            pytest
+          /tmp/content-creator-release-test/bin/python -c \
+            'import content_creator; print(content_creator.__version__)'
+          /tmp/content-creator-release-test/bin/content-creator --help
+          /tmp/content-creator-release-test/bin/content-creator workspace create \
+            /tmp/content-creator-author \
+            --author-name "Release Validation" \
+            --core-ref "${GITHUB_REF_NAME}"
+          /tmp/content-creator-release-test/bin/content-creator \
+            --workspace /tmp/content-creator-author doctor
+          /tmp/content-creator-release-test/bin/pytest \
+            /tmp/content-creator-author/tests
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: python-distributions
+          path: |
+            dist/
+            release/
+          if-no-files-found: error
+
+  publish:
+    name: Publish to PyPI
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/project/content-creator/
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: python-distributions
+      - name: Publish package distributions
+        uses: pypa/gh-action-pypi-publish@6733eb7d741f0b11ec6a39b58540dab7590f9b7d # v1.14.0
+        with:
+          packages-dir: dist/
+
+  github-release:
+    name: Create GitHub release
+    needs: publish
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: python-distributions
+      - name: Create immutable release record
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${GITHUB_REF_NAME}" \
+            dist/* \
+            release/SHA256SUMS \
+            release/manifest.json \
+            --repo "${GITHUB_REPOSITORY}" \
+            --verify-tag \
+            --generate-notes \
+            --title "Content Creator ${GITHUB_REF_NAME}"

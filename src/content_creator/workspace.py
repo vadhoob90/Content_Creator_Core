@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional
 
@@ -13,7 +14,25 @@ from .version import VERSION
 
 DEFAULT_CORE_URL = "https://github.com/vadhoob90/Content_Creator_Core.git"
 DEFAULT_CORE_REF = "v{}".format(VERSION)
+DEFAULT_CORE_SOURCE = "registry"
 DEFAULT_PACKS = ["general-text"]
+VERSION_TAG = re.compile(r"^v(?P<version>\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?)$")
+
+
+def core_dependency(source: str, core_url: str, core_ref: str) -> str:
+    if source == "registry":
+        match = VERSION_TAG.fullmatch(core_ref)
+        if not match:
+            raise ValueError(
+                "Registry dependencies require an immutable semantic version tag"
+            )
+        return "content-creator=={}".format(match.group("version"))
+    if source == "git":
+        return "content-creator @ git+{}@{}".format(
+            core_url.rstrip("/"),
+            core_ref,
+        )
+    raise ValueError("Core source must be registry or git")
 
 
 def _write_if_missing(
@@ -127,6 +146,7 @@ class WorkspaceScaffolder:
         voice_label: Optional[str] = None,
         packs: Optional[Iterable[str]] = None,
         agent_template: str = STANDARD_TEMPLATE,
+        core_source: str = DEFAULT_CORE_SOURCE,
         core_url: str = DEFAULT_CORE_URL,
         core_ref: str = DEFAULT_CORE_REF,
         perspective_mode: str = "automatic",
@@ -215,10 +235,7 @@ class WorkspaceScaffolder:
                 created.append(relative)
 
         package_name = slugify(display_name)
-        dependency = "content-creator @ git+{}@{}".format(
-            core_url.rstrip("/"),
-            core_ref,
-        )
+        dependency = core_dependency(core_source, core_url, core_ref)
         intended_uses = "\n".join(
             "  --use {} \\".format(pack) for pack in selected_packs
         ).rstrip(" \\")

@@ -154,3 +154,17 @@ def test_migration_audit_tracks_all_linkedin_writer_capabilities():
         "Conversational invocation",
     ):
         assert capability in audit
+
+
+def test_release_workflow_is_tag_driven_and_uses_trusted_publishing():
+    workflow = (
+        ROOT / ".github" / "workflows" / "release.yml"
+    ).read_text(encoding="utf-8")
+
+    assert 'tags:\n      - "v*"' in workflow
+    assert "workflow_dispatch" not in workflow
+    assert "id-token: write" in workflow
+    assert "environment:\n      name: pypi" in workflow
+    assert "pypa/gh-action-pypi-publish@" in workflow
+    assert "password:" not in workflow
+    assert "scripts/validate_distribution.py" in workflow
