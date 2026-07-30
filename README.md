@@ -31,6 +31,32 @@ for the complete terminal instructions and configuration options.
 
 ## How it works
 
+The author moves from a versioned workspace to a reviewed draft through one
+guided flow. Core's rules remain authoritative underneath every agent:
+
+```mermaid
+flowchart LR
+    A["Create or open<br/>an author workspace"] --> B["Start / Overview<br/>inspect persisted state"]
+    B --> C{"Choose a voice route"}
+
+    C -->|"Authorised writing"| V["Voice agents<br/>Voice Analyst → Profile Critic<br/>Voice Evaluator"]
+    C -->|"No writing yet"| S["Clear Professional Starter<br/>neutral writing policy"]
+    V --> VA["Human review<br/>activate immutable voice version"]
+    S --> VA
+
+    VA --> D["Describe the content<br/>in ordinary language"]
+    D --> O["Core Coordinator<br/>resolve voice, pack, provider,<br/>perspective and research route"]
+    O --> P["Content agents<br/>Briefing Agent → Researcher (optional)<br/>Writer → Critic → Attribution Reviewer<br/>plus deterministic validators"]
+    P --> H{"Human checkpoints<br/>research approval when required<br/>and final editorial review"}
+    H -->|"Explicit approval"| F["Save approved content<br/>inside the author repository"]
+    F --> L["Learning Extractor<br/>update only the active voice's learning"]
+    L -. "future runs" .-> O
+
+    R["Core rules<br/>Persisted state, never chat history<br/>No silent voice or perspective changes<br/>No invented identity, experience or evidence<br/>Voice and learning isolation<br/>No-research routes stay no-research<br/>No external publication"] -. "govern" .-> O
+    R -. "constrain" .-> P
+    R -. "require approval" .-> H
+```
+
 ### 1. Create an author workspace
 
 The generated repository belongs to the author. It keeps their editorial

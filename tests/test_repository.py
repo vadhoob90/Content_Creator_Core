@@ -69,6 +69,10 @@ def test_readme_is_a_streamlined_operator_journey():
     assert "### 1. Create an author workspace" in readme
     assert "### 2. Choose a voice route" in readme
     assert "### 3. Ask for content naturally" in readme
+    assert "flowchart LR" in readme
+    assert "Voice Analyst → Profile Critic" in readme
+    assert "Briefing Agent → Researcher" in readme
+    assert "No external publication" in readme
     assert "```bash" not in readme
     assert (
         "[Create a thin content workspace]"
