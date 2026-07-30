@@ -10,8 +10,9 @@ release tag.
 
 ### Changed
 
-- Linked the PyPI package from the main README and documented the complete
-  maintainer release and downstream-upgrade process.
+- Linked the PyPI package from the main README, reframed the chat-app
+  comparison in neutral terms, and documented the complete maintainer release
+  and downstream-upgrade process.
 
 ## [0.6.0] - 2026-07-30
 

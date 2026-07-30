@@ -106,6 +106,20 @@ def test_linked_guides_preserve_detailed_operator_commands():
     assert "selected voice's learning memory" in coordinator_guide
 
 
+def test_chat_app_comparison_uses_neutral_non_product_language():
+    guide = (
+        ROOT / "docs" / "guides" / "why-not-just-chat.md"
+    ).read_text(encoding="utf-8")
+
+    assert guide.startswith(
+        "# Content Creator compared with a general-purpose chat app"
+    )
+    assert "Representative general-purpose chat app" in guide
+    assert "## Intended role" in guide
+    assert "ChatGPT or Claude" not in guide
+    assert "## Product position" not in guide
+
+
 def test_core_development_readme_covers_clone_and_validation():
     guide = (ROOT / "docs" / "core" / "README.md").read_text(
         encoding="utf-8"
