@@ -1,7 +1,7 @@
 # Content Creator documentation
 
 Choose the task that matches what you want to do. The root README stays focused
-on the product journey; these guides contain the detailed terminal procedures.
+on the author journey; these guides contain the detailed terminal procedures.
 
 ## I want to create my first workspace
 
@@ -28,7 +28,7 @@ governed [perspective](guides/perspective-provenance.md), not a new voice.
 - [Content Creator Coordinator](guides/content-coordinator.md)
 - [Routes and work orders](guides/routes-and-work-orders.md)
 - [Learning and repository publication](guides/learning-and-publication.md)
-- [Why not just use chat?](guides/why-not-just-chat.md)
+- [Content Creator compared with a general-purpose chat app](guides/why-not-just-chat.md)
 
 Core always returns the result for review and never publishes externally.
 

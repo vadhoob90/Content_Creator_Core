@@ -7,8 +7,8 @@ Each author works in a small, independent repository containing their voices,
 agents, learning, drafts, and approved content. This Core repository supplies
 the reusable workflow, validation, and safety boundaries.
 
-Read [Why not just use ChatGPT or Claude?](docs/guides/why-not-just-chat.md) for
-the design rationale.
+Read [Why not just use a chat app?](docs/guides/why-not-just-chat.md) for the
+design rationale.
 
 Content Creator Core is distributed through PyPI as
 [`content-creator`](https://pypi.org/project/content-creator/). Author
