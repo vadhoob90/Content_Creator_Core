@@ -1,36 +1,28 @@
-# Why not just use ChatGPT or Claude?
+# Content Creator compared with a general-purpose chat app
 
 ## Short answer
 
-For one-off or low-risk content, using ChatGPT or Claude directly may be the
-better choice. Both products already support persistent instructions, uploaded
-reference material, project context, memory, and writing-style customisation.
+For one-off or low-risk content, using a general-purpose chat app directly may
+be the better choice. Capable chat apps already support persistent
+instructions, uploaded reference material, project context, memory, and
+writing-style customisation.
 
 Content Creator is not valuable merely because it can remember preferences or
 analyse writing samples. Its purpose is different:
 
-> Chat applications optimise the conversation. Content Creator governs a
-> repeatable publication process.
+> A general-purpose chat app optimises the interaction. Content Creator
+> governs a repeatable editorial process.
 
 It makes voice, perspective, evidence, learning, approval, and publication
 state explicit, isolated, versioned, and reviewable across providers.
 
-## What chat applications already do well
+## What general-purpose chat apps already do well
 
-A well-configured consumer application is a strong baseline, not a straw man.
+A well-configured chat app is a strong baseline, not a straw man. A
+representative app may combine files, project instructions, conversation
+history, persistent memory, and a style derived from writing samples.
 
-[ChatGPT Projects](https://help.openai.com/en/articles/10169521-projects-in-chatgpt)
-can combine files, project instructions, conversations, and project memory.
-[ChatGPT Memory](https://help.openai.com/en/articles/8983136-what-is-memory_)
-can retain user details and preferences between conversations.
-
-[Claude Projects](https://support.claude.com/en/articles/9519177-how-can-i-create-and-manage-projects)
-provide project knowledge and instructions, while
-[Claude Styles](https://support.anthropic.com/en/articles/10181068-configuring-and-using-styles)
-can derive a communication style from uploaded writing samples. Claude also
-supports project-scoped memory on eligible plans.
-
-These products are usually better for:
+These apps are usually better for:
 
 - getting started immediately;
 - informal drafting and brainstorming;
@@ -63,7 +55,7 @@ silently become a permanent preference for every author.
 
 ### The main differences
 
-| Concern | ChatGPT or Claude project | Content Creator |
+| Concern | Representative general-purpose chat app | Content Creator |
 |---|---|---|
 | Persistent preferences | Supported | Structured as scoped learnings |
 | Writing samples | Used as context or style input | Attributed, weighted, measured, and reviewable |
@@ -73,19 +65,19 @@ silently become a permanent preference for every author.
 | Research | Managed inside the conversation | Explicit route, artifacts, and approval checkpoint |
 | Multiple authors | Organised through separate projects | Isolated voice, learning, and perspective namespaces |
 | Changes of mind | Edit memory or instructions | New version; historical runs retain the old version |
-| Reproducibility | Depends on retained product context | Exact resolved versions and component hashes recorded |
+| Reproducibility | Depends on retained application context | Exact resolved versions and component hashes recorded |
 | Publication learning | May emerge from conversation history | Triggered by approval; active and provisional states separated |
-| Provider choice | Tied to one product | One workflow across supported providers |
-| Ownership | Product-managed context | Portable files, schemas, run artifacts, and Git history |
+| Provider choice | Usually tied to the selected application | One workflow across supported providers |
+| Ownership | Application-managed context | Portable files, schemas, run artifacts, and Git history |
 
 ## Does it create better writing?
 
 Not automatically, and the repository should not make that claim without
 comparative evidence.
 
-Content Creator ultimately uses general-purpose models from providers such as
-OpenAI or Anthropic. Its additional workflow can improve the path to an
-approved publication by reducing:
+Content Creator ultimately uses general-purpose language models through
+supported provider interfaces. Its additional workflow can improve the path
+to an approved publication by reducing:
 
 - unsupported personal claims;
 - accidental mixing of voice, opinion, and research;
@@ -114,7 +106,7 @@ It can. The useful question is:
 
 ## When ordinary chat is probably enough
 
-Use ChatGPT or Claude directly when:
+Use a capable general-purpose chat app directly when:
 
 - the work is one-off or exploratory;
 - factual or reputational risk is low;
@@ -137,7 +129,7 @@ Content Creator becomes more useful as the work involves:
 - collaboration through version-controlled files; or
 - auditability and reproduction of historical decisions.
 
-Its value generally increases with:
+The case for using the workflow generally increases with:
 
 ```text
 more authors
@@ -149,10 +141,10 @@ more authors
 + stronger audit requirements
 ```
 
-## How to test whether the overhead is justified
+## How to evaluate whether the overhead is appropriate
 
-The strongest test is a blinded comparison against properly configured
-ChatGPT and Claude Projects—not against empty chats.
+The strongest test is a blinded comparison against representative,
+well-configured chat apps—not against empty sessions.
 
 Use the same briefs and score the anonymous outputs for:
 
@@ -166,21 +158,22 @@ Use the same briefs and score the anonymous outputs for:
 - consistency across repeated runs; and
 - overall author preference.
 
-Also record cost and latency. Content Creator is justified only when its
-additional control produces enough author value—such as less rework, fewer
-integrity failures, or more consistent approval—to outweigh its complexity.
+Also record cost and latency. The workflow should be used only when its
+additional control—such as less rework, fewer integrity failures, or more
+consistent approval—outweighs its complexity for the author.
 
 The core includes a
 [blind comparison workflow](perspective-provenance.md#blind-comparison-with-ordinary-chat),
 but the existence of a harness is not evidence of superiority. Results must be
 collected from real authors and realistic baselines.
 
-## Product position
+## Intended role
 
-Content Creator should not compete with the memory feature of a single chat
-application. Those products will continue improving.
+Content Creator is not intended to replace a general-purpose chat app or its
+memory features. It is a repository-based editorial workflow that can be used
+alongside capable chat and model interfaces.
 
-Its stronger position is:
+Its intended role is:
 
 > Content Creator is a provider-neutral editorial control layer for producing
 > attributable, reviewable, versioned content in an approved voice.
