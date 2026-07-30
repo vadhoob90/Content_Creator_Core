@@ -10,6 +10,11 @@ the reusable workflow, validation, and safety boundaries.
 Read [Why not just use ChatGPT or Claude?](docs/guides/why-not-just-chat.md) for
 the design rationale.
 
+Content Creator Core is distributed through PyPI as
+[`content-creator`](https://pypi.org/project/content-creator/). Author
+workspaces pin an exact package version so installation and upgrades remain
+reproducible.
+
 ## The quickest way to start
 
 Give this request to Codex, Claude Code, or another coding assistant with

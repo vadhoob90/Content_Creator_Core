@@ -8,6 +8,11 @@ release tag.
 
 ## [Unreleased]
 
+### Changed
+
+- Linked the PyPI package from the main README and documented the complete
+  maintainer release and downstream-upgrade process.
+
 ## [0.6.0] - 2026-07-30
 
 ### Added

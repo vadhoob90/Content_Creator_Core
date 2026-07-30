@@ -195,17 +195,107 @@ Never make a paid live-provider call merely to validate deterministic logic.
 
 ## Release and downstream verification
 
-Core consumers pin immutable tags or reviewed commits. A release change should
-therefore be validated in this order:
+Merging a change into `main` does not publish it. Create a release only when a
+reviewed set of changes should become available to author workspaces.
+Documentation-only and internal maintenance changes can remain unreleased.
 
-1. Run Core lint, tests, doctor, and replay evaluation.
-2. Update version and release documentation.
-3. Tag the reviewed Core commit.
-4. Update each downstream dependency and lockfile deliberately.
-5. Run downstream doctor, voice verification, lint, and tests.
-6. Review generated-workspace compatibility.
+PyPI releases and their corresponding Git tags are immutable. Every public
+release therefore needs a new semantic version:
 
-Do not make production consumers follow the moving `main` branch.
+- increment the patch version for a backward-compatible fix;
+- increment the minor version for backward-compatible functionality; and
+- increment the major version for an incompatible change.
+
+The project is currently below `1.0.0`, but release notes must still call out
+any migration required by a minor release.
+
+### Prepare the release
+
+1. Create a branch from current `main`.
+2. Choose the next version and update it in both `pyproject.toml` and
+   `src/content_creator/version.py`.
+3. Move the completed entries under `Unreleased` in `CHANGELOG.md` into a
+   dated version section.
+4. Confirm that installation, migration, and compatibility documentation
+   reflects the release.
+5. Run:
+
+   ```bash
+   uv run ruff check .
+   uv run pytest
+   uv run content-creator --workspace . doctor
+   uv run content-creator --workspace . eval
+   git diff --check
+   ```
+
+6. For workspace-generator changes, generate a temporary author workspace,
+   run doctor and its generated tests, and verify that running the generator
+   again preserves repository-owned files.
+7. Open a pull request, wait for all required checks, and merge it into
+   protected `main`.
+
+The package workflow performs an additional clean-wheel installation and
+generated-workspace test. Local checks must still pass before the release
+commit reaches `main`.
+
+### Publish the release
+
+Create the matching annotated tag only after the release PR is merged. For
+example, for `0.6.1`:
+
+```bash
+git switch main
+git pull --ff-only origin main
+git tag -a v0.6.1 -m "Content Creator 0.6.1"
+git push origin v0.6.1
+```
+
+Pushing the tag triggers `.github/workflows/release.yml`. The workflow:
+
+1. rejects a tag that does not match the package version;
+2. builds and validates the wheel and source distribution;
+3. checks packaged contracts, packs, profiles, skills, templates, metadata,
+   licences, and hashes;
+4. installs the wheel in a clean environment and tests a generated workspace;
+5. publishes to PyPI through the `pypi` environment using Trusted Publishing;
+   and
+6. creates a GitHub release containing the distributions, manifest, and
+   checksums.
+
+Trusted Publisher registration is a one-time repository setup. Maintainers do
+not create or copy a PyPI API token for each release. Do not manually create
+the GitHub release before the workflow runs, and never move or reuse a tag
+after its package has been published. If a release is defective, yank it on
+PyPI when appropriate and publish a corrected patch version.
+
+Verify the completed release on:
+
+- `https://pypi.org/project/content-creator/<version>/`
+- `https://github.com/vadhoob90/Content_Creator_Core/releases/tag/v<version>`
+
+### Upgrade author workspaces
+
+Author workspaces remain on their pinned package until deliberately upgraded.
+Preview the upgrade first:
+
+```bash
+uv run content-creator --workspace . workspace upgrade --to v0.6.1
+```
+
+Apply the reviewed preview explicitly:
+
+```bash
+uv run content-creator --workspace . workspace upgrade --to v0.6.1 --apply
+```
+
+The apply operation updates the package requirement and lockfile, runs doctor,
+verifies all voices, runs workspace tests, and restores the previous
+dependency and lockfile if validation fails. Review and commit the resulting
+`pyproject.toml`, `uv.lock`, and any deliberately scaffolded files through a
+pull request in each consumer repository.
+
+Do not make production consumers follow the moving `main` branch or use an
+unpinned package version.
 
 ## Further technical guides
 

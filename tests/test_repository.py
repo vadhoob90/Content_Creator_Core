@@ -66,6 +66,8 @@ def test_packaged_core_resources_match_repository_sources():
 def test_readme_is_a_streamlined_operator_journey():
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
 
+    assert "https://pypi.org/project/content-creator/" in readme
+    assert "pin an exact package version" in readme
     assert "### 1. Create an author workspace" in readme
     assert "### 2. Choose a voice route" in readme
     assert "### 3. Ask for content naturally" in readme
@@ -114,6 +116,11 @@ def test_core_development_readme_covers_clone_and_validation():
     assert "ruff check ." in guide
     assert "pytest" in guide
     assert "Core versus a thin workspace" in guide
+    assert "Merging a change into `main` does not publish it" in guide
+    assert "git tag -a v0.6.1" in guide
+    assert ".github/workflows/release.yml" in guide
+    assert "Trusted Publisher registration is a one-time" in guide
+    assert "workspace upgrade --to v0.6.1 --apply" in guide
 
 
 def test_work_package_uses_the_repository_cli_name():
