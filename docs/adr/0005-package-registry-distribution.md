@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed for the v0.6 release process.
+Accepted for the v0.6 release process.
 
 ## Context
 
@@ -18,8 +18,8 @@ properties or make an untested package route canonical.
 
 ## Decision
 
-Keep immutable Git tags as the canonical workspace dependency until a registry
-release passes all of the following:
+Make the registry package canonical after the first production release passes
+all of the following:
 
 1. Confirm the package name and publishing authority.
 2. Build both wheel and source distribution from the release tag.
@@ -40,6 +40,14 @@ TestPyPI or an equivalent private dry run must precede the first production
 publication. Registry publication must be tag-driven; pushes to `main` cannot
 publish.
 
+The first release uses an isolated local wheel installation as its private dry
+run because the production name has no previous release. The release workflow
+builds from the tag, validates metadata and packaged resources, installs the
+wheel into a clean environment, generates a thin workspace, runs doctor and
+the generated tests, and only then requests a short-lived PyPI publishing
+credential. Later releases must additionally exercise rollback to the previous
+registry version.
+
 ## Rollback
 
 Registry releases are immutable. If a release is defective:
@@ -50,5 +58,5 @@ Registry releases are immutable. If a release is defective:
 - retain the original Git tag and source; and
 - keep existing pinned Git dependencies operational.
 
-Changing the canonical installation documentation requires a separate reviewed
-change after these checks pass.
+The corresponding Git tag remains the source-provenance record and fallback
+installation route.

@@ -8,6 +8,8 @@ release tag.
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-07-30
+
 ### Added
 
 - Human-readable `overview` and guided, non-mutating `start` entry points.
@@ -16,6 +18,8 @@ release tag.
 - Preview-first, immutable workspace dependency upgrades with validation and
   rollback.
 - A task-oriented documentation index and registry-distribution release ADR.
+- A validated, tag-driven PyPI release workflow using Trusted Publishing.
+- A left-to-right repository workflow diagram for authors and maintainers.
 
 ### Changed
 

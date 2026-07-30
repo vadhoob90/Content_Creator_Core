@@ -67,3 +67,17 @@ def test_upgrade_restores_dependency_and_lockfile_on_failure(project):
 
     assert (root / "pyproject.toml").read_text(encoding="utf-8") == before_project
     assert (root / "uv.lock").read_text(encoding="utf-8") == before_lock
+
+
+def test_upgrade_preserves_registry_distribution_source(project):
+    (project / "pyproject.toml").write_text(
+        'dependencies = ["content-creator==0.6.0"]\n',
+        encoding="utf-8",
+    )
+    (project / "uv.lock").write_text("version = 1\n", encoding="utf-8")
+
+    report = WorkspaceUpgrader(project).preview("v0.6.1")
+
+    assert report["source"] == "registry"
+    assert report["from"] == "v0.6.0"
+    assert report["dependency_after"] == "content-creator==0.6.1"

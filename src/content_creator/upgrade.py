@@ -13,10 +13,13 @@ from .workspace import scaffold_skills
 IMMUTABLE_REF = re.compile(
     r"^(?:v\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?|[0-9a-fA-F]{40})$"
 )
-DEPENDENCY = re.compile(
+GIT_DEPENDENCY = re.compile(
     r"content-creator\s*@\s*git\+"
     r"(?P<url>[^\"'\s@]+)"
     r"@(?P<ref>[^\"'\s,]+)"
+)
+REGISTRY_DEPENDENCY = re.compile(
+    r"content-creator\s*==\s*(?P<version>\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?)"
 )
 
 
@@ -41,20 +44,30 @@ class WorkspaceUpgrader:
         if not pyproject.is_file():
             raise WorkspaceUpgradeError("Missing workspace pyproject.toml")
         text = pyproject.read_text(encoding="utf-8")
-        match = DEPENDENCY.search(text)
+        git_match = GIT_DEPENDENCY.search(text)
+        registry_match = REGISTRY_DEPENDENCY.search(text)
+        match = git_match or registry_match
         if not match:
             raise WorkspaceUpgradeError(
-                "pyproject.toml does not contain a pinned git content-creator dependency"
+                "pyproject.toml does not contain a pinned content-creator dependency"
             )
-        current = match.group("ref")
-        url = match.group("url")
-        dependency = "content-creator @ git+{}@{}".format(url, target)
+        if git_match:
+            current = git_match.group("ref")
+            dependency = "content-creator @ git+{}@{}".format(
+                git_match.group("url"), target
+            )
+            source = "git"
+        else:
+            current = "v{}".format(registry_match.group("version"))
+            dependency = "content-creator=={}".format(target.removeprefix("v"))
+            source = "registry"
         return {
             "schema_version": "1.0",
             "status": "preview",
             "workspace": str(self.root),
             "from": current,
             "to": target,
+            "source": source,
             "immutable_target": True,
             "dependency_before": match.group(0),
             "dependency_after": dependency,
@@ -101,7 +114,10 @@ class WorkspaceUpgrader:
         original_lock = (
             lockfile.read_text(encoding="utf-8") if lockfile.exists() else None
         )
-        updated = DEPENDENCY.sub(report["dependency_after"], original_project, count=1)
+        before = report["dependency_before"]
+        updated = original_project.replace(
+            before, report["dependency_after"], 1
+        )
         RunStore._atomic_text(pyproject, updated.rstrip())
         commands = [
             ["uv", "lock", "--upgrade-package", "content-creator"],
