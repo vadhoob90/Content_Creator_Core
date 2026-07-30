@@ -16,6 +16,31 @@ Chat history is never workflow state. Agent hosts should begin with:
 content-creator --workspace . coordinator context
 ```
 
+Authors can use the calmer human-readable entry points:
+
+```bash
+content-creator --workspace . overview
+content-creator --workspace . start
+content-creator --workspace . start "Write a concise launch announcement"
+```
+
+`overview` renders active voice and version, provider state, default pack,
+incomplete runs, warnings, and one recommended action. `overview --json`
+returns the same typed snapshot used by agent hosts.
+
+`start` is read-only. With no request it routes the author to setup, onboarding,
+an interrupted run, or draft review. With a request it proposes the voice,
+format, pack, research route, perspective handling, and approval points. The
+author must still invoke any mutating or approval command explicitly.
+
+## JSON compatibility
+
+The v0.5 `coordinator context` fields remain available with their existing
+meanings, including the string-valued `provider`. The v0.6 snapshot adds
+`provider_status`, `health`, `recommended_action`, and per-run `incomplete`
+metadata. Hosts should ignore unknown fields. Mutating action arrays retain
+their existing commands and confirmation flags.
+
 For an existing run:
 
 ```bash

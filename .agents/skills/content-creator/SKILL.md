@@ -7,17 +7,19 @@ description: Plan, research, draft, review, publish, and learn from content usin
 
 Work from the repository root and preserve every run artifact.
 
-## Begin with Core context
+## Begin with Core state
 
 Before choosing commands or asking the author to remember identifiers, run:
 
 ```bash
-content-creator --workspace . coordinator context
+content-creator --workspace . start
 ```
 
-Use its active voices, configured defaults, recent runs, and warnings. A
-configured default voice is a proposal, not permission to ignore an explicit
-voice choice. Never reconstruct lifecycle state from chat memory.
+Use the recommended action derived from Core's typed workspace state. For a
+machine-readable snapshot, run `coordinator context`; for a human-readable
+summary, run `overview`. A configured default voice is a proposal, not
+permission to ignore an explicit voice choice. Never reconstruct lifecycle
+state from chat memory.
 
 For an existing run, ask Core what can happen next:
 
@@ -30,7 +32,7 @@ requiring confirmation need explicit author approval.
 
 ## Start a request
 
-1. Run `content-creator plan "<request>"` when format or research depth is not
+1. Run `content-creator start "<request>"` when format or research depth is not
    explicit.
 2. Show the resolved work order if the briefing decision is material or asks
    for clarification.

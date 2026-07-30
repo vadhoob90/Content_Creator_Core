@@ -101,24 +101,9 @@ checkpoints, safety rules, prompt composition, and workspace generator.
 
 ## Guides
 
-Start here:
-
-- [Create a thin content workspace](docs/guides/creating-a-content-workspace.md)
-- [Voice onboarding](docs/guides/voice-onboarding.md)
-- [Content Creator Coordinator](docs/guides/content-coordinator.md)
-
-Understand and operate the system:
-
-- [How voice is derived](docs/guides/how-voice-is-derived.md)
-- [Perspective provenance](docs/guides/perspective-provenance.md)
-- [Repository-owned agents](docs/guides/repository-agents.md)
-- [Learning and publication](docs/guides/learning-and-publication.md)
-- [Provider configuration](docs/guides/provider-configuration.md)
-- [Privacy and sources](docs/guides/privacy-and-sources.md)
-- [Testing and evaluation](docs/guides/testing-and-evaluation.md)
-- [Troubleshooting](docs/guides/troubleshooting.md)
-- [Versioned Core dependencies](docs/guides/workspace-dependencies.md)
-- [Changelog](CHANGELOG.md)
+Use the [task-oriented documentation index](docs/README.md) to create a
+workspace, manage a voice, create content, maintain a downstream repository, or
+develop Core. Detailed terminal procedures remain in the focused guides.
 
 ## Work on Content Creator Core
 
