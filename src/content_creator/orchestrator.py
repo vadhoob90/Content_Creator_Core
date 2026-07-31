@@ -37,6 +37,7 @@ from .routing import build_route
 from .runner import AgentRunner
 from .storage import RunStore, StorageError, slugify
 from .validation import validate_draft, validate_research_brief
+from .voice_assessment import assess_voice_draft
 from .voice_evaluation import evaluate_voice_output
 from .voices import VoiceRegistry, hash_file
 
@@ -668,8 +669,37 @@ class Orchestrator:
                 perspective_evaluation,
             )
 
+            voice_assessment = None
+            voice_assessment_policy = self.configuration.voice_assessment_policy
+            if voice_assessment_policy["enabled"]:
+                voice_assessment = assess_voice_draft(
+                    self.root,
+                    state.work_order.voice_id,
+                    state.work_order.voice_version,
+                    draft,
+                    voice_assessment_policy,
+                )
+                self.store.write_artifact(
+                    state.id,
+                    "voice-assessment-{:02d}.json".format(revision),
+                    voice_assessment,
+                )
+
             state.status = RunStatus.REVIEWING
             self.store.save_state(state)
+            critique_payload = {
+                "work_order": state.work_order.model_dump(mode="json"),
+                "draft": draft,
+                "research": brief.model_dump(mode="json") if brief else None,
+                "validation_errors": validation_errors,
+                "prior_critique": (
+                    previous_critique.model_dump(mode="json")
+                    if previous_critique
+                    else None
+                ),
+            }
+            if voice_assessment is not None:
+                critique_payload["voice_assessment"] = voice_assessment
             critique = self.runner.run(
                 role="critic",
                 role_key="critic-{}".format(state.work_order.format),
@@ -678,18 +708,15 @@ class Orchestrator:
                     "Return issues and scores; do not decide whether to publish. "
                     "For each prior issue, return a machine-readable status of "
                     "resolved, unresolved, or author_rejected separately from its note."
+                    + (
+                        " Treat the voice assessment as advisory evidence only. "
+                        "Account for context and natural variation; do not request a "
+                        "change solely to improve numerical conformity."
+                        if voice_assessment is not None
+                        else ""
+                    )
                 ),
-                payload={
-                    "work_order": state.work_order.model_dump(mode="json"),
-                    "draft": draft,
-                    "research": brief.model_dump(mode="json") if brief else None,
-                    "validation_errors": validation_errors,
-                    "prior_critique": (
-                        previous_critique.model_dump(mode="json")
-                        if previous_critique
-                        else None
-                    ),
-                },
+                payload=critique_payload,
                 order=state.work_order,
                 output_model=Critique,
                 provider=state.work_order.provider,

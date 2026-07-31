@@ -114,6 +114,13 @@ def initialise_workspace(
                 "max_attempts": 2,
                 "defer_recovered_until_publication": True,
             },
+            "voice_assessment": {
+                "enabled": False,
+                "minimum_sources": 20,
+                "minimum_draft_words": 100,
+                "outlier_iqr_multiplier": 1.5,
+                "max_reported_outliers": 8,
+            },
         }
         if perspective_mode:
             configuration["perspective"] = {

@@ -11,7 +11,7 @@ from typing import Optional
 import yaml
 
 from .agent_resources import STANDARD_TEMPLATE, AgentWorkspace
-from .configuration import ConfigurationError
+from .configuration import Configuration, ConfigurationError
 from .coordinator import ContentCoordinator
 from .diagnostics import DiagnosticDecisionRequired
 from .domain import (
@@ -45,6 +45,7 @@ from .providers import ProviderError, ProviderRegistry
 from .runner import AgentOutputError
 from .storage import RunStore, StorageError
 from .upgrade import WorkspaceUpgradeError, WorkspaceUpgrader
+from .voice_assessment import assess_voice_draft
 from .voice_builder import VoiceBuilder
 from .voices import (
     Authorisation,
@@ -331,6 +332,13 @@ def build_parser() -> argparse.ArgumentParser:
         if command in {"build", "rebuild"}:
             item.add_argument("--provider", choices=PROVIDERS)
             item.add_argument("--offline-analysis", action="store_true")
+    voice_assess = voice_sub.add_parser(
+        "assess",
+        help="Compare a draft with an active voice's linguistic distribution",
+    )
+    voice_assess.add_argument("voice_id")
+    voice_assess.add_argument("--draft", required=True)
+    voice_assess.add_argument("--voice-version")
     voice_sub.add_parser("list")
     voice_sub.add_parser(
         "verify-all",
@@ -1103,6 +1111,22 @@ def _voice_command(root: Path, args) -> int:
                 "status": "candidate",
                 "path": str(path.relative_to(root)),
             }
+        )
+        return 0
+    if command == "assess":
+        draft_path = Path(args.draft).expanduser()
+        if not draft_path.is_absolute():
+            draft_path = root / draft_path
+        if not draft_path.is_file():
+            raise StorageError("Draft does not exist: {}".format(draft_path))
+        _print(
+            assess_voice_draft(
+                root,
+                args.voice_id,
+                args.voice_version,
+                draft_path.read_text(encoding="utf-8"),
+                Configuration(root).voice_assessment_policy,
+            )
         )
         return 0
     if command == "diff":
