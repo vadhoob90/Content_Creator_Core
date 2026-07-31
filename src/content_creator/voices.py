@@ -4,7 +4,7 @@ import hashlib
 import json
 import os
 import shutil
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -161,9 +161,7 @@ def load_voice_onboarding(root: Path, voice_id: str) -> Optional[VoiceOnboarding
     path = onboarding_path(root, voice_id)
     if not path.exists():
         return None
-    return VoiceOnboardingRecord.model_validate_json(
-        path.read_text(encoding="utf-8")
-    )
+    return VoiceOnboardingRecord.model_validate_json(path.read_text(encoding="utf-8"))
 
 
 def save_voice_onboarding(root: Path, record: VoiceOnboardingRecord) -> Path:
@@ -201,9 +199,7 @@ class VoiceRegistry:
         allow_inactive: bool = False,
     ) -> Dict:
         if voice_id == "default" and voice_id not in self.list():
-            workspace_onboarding = sorted(
-                (self.root / "profiles").glob("*/onboarding.json")
-            )
+            workspace_onboarding = sorted((self.root / "profiles").glob("*/onboarding.json"))
             if workspace_onboarding:
                 intended = [
                     VoiceOnboardingRecord.model_validate_json(
@@ -213,9 +209,7 @@ class VoiceRegistry:
                 ]
                 raise VoiceError(
                     "The default test profile is unavailable in an author "
-                    "workspace; complete onboarding and select: {}".format(
-                        ", ".join(intended)
-                    )
+                    "workspace; complete onboarding and select: {}".format(", ".join(intended))
                 )
             return {
                 "id": "default",
@@ -232,11 +226,7 @@ class VoiceRegistry:
                 "Voice onboarding decision required for {}: choose starter "
                 "or source-derived".format(voice_id)
             )
-        if (
-            onboarding
-            and onboarding.status == "collecting-sources"
-            and voice_id not in self.list()
-        ):
+        if onboarding and onboarding.status == "collecting-sources" and voice_id not in self.list():
             raise VoiceError(
                 "Source-derived onboarding for {} is not complete; build, "
                 "review, and approve the candidate voice".format(voice_id)
@@ -245,35 +235,25 @@ class VoiceRegistry:
         resolved_version = version or item.get("active_version")
         if not resolved_version:
             raise VoiceError("Voice {} has no active version".format(voice_id))
-        if (
-            item.get("status") != VoiceStatus.ACTIVE.value
-            and not allow_inactive
-        ):
+        if item.get("status") != VoiceStatus.ACTIVE.value and not allow_inactive:
             raise VoiceError("Voice {} is not active".format(voice_id))
         path = self.root / "profiles" / voice_id / "versions" / resolved_version
         if not path.exists():
             raise VoiceError("Missing voice version {}@{}".format(voice_id, resolved_version))
         manifest_path = path / "manifest.json"
-        manifest = VoiceManifest.model_validate_json(
-            manifest_path.read_text(encoding="utf-8")
-        )
-        if (
-            item.get("status") == VoiceStatus.ACTIVE.value
-            and manifest.status != VoiceStatus.ACTIVE
-        ):
+        manifest = VoiceManifest.model_validate_json(manifest_path.read_text(encoding="utf-8"))
+        if item.get("status") == VoiceStatus.ACTIVE.value and manifest.status != VoiceStatus.ACTIVE:
             raise VoiceError(
-                "Voice lifecycle mismatch: registry is active but version "
-                "manifest is {}".format(manifest.status.value)
+                "Voice lifecycle mismatch: registry is active but version manifest is {}".format(
+                    manifest.status.value
+                )
             )
         for name, filename in manifest.components.items():
             component = path / filename
-            if (
-                not component.exists()
-                or hash_file(component) != manifest.component_hashes.get(name)
+            if not component.exists() or hash_file(component) != manifest.component_hashes.get(
+                name
             ):
-                raise VoiceError(
-                    "Active voice component hash mismatch: {}".format(name)
-                )
+                raise VoiceError("Active voice component hash mismatch: {}".format(name))
         return {
             "id": voice_id,
             "version": resolved_version,
@@ -305,9 +285,7 @@ class VoiceRegistry:
             resolved = self.resolve(voice_id)
             if resolved["strategy"] != VoiceStrategy.STARTER.value:
                 raise VoiceError(
-                    "Voice {} already has an active source-derived version".format(
-                        voice_id
-                    )
+                    "Voice {} already has an active source-derived version".format(voice_id)
                 )
             save_voice_onboarding(
                 self.root,
@@ -319,11 +297,9 @@ class VoiceRegistry:
                     strategy=VoiceStrategy.STARTER,
                     template_id=template_id,
                     selected_by=selected_by,
-                    selected_at=datetime.now(timezone.utc).isoformat(),
+                    selected_at=datetime.now(UTC).isoformat(),
                     perspective_mode="disabled",
-                    perspective_disabled_reason=(
-                        "starter-voice-without-author-evidence"
-                    ),
+                    perspective_disabled_reason=("starter-voice-without-author-evidence"),
                 ),
             )
             return resolved
@@ -338,10 +314,7 @@ class VoiceRegistry:
         destination = voice_root / "versions" / version
         destination.mkdir(parents=True, exist_ok=False)
         template = (
-            Path(__file__).with_name("resources")
-            / "profiles"
-            / "starter"
-            / "clear-professional.md"
+            Path(__file__).with_name("resources") / "profiles" / "starter" / "clear-professional.md"
         )
         profile = template.read_text(encoding="utf-8").replace(
             "{{author_name}}",
@@ -396,8 +369,7 @@ class VoiceRegistry:
             "evaluation_report": "evaluation-report.json",
         }
         component_hashes = {
-            name: hash_file(destination / filename)
-            for name, filename in components.items()
+            name: hash_file(destination / filename) for name, filename in components.items()
         }
         candidate_hash = hash_json(component_hashes)
         authorisation = Authorisation(
@@ -425,7 +397,7 @@ class VoiceRegistry:
             destination / "manifest.json",
             manifest.model_dump_json(indent=2),
         )
-        activated_at = datetime.now(timezone.utc).isoformat()
+        activated_at = datetime.now(UTC).isoformat()
         receipt = VoiceApprovalReceipt(
             voice_id=voice_id,
             candidate_version="starter-template",
@@ -433,9 +405,7 @@ class VoiceRegistry:
             approved_by=selected_by,
             approved_at=activated_at,
             candidate_hash=candidate_hash,
-            evaluation_report_hash=hash_file(
-                destination / "evaluation-report.json"
-            ),
+            evaluation_report_hash=hash_file(destination / "evaluation-report.json"),
         )
         RunStore._atomic_text(
             destination / "approval-receipt.json",
@@ -478,9 +448,7 @@ class VoiceRegistry:
                 selected_by=selected_by,
                 selected_at=activated_at,
                 perspective_mode="disabled",
-                perspective_disabled_reason=(
-                    "starter-voice-without-author-evidence"
-                ),
+                perspective_disabled_reason=("starter-voice-without-author-evidence"),
             ),
         )
         memory = voice_root / "learnings" / "memory.json"
@@ -503,16 +471,13 @@ class VoiceRegistry:
         evaluation_path = candidate / "evaluation-report.json"
         if not manifest_path.exists():
             raise VoiceError("Voice candidate has not been built")
-        manifest = VoiceManifest.model_validate_json(
-            manifest_path.read_text(encoding="utf-8")
-        )
+        manifest = VoiceManifest.model_validate_json(manifest_path.read_text(encoding="utf-8"))
         if not manifest.authorisation.confirmed:
             raise VoiceError("Voice authorisation has not been confirmed")
         for name, filename in manifest.components.items():
             component = candidate / filename
-            if (
-                not component.exists()
-                or hash_file(component) != manifest.component_hashes.get(name)
+            if not component.exists() or hash_file(component) != manifest.component_hashes.get(
+                name
             ):
                 raise VoiceError("Voice component hash mismatch: {}".format(name))
         if manifest.status not in {
@@ -542,10 +507,7 @@ class VoiceRegistry:
                 and existing.get("status") == VoiceStatus.ACTIVE.value
             ):
                 receipt_path = (
-                    voice_root
-                    / "versions"
-                    / existing["active_version"]
-                    / "approval-receipt.json"
+                    voice_root / "versions" / existing["active_version"] / "approval-receipt.json"
                 )
                 return VoiceApprovalReceipt.model_validate_json(
                     receipt_path.read_text(encoding="utf-8")
@@ -560,15 +522,13 @@ class VoiceRegistry:
             shutil.copytree(candidate, destination)
             manifest.version = version
             manifest.status = VoiceStatus.ACTIVE
-            RunStore._atomic_text(
-                destination / "manifest.json", manifest.model_dump_json(indent=2)
-            )
+            RunStore._atomic_text(destination / "manifest.json", manifest.model_dump_json(indent=2))
             receipt = VoiceApprovalReceipt(
                 voice_id=voice_id,
                 candidate_version="candidate",
                 activated_version=version,
                 approved_by=approved_by,
-                approved_at=datetime.now(timezone.utc).isoformat(),
+                approved_at=datetime.now(UTC).isoformat(),
                 candidate_hash=manifest.candidate_hash,
                 evaluation_report_hash=hash_file(evaluation_path),
                 override_reason=override_reason,
@@ -619,7 +579,7 @@ class VoiceRegistry:
             raise VoiceError("Unknown voice: {}".format(voice_id))
         item["status"] = VoiceStatus.INACTIVE.value
         item["deactivation_reason"] = reason
-        item["deactivated_at"] = datetime.now(timezone.utc).isoformat()
+        item["deactivated_at"] = datetime.now(UTC).isoformat()
         RunStore._atomic_text(self.path, json.dumps(registry, indent=2))
         return item
 

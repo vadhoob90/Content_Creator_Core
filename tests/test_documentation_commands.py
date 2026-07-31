@@ -146,8 +146,8 @@ def test_private_voice_material_and_operational_paths_are_ignored():
     assert "profiles/*/work-order.json" in ignore
 
 
-def test_publication_perspective_proposals_do_not_trigger_offline_ci():
-    workflow = (ROOT / ".github" / "workflows" / "ci.yml").read_text(
-        encoding="utf-8"
-    )
-    assert "!profiles/*/perspectives/*/proposals/**" in workflow
+def test_offline_ci_runs_for_every_pull_request_and_main_push():
+    workflow = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+    assert "  pull_request:" in workflow
+    assert "    branches: [main]" in workflow
+    assert "profiles/*/perspectives/*/proposals" not in workflow

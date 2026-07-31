@@ -23,9 +23,7 @@ def create_blind_comparison(root: Path, run_id: str, baseline: Path) -> dict:
         raise StorageError("Baseline does not exist: {}".format(baseline))
     candidate_text = candidate.read_text(encoding="utf-8")
     baseline_text = baseline.read_text(encoding="utf-8")
-    selector = hashlib.sha256(
-        (run_id + baseline_text).encode("utf-8")
-    ).digest()[0] % 2
+    selector = hashlib.sha256((run_id + baseline_text).encode("utf-8")).digest()[0] % 2
     candidate_label = "A" if selector == 0 else "B"
     baseline_label = "B" if candidate_label == "A" else "A"
     options = {
@@ -40,10 +38,7 @@ def create_blind_comparison(root: Path, run_id: str, baseline: Path) -> dict:
         "run_id": run_id,
         "blind": True,
         "preferred_option": None,
-        "scores": {
-            label: {dimension: None for dimension in DIMENSIONS}
-            for label in ("A", "B")
-        },
+        "scores": {label: {dimension: None for dimension in DIMENSIONS} for label in ("A", "B")},
         "revision_effort": {"A": None, "B": None},
         "comments": None,
     }
@@ -65,9 +60,7 @@ def create_blind_comparison(root: Path, run_id: str, baseline: Path) -> dict:
         "run_id": run_id,
         "option_a": str((directory / "option-a.md").relative_to(root)),
         "option_b": str((directory / "option-b.md").relative_to(root)),
-        "assessment_template": str(
-            (directory / "assessment-template.json").relative_to(root)
-        ),
+        "assessment_template": str((directory / "assessment-template.json").relative_to(root)),
         "mapping_hidden_until_recorded": True,
     }
 
@@ -86,9 +79,7 @@ def record_blind_comparison(root: Path, run_id: str, assessment: Path) -> dict:
         for dimension in DIMENSIONS:
             value = data.get("scores", {}).get(label, {}).get(dimension)
             if not isinstance(value, (int, float)) or not 1 <= value <= 10:
-                raise ValueError(
-                    "{} {} must be scored from 1 to 10".format(label, dimension)
-                )
+                raise ValueError("{} {} must be scored from 1 to 10".format(label, dimension))
     mapping = json.loads(mapping_path.read_text(encoding="utf-8"))
     preferred_system = (
         "tie"

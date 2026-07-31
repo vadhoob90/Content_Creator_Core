@@ -25,9 +25,7 @@ def evaluate_perspective_output(root: Path, order: WorkOrder, draft: str) -> dic
             selection.version,
             allow_inactive=order.resolved_perspective,
         )
-        entries = json.loads(
-            (root / item["path"] / "entries.json").read_text(encoding="utf-8")
-        )
+        entries = json.loads((root / item["path"] / "entries.json").read_text(encoding="utf-8"))
         active_entries.extend(
             entry
             for entry in entries
@@ -41,11 +39,7 @@ def evaluate_perspective_output(root: Path, order: WorkOrder, draft: str) -> dic
     request_supplies_position = bool(_POSITION_MARKER.search(order.request))
     contribution_supplies_position = bool(
         contribution
-        and (
-            contribution.thesis
-            or contribution.intended_challenge
-            or contribution.personal_basis
-        )
+        and (contribution.thesis or contribution.intended_challenge or contribution.personal_basis)
         and contribution.supplied_by_author
     )
     if (
@@ -56,9 +50,7 @@ def evaluate_perspective_output(root: Path, order: WorkOrder, draft: str) -> dic
     ):
         errors.append("Draft presents an unsupported author perspective")
 
-    requested_ids = (
-        contribution.reusable_perspective_entry_ids if contribution else []
-    )
+    requested_ids = contribution.reusable_perspective_entry_ids if contribution else []
     active_ids = {item["id"] for item in active_entries}
     unknown_ids = sorted(set(requested_ids) - active_ids)
     if unknown_ids:

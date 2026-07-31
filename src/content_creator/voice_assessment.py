@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 import math
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Dict, Optional
 
@@ -51,7 +51,7 @@ def save_score_preference(
         "enabled": enabled,
         "method": method,
         "selected_by": selected_by,
-        "selected_at": datetime.now(timezone.utc).isoformat(),
+        "selected_at": datetime.now(UTC).isoformat(),
     }
     RunStore._atomic_text(
         score_preference_path(root, voice_id),
@@ -94,8 +94,7 @@ def _unavailable(
         "reason": reason,
         "outliers": [],
         "claim_limit": (
-            "This assessment is advisory corpus comparison, not proof of "
-            "authorship or identity."
+            "This assessment is advisory corpus comparison, not proof of authorship or identity."
         ),
     }
 
@@ -115,9 +114,7 @@ def assess_linguistic_signature(
 
     profiles = signature.get("source_profiles", [])
     written_profiles = [
-        item
-        for item in profiles
-        if item.get("context", {}).get("mode") == "written"
+        item for item in profiles if item.get("context", {}).get("mode") == "written"
     ]
     if written_profiles and signature.get("by_mode", {}).get("written"):
         baseline = signature["by_mode"]["written"]
@@ -132,9 +129,7 @@ def assess_linguistic_signature(
         "scope": baseline_scope,
         "source_count": source_count,
         "minimum_sources": minimum_sources,
-        "outlier_rule": "{} times the interquartile range".format(
-            outlier_iqr_multiplier
-        ),
+        "outlier_rule": "{} times the interquartile range".format(outlier_iqr_multiplier),
     }
     if source_count < minimum_sources:
         report = _unavailable(
@@ -188,9 +183,7 @@ def assess_linguistic_signature(
             continue
         direction = "above" if float(value) > upper else "below"
         deviation = (
-            (float(value) - upper) / iqr
-            if direction == "above"
-            else (lower - float(value)) / iqr
+            (float(value) - upper) / iqr if direction == "above" else (lower - float(value)) / iqr
         )
         outliers.append(
             {
@@ -221,17 +214,12 @@ def assess_linguistic_signature(
         report["evaluated_feature_count"] = 0
         return report
 
-    outliers.sort(
-        key=lambda item: (-item["distance_beyond_envelope_iqr"], item["feature"])
-    )
+    outliers.sort(key=lambda item: (-item["distance_beyond_envelope_iqr"], item["feature"]))
     reported = outliers[:max_reported_outliers]
     # Only distance beyond the tolerated IQR envelope is penalised. Values
     # anywhere inside the envelope receive the same treatment, so the score
     # cannot reward regression toward the corpus median.
-    capped_excess = sum(
-        min(float(item["distance_beyond_envelope_iqr"]), 4.0)
-        for item in outliers
-    )
+    capped_excess = sum(min(float(item["distance_beyond_envelope_iqr"]), 4.0) for item in outliers)
     score = round(100.0 * math.exp(-(capped_excess / evaluated)), 1)
     evidence_coverage = round(evaluated / max(eligible, 1), 4)
     return {

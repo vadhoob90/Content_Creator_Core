@@ -3,16 +3,30 @@ import subprocess
 import pytest
 
 from content_creator.upgrade import WorkspaceUpgradeError, WorkspaceUpgrader
+from content_creator.workspace import readme_core_dependency
 
 DEPENDENCY = (
     'dependencies = ["content-creator @ '
     'git+https://github.com/vadhoob90/Content_Creator_Core.git@v0.5.0"]\n'
+)
+PINNED_GIT_DEPENDENCY = (
+    "content-creator @ git+https://github.com/vadhoob90/Content_Creator_Core.git@v0.5.0"
 )
 
 
 def _workspace(project):
     (project / "pyproject.toml").write_text(DEPENDENCY, encoding="utf-8")
     (project / "uv.lock").write_text("version = 1\n", encoding="utf-8")
+    return project
+
+
+def _managed_readme(project):
+    (project / "README.md").write_text(
+        "# Example\n\n"
+        + readme_core_dependency("v0.5.0", PINNED_GIT_DEPENDENCY)
+        + "\n\n## Custom section\n\nKeep me.\n",
+        encoding="utf-8",
+    )
     return project
 
 
@@ -38,7 +52,7 @@ def test_upgrade_rejects_moving_or_ambiguous_refs(project, target):
 
 
 def test_upgrade_applies_dependency_and_runs_validation(project):
-    root = _workspace(project)
+    root = _managed_readme(_workspace(project))
     commands = []
 
     def passing(command):
@@ -49,14 +63,20 @@ def test_upgrade_applies_dependency_and_runs_validation(project):
 
     assert report["status"] == "applied"
     assert "@v0.6.0" in (root / "pyproject.toml").read_text(encoding="utf-8")
+    readme = (root / "README.md").read_text(encoding="utf-8")
+    assert "@v0.6.0" in readme
+    assert "Content_Creator_Core/tree/v0.6.0" in readme
+    assert "## Custom section\n\nKeep me." in readme
+    assert report["readme_updated"] is True
     assert commands[0] == ["uv", "lock", "--upgrade-package", "content-creator"]
     assert commands[-1] == ["uv", "run", "pytest"]
 
 
 def test_upgrade_restores_dependency_and_lockfile_on_failure(project):
-    root = _workspace(project)
+    root = _managed_readme(_workspace(project))
     before_project = (root / "pyproject.toml").read_text(encoding="utf-8")
     before_lock = (root / "uv.lock").read_text(encoding="utf-8")
+    before_readme = (root / "README.md").read_text(encoding="utf-8")
 
     def failing(command):
         (root / "uv.lock").write_text("changed\n", encoding="utf-8")
@@ -67,6 +87,16 @@ def test_upgrade_restores_dependency_and_lockfile_on_failure(project):
 
     assert (root / "pyproject.toml").read_text(encoding="utf-8") == before_project
     assert (root / "uv.lock").read_text(encoding="utf-8") == before_lock
+    assert (root / "README.md").read_text(encoding="utf-8") == before_readme
+
+
+def test_upgrade_does_not_rewrite_custom_readme_without_managed_block(project):
+    root = _workspace(project)
+    (root / "README.md").write_text("# Fully custom\n", encoding="utf-8")
+
+    report = WorkspaceUpgrader(root).preview("v0.6.0")
+
+    assert report["readme"]["managed_core_dependency"] is False
 
 
 def test_upgrade_preserves_registry_distribution_source(project):

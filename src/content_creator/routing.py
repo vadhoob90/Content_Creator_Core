@@ -35,12 +35,8 @@ def build_route(order: WorkOrder) -> RoutePlan:
             stages.append("research-approval")
 
     stages.extend(["draft", "validate", "critic", "quality-gate"])
-    profiles["writer"] = (
-        "deep" if order.research_depth == ResearchDepth.DEEP else "balanced"
-    )
-    profiles["critic"] = (
-        "deep" if order.research_depth == ResearchDepth.DEEP else "balanced"
-    )
+    profiles["writer"] = "deep" if order.research_depth == ResearchDepth.DEEP else "balanced"
+    profiles["critic"] = "deep" if order.research_depth == ResearchDepth.DEEP else "balanced"
 
     return RoutePlan(
         route="{}-{}-{}".format(

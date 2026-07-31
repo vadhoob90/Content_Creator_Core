@@ -29,11 +29,7 @@ def _write_pdf(path):
         }
     )
     page[NameObject("/Resources")] = DictionaryObject(
-        {
-            NameObject("/Font"): DictionaryObject(
-                {NameObject("/F1"): writer._add_object(font)}
-            )
-        }
+        {NameObject("/Font"): DictionaryObject({NameObject("/F1"): writer._add_object(font)})}
     )
     stream = DecodedStreamObject()
     stream.set_data(b"BT /F1 12 Tf 20 200 Td (By Example Person. PDF sample.) Tj ET")
@@ -66,9 +62,7 @@ def test_supported_source_types_normalize_stably(tmp_path):
 def test_attribution_matrix_and_corpus_gaps():
     direct = classify_attribution("By Example Person. Words.", "Example Person", "text")
     interview = classify_attribution("Example: An answer.", "Example Person", "transcript")
-    subject = classify_attribution(
-        "A profile of Example Person.", "Example Person", "text"
-    )
+    subject = classify_attribution("A profile of Example Person.", "Example Person", "text")
     uncertain = classify_attribution("Written by Someone Else.", "Example Person", "text")
 
     assert direct.classification == "directly_authored"

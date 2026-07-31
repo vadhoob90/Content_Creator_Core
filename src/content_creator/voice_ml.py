@@ -3,7 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 import math
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 
@@ -90,17 +90,13 @@ def _feature_row(features: Dict[str, Any]) -> List[float]:
     missing = [name for name in MODEL_FEATURE_NAMES if name not in features]
     if missing:
         raise StorageError(
-            "Linguistic feature schema is not ML-compatible; missing: {}".format(
-                ", ".join(missing)
-            )
+            "Linguistic feature schema is not ML-compatible; missing: {}".format(", ".join(missing))
         )
     return [float(features[name]) for name in MODEL_FEATURE_NAMES]
 
 
 def _fingerprint(rows: Iterable[List[float]]) -> str:
-    encoded = json.dumps(
-        list(rows), sort_keys=True, separators=(",", ":")
-    ).encode("utf-8")
+    encoded = json.dumps(list(rows), sort_keys=True, separators=(",", ":")).encode("utf-8")
     return "sha256:" + hashlib.sha256(encoded).hexdigest()
 
 
@@ -113,8 +109,7 @@ def _author_rows(signature: Dict[str, Any]) -> Tuple[List[List[float]], int]:
     rows = [_feature_row(item["features"]) for item in written]
     words = round(
         sum(
-            float(item["features"].get("word_count", 0))
-            * max(float(item.get("weight", 1.0)), 0.0)
+            float(item["features"].get("word_count", 0)) * max(float(item.get("weight", 1.0)), 0.0)
             for item in written
         )
     )
@@ -223,9 +218,7 @@ def training_reliability(
         "thresholds": {
             "hard_minimum_documents_per_class": HARD_MINIMUM_DOCUMENTS_PER_CLASS,
             "hard_minimum_words_per_class": HARD_MINIMUM_WORDS_PER_CLASS,
-            "reliable_minimum_documents_per_class": (
-                RELIABLE_MINIMUM_DOCUMENTS_PER_CLASS
-            ),
+            "reliable_minimum_documents_per_class": (RELIABLE_MINIMUM_DOCUMENTS_PER_CLASS),
             "reliable_minimum_words_per_class": RELIABLE_MINIMUM_WORDS_PER_CLASS,
         },
     }
@@ -241,8 +234,7 @@ def _require_sklearn():
         from sklearn.preprocessing import StandardScaler
     except ImportError as exc:
         raise MLDependencyError(
-            "ML training requires the optional dependency. Install "
-            "content-creator[ml] and retry."
+            "ML training requires the optional dependency. Install content-creator[ml] and retry."
         ) from exc
     return {
         "sklearn": sklearn,
@@ -268,9 +260,7 @@ def train_voice_ml_model(
 ) -> Dict[str, Any]:
     resolved, signature = load_voice_signature(root, voice_id, voice_version)
     author_rows, author_words = _author_rows(signature)
-    comparison_rows, comparison_words, comparison_audit = _comparison_rows(
-        comparison_paths
-    )
+    comparison_rows, comparison_words, comparison_audit = _comparison_rows(comparison_paths)
     reliability = training_reliability(
         len(author_rows), author_words, len(comparison_rows), comparison_words
     )
@@ -336,9 +326,7 @@ def train_voice_ml_model(
     test_scores = pipeline.predict_proba(test_X)[:, 1]
     test_predictions = pipeline.predict(test_X)
     folds = min(5, len(author_rows), len(comparison_rows))
-    cv = ml["StratifiedKFold"](
-        n_splits=folds, shuffle=True, random_state=42
-    )
+    cv = ml["StratifiedKFold"](n_splits=folds, shuffle=True, random_state=42)
     cross_validation = ml["cross_validate"](
         pipeline,
         X,
@@ -355,7 +343,7 @@ def train_voice_ml_model(
         "framework_version": ML_FRAMEWORK_VERSION,
         "voice_id": voice_id,
         "voice_version": resolved["version"],
-        "trained_at": datetime.now(timezone.utc).isoformat(),
+        "trained_at": datetime.now(UTC).isoformat(),
         "feature_schema": {
             "linguistic_framework_version": signature.get("framework_version"),
             "feature_names": list(MODEL_FEATURE_NAMES),
@@ -369,9 +357,7 @@ def train_voice_ml_model(
             "type": "logistic-regression",
             "class_weight": "balanced",
             "intercept": round(float(classifier.intercept_[0]), 12),
-            "coefficients": [
-                round(float(value), 12) for value in classifier.coef_[0]
-            ],
+            "coefficients": [round(float(value), 12) for value in classifier.coef_[0]],
             "decision_threshold": 0.5,
             "sklearn_version": ml["sklearn"].__version__,
         },
@@ -392,9 +378,7 @@ def train_voice_ml_model(
             "holdout_balanced_accuracy": round(
                 float(ml["balanced_accuracy_score"](test_y, test_predictions)), 4
             ),
-            "holdout_roc_auc": round(
-                float(ml["roc_auc_score"](test_y, test_scores)), 4
-            ),
+            "holdout_roc_auc": round(float(ml["roc_auc_score"](test_y, test_scores)), 4),
             "cross_validation_folds": folds,
             "cross_validation_balanced_accuracy_mean": round(
                 float(cross_validation["test_balanced_accuracy"].mean()), 4
@@ -405,9 +389,7 @@ def train_voice_ml_model(
             "cross_validation_roc_auc_mean": round(
                 float(cross_validation["test_roc_auc"].mean()), 4
             ),
-            "cross_validation_roc_auc_std": round(
-                float(cross_validation["test_roc_auc"].std()), 4
-            ),
+            "cross_validation_roc_auc_std": round(float(cross_validation["test_roc_auc"].std()), 4),
             "claim_limit": (
                 "Random held-out and cross-validation results are indicative. "
                 "A separately sealed, topic- and time-aware evaluation remains "
@@ -488,17 +470,19 @@ def assess_with_ml_artifact(
     coefficients = artifact["classifier"]["coefficients"]
     standardised = [
         (value - float(mean)) / (float(scale) or 1.0)
-        for value, mean, scale in zip(row, means, scales)
+        for value, mean, scale in zip(row, means, scales, strict=True)
     ]
     contributions = [
         value * float(coefficient)
-        for value, coefficient in zip(standardised, coefficients)
+        for value, coefficient in zip(standardised, coefficients, strict=True)
     ]
     logit = float(artifact["classifier"]["intercept"]) + sum(contributions)
     score = 1.0 / (1.0 + math.exp(-max(min(logit, 709), -709)))
     threshold = float(artifact["classifier"]["decision_threshold"])
     ranked = sorted(
-        zip(names, contributions), key=lambda item: abs(item[1]), reverse=True
+        zip(names, contributions, strict=True),
+        key=lambda item: abs(item[1]),
+        reverse=True,
     )[:5]
     return {
         "schema_version": "1.0",

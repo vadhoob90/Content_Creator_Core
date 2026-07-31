@@ -28,9 +28,7 @@ class NativeCliProvider:
         self.executable = executable or shutil.which(self.executable_name)
         if not self.executable:
             raise ProviderError(
-                "{} is not installed or is not available on PATH".format(
-                    self.executable_name
-                )
+                "{} is not installed or is not available on PATH".format(self.executable_name)
             )
         self.command_runner = command_runner or subprocess.run
         self._authenticated = False
@@ -62,20 +60,14 @@ class NativeCliProvider:
             )
         except subprocess.TimeoutExpired as exc:
             raise ProviderError(
-                "{} native request timed out after {} seconds".format(
-                    self.name, timeout
-                )
+                "{} native request timed out after {} seconds".format(self.name, timeout)
             ) from exc
         except OSError as exc:
-            raise ProviderError(
-                "Could not start {}: {}".format(self.executable_name, exc)
-            ) from exc
+            raise ProviderError("Could not start {}: {}".format(self.executable_name, exc)) from exc
         if result.returncode != 0:
             detail = (result.stderr or result.stdout or "unknown error").strip()
             raise ProviderError(
-                "{} native command failed: {}".format(
-                    self.name, self._shorten(detail)
-                )
+                "{} native command failed: {}".format(self.name, self._shorten(detail))
             )
         return result
 

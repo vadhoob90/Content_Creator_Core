@@ -40,9 +40,7 @@ def test_six_primary_routes(project, format_, depth, source):
         WorkOrder(
             request="write",
             topic="topic",
-            content_pack=(
-                "linkedin-article" if format_ == "article" else "linkedin-post"
-            ),
+            content_pack=("linkedin-article" if format_ == "article" else "linkedin-post"),
             format=format_,
             research_depth=depth,
             research_source=source,
@@ -69,9 +67,7 @@ def test_general_text_runs_end_to_end_and_snapshots_context(project):
             pack_options={"length": "50:600"},
         )
     )
-    context = json.loads(
-        (project / "runs" / state.id / "resolved-context.json").read_text()
-    )
+    context = json.loads((project / "runs" / state.id / "resolved-context.json").read_text())
     assert state.status == RunStatus.READY
     assert context["content_pack"] == {"id": "general-text", "version": "1.0.0"}
     assert context["voice"]["version"] == "placeholder"
@@ -95,16 +91,12 @@ def test_supplied_research_skips_researcher_and_checkpoint(project, format_, dep
             "critic": [passing_critique()],
         }
     )
-    orchestrator = Orchestrator(
-        project, registry=ProviderRegistry({"anthropic": fake})
-    )
+    orchestrator = Orchestrator(project, registry=ProviderRegistry({"anthropic": fake}))
     state = orchestrator.start(
         WorkOrder(
             request="write",
             topic="topic",
-            content_pack=(
-                "linkedin-article" if format_ == "article" else "linkedin-post"
-            ),
+            content_pack=("linkedin-article" if format_ == "article" else "linkedin-post"),
             format=format_,
             research_depth=depth,
             research_source="supplied",
@@ -168,9 +160,7 @@ def test_invalid_supplied_research_fails_before_run_persistence(
 
 def test_research_rejection_stops_before_writer(project):
     fake = FakeProvider({"researcher": [research_brief()]})
-    orchestrator = Orchestrator(
-        project, registry=ProviderRegistry({"anthropic": fake})
-    )
+    orchestrator = Orchestrator(project, registry=ProviderRegistry({"anthropic": fake}))
     state = orchestrator.start(
         WorkOrder(
             request="write",
@@ -238,9 +228,7 @@ def test_invalid_research_brief_fails_before_drafting(project):
     bad_brief = research_brief()
     bad_brief["evidence"][0]["source_urls"] = ["https://unknown.example/source"]
     fake = FakeProvider({"researcher": [bad_brief]})
-    orchestrator = Orchestrator(
-        project, registry=ProviderRegistry({"anthropic": fake})
-    )
+    orchestrator = Orchestrator(project, registry=ProviderRegistry({"anthropic": fake}))
     with pytest.raises(OrchestrationError, match="unknown source"):
         orchestrator.start(
             WorkOrder(
@@ -289,9 +277,7 @@ def test_publish_updates_learning_and_refuses_overwrite(project):
     )
     assert state.status == RunStatus.PUBLISHED
     memory = json.loads(
-        (
-            project / "profiles" / "default" / "learnings" / "memory.json"
-        ).read_text(encoding="utf-8")
+        (project / "profiles" / "default" / "learnings" / "memory.json").read_text(encoding="utf-8")
     )
     assert memory["records"][0]["status"] == "active"
     with pytest.raises(OrchestrationError):
@@ -328,17 +314,13 @@ def test_publish_without_explicit_feedback_keeps_inference_provisional(project):
     )
     orchestrator.publish(state.id, filename="x.md")
     memory = json.loads(
-        (
-            project / "profiles" / "default" / "learnings" / "memory.json"
-        ).read_text(encoding="utf-8")
+        (project / "profiles" / "default" / "learnings" / "memory.json").read_text(encoding="utf-8")
     )
     assert memory["records"][0]["status"] == "provisional"
 
 
 def test_publish_never_overwrites_existing_file(project):
-    target = (
-        project / "content" / "linkedin-post" / "published" / "existing.md"
-    )
+    target = project / "content" / "linkedin-post" / "published" / "existing.md"
     target.write_text("existing", encoding="utf-8")
     orchestrator = make_orchestrator(
         project, {"writer": [valid_draft()], "critic": [passing_critique()]}
@@ -375,7 +357,5 @@ def test_learning_failure_does_not_lose_approved_publication(project):
     )
     state = orchestrator.publish(state.id, filename="safe.md")
     assert state.status == RunStatus.PUBLISHED
-    assert (
-        project / "content" / "linkedin-post" / "published" / "safe.md"
-    ).exists()
+    assert (project / "content" / "linkedin-post" / "published" / "safe.md").exists()
     assert any(event.name == "learning_update_failed" for event in state.events)

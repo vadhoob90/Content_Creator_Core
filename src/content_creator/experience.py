@@ -21,9 +21,7 @@ def render_overview(snapshot: WorkspaceSnapshot) -> str:
         "Content Creator workspace",
         "Workspace: {}".format(snapshot.workspace),
         "Active voice: {}".format(", ".join(active) if active else "none"),
-        "Pending voice decisions: {}".format(
-            ", ".join(pending) if pending else "none"
-        ),
+        "Pending voice decisions: {}".format(", ".join(pending) if pending else "none"),
         "Default pack: {}".format(snapshot.coordinator["default_pack"]),
         "Provider: {} ({})".format(
             snapshot.provider_status.name or "not selected",
@@ -34,17 +32,14 @@ def render_overview(snapshot: WorkspaceSnapshot) -> str:
     if snapshot.runs:
         lines.append("Recent runs:")
         lines.extend(
-            "  - {}: {} — {}".format(run.run_id, run.status, run.topic)
-            for run in snapshot.runs
+            "  - {}: {} — {}".format(run.run_id, run.status, run.topic) for run in snapshot.runs
         )
     else:
         lines.append("Recent runs: none")
     if snapshot.warnings:
         lines.append("Warnings:")
         lines.extend("  - {}".format(warning) for warning in snapshot.warnings)
-    lines.append(
-        "Recommended next action: {}".format(snapshot.recommended_action.label)
-    )
+    lines.append("Recommended next action: {}".format(snapshot.recommended_action.label))
     command = _render_action_command(snapshot.recommended_action)
     if command:
         lines.append(command)
@@ -58,14 +53,11 @@ def render_start(
 ) -> str:
     if questions:
         return "\n".join(
-            ["More information is needed:"]
-            + ["  - {}".format(question) for question in questions]
+            ["More information is needed:"] + ["  - {}".format(question) for question in questions]
         )
     if order is None:
         command = _render_action_command(snapshot.recommended_action)
-        return "\n".join(
-            line for line in [snapshot.recommended_action.label, command] if line
-        )
+        return "\n".join(line for line in [snapshot.recommended_action.label, command] if line)
     lines = [
         "Proposed content plan",
         "Topic: {}".format(order.topic),

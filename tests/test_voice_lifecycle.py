@@ -60,9 +60,7 @@ def test_voice_id_label_and_author_identity_are_separate(project, capsys):
     assert order["author_aliases"] == ["E. Person"]
 
 
-def test_external_directory_is_recursive_and_versioned_paths_are_private(
-    project, capsys
-):
+def test_external_directory_is_recursive_and_versioned_paths_are_private(project, capsys):
     archive = project.parent / "private-author-archive"
     essays = archive / "essays"
     talks = archive / "talks" / "conference"
@@ -98,20 +96,14 @@ def test_external_directory_is_recursive_and_versioned_paths_are_private(
     )
     capsys.readouterr()
     work_order = json.loads(
-        (
-            project / "profiles" / "external-author" / "work-order.json"
-        ).read_text(encoding="utf-8")
+        (project / "profiles" / "external-author" / "work-order.json").read_text(encoding="utf-8")
     )
     assert len(work_order["documents"]) == 2
     assert all(Path(item).is_absolute() for item in work_order["documents"])
     source_index = json.loads(
-        (
-            project
-            / "profiles"
-            / "external-author"
-            / "candidate"
-            / "source-index.json"
-        ).read_text(encoding="utf-8")
+        (project / "profiles" / "external-author" / "candidate" / "source-index.json").read_text(
+            encoding="utf-8"
+        )
     )
     assert {item["locator"] for item in source_index} == {
         "local-document:article.md",
@@ -119,9 +111,7 @@ def test_external_directory_is_recursive_and_versioned_paths_are_private(
     }
     candidate = project / "profiles" / "external-author" / "candidate"
     versioned_text = "\n".join(
-        path.read_text(encoding="utf-8")
-        for path in candidate.rglob("*")
-        if path.is_file()
+        path.read_text(encoding="utf-8") for path in candidate.rglob("*") if path.is_file()
     )
     assert str(archive) not in versioned_text
 
@@ -192,12 +182,7 @@ def test_voice_build_approve_idempotency_deactivate_and_reactivate(project, caps
     assert resolved["version_status"] == "active"
     assert resolved["lifecycle_authority"] == "version_manifest"
     profile = (
-        project
-        / "profiles"
-        / "example-person"
-        / "versions"
-        / "1.0.0"
-        / "profile.md"
+        project / "profiles" / "example-person" / "versions" / "1.0.0" / "profile.md"
     ).read_text(encoding="utf-8")
     assert "Candidate — not approved" not in profile
     assert "Resolved manifest is authoritative" in profile
@@ -290,12 +275,7 @@ def test_pinned_version_remains_resolvable_after_deactivation(project, capsys):
     registry.deactivate("example-person", "withdrawn")
     with pytest.raises(VoiceError, match="not active"):
         registry.resolve("example-person", "1.0.0")
-    assert (
-        registry.resolve("example-person", "1.0.0", allow_inactive=True)[
-            "version"
-        ]
-        == "1.0.0"
-    )
+    assert registry.resolve("example-person", "1.0.0", allow_inactive=True)["version"] == "1.0.0"
 
 
 def test_active_voice_component_tampering_is_rejected(project, capsys):
@@ -318,14 +298,7 @@ def test_active_voice_component_tampering_is_rejected(project, capsys):
     capsys.readouterr()
     main(["--root", str(project), "voice", "approve", "example-person"])
     capsys.readouterr()
-    profile = (
-        project
-        / "profiles"
-        / "example-person"
-        / "versions"
-        / "1.0.0"
-        / "profile.md"
-    )
+    profile = project / "profiles" / "example-person" / "versions" / "1.0.0" / "profile.md"
     profile.write_text("tampered", encoding="utf-8")
     with pytest.raises(VoiceError, match="Active voice component hash mismatch"):
         VoiceRegistry(project).resolve("example-person")
@@ -423,9 +396,7 @@ def test_failed_rebuild_preserves_previous_candidate(project):
             "--offline-analysis",
         ]
     )
-    manifest = (
-        project / "profiles" / "example-person" / "candidate" / "manifest.json"
-    )
+    manifest = project / "profiles" / "example-person" / "candidate" / "manifest.json"
     before = manifest.read_text(encoding="utf-8")
     work_order = project / "profiles" / "example-person" / "work-order.json"
     data = json.loads(work_order.read_text(encoding="utf-8"))
@@ -488,17 +459,11 @@ def test_fresh_fixture_voice_creates_versioned_content(project, capsys):
             pack_options={"length": "50:600"},
         )
     )
-    context = json.loads(
-        (project / "runs" / state.id / "resolved-context.json").read_text()
-    )
+    context = json.loads((project / "runs" / state.id / "resolved-context.json").read_text())
     assert state.status == RunStatus.READY
     assert context["engine_version"] == VERSION
     assert context["voice"]["version"] == "1.0.0"
     assert context["component_hashes"]["agent_harness"].startswith("sha256:")
-    assert context["component_hashes"]["repository_agent_writer"].startswith(
-        "sha256:"
-    )
-    assert context["component_hashes"][
-        "repository_learning_memory"
-    ].startswith("sha256:")
+    assert context["component_hashes"]["repository_agent_writer"].startswith("sha256:")
+    assert context["component_hashes"]["repository_learning_memory"].startswith("sha256:")
     assert context["component_hashes"]["voice_profile"].startswith("sha256:")

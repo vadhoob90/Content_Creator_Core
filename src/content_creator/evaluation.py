@@ -153,13 +153,9 @@ def run_live_suite(root: Path, providers: Iterable[str]) -> Dict:
             selections = json.loads(
                 orchestrator.store.read_artifact(state.id, "model-selections.json")
             )
-            quality_paths = sorted(
-                orchestrator.store.run_dir(state.id).glob("quality-*.json")
-            )
+            quality_paths = sorted(orchestrator.store.run_dir(state.id).glob("quality-*.json"))
             quality = (
-                json.loads(quality_paths[-1].read_text(encoding="utf-8"))
-                if quality_paths
-                else {}
+                json.loads(quality_paths[-1].read_text(encoding="utf-8")) if quality_paths else {}
             )
             outcomes.append(
                 {
@@ -169,9 +165,7 @@ def run_live_suite(root: Path, providers: Iterable[str]) -> Dict:
                     "passed": state.status == RunStatus.READY,
                     "run_id": state.id,
                     "input_tokens": sum(item.get("input_tokens") or 0 for item in selections),
-                    "output_tokens": sum(
-                        item.get("output_tokens") or 0 for item in selections
-                    ),
+                    "output_tokens": sum(item.get("output_tokens") or 0 for item in selections),
                     "revisions": state.revision,
                     "weighted_score": quality.get("weighted_score"),
                     "latency_seconds": round(time.monotonic() - started, 2),

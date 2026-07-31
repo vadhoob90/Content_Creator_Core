@@ -6,7 +6,7 @@ Creator engine. If you want to create content for a person, generate a
 
 ## Clone and install
 
-Content Creator requires Python 3.9 or newer. Clone the repository and install
+Content Creator requires Python 3.11 or newer. Clone the repository and install
 an editable development environment:
 
 ```bash
@@ -140,11 +140,16 @@ Before proposing or publishing a Core change:
 
 ```bash
 ruff check .
-pytest
+ruff format --check .
+mypy
+pytest --cov=content_creator --cov-report=term-missing
 content-creator doctor
 content-creator eval
 git diff --check
 ```
+
+The complete quality, compatibility, security, and release baseline is defined
+in the [Core engineering standards](engineering-standards.md).
 
 Changes to the workspace generator should additionally create a temporary thin
 workspace, inspect its generated README and configuration, run its smoke test,
@@ -300,15 +305,18 @@ uv run content-creator --workspace . workspace upgrade --to v0.10.0 --apply
 
 The apply operation updates the package requirement and lockfile, runs doctor,
 verifies all voices, runs workspace tests, and restores the previous
-dependency and lockfile if validation fails. Review and commit the resulting
-`pyproject.toml`, `uv.lock`, and any deliberately scaffolded files through a
-pull request in each consumer repository.
+dependency, lockfile, and managed README dependency block if validation fails.
+It never rewrites the rest of the README, and leaves legacy or custom READMEs
+without that marker unchanged. Review and commit the resulting
+`pyproject.toml`, `uv.lock`, `README.md` when updated, and any deliberately
+scaffolded files through a pull request in each consumer repository.
 
 Do not make production consumers follow the moving `main` branch or use an
 unpinned package version.
 
 ## Further technical guides
 
+- [Core engineering standards](engineering-standards.md)
 - [How voice is derived](../guides/how-voice-is-derived.md)
 - [Statistical voice evidence](../guides/linguistic-voice-framework.md)
 - [Voice onboarding](../guides/voice-onboarding.md)

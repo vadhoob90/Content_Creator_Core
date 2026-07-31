@@ -8,6 +8,36 @@ release tag.
 
 ## [Unreleased]
 
+### Changed
+
+- Newly generated workspace READMEs now identify both the immutable Core
+  revision and exact package dependency in a small generator-owned section.
+- `workspace upgrade --apply` refreshes that managed README section
+  transactionally while preserving all repository-authored README content.
+  Custom and legacy READMEs without the marker remain untouched.
+- Core engineering standards now define formatting, linting, typing, supported
+  Python versions, tests, coverage, dependency hygiene, security scanning,
+  protected branches, and release expectations.
+- Offline CI now tests every declared Python minor version from 3.11 through
+  3.14, enforces Ruff formatting, an initial Mypy baseline, 88% statement
+  coverage, deterministic evaluation, dependency review, and
+  installed-environment vulnerability auditing.
+- CodeQL, weekly Dependabot updates, and a private vulnerability reporting
+  policy provide code, dependency, secret, and disclosure controls alongside
+  the existing release validation.
+
+### Security
+
+- The development test baseline now requires `pytest>=9.0.3`, resolving
+  `PYSEC-2026-1845`; CI audits the installed dependency environment so known
+  vulnerable resolutions fail before merge.
+
+### Migration
+
+- The next Core release requires Python 3.11 or newer. Python 3.9 is
+  end-of-life, while Python 3.10 reaches end-of-life shortly; workspaces on
+  either version must upgrade Python before adopting the next Core release.
+
 ## [0.10.0] - 2026-07-31
 
 ### Added

@@ -72,10 +72,7 @@ def _even_sample(records: List[SourceRecord], limit: int) -> List[SourceRecord]:
         return [records[-1]]
     if len(records) <= limit:
         return list(records)
-    return [
-        records[round(index * (len(records) - 1) / (limit - 1))]
-        for index in range(limit)
-    ]
+    return [records[round(index * (len(records) - 1) / (limit - 1))] for index in range(limit)]
 
 
 def _public_locator(locator: str) -> str:
@@ -134,19 +131,14 @@ class VoiceBuilder:
                     kind = "webpage"
                     title = locator
                     if cache_metadata_path.exists():
-                        metadata = json.loads(
-                            cache_metadata_path.read_text(encoding="utf-8")
-                        )
+                        metadata = json.loads(cache_metadata_path.read_text(encoding="utf-8"))
                         if metadata.get("locator") == locator:
                             kind = metadata.get("kind", kind)
                             title = metadata.get("title", title)
                 else:
                     kind, title, text = read_source(locator)
                 duplicate = is_near_duplicate(text, normalized)
-                locally_attested = (
-                    locator in order.documents
-                    and order.authorisation.confirmed
-                )
+                locally_attested = locator in order.documents and order.authorisation.confirmed
                 if locally_attested:
                     attribution = AttributionResult(
                         classification="directly_authored",
@@ -154,8 +146,7 @@ class VoiceBuilder:
                         voice_weight=1.0,
                         evidence=[
                             "Local document authorship attested by {}".format(
-                                order.authorisation.attested_by
-                                or "the repository owner"
+                                order.authorisation.attested_by or "the repository owner"
                             )
                         ],
                     )
@@ -194,9 +185,7 @@ class VoiceBuilder:
                 if locally_attested and analysis_text == text.strip():
                     analysis_scope = "full-source-author-attested"
                 approved = (
-                    attribution.voice_weight > 0
-                    and not duplicate
-                    and bool(analysis_text.strip())
+                    attribution.voice_weight > 0 and not duplicate and bool(analysis_text.strip())
                 )
                 RunStore._atomic_text(cache_path, text)
                 RunStore._atomic_text(
@@ -241,22 +230,14 @@ class VoiceBuilder:
                 "Rebuild has insufficient usable material; previous candidate preserved"
             )
         usable = [record for record in sources if record.approved_for_analysis]
-        held_out_count = (
-            min(10, max(1, len(usable) // 10)) if len(usable) >= 2 else 0
-        )
+        held_out_count = min(10, max(1, len(usable) // 10)) if len(usable) >= 2 else 0
         held_out = _even_sample(usable, held_out_count) if held_out_count else []
         held_out_ids = {record.id for record in held_out}
-        measurement_records = [
-            record for record in usable if record.id not in held_out_ids
-        ]
+        measurement_records = [record for record in usable if record.id not in held_out_ids]
         analysis_records = _even_sample(measurement_records, 50)
         corpus["held_out_source_ids"] = [record.id for record in held_out]
-        corpus["measurement_source_ids"] = [
-            record.id for record in measurement_records
-        ]
-        corpus["semantic_analysis_source_ids"] = [
-            record.id for record in analysis_records
-        ]
+        corpus["measurement_source_ids"] = [record.id for record in measurement_records]
+        corpus["semantic_analysis_source_ids"] = [record.id for record in analysis_records]
         corpus["semantic_analysis_limit"] = 50
         signature = build_linguistic_signature(
             {
@@ -313,9 +294,7 @@ class VoiceBuilder:
                 payload={
                     "analysis": analysis.model_dump(mode="json"),
                     "linguistic_signature": signature,
-                    "approved_source_ids": [
-                        record.id for record in analysis_records
-                    ],
+                    "approved_source_ids": [record.id for record in analysis_records],
                 },
                 output_model=ProfileCriticism,
                 provider=self.provider,
@@ -325,16 +304,11 @@ class VoiceBuilder:
             patterns = []
             for pattern in analysis.patterns:
                 pattern.supporting_source_ids = [
-                    item
-                    for item in pattern.supporting_source_ids
-                    if item in approved_ids
+                    item for item in pattern.supporting_source_ids if item in approved_ids
                 ]
                 if pattern.id in criticism.rejected_pattern_ids:
                     pattern.status = "rejected"
-                elif (
-                    pattern.status == "confirmed"
-                    and len(pattern.supporting_source_ids) < 2
-                ):
+                elif pattern.status == "confirmed" and len(pattern.supporting_source_ids) < 2:
                     pattern.status = "provisional"
                 patterns.append(pattern)
 
@@ -375,9 +349,7 @@ class VoiceBuilder:
             candidate / "patterns.json",
             json.dumps([item.model_dump(mode="json") for item in patterns], indent=2),
         )
-        RunStore._atomic_text(
-            candidate / "corpus-report.json", json.dumps(corpus, indent=2)
-        )
+        RunStore._atomic_text(candidate / "corpus-report.json", json.dumps(corpus, indent=2))
         RunStore._atomic_text(
             candidate / "linguistic-signature.json",
             json.dumps(signature, indent=2),
@@ -400,8 +372,7 @@ class VoiceBuilder:
                 "provenance": all(item.supporting_source_ids for item in patterns),
                 "held_out_allocation": bool(held_out),
                 "held_out_excluded_from_analysis": all(
-                    not set(item.supporting_source_ids)
-                    & set(corpus["held_out_source_ids"])
+                    not set(item.supporting_source_ids) & set(corpus["held_out_source_ids"])
                     for item in patterns
                 ),
                 "unseen_topic_transfer": "manual_live_evaluation_required",
@@ -425,15 +396,11 @@ class VoiceBuilder:
                     "constraints": constraints,
                     "voice_rubric": voice_rubric,
                     "linguistic_signature": signature,
-                    "patterns": [
-                        item.model_dump(mode="json") for item in patterns
-                    ],
+                    "patterns": [item.model_dump(mode="json") for item in patterns],
                     "held_out_sources": [
                         {
                             "id": record.id,
-                            "text": _analysis_excerpt(
-                                analysis_texts[record.id], 4000
-                            ),
+                            "text": _analysis_excerpt(analysis_texts[record.id], 4000),
                             "linguistic_features": extract_linguistic_features(
                                 analysis_texts[record.id]
                             ),
@@ -453,9 +420,7 @@ class VoiceBuilder:
             evaluation["agent_judgement"] = judgement.model_dump(mode="json")
             evaluation["hard_failures"].extend(judgement.hard_failures)
             evaluation["passed"] = (
-                evaluation["passed"]
-                and judgement.passed
-                and not judgement.hard_failures
+                evaluation["passed"] and judgement.passed and not judgement.hard_failures
             )
         RunStore._atomic_text(
             candidate / "evaluation-report.json", json.dumps(evaluation, indent=2)
@@ -484,11 +449,7 @@ class VoiceBuilder:
             author_name=order.attribution_name,
             author_aliases=order.author_aliases,
             version="candidate",
-            status=(
-                VoiceStatus.AWAITING_APPROVAL
-                if evaluation["passed"]
-                else VoiceStatus.BUILT
-            ),
+            status=(VoiceStatus.AWAITING_APPROVAL if evaluation["passed"] else VoiceStatus.BUILT),
             candidate_hash=candidate_hash,
             components=components,
             component_hashes=component_hashes,
@@ -498,9 +459,7 @@ class VoiceBuilder:
             evidence_status="author-sources",
             perspectives_allowed=True,
         )
-        RunStore._atomic_text(
-            candidate / "manifest.json", manifest.model_dump_json(indent=2)
-        )
+        RunStore._atomic_text(candidate / "manifest.json", manifest.model_dump_json(indent=2))
         RunStore._atomic_text(
             candidate / "build-report.json",
             json.dumps(
@@ -563,17 +522,12 @@ class VoiceBuilder:
                 ),
                 contexts={"observed_modes": modes},
                 generation_guidance=(
-                    "Preserve natural sentence-length variation rather than matching "
-                    "one average."
+                    "Preserve natural sentence-length variation rather than matching one average."
                 ),
                 anti_pattern="Do not force every sentence into the measured range.",
                 linguistic_evidence={
-                    "sentence_length_median": str(
-                        sentence_length.get("median", 0)
-                    ),
-                    "questions_per_100_sentences": str(
-                        questions.get("weighted_mean", 0)
-                    ),
+                    "sentence_length_median": str(sentence_length.get("median", 0)),
+                    "questions_per_100_sentences": str(questions.get("weighted_mean", 0)),
                 },
             )
         ]
@@ -617,9 +571,7 @@ class VoiceBuilder:
         ]
         if status_counts:
             lines.extend(
-                "- **{}:** {}".format(
-                    status.replace("_", " ").title(), count
-                )
+                "- **{}:** {}".format(status.replace("_", " ").title(), count)
                 for status, count in sorted(status_counts.items())
             )
         else:
@@ -640,29 +592,22 @@ class VoiceBuilder:
                 [
                     "#### {}. {}".format(index, item.name),
                     "",
-                    "**Status:** {}".format(
-                        item.status.replace("_", " ").title()
-                    ),
+                    "**Status:** {}".format(item.status.replace("_", " ").title()),
                     "",
-                    "**Observation:** {}".format(
-                        item.observation or item.description
-                    ),
+                    "**Observation:** {}".format(item.observation or item.description),
                     "",
                     "**{}:** {}".format(
                         guidance_label,
-                        item.generation_guidance
-                        or "Use only when context supports it.",
+                        item.generation_guidance or "Use only when context supports it.",
                     ),
                     "",
                     "**Avoid:** {}".format(
-                        item.anti_pattern
-                        or "Do not turn the observation into a mannerism."
+                        item.anti_pattern or "Do not turn the observation into a mannerism."
                     ),
                     "",
                     "**Evidence:** {}".format(
                         ", ".join(
-                            "`{}`".format(source_id)
-                            for source_id in item.supporting_source_ids
+                            "`{}`".format(source_id) for source_id in item.supporting_source_ids
                         )
                     ),
                     "",

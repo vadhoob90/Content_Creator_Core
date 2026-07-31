@@ -29,9 +29,7 @@ def _create_arguments(destination):
     ]
 
 
-def test_workspace_create_generates_complete_thin_repository(
-    tmp_path, capsys
-):
+def test_workspace_create_generates_complete_thin_repository(tmp_path, capsys):
     destination = tmp_path / "Content_Creator_Alice"
 
     assert main(_create_arguments(destination)) == 0
@@ -80,9 +78,7 @@ def test_workspace_create_generates_complete_thin_repository(
     assert configuration["statistical_voice_score"]["enabled"] is False
     assert configuration["statistical_voice_score"]["method"] == "deterministic"
     onboarding = json.loads(
-        (
-            destination / "profiles" / "alice-general" / "onboarding.json"
-        ).read_text(encoding="utf-8")
+        (destination / "profiles" / "alice-general" / "onboarding.json").read_text(encoding="utf-8")
     )
     assert onboarding["status"] == "undecided"
     assert onboarding["strategy"] is None
@@ -105,10 +101,12 @@ def test_workspace_create_generates_complete_thin_repository(
     assert "!voice-material/**/source-urls.txt" in ignore
     assert "--use linkedin-post" in readme
     assert "--use linkedin-article" in readme
+    assert "## Core dependency" in readme
+    assert "content-creator==0.4.0" in readme
+    assert "Content_Creator_Core/tree/v0.4.0" in readme
+    assert "pyproject.toml` and the\nresolution in `uv.lock` are authoritative" in readme
 
-    generated_test = (
-        destination / "tests" / "test_workspace.py"
-    ).read_text(encoding="utf-8")
+    generated_test = (destination / "tests" / "test_workspace.py").read_text(encoding="utf-8")
     compile(generated_test, "test_workspace.py", "exec")
 
     assert main(["--workspace", str(destination), "doctor"]) == 0
@@ -116,9 +114,7 @@ def test_workspace_create_generates_complete_thin_repository(
     assert doctor["status"] == "ok"
 
 
-def test_workspace_create_is_idempotent_and_preserves_customisation(
-    tmp_path, capsys
-):
+def test_workspace_create_is_idempotent_and_preserves_customisation(tmp_path, capsys):
     destination = tmp_path / "Content_Creator_Alice"
     arguments = _create_arguments(destination)
     assert main(arguments) == 0
@@ -166,9 +162,7 @@ def test_workspace_create_defaults_to_general_text(tmp_path, capsys):
     assert result["voice_id"] == "example-author-general"
     assert result["packs"] == ["general-text"]
     assert result["perspective_mode"] == "explicit"
-    assert (
-        destination / "content" / "general-text" / "published" / ".gitkeep"
-    ).exists()
+    assert (destination / "content" / "general-text" / "published" / ".gitkeep").exists()
 
 
 def test_workspace_create_can_pin_a_reviewed_git_commit(tmp_path, capsys):
@@ -193,9 +187,7 @@ def test_workspace_create_can_pin_a_reviewed_git_commit(tmp_path, capsys):
     )
     result = json.loads(capsys.readouterr().out)
 
-    assert result["core_dependency"].endswith(
-        "Content_Creator_Core.git@{}".format(commit)
-    )
+    assert result["core_dependency"].endswith("Content_Creator_Core.git@{}".format(commit))
 
 
 def test_workspace_create_rejects_unknown_pack(tmp_path):

@@ -60,9 +60,7 @@ def test_supplied_research_requires_file():
 
 
 def test_model_complexity_follows_route_not_length_alone():
-    simple_article = build_route(
-        WorkOrder(request="x", topic="x", format="article")
-    )
+    simple_article = build_route(WorkOrder(request="x", topic="x", format="article"))
     deep_article = build_route(
         WorkOrder(
             request="x",

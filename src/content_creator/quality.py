@@ -49,9 +49,7 @@ def evaluate_quality(
         reasons.append("{} minor issues exceed the limit".format(minor))
     if weighted < float(gate["minimum_weighted_score"]):
         reasons.append(
-            "weighted score {:.2f} is below {}".format(
-                weighted, gate["minimum_weighted_score"]
-            )
+            "weighted score {:.2f} is below {}".format(weighted, gate["minimum_weighted_score"])
         )
     if unresolved and gate.get("require_previous_issues_resolved_or_author_rejected", True):
         reasons.append("prior issues remain unresolved: {}".format(", ".join(unresolved)))
