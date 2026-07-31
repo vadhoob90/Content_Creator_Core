@@ -57,6 +57,13 @@ per-revision report is stored as
 `runs/<run-id>/statistical-voice-score-<revision>.json` and supplied only to the
 critic. The writer never receives numerical targets.
 
+Automatic scoring has two independent gates. The workspace or selected voice
+must enable scoring, and the selected content pack must explicitly declare
+itself eligible. Both conditions are required. Core's `linkedin-article` pack
+is eligible; `linkedin-post` and the mixed `general-text` pack are not. For an
+ineligible pack, Core creates no score artifact and supplies no score to the
+critic, even when the voice preference is enabled.
+
 New source-derived voices choose disabled, deterministic, or ML scoring during
 the guided voice-creation workflow. The choice is stored under
 `profiles/<voice-id>/statistical-voice-score.json`, so voices in the same
@@ -79,6 +86,18 @@ statistical_voice_score:
   outlier_iqr_multiplier: 1.5
   max_reported_outliers: 8
 ```
+
+Pack authors opt a sufficiently long-form pack into automatic scoring in its
+`pack.json`:
+
+```json
+"statistical_voice_score": {"eligible": true}
+```
+
+Eligibility is fail-safe off when the field is omitted. Enable it only after
+the pack's draft length and matched reference evidence are sufficient for a
+stable comparison. Voice or workspace configuration cannot override an
+ineligible pack.
 
 An explicit offline score is available regardless of the automatic setting:
 

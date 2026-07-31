@@ -12,6 +12,18 @@ A pack owns its format, destination, defaults, prompts, rubric additions and
 validators. It may request capability profiles but cannot name provider models,
 select credentials, activate voices, or remove the base integrity validators.
 
+Statistical voice scoring is also a pack-owned eligibility decision and is
+off by default. A sufficiently long-form pack can opt in with:
+
+```json
+"statistical_voice_score": {"eligible": true}
+```
+
+This does not enable scoring by itself: the selected voice or workspace must
+also opt in. Ineligible packs never create a score artifact or pass a score to
+the critic. Do not enable the field for short-form or mixed-format packs merely
+because their maximum word count can be large.
+
 Resolution order is deterministic:
 
 ```text

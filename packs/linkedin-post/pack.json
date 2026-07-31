@@ -5,6 +5,7 @@
   "format": "post",
   "destination": "content/linkedin-post/published",
   "defaults": {"length": "50:600"},
+  "statistical_voice_score": {"eligible": false},
   "validators": [],
   "rubric": "rubric.yaml",
   "allowed_research": ["none", "light", "deep"]
