@@ -36,31 +36,48 @@ for the complete terminal instructions and configuration options.
 
 ## How it works
 
-The author moves from a versioned workspace to a reviewed draft through one
-guided flow. Core's rules remain authoritative underneath every agent:
+The author first establishes an approved voice, then uses it in a repeatable
+content loop. Core's rules remain authoritative underneath every agent.
+
+### Voice setup
 
 ```mermaid
-flowchart LR
-    A["Create or open<br/>an author workspace"] --> B["Start / Overview<br/>inspect persisted state"]
+flowchart TD
+    A["Create or open an author workspace"] --> B["Inspect persisted state<br/>with Start or Overview"]
     B --> C{"Choose a voice route"}
-
-    C -->|"Authorised writing"| V["Voice agents<br/>Voice Analyst → Profile Critic<br/>Voice Evaluator"]
-    C -->|"No writing yet"| S["Clear Professional Starter<br/>neutral writing policy"]
-    V --> VA["Human review<br/>activate immutable voice version"]
-    S --> VA
-
-    VA --> D["Describe the content<br/>in ordinary language"]
-    D --> O["Core Coordinator<br/>resolve voice, pack, provider,<br/>perspective and research route"]
-    O --> P["Content agents<br/>Briefing Agent → Researcher (optional)<br/>Writer → Critic → Attribution Reviewer<br/>plus deterministic validators"]
-    P --> H{"Human checkpoints<br/>research approval when required<br/>and final editorial review"}
-    H -->|"Explicit approval"| F["Save approved content<br/>inside the author repository"]
-    F --> L["Learning Extractor<br/>update only the active voice's learning"]
-    L -. "future runs" .-> O
-
-    R["Core rules<br/>Persisted state, never chat history<br/>No silent voice or perspective changes<br/>No invented identity, experience or evidence<br/>Voice and learning isolation<br/>No-research routes stay no-research<br/>No external publication"] -. "govern" .-> O
-    R -. "constrain" .-> P
-    R -. "require approval" .-> H
+    C -->|"Authorised writing"| D["Measure a linguistic signature<br/>and build a voice candidate"]
+    D --> E["Voice Analyst"]
+    E --> F["Profile Critic"]
+    F --> G["Voice Evaluator"]
+    C -->|"No writing yet"| H["Use the neutral<br/>Clear Professional Starter"]
+    G --> I{"Human review"}
+    H --> I
+    I -->|"Approve"| J["Activate an immutable voice version"]
+    I -->|"Revise"| C
 ```
+
+### Content loop
+
+```mermaid
+flowchart TD
+    A["Describe the content in ordinary language"] --> B["Coordinator resolves voice, pack,<br/>provider, perspective, and research route"]
+    B --> C["Briefing Agent"]
+    C --> D{"Research required?"}
+    D -->|"Yes"| E["Researcher and research approval"]
+    D -->|"No"| F["Writer"]
+    E --> F
+    F --> G["Critic and deterministic validators"]
+    G --> H["Attribution Reviewer when required"]
+    H --> I{"Human editorial review"}
+    I -->|"Revise"| B
+    I -->|"Approve"| J["Save inside the author repository"]
+    J --> K["Learning Extractor updates<br/>only the active voice's learning"]
+    K -. "future request" .-> B
+```
+
+Throughout both flows, persisted files—not chat history—hold workflow state.
+Core does not silently change a voice or perspective, invent identity or
+evidence, add research to a no-research route, or publish externally.
 
 ### 1. Create an author workspace
 
@@ -87,6 +104,20 @@ separately governed perspective.
 See [Voice onboarding](docs/guides/voice-onboarding.md) for the commands and
 lifecycle, or [How voice is derived](docs/guides/how-voice-is-derived.md) for
 the underlying analysis and safeguards.
+
+#### Statistical voice evidence
+
+For a source-derived voice, Core calculates a deterministic linguistic
+signature from the authorised corpus. It records per-source measurements and
+descriptive statistics for rhythm, structure, stance, punctuation, and lexical
+diversity, separated by register where possible. These measurements are
+evidence for human review: they are not generation targets, personality
+inferences, forensic authorship attribution, or proof that a feature is unique
+to the author.
+
+Read the [statistical and linguistic voice
+framework](docs/guides/linguistic-voice-framework.md), or inspect a built
+candidate with `content-creator voice signature <voice-id>`.
 
 ### 3. Ask for content naturally
 

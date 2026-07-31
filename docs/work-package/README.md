@@ -2,12 +2,15 @@
 
 ## Status
 
-Proposed and implementation-ready. This package scopes a new repository derived
-from LinkedIn Writer. It does not change the current LinkedIn workflow.
+Implemented. This directory is the historical design and delivery record for
+the initial provider-neutral Core derived from LinkedIn Writer. The shipped
+product has continued to evolve; use the [documentation index](../README.md)
+for current operator guidance and the [changelog](../../CHANGELOG.md) for the
+release history.
 
-## Objective
+## Delivered objective
 
-Create a provider-neutral text-content system that:
+The work package delivered a provider-neutral text-content system that:
 
 - Supports multiple content types through content packs
 - Supports multiple people through isolated, versioned voice packages
@@ -60,12 +63,16 @@ Initial scope excludes:
     use changes, without deleting historical run provenance.
 12. “Briefing” is the user-facing request-structuring concept, implemented as
     separate content-briefing and voice-briefing contracts.
+13. Deterministic linguistic measurements and descriptive corpus statistics
+    support voice analysis without becoming generation targets or authorship
+    claims.
 
 ## Whole system at a glance
 
 ```mermaid
 flowchart TD
-    S["Authorised URLs and documents"] --> VB["Voice Builder"]
+    S["Authorised URLs and documents"] --> LS["Deterministic linguistic signature"]
+    LS --> VB["Voice Builder"]
     VB --> VP["Candidate voice package"]
     VP --> EV["Voice evaluation"]
     EV --> AP["Human approval<br/>deterministic activation"]
@@ -89,9 +96,9 @@ The expected conversational path is:
 4. “Using Example Person’s voice, create a LinkedIn post about engineering leadership.”
 5. “Move this to published.”
 
-## Deliverables
+## Delivered components
 
-- Generic `content_engine` package
+- Generic `content_creator` package and `content-creator` CLI
 - Content-pack interface, configurable `general-text` pack and LinkedIn packs
 - Multi-profile voice registry
 - URL and document ingestion
@@ -116,9 +123,9 @@ The expected conversational path is:
 - [Final design review](final-review.md)
 - [Machine-readable backlog](work-package.yaml)
 
-## Completion outcome
+## Acceptance outcome
 
-The work is complete when a fresh clone can:
+The implemented baseline was accepted when a fresh clone could:
 
 1. Build a candidate voice from fixture URLs and documents
 2. Refuse to use that candidate before approval
