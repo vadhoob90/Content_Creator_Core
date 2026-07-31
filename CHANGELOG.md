@@ -8,6 +8,8 @@ release tag.
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-07-31
+
 ### Added
 
 - Atomic, workspace-local idempotent run submission through
@@ -27,6 +29,16 @@ release tag.
 - Active voice prompts now declare the resolved version manifest as lifecycle
   authority and remove stale candidate-only claims from historical profile
   prose. Newly built profiles are lifecycle-neutral.
+
+### Migration
+
+- No stored-run or workspace migration is required. Retry-capable hosts should
+  pass a stable `--idempotency-key` for the same logical submission and use a
+  new key with `--parent-run` for an intentional revision. Existing callers
+  that omit the key retain the previous run behavior.
+- Invalid supplied-research inputs now appear under invocation diagnostics
+  rather than as failed normal runs, so operational tooling should inspect
+  `.content-creator/invocations/` when preflight rejects an input.
 
 ## [0.7.0] - 2026-07-31
 
