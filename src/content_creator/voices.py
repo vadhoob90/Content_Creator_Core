@@ -257,6 +257,14 @@ class VoiceRegistry:
         manifest = VoiceManifest.model_validate_json(
             manifest_path.read_text(encoding="utf-8")
         )
+        if (
+            item.get("status") == VoiceStatus.ACTIVE.value
+            and manifest.status != VoiceStatus.ACTIVE
+        ):
+            raise VoiceError(
+                "Voice lifecycle mismatch: registry is active but version "
+                "manifest is {}".format(manifest.status.value)
+            )
         for name, filename in manifest.components.items():
             component = path / filename
             if (
@@ -270,6 +278,8 @@ class VoiceRegistry:
             "id": voice_id,
             "version": resolved_version,
             "status": item.get("status"),
+            "version_status": manifest.status.value,
+            "lifecycle_authority": "version_manifest",
             "path": str(path.relative_to(self.root)),
             "manifest_hash": hash_file(manifest_path),
             "strategy": manifest.strategy.value,

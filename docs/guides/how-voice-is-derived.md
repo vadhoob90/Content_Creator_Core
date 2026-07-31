@@ -418,6 +418,13 @@ A successful build creates `profiles/<voice-id>/candidate/` containing:
 | `manifest.json` | Component paths, hashes, lifecycle status, and uses |
 | `build-report.json` | Candidate hash, source failures, and final build status |
 
+`profile.md` is lifecycle-neutral. Candidate, active, and inactive state comes
+from the version manifest and registry rather than editable Markdown prose.
+When Core assembles writer or critic context for an active version, it adds an
+authoritative lifecycle header and removes recognised candidate-only wording
+from older profiles. This keeps pre-existing immutable versions usable without
+rewriting or rehashing their approved components.
+
 A passing candidate stops at `awaiting_approval`. A non-passing candidate
 remains `built` with its gaps recorded. Neither status is an active voice.
 
@@ -442,6 +449,9 @@ Approval makes no model call. It:
 5. copies the candidate into an immutable version directory;
 6. writes an approval receipt; and
 7. atomically updates the active voice registry.
+
+The activated version manifest is authoritative for downstream lifecycle
+context. The copied profile cannot downgrade an active version to a candidate.
 
 Every content run resolves and records a specific voice version. Later profile
 changes create another version rather than silently changing the evidence used
