@@ -573,7 +573,9 @@ class Orchestrator:
                 role_key="critic-{}".format(state.work_order.format),
                 instruction=(
                     "Assess this draft independently against the supplied rubrics. "
-                    "Return issues and scores; do not decide whether to publish."
+                    "Return issues and scores; do not decide whether to publish. "
+                    "For each prior issue, return a machine-readable status of "
+                    "resolved, unresolved, or author_rejected separately from its note."
                 ),
                 payload={
                     "work_order": state.work_order.model_dump(mode="json"),

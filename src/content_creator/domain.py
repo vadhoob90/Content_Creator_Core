@@ -49,6 +49,12 @@ class IssueSeverity(str, Enum):
     MINOR = "minor"
 
 
+class PriorIssueDisposition(str, Enum):
+    RESOLVED = "resolved"
+    UNRESOLVED = "unresolved"
+    AUTHOR_REJECTED = "author_rejected"
+
+
 class LearningStatus(str, Enum):
     ACTIVE = "active"
     PROVISIONAL = "provisional"
@@ -205,13 +211,47 @@ class CritiqueIssue(BaseModel):
     evidence: Optional[str] = None
 
 
+class PriorIssueStatus(BaseModel):
+    status: PriorIssueDisposition
+    note: Optional[str] = None
+
+
 class Critique(BaseModel):
     scores: Dict[str, float]
     weighted_score: float = 0.0
     issues: List[CritiqueIssue] = Field(default_factory=list)
     strengths: List[str] = Field(default_factory=list)
-    prior_issue_status: Dict[str, str] = Field(default_factory=dict)
+    prior_issue_status: Dict[str, PriorIssueStatus] = Field(default_factory=dict)
     summary: str = ""
+
+    @field_validator("prior_issue_status", mode="before")
+    @classmethod
+    def normalise_legacy_prior_issue_status(cls, value):
+        if value is None:
+            return {}
+        if not isinstance(value, dict):
+            return value
+        return {
+            key: cls._normalise_legacy_disposition(status)
+            for key, status in value.items()
+        }
+
+    @staticmethod
+    def _normalise_legacy_disposition(value):
+        if not isinstance(value, str):
+            return value
+        note = value.strip()
+        if re.match(r"^resolved(?:\W|$)", note, flags=re.IGNORECASE):
+            status = PriorIssueDisposition.RESOLVED
+        elif re.match(
+            r"^author(?:_|\s+|-)rejected(?:\W|$)",
+            note,
+            flags=re.IGNORECASE,
+        ):
+            status = PriorIssueDisposition.AUTHOR_REJECTED
+        else:
+            status = PriorIssueDisposition.UNRESOLVED
+        return {"status": status.value, "note": note or None}
 
 
 class QualityDecision(BaseModel):

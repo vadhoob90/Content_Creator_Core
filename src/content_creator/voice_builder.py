@@ -590,7 +590,7 @@ class VoiceBuilder:
             "",
             "| Item | Current position |",
             "|---|---|",
-            "| Lifecycle status | Candidate — not approved |",
+            "| Lifecycle status | Resolved manifest is authoritative |",
             "| Author identity | {} |".format(order.attribution_name),
             "| Intended uses | {} |".format(
                 ", ".join(order.authorisation.intended_uses) or "Not specified"
@@ -602,7 +602,7 @@ class VoiceBuilder:
             "| Proposed patterns | {} |".format(len(patterns)),
             "",
             "> Pattern statuses are model assessments retained for human review.",
-            "> Only an approved, activated version may guide publication.",
+            "> Lifecycle approval is supplied by Core, not by this profile prose.",
             "",
             "## Core safeguards",
             "",

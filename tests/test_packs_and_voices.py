@@ -9,7 +9,7 @@ from content_creator.orchestrator import OrchestrationError, Orchestrator
 from content_creator.packs import PackRegistry
 from content_creator.prompting import PromptAssembler
 from content_creator.validation import validate_draft
-from content_creator.voices import hash_file
+from content_creator.voices import VoiceError, VoiceRegistry, hash_file
 
 
 def test_linkedin_capabilities_live_in_content_packs(project):
@@ -50,7 +50,11 @@ def test_prompt_and_learning_memory_are_scoped_to_selected_voice(project):
     (profile / "learnings").mkdir(parents=True)
     version.mkdir(parents=True)
     (version / "profile.md").write_text(
-        "# Voice Profile: Second Voice\n\nUse grounded examples.",
+        "# Voice Profile: Second Voice\n\n"
+        "| Lifecycle status | Candidate — built, not approved |\n\n"
+        "| Approved voice patterns | None |\n\n"
+        "> Observations must not be treated as approved writing instructions.\n\n"
+        "Use grounded examples.",
         encoding="utf-8",
     )
     (version / "manifest.json").write_text(
@@ -108,11 +112,24 @@ def test_prompt_and_learning_memory_are_scoped_to_selected_voice(project):
     prompt = PromptAssembler(project).system_prompt("writer", order)
 
     assert "Second Voice" in prompt
+    assert "## Authoritative resolved voice lifecycle" in prompt
+    assert "Status: active" in prompt
+    assert "Version: 1.0.0" in prompt
+    assert "Candidate — built, not approved" not in prompt
+    assert "Approved voice patterns | None" not in prompt
+    assert "not be treated as approved writing instructions" not in prompt
     assert "Prefer a concrete example." in prompt
     assert "Default Placeholder" not in prompt
     assert LearningMemory(project, "second-voice").path == (
         profile / "learnings" / "memory.json"
     )
+
+    manifest_path = version / "manifest.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest["status"] = "awaiting_approval"
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+    with pytest.raises(VoiceError, match="Voice lifecycle mismatch"):
+        VoiceRegistry(project).resolve("second-voice")
 
 
 def test_general_text_resolves_and_forbidden_override_fails(project):

@@ -1,7 +1,12 @@
+import pytest
 from conftest import passing_critique, valid_draft
 
 from content_creator.configuration import Configuration
-from content_creator.domain import Critique, WorkOrder
+from content_creator.domain import (
+    Critique,
+    PriorIssueDisposition,
+    WorkOrder,
+)
 from content_creator.quality import evaluate_quality
 from content_creator.validation import validate_draft
 
@@ -26,6 +31,84 @@ def test_blocking_issue_fails_even_with_high_scores(project):
     decision = evaluate_quality(critique, Configuration(project).rubric("core"), [])
     assert not decision.passed
     assert any("blocking" in reason for reason in decision.reasons)
+
+
+@pytest.mark.parametrize("status", ["resolved", "author_rejected"])
+def test_structured_prior_issue_disposition_with_note_passes(project, status):
+    critique = Critique.model_validate(
+        passing_critique(
+            prior={
+                "legal_boundary": {
+                    "status": status,
+                    "note": "The author supplied an explicit disposition.",
+                }
+            }
+        )
+    )
+
+    decision = evaluate_quality(
+        critique, Configuration(project).rubric("core"), []
+    )
+
+    assert decision.passed
+    assert critique.prior_issue_status["legal_boundary"].status == status
+
+
+def test_structured_unresolved_prior_issue_fails(project):
+    critique = Critique.model_validate(
+        passing_critique(
+            prior={
+                "legal_boundary": {
+                    "status": "unresolved",
+                    "note": "The boundary remains too broad.",
+                }
+            }
+        )
+    )
+
+    decision = evaluate_quality(
+        critique, Configuration(project).rubric("core"), []
+    )
+
+    assert not decision.passed
+    assert decision.reasons == [
+        "prior issues remain unresolved: legal_boundary"
+    ]
+
+
+@pytest.mark.parametrize(
+    ("legacy", "expected", "passes"),
+    [
+        (
+            "Resolved. The proposition is now expressly limited.",
+            PriorIssueDisposition.RESOLVED,
+            True,
+        ),
+        (
+            "Author rejected. Retain the deliberate formulation.",
+            PriorIssueDisposition.AUTHOR_REJECTED,
+            True,
+        ),
+        ("Unresolved. The boundary is still unclear.", PriorIssueDisposition.UNRESOLVED, False),
+        ("Not resolved despite revision.", PriorIssueDisposition.UNRESOLVED, False),
+        ("Needs another look.", PriorIssueDisposition.UNRESOLVED, False),
+    ],
+)
+def test_legacy_prior_issue_status_is_normalised_fail_safe(
+    project, legacy, expected, passes
+):
+    critique = Critique.model_validate(
+        passing_critique(prior={"legal_boundary": legacy})
+    )
+
+    decision = evaluate_quality(
+        critique, Configuration(project).rubric("core"), []
+    )
+
+    disposition = critique.prior_issue_status["legal_boundary"]
+    assert disposition.status == expected
+    assert disposition.note == legacy
+    assert decision.passed is passes
 
 
 def test_mechanical_validation():

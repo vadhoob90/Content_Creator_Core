@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 from typing import Any, Dict, Iterable, Optional
 
@@ -45,7 +46,9 @@ class PromptAssembler:
                 if (profile_root / "profile.md").exists()
                 else profile_root / "voice.md"
             )
-            parts.append(self._read(profile))
+            parts.append(
+                self._resolved_voice_profile(resolved, self._read(profile))
+            )
         if (
             order
             and order.perspective_selections
@@ -156,6 +159,43 @@ class PromptAssembler:
                 overlay_path = self.resources.path(overlay)
                 parts.append("## Pack instructions\n\n" + self._read(overlay_path))
         return "\n\n---\n\n".join(parts)
+
+    @staticmethod
+    def _resolved_voice_profile(resolved: Dict[str, Any], profile: str) -> str:
+        if resolved.get("version_status") != "active":
+            return profile
+        candidate_only = (
+            re.compile(
+                r"^\|\s*Lifecycle status\s*\|.*candidate.*\|\s*$",
+                re.IGNORECASE,
+            ),
+            re.compile(
+                r"^\|\s*Approved voice patterns\s*\|\s*None\s*\|\s*$",
+                re.IGNORECASE,
+            ),
+            re.compile(
+                r"^>.*only an approved, activated version may guide publication.*$",
+                re.IGNORECASE,
+            ),
+            re.compile(
+                r"^>?.*observations.*not.*approved writing instructions.*$",
+                re.IGNORECASE,
+            ),
+        )
+        filtered = [
+            line
+            for line in profile.splitlines()
+            if not any(pattern.match(line.strip()) for pattern in candidate_only)
+        ]
+        lifecycle = (
+            "## Authoritative resolved voice lifecycle\n\n"
+            "- Status: active\n"
+            "- Version: {}\n"
+            "- Authority: version manifest\n"
+            "- This is an approved, active voice package. Candidate-only lifecycle "
+            "claims in historical profile prose are not instructions."
+        ).format(resolved["version"])
+        return lifecycle + "\n\n" + "\n".join(filtered).strip()
 
     @staticmethod
     def user_prompt(instruction: str, payload: Dict[str, Any]) -> str:

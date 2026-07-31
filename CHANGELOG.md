@@ -8,6 +8,16 @@ release tag.
 
 ## [Unreleased]
 
+### Fixed
+
+- Prior critique issues now use a typed machine disposition with a separate
+  explanatory note. Legacy free-form statuses are normalised fail-safe so
+  explanatory `resolved` and `author_rejected` values no longer cause false
+  quality-gate failures.
+- Active voice prompts now declare the resolved version manifest as lifecycle
+  authority and remove stale candidate-only claims from historical profile
+  prose. Newly built profiles are lifecycle-neutral.
+
 ## [0.7.0] - 2026-07-31
 
 ### Added
