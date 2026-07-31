@@ -25,9 +25,7 @@ def test_coordinator_capabilities_expose_approval_boundaries(project, capsys):
     assert result["boundaries"]["external_publication"] is False
 
 
-def test_coordinator_context_uses_workspace_defaults_as_suggestions(
-    project, capsys
-):
+def test_coordinator_context_uses_workspace_defaults_as_suggestions(project, capsys):
     configuration = {
         "coordinator": {
             "name": "Example Coordinator",
@@ -107,9 +105,7 @@ def test_coordinator_replaces_publish_action_with_diagnostic_choices(project):
         work_order=WorkOrder(request="Draft", topic="Draft"),
         route_plan=RoutePlan(route="text-none-none", stages=["writer"]),
         final_draft_path="runs/diagnostic-run/final.md",
-        support_candidate_path=(
-            "runs/diagnostic-run/support-candidate.json"
-        ),
+        support_candidate_path=("runs/diagnostic-run/support-candidate.json"),
         pending_support_count=1,
     )
     store.create(state)
@@ -122,7 +118,4 @@ def test_coordinator_replaces_publish_action_with_diagnostic_choices(project):
     assert result["diagnostic_attention_required"] is True
     assert "publish-local" not in actions
     assert actions["publish-only"]["command"][-1] == "publish-only"
-    assert (
-        actions["publish-and-prepare-issue"]["command"][-1]
-        == "prepare-issue"
-    )
+    assert actions["publish-and-prepare-issue"]["command"][-1] == "prepare-issue"

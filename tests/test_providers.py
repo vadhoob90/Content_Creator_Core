@@ -70,9 +70,7 @@ def test_anthropic_adapter_translates_normalized_request():
 
 
 def test_openai_incomplete_response_fails_closed():
-    response = SimpleNamespace(
-        output_text="partial", id="r1", status="incomplete", usage=None
-    )
+    response = SimpleNamespace(output_text="partial", id="r1", status="incomplete", usage=None)
     client = SimpleNamespace(responses=Capture(response))
     try:
         OpenAIProvider(client).generate(request("openai"))

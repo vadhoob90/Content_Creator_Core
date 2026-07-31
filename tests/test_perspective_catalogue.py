@@ -142,28 +142,20 @@ def test_automatic_catalogue_resolution_loads_only_model_selected_contexts(proje
     )
 
     assert state.status == RunStatus.READY
-    assert [
-        item.context_id for item in state.work_order.perspective_selections
-    ] == ["professional-training", "organisational-change"]
-    assert all(
-        item.version == "1.0.0"
-        for item in state.work_order.perspective_selections
-    )
+    assert [item.context_id for item in state.work_order.perspective_selections] == [
+        "professional-training",
+        "organisational-change",
+    ]
+    assert all(item.version == "1.0.0" for item in state.work_order.perspective_selections)
     run = project / "runs" / state.id
-    resolution = json.loads(
-        (run / "perspective-resolution.json").read_text(encoding="utf-8")
-    )
-    context = json.loads(
-        (run / "resolved-context.json").read_text(encoding="utf-8")
-    )
+    resolution = json.loads((run / "perspective-resolution.json").read_text(encoding="utf-8"))
+    context = json.loads((run / "resolved-context.json").read_text(encoding="utf-8"))
     assert resolution["mode"] == "automatic"
     assert len(context["perspectives"]) == 2
     writer_request = next(item for item in fake.requests if item.role == "writer")
     assert "recognition and escalation" in writer_request.system
     assert "sustained organisational capability" in writer_request.system
-    resolver_request = next(
-        item for item in fake.requests if item.role == "briefing-agent"
-    )
+    resolver_request = next(item for item in fake.requests if item.role == "briefing-agent")
     assert "Training should teach" not in resolver_request.user
     assert '"routing_only": true' in resolver_request.user
 

@@ -23,15 +23,12 @@ class PromptAssembler:
         parts = [
             self._read(self.agent_workspace.harness_path()),
             self._read(self.agent_workspace.contract_path(role)),
-            "## Repository agent\n\n"
-            + self._read(self.agent_workspace.role_path(role)),
+            "## Repository agent\n\n" + self._read(self.agent_workspace.role_path(role)),
         ]
         if role in LEARNING_FILES:
             parts.append(
                 "## Repository learning policy\n\n"
-                + self._read(
-                    self.agent_workspace.learning_instructions_path(role)
-                )
+                + self._read(self.agent_workspace.learning_instructions_path(role))
             )
         if role in {"writer", "critic", "learning-extractor"}:
             voice_id = order.voice_id if order else "default"
@@ -46,9 +43,7 @@ class PromptAssembler:
                 if (profile_root / "profile.md").exists()
                 else profile_root / "voice.md"
             )
-            parts.append(
-                self._resolved_voice_profile(resolved, self._read(profile))
-            )
+            parts.append(self._resolved_voice_profile(resolved, self._read(profile)))
         if (
             order
             and order.perspective_selections
@@ -62,9 +57,7 @@ class PromptAssembler:
             }
         ):
             for index, selection in enumerate(order.perspective_selections):
-                perspective = PerspectiveRegistry(
-                    self.root, order.voice_id
-                ).resolve(
+                perspective = PerspectiveRegistry(self.root, order.voice_id).resolve(
                     selection.context_id,
                     selection.version,
                     allow_inactive=order.resolved_perspective,
@@ -79,9 +72,7 @@ class PromptAssembler:
                     entries = [
                         PerspectiveEntry.model_validate(item)
                         for item in json.loads(
-                            (perspective_root / "entries.json").read_text(
-                                encoding="utf-8"
-                            )
+                            (perspective_root / "entries.json").read_text(encoding="utf-8")
                         )
                         if item.get("id") in selected_ids
                     ]
@@ -90,19 +81,13 @@ class PromptAssembler:
                         entries,
                     )
                 else:
-                    perspective_profile = self._read(
-                        perspective_root / "perspective.md"
-                    )
+                    perspective_profile = self._read(perspective_root / "perspective.md")
                 parts.append(
-                    "## Approved perspective context: {}\n\n".format(
-                        selection.context_id
-                    )
+                    "## Approved perspective context: {}\n\n".format(selection.context_id)
                     + perspective_profile
                 )
                 parts.append(
-                    "## Perspective constraints: {}\n\n".format(
-                        selection.context_id
-                    )
+                    "## Perspective constraints: {}\n\n".format(selection.context_id)
                     + self._read(perspective_root / "constraints.json")
                 )
         repository_learnings = self._active_learnings(
@@ -110,49 +95,27 @@ class PromptAssembler:
             role,
         )
         if repository_learnings:
-            parts.append(
-                "## Active repository learnings\n\n"
-                + "\n".join(repository_learnings)
-            )
+            parts.append("## Active repository learnings\n\n" + "\n".join(repository_learnings))
         voice_id = order.voice_id if order else "default"
         voice_learnings = self._active_learnings(
-            self.root
-            / "profiles"
-            / voice_id
-            / "learnings"
-            / "memory.json",
+            self.root / "profiles" / voice_id / "learnings" / "memory.json",
             role,
         )
         if voice_learnings:
-            parts.append(
-                "## Active voice learnings\n\n"
-                + "\n".join(voice_learnings)
-            )
+            parts.append("## Active voice learnings\n\n" + "\n".join(voice_learnings))
         if order and role in {"writer", "critic"}:
             packs = PackRegistry(self.root)
-            pack = packs.resolve(
-                order.content_pack, order.pack_options
-            )
+            pack = packs.resolve(order.content_pack, order.pack_options)
             rubric_paths = [self.resources.path("rubrics/core.yaml")]
             if pack.rubric:
-                rubric_paths.append(
-                    packs.path(order.content_pack, pack.rubric)
-                )
-            rubric_paths.extend(
-                self.resources.path(item) for item in pack.rubrics
-            )
+                rubric_paths.append(packs.path(order.content_pack, pack.rubric))
+            rubric_paths.extend(self.resources.path(item) for item in pack.rubrics)
             rubric_paths.append(
-                self.resources.path(
-                    "rubrics/research-{}.yaml".format(
-                        order.research_depth.value
-                    )
-                )
+                self.resources.path("rubrics/research-{}.yaml".format(order.research_depth.value))
             )
             parts.append(
                 "## Rubrics\n\n"
-                + "\n\n".join(
-                    self._read(path) for path in rubric_paths if path.exists()
-                )
+                + "\n\n".join(self._read(path) for path in rubric_paths if path.exists())
             )
             overlay = pack.prompts.get(role)
             if overlay:

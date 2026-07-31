@@ -44,23 +44,14 @@ class AgentWorkspace:
         self.learnings = self.root / "learnings" / "memory.json"
 
     def template_root(self, template: str = STANDARD_TEMPLATE) -> Path:
-        path = (
-            self.resources.core
-            / "agent-templates"
-            / template
-            / "agents"
-        )
+        path = self.resources.core / "agent-templates" / template / "agents"
         if not path.is_dir():
             raise ValueError("Unknown agent template: {}".format(template))
         return path
 
-    def template_metadata(
-        self, template: str = STANDARD_TEMPLATE
-    ) -> Dict[str, Any]:
+    def template_metadata(self, template: str = STANDARD_TEMPLATE) -> Dict[str, Any]:
         return json.loads(
-            (self.template_root(template) / "template.json").read_text(
-                encoding="utf-8"
-            )
+            (self.template_root(template) / "template.json").read_text(encoding="utf-8")
         )
 
     def scaffold(self, template: str = STANDARD_TEMPLATE) -> Dict[str, Any]:
@@ -99,33 +90,23 @@ class AgentWorkspace:
     def status(self, template: str = STANDARD_TEMPLATE) -> Dict[str, Any]:
         self.template_root(template)
         expected = sorted(set(ROLE_FILES.values()) | set(LEARNING_FILES.values()))
-        missing = [
-            name for name in expected if not (self.agents / name).is_file()
-        ]
+        missing = [name for name in expected if not (self.agents / name).is_file()]
         return {
             "template": template,
             "complete": not missing and self.learnings.is_file(),
             "missing": missing,
-            "template_provenance": (
-                self.agents / "template.json"
-            ).is_file(),
+            "template_provenance": (self.agents / "template.json").is_file(),
             "repository_learning_memory": self.learnings.is_file(),
         }
 
-    def diff_template(
-        self, template: str = STANDARD_TEMPLATE
-    ) -> Dict[str, Any]:
+    def diff_template(self, template: str = STANDARD_TEMPLATE) -> Dict[str, Any]:
         template_root = self.template_root(template)
-        expected = {
-            path.name: path
-            for path in template_root.iterdir()
-            if path.is_file()
-        }
-        workspace = {
-            path.name: path
-            for path in self.agents.iterdir()
-            if path.is_file()
-        } if self.agents.is_dir() else {}
+        expected = {path.name: path for path in template_root.iterdir() if path.is_file()}
+        workspace = (
+            {path.name: path for path in self.agents.iterdir() if path.is_file()}
+            if self.agents.is_dir()
+            else {}
+        )
         changed = [
             name
             for name in sorted(expected.keys() & workspace.keys())
@@ -136,9 +117,7 @@ class AgentWorkspace:
             "changed": changed,
             "missing": sorted(expected.keys() - workspace.keys()),
             "unchanged": sorted(
-                name
-                for name in expected.keys() & workspace.keys()
-                if name not in changed
+                name for name in expected.keys() & workspace.keys() if name not in changed
             ),
             "additional": sorted(workspace.keys() - expected.keys()),
         }

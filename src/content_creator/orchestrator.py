@@ -88,9 +88,7 @@ class Orchestrator:
             if self.diagnostics.run_id is None:
                 diagnostic = self.diagnostics.record_invocation_failure(exc)
                 try:
-                    exc.diagnostic_path = str(
-                        diagnostic.relative_to(self.root)
-                    )
+                    exc.diagnostic_path = str(diagnostic.relative_to(self.root))
                 except (AttributeError, ValueError):
                     pass
             raise
@@ -105,15 +103,11 @@ class Orchestrator:
         order.pack_options = {**pack.defaults, "destination": pack.destination}
         if pack.format != order.format:
             raise OrchestrationError(
-                "Pack {} expects format {}, received {}".format(
-                    pack.id, pack.format, order.format
-                )
+                "Pack {} expects format {}, received {}".format(pack.id, pack.format, order.format)
             )
         if order.research_depth.value not in pack.allowed_research:
             raise OrchestrationError(
-                "Pack {} does not allow {} research".format(
-                    pack.id, order.research_depth.value
-                )
+                "Pack {} does not allow {} research".format(pack.id, order.research_depth.value)
             )
         route_plan = build_route(order)
         supplied_brief = self._preflight_supplied_research(order)
@@ -121,9 +115,7 @@ class Orchestrator:
             submitted_order or order, supplied_brief
         )
         if idempotency_key is not None:
-            existing = self.store.load_by_idempotency_key(
-                idempotency_key, submission_fingerprint
-            )
+            existing = self.store.load_by_idempotency_key(idempotency_key, submission_fingerprint)
             if existing:
                 self.diagnostics.bind_run(
                     existing.id,
@@ -131,23 +123,19 @@ class Orchestrator:
                 )
                 return existing
         order.resolved_voice = False
-        resolved_voice = VoiceRegistry(self.root).resolve(
-            order.voice_id, order.voice_version
-        )
+        resolved_voice = VoiceRegistry(self.root).resolve(order.voice_id, order.voice_version)
         order.voice_version = resolved_voice["version"]
         order.resolved_voice = True
         order.resolved_perspective = False
-        effective_perspective_policy = dict(
-            self.configuration.perspective_policy
-        )
+        effective_perspective_policy = dict(self.configuration.perspective_policy)
         if not resolved_voice.get("perspectives_allowed", True):
             effective_perspective_policy["mode"] = "disabled"
             effective_perspective_policy["force_disabled_reason"] = (
                 "starter-voice-without-author-evidence"
             )
-        perspective_resolution = PerspectiveResolver(
-            self.root, self.runner
-        ).resolve(order, effective_perspective_policy)
+        perspective_resolution = PerspectiveResolver(self.root, self.runner).resolve(
+            order, effective_perspective_policy
+        )
         if perspective_resolution.needs_clarification:
             raise OrchestrationError(
                 perspective_resolution.clarification_question
@@ -157,17 +145,16 @@ class Orchestrator:
         order.perspective_selections = perspective_resolution.selected
         resolved_perspectives = []
         for selection in order.perspective_selections:
-            resolved_perspective = PerspectiveRegistry(
-                self.root, order.voice_id
-            ).resolve(selection.context_id, selection.version)
+            resolved_perspective = PerspectiveRegistry(self.root, order.voice_id).resolve(
+                selection.context_id, selection.version
+            )
             requested_entries = (
                 order.author_contribution.reusable_perspective_entry_ids
                 if order.author_contribution
                 else []
             )
             unknown_entries = sorted(
-                set(requested_entries)
-                - set(resolved_perspective["active_entry_ids"])
+                set(requested_entries) - set(resolved_perspective["active_entry_ids"])
             )
             if unknown_entries:
                 raise OrchestrationError(
@@ -177,9 +164,7 @@ class Orchestrator:
                     )
                 )
             resolved_perspective["selected_entry_ids"] = (
-                requested_entries
-                if requested_entries
-                else resolved_perspective["active_entry_ids"]
+                requested_entries if requested_entries else resolved_perspective["active_entry_ids"]
             )
             selection.version = resolved_perspective["version"]
             resolved_perspective["selection_reason"] = selection.reason
@@ -193,9 +178,7 @@ class Orchestrator:
         else:
             order.perspective_context = None
             order.perspective_version = None
-        resolved_perspective = (
-            resolved_perspectives[0] if resolved_perspectives else None
-        )
+        resolved_perspective = resolved_perspectives[0] if resolved_perspectives else None
         state = RunState(work_order=order, route_plan=route_plan)
         state.events.append(RunEvent(name="planned", detail=state.route_plan.route))
         if idempotency_key is not None:
@@ -238,29 +221,23 @@ class Orchestrator:
                         "version": resolved["version"],
                     }
                     for item, resolved in zip(
-                        order.perspective_selections, resolved_perspectives
+                        order.perspective_selections,
+                        resolved_perspectives,
+                        strict=True,
                     )
                 ],
                 "catalogue": (
                     str(
-                        PerspectiveCatalogueStore(
-                            self.root, order.voice_id
-                        ).path.relative_to(self.root)
+                        PerspectiveCatalogueStore(self.root, order.voice_id).path.relative_to(
+                            self.root
+                        )
                     )
-                    if PerspectiveCatalogueStore(
-                        self.root, order.voice_id
-                    ).path.exists()
+                    if PerspectiveCatalogueStore(self.root, order.voice_id).path.exists()
                     else None
                 ),
                 "catalogue_hash": (
-                    hash_file(
-                        PerspectiveCatalogueStore(
-                            self.root, order.voice_id
-                        ).path
-                    )
-                    if PerspectiveCatalogueStore(
-                        self.root, order.voice_id
-                    ).path.exists()
+                    hash_file(PerspectiveCatalogueStore(self.root, order.voice_id).path)
+                    if PerspectiveCatalogueStore(self.root, order.voice_id).path.exists()
                     else None
                 ),
                 "policy": effective_perspective_policy,
@@ -278,9 +255,7 @@ class Orchestrator:
                 "perspective": resolved_perspective,
                 "perspectives": resolved_perspectives,
                 "research_record": (
-                    "not_required"
-                    if order.research_depth == ResearchDepth.NONE
-                    else "pending"
+                    "not_required" if order.research_depth == ResearchDepth.NONE else "pending"
                 ),
                 "model_proposed_framing_is_author_position": False,
             },
@@ -289,18 +264,14 @@ class Orchestrator:
             brief = self._research(state, supplied_brief)
             if brief:
                 self.store.write_artifact(state.id, "research.json", brief)
-                provenance = json.loads(
-                    self.store.read_artifact(state.id, "claim-provenance.json")
-                )
+                provenance = json.loads(self.store.read_artifact(state.id, "claim-provenance.json"))
                 provenance["research_record"] = {
                     "status": "completed",
                     "evidence_claim_count": len(brief.evidence),
                     "tensions": brief.tensions,
                     "gaps": brief.gaps,
                 }
-                self.store.write_artifact(
-                    state.id, "claim-provenance.json", provenance
-                )
+                self.store.write_artifact(state.id, "claim-provenance.json", provenance)
             if state.route_plan.requires_research_checkpoint:
                 state.status = RunStatus.AWAITING_RESEARCH_APPROVAL
                 state.events.append(RunEvent(name="research_checkpoint"))
@@ -312,9 +283,7 @@ class Orchestrator:
             self._fail(state, exc)
             raise
 
-    def resume_research(
-        self, run_id: str, approved: bool, notes: Optional[str] = None
-    ) -> RunState:
+    def resume_research(self, run_id: str, approved: bool, notes: Optional[str] = None) -> RunState:
         state = self.store.load(run_id)
         self.diagnostics.begin_invocation(state.work_order.content_session_id)
         self.diagnostics.bind_run(run_id, state.work_order.content_session_id)
@@ -326,9 +295,7 @@ class Orchestrator:
             self.store.save_state(state)
             return state
         state.events.append(RunEvent(name="research_approved", detail=notes or ""))
-        brief = ResearchBrief.model_validate_json(
-            self.store.read_artifact(run_id, "research.json")
-        )
+        brief = ResearchBrief.model_validate_json(self.store.read_artifact(run_id, "research.json"))
         try:
             return self._draft_and_review(state, brief)
         except Exception as exc:
@@ -374,8 +341,7 @@ class Orchestrator:
             "perspective_context": state.work_order.perspective_context,
             "perspective_version": state.work_order.perspective_version,
             "perspective_selections": [
-                item.model_dump(mode="json")
-                for item in state.work_order.perspective_selections
+                item.model_dump(mode="json") for item in state.work_order.perspective_selections
             ],
             "author_signal": "explicit_feedback" if feedback else "publication_approval",
             "feedback": feedback,
@@ -465,9 +431,7 @@ class Orchestrator:
                     (
                         "perspective-extraction.json"
                         if len(state.work_order.perspective_selections) == 1
-                        else "perspective-extraction-{}.json".format(
-                            selection.context_id
-                        )
+                        else "perspective-extraction-{}.json".format(selection.context_id)
                     ),
                     perspective_extraction,
                 )
@@ -517,9 +481,7 @@ class Orchestrator:
         self.store.save_state(state)
         return result
 
-    def _preflight_supplied_research(
-        self, order: WorkOrder
-    ) -> Optional[ResearchBrief]:
+    def _preflight_supplied_research(self, order: WorkOrder) -> Optional[ResearchBrief]:
         if order.research_source != ResearchSource.SUPPLIED:
             return None
         path = Path(order.supplied_research_path or "")
@@ -528,21 +490,15 @@ class Orchestrator:
         try:
             payload = path.read_text(encoding="utf-8")
         except OSError as exc:
-            raise OrchestrationError(
-                "Supplied research file could not be read"
-            ) from exc
+            raise OrchestrationError("Supplied research file could not be read") from exc
         try:
             brief = ResearchBrief.model_validate_json(payload)
         except ValueError as exc:
-            raise OrchestrationError(
-                "Supplied research is not valid ResearchBrief JSON"
-            ) from exc
+            raise OrchestrationError("Supplied research is not valid ResearchBrief JSON") from exc
         research_errors = validate_research_brief(brief)
         if research_errors:
             raise OrchestrationError(
-                "Research brief failed validation: {}".format(
-                    "; ".join(research_errors)
-                )
+                "Research brief failed validation: {}".format("; ".join(research_errors))
             )
         return brief
 
@@ -560,9 +516,7 @@ class Orchestrator:
         ):
             payload.pop(transient, None)
         payload["supplied_research"] = (
-            supplied_brief.model_dump(mode="json")
-            if supplied_brief
-            else None
+            supplied_brief.model_dump(mode="json") if supplied_brief else None
         )
         encoded = json.dumps(
             payload,
@@ -585,9 +539,7 @@ class Orchestrator:
         self.store.save_state(state)
         if order.research_source == ResearchSource.SUPPLIED:
             if supplied_brief is None:
-                raise OrchestrationError(
-                    "Supplied research did not pass preflight"
-                )
+                raise OrchestrationError("Supplied research did not pass preflight")
             brief = supplied_brief
         else:
             brief = self.runner.run(
@@ -606,20 +558,14 @@ class Orchestrator:
             research_errors = validate_research_brief(brief)
             if research_errors:
                 raise OrchestrationError(
-                    "Research brief failed validation: {}".format(
-                        "; ".join(research_errors)
-                    )
+                    "Research brief failed validation: {}".format("; ".join(research_errors))
                 )
         state.events.append(RunEvent(name="research_complete"))
         self.store.save_state(state)
         return brief
 
-    def _draft_and_review(
-        self, state: RunState, brief: Optional[ResearchBrief]
-    ) -> RunState:
-        pack = self.packs.resolve(
-            state.work_order.content_pack, state.work_order.pack_options
-        )
+    def _draft_and_review(self, state: RunState, brief: Optional[ResearchBrief]) -> RunState:
+        pack = self.packs.resolve(state.work_order.content_pack, state.work_order.pack_options)
         previous_critique: Optional[Critique] = None
         prior_score: Optional[float] = None
         stagnant_rounds = 0
@@ -639,19 +585,11 @@ class Orchestrator:
                 provider=state.work_order.provider,
                 profile=state.route_plan.model_profiles["writer"],
             )
-            self.store.write_artifact(
-                state.id, "draft-{:02d}.md".format(revision), draft
-            )
-            validation_errors = validate_draft(
-                draft, state.work_order, pack.validators
-            )
-            voice_evaluation = evaluate_voice_output(
-                self.root, state.work_order, draft
-            )
+            self.store.write_artifact(state.id, "draft-{:02d}.md".format(revision), draft)
+            validation_errors = validate_draft(draft, state.work_order, pack.validators)
+            voice_evaluation = evaluate_voice_output(self.root, state.work_order, draft)
             validation_errors.extend(voice_evaluation["errors"])
-            perspective_evaluation = evaluate_perspective_output(
-                self.root, state.work_order, draft
-            )
+            perspective_evaluation = evaluate_perspective_output(self.root, state.work_order, draft)
             validation_errors.extend(perspective_evaluation["errors"])
             self.store.write_artifact(
                 state.id,
@@ -675,10 +613,7 @@ class Orchestrator:
                 state.work_order.voice_id,
                 self.configuration.statistical_voice_score_policy,
             )
-            if (
-                score_policy["enabled"]
-                and pack.statistical_voice_score.eligible
-            ):
+            if score_policy["enabled"] and pack.statistical_voice_score.eligible:
                 statistical_voice_score = assess_voice_draft(
                     self.root,
                     state.work_order.voice_id,
@@ -700,9 +635,7 @@ class Orchestrator:
                 "research": brief.model_dump(mode="json") if brief else None,
                 "validation_errors": validation_errors,
                 "prior_critique": (
-                    previous_critique.model_dump(mode="json")
-                    if previous_critique
-                    else None
+                    previous_critique.model_dump(mode="json") if previous_critique else None
                 ),
             }
             if statistical_voice_score is not None:
@@ -732,12 +665,8 @@ class Orchestrator:
             decision = evaluate_quality(
                 critique, self.configuration.rubric("core"), validation_errors
             )
-            self.store.write_artifact(
-                state.id, "critique-{:02d}.json".format(revision), critique
-            )
-            self.store.write_artifact(
-                state.id, "quality-{:02d}.json".format(revision), decision
-            )
+            self.store.write_artifact(state.id, "critique-{:02d}.json".format(revision), critique)
+            self.store.write_artifact(state.id, "quality-{:02d}.json".format(revision), decision)
             state.events.append(
                 RunEvent(
                     name="revision_reviewed",
@@ -765,9 +694,7 @@ class Orchestrator:
             prior_score = decision.weighted_score
             previous_critique = critique
 
-        latest = self.store.read_artifact(
-            state.id, "draft-{:02d}.md".format(state.revision)
-        )
+        latest = self.store.read_artifact(state.id, "draft-{:02d}.md".format(state.revision))
         self.store.write_artifact(state.id, "final.md", latest)
         state.final_draft_path = "runs/{}/final.md".format(state.id)
         state.status = RunStatus.NEEDS_AUTHOR

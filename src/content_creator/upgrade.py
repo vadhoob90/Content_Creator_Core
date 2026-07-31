@@ -8,11 +8,9 @@ from typing import Any, Callable, Dict, List, Optional
 
 from .agent_resources import AgentWorkspace
 from .storage import RunStore
-from .workspace import scaffold_skills
+from .workspace import scaffold_skills, update_readme_core_dependency
 
-IMMUTABLE_REF = re.compile(
-    r"^(?:v\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?|[0-9a-fA-F]{40})$"
-)
+IMMUTABLE_REF = re.compile(r"^(?:v\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?|[0-9a-fA-F]{40})$")
 GIT_DEPENDENCY = re.compile(
     r"content-creator\s*@\s*git\+"
     r"(?P<url>[^\"'\s@]+)"
@@ -53,11 +51,10 @@ class WorkspaceUpgrader:
             )
         if git_match:
             current = git_match.group("ref")
-            dependency = "content-creator @ git+{}@{}".format(
-                git_match.group("url"), target
-            )
+            dependency = "content-creator @ git+{}@{}".format(git_match.group("url"), target)
             source = "git"
         else:
+            assert registry_match is not None
             current = "v{}".format(registry_match.group("version"))
             dependency = "content-creator=={}".format(target.removeprefix("v"))
             source = "registry"
@@ -75,6 +72,10 @@ class WorkspaceUpgrader:
                 "path": "uv.lock",
                 "exists": (self.root / "uv.lock").exists(),
                 "will_refresh": True,
+            },
+            "readme": {
+                "path": "README.md",
+                "managed_core_dependency": self._readme_is_managed(),
             },
             "template_changes": {
                 "agents": AgentWorkspace(self.root).diff_template(),
@@ -111,14 +112,21 @@ class WorkspaceUpgrader:
         pyproject = self.root / "pyproject.toml"
         lockfile = self.root / "uv.lock"
         original_project = pyproject.read_text(encoding="utf-8")
-        original_lock = (
-            lockfile.read_text(encoding="utf-8") if lockfile.exists() else None
-        )
+        original_lock = lockfile.read_text(encoding="utf-8") if lockfile.exists() else None
+        readme = self.root / "README.md"
+        original_readme = readme.read_text(encoding="utf-8") if readme.exists() else None
         before = report["dependency_before"]
-        updated = original_project.replace(
-            before, report["dependency_after"], 1
-        )
+        updated = original_project.replace(before, report["dependency_after"], 1)
         RunStore._atomic_text(pyproject, updated.rstrip())
+        readme_updated = False
+        if original_readme is not None:
+            updated_readme, readme_updated = update_readme_core_dependency(
+                original_readme,
+                target,
+                report["dependency_after"],
+            )
+            if readme_updated:
+                RunStore._atomic_text(readme, updated_readme.rstrip())
         commands = [
             ["uv", "lock", "--upgrade-package", "content-creator"],
             [
@@ -165,6 +173,8 @@ class WorkspaceUpgrader:
                     lockfile.unlink()
             else:
                 RunStore._atomic_text(lockfile, original_lock.rstrip())
+            if original_readme is not None and readme_updated:
+                RunStore._atomic_text(readme, original_readme.rstrip())
             raise
         report.update(
             {
@@ -174,6 +184,7 @@ class WorkspaceUpgrader:
                     "agents": agents["created"],
                     "skills": skills["created"],
                 },
+                "readme_updated": readme_updated,
                 "manual_follow_up": [
                     "Review agent and skill template differences.",
                     "Review and commit pyproject.toml and uv.lock deliberately.",
@@ -181,6 +192,17 @@ class WorkspaceUpgrader:
             }
         )
         return report
+
+    def _readme_is_managed(self) -> bool:
+        readme = self.root / "README.md"
+        if not readme.is_file():
+            return False
+        _, managed = update_readme_core_dependency(
+            readme.read_text(encoding="utf-8"),
+            "v0.0.0",
+            "content-creator==0.0.0",
+        )
+        return managed
 
     @staticmethod
     def _validate_target(target: str) -> None:

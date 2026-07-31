@@ -34,7 +34,7 @@ branch:
 name = "example-content-workspace"
 version = "0.1.0"
 dependencies = [
-  "content-creator==0.9.0",
+  "content-creator==0.10.0",
 ]
 ```
 
@@ -44,7 +44,7 @@ refreshing the lock, and running downstream tests.
 From v0.6, preview that change with:
 
 ```bash
-content-creator --workspace . workspace upgrade --to v0.9.0
+content-creator --workspace . workspace upgrade --to v0.10.0
 ```
 
 The preview shows the dependency and lockfile operation, packaged template
@@ -54,7 +54,7 @@ follow-up. It does not modify the workspace.
 Apply the reviewed preview explicitly:
 
 ```bash
-content-creator --workspace . workspace upgrade --to v0.9.0 --apply
+content-creator --workspace . workspace upgrade --to v0.10.0 --apply
 ```
 
 Core accepts only a semantic-version tag or full 40-character reviewed commit,
@@ -63,6 +63,11 @@ refreshes the lock, runs doctor, verifies all voices, runs workspace tests, and
 restores the dependency and lockfile if validation fails. New packaged
 template files may be added, but existing repository-owned agents and skills
 are preserved for manual review.
+
+Workspaces generated with the managed Core dependency block in their README
+also have that block refreshed and rolled back transactionally. The rest of
+the README is repository-owned. Legacy or fully custom READMEs without the
+managed marker are never rewritten.
 
 The workspace generator is available from `v0.4.0`. Production workspaces
 should pin a reviewed package release. The corresponding immutable Git tag

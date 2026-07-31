@@ -195,11 +195,14 @@ develop Core. Detailed terminal procedures remain in the focused guides.
 
 Clone this repository only when you want to inspect or change the reusable
 engine. The [Core development guide](docs/core/README.md) covers installation,
-architecture, testing, and releases.
+architecture, testing, and releases. The
+[engineering standards](docs/core/engineering-standards.md) define the required
+quality, compatibility, security, and release controls.
 
 External code contributions are not currently accepted. Bug reports and
 feature requests are welcome through GitHub Issues; read
-[Contributing](CONTRIBUTING.md) first.
+[Contributing](CONTRIBUTING.md) first. Report security-sensitive issues through
+the private process in the [security policy](SECURITY.md).
 
 ## Licence
 

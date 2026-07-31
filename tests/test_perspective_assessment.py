@@ -55,9 +55,7 @@ def test_blind_comparison_rejects_incomplete_scores(project):
     baseline = project / "baseline.md"
     baseline.write_text("Baseline.", encoding="utf-8")
     packet = create_blind_comparison(project, "run-1", baseline)
-    assessment = json.loads(
-        (project / packet["assessment_template"]).read_text(encoding="utf-8")
-    )
+    assessment = json.loads((project / packet["assessment_template"]).read_text(encoding="utf-8"))
     assessment["preferred_option"] = "tie"
     completed = project / "incomplete.json"
     completed.write_text(json.dumps(assessment), encoding="utf-8")

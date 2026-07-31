@@ -5,49 +5,33 @@ permissions:
 
 on:
   pull_request:
-    paths:
-      - "src/**"
-      - "tests/**"
-      - "evals/**"
-      - "agents/**"
-      - "packs/**"
-      - "profiles/**"
-      - "!profiles/*/learnings/**"
-      - "!profiles/*/perspectives/*/proposals/**"
-      - "rubrics/**"
-      - "config/**"
-      - ".agents/**"
-      - ".claude/**"
-      - "AGENTS.md"
-      - "CLAUDE.md"
-      - "pyproject.toml"
-      - ".github/workflows/**"
   push:
-    paths:
-      - "src/**"
-      - "tests/**"
-      - "evals/**"
-      - "agents/**"
-      - "packs/**"
-      - "profiles/**"
-      - "!profiles/*/learnings/**"
-      - "!profiles/*/perspectives/*/proposals/**"
-      - "rubrics/**"
-      - "config/**"
-      - ".agents/**"
-      - ".claude/**"
-      - "AGENTS.md"
-      - "CLAUDE.md"
-      - "pyproject.toml"
-      - ".github/workflows/**"
+    branches: [main]
 
 jobs:
+  quality:
+    name: Code quality
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.14"
+          cache: pip
+      - run: python -m pip install -e ".[dev]"
+      - run: ruff check .
+      - run: ruff format --check .
+      - run: mypy
+
   test:
+    name: Test Python ${{ matrix.python-version }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.9", "3.10", "3.11"]
+        python-version: ["3.11", "3.12", "3.13", "3.14"]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -55,7 +39,68 @@ jobs:
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: ${{ matrix.python-version }}
+          cache: pip
       - run: python -m pip install -e ".[dev]"
-      - run: ruff check .
       - run: pytest --cov=content_creator --cov-report=term-missing
+
+  evaluation:
+    name: Offline evaluation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.14"
+          cache: pip
+      - run: python -m pip install -e ".[dev]"
       - run: content-creator eval
+
+  dependency-review:
+    name: Dependency review
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
+        with:
+          fail-on-severity: moderate
+
+  dependency-audit:
+    name: Dependency vulnerability audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.14"
+          cache: pip
+      - run: python -m pip install -e ".[dev,providers]"
+      - run: python -m pip_audit --local --progress-spinner=off
+
+  required:
+    name: Required checks
+    if: always()
+    needs: [quality, test, evaluation, dependency-review, dependency-audit]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require every applicable check
+        env:
+          QUALITY: ${{ needs.quality.result }}
+          TEST: ${{ needs.test.result }}
+          EVALUATION: ${{ needs.evaluation.result }}
+          DEPENDENCY_REVIEW: ${{ needs.dependency-review.result }}
+          DEPENDENCY_AUDIT: ${{ needs.dependency-audit.result }}
+        run: |
+          test "${QUALITY}" = success
+          test "${TEST}" = success
+          test "${EVALUATION}" = success
+          test "${DEPENDENCY_AUDIT}" = success
+          test "${DEPENDENCY_REVIEW}" = success || test "${DEPENDENCY_REVIEW}" = skipped

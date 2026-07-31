@@ -31,9 +31,7 @@ def test_model_selector_uses_first_capable_candidate(project):
 
 def test_model_selector_fails_closed_when_capability_is_missing(project):
     try:
-        Configuration(project).selection(
-            "writer-post", required_capabilities={"unsupported_tool"}
-        )
+        Configuration(project).selection("writer-post", required_capabilities={"unsupported_tool"})
     except ConfigurationError as exc:
         assert "unsupported_tool" in str(exc)
     else:
@@ -140,9 +138,7 @@ def test_statistical_voice_score_policy_validates_bounds(project):
 def test_statistical_voice_score_rejects_unknown_method(project):
     path = project / "content-creator.yaml"
     path.write_text(
-        yaml.safe_dump(
-            {"statistical_voice_score": {"method": "automatic-ml"}}
-        ),
+        yaml.safe_dump({"statistical_voice_score": {"method": "automatic-ml"}}),
         encoding="utf-8",
     )
 

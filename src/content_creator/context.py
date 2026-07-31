@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import List, Optional
 
@@ -23,19 +23,13 @@ def resolved_context(
     resources = ResourceResolver(root)
     hashes = {
         "core_rubric": hash_file(resources.path("rubrics/core.yaml")),
-        "pack_manifest": hash_file(
-            resources.path(Path("packs") / pack.id / "pack.json")
-        ),
+        "pack_manifest": hash_file(resources.path(Path("packs") / pack.id / "pack.json")),
     }
     agent_workspace = AgentWorkspace(root)
     hashes["agent_harness"] = hash_file(agent_workspace.harness_path())
     for role in sorted(ROLE_FILES):
-        hashes["agent_contract_{}".format(role)] = hash_file(
-            agent_workspace.contract_path(role)
-        )
-        hashes["repository_agent_{}".format(role)] = hash_file(
-            agent_workspace.role_path(role)
-        )
+        hashes["agent_contract_{}".format(role)] = hash_file(agent_workspace.contract_path(role))
+        hashes["repository_agent_{}".format(role)] = hash_file(agent_workspace.role_path(role))
     for role in sorted(LEARNING_FILES):
         hashes["repository_learning_policy_{}".format(role)] = hash_file(
             agent_workspace.learning_instructions_path(role)
@@ -52,22 +46,16 @@ def resolved_context(
     if repository_memory.exists():
         repository_learning_ids = [
             item["id"]
-            for item in json.loads(
-                repository_memory.read_text(encoding="utf-8")
-            ).get("records", [])
+            for item in json.loads(repository_memory.read_text(encoding="utf-8")).get("records", [])
             if item.get("status") == "active"
         ]
         hashes["repository_learning_memory"] = hash_file(repository_memory)
-    voice_memory = (
-        root / "profiles" / order.voice_id / "learnings" / "memory.json"
-    )
+    voice_memory = root / "profiles" / order.voice_id / "learnings" / "memory.json"
     voice_learning_ids = []
     if voice_memory.exists():
         voice_learning_ids = [
             item["id"]
-            for item in json.loads(
-                voice_memory.read_text(encoding="utf-8")
-            ).get("records", [])
+            for item in json.loads(voice_memory.read_text(encoding="utf-8")).get("records", [])
             if item.get("status") == "active"
         ]
         hashes["voice_learning_memory"] = hash_file(voice_memory)
@@ -80,7 +68,7 @@ def resolved_context(
         "active_learning_ids": voice_learning_ids,
         "active_repository_learning_ids": repository_learning_ids,
         "active_voice_learning_ids": voice_learning_ids,
-        "resolved_at": datetime.now(timezone.utc).isoformat(),
+        "resolved_at": datetime.now(UTC).isoformat(),
     }
     resolved_perspectives = perspectives or []
     if resolved_perspectives:
@@ -92,9 +80,7 @@ def resolved_context(
             context_id = perspective["context_id"]
             if index == 0:
                 hashes["perspective_manifest"] = hash_file(manifest)
-            hashes["perspective_{}_manifest".format(context_id)] = hash_file(
-                manifest
-            )
+            hashes["perspective_{}_manifest".format(context_id)] = hash_file(manifest)
             data = json.loads(manifest.read_text(encoding="utf-8"))
             for name, value in data.get("component_hashes", {}).items():
                 if index == 0:

@@ -58,9 +58,7 @@ def test_plan_reports_provider_neutral_work_order(capsys):
     assert output["research_depth"] == "deep"
 
 
-def test_doctor_uses_packaged_default_when_workspace_asset_is_missing(
-    project, capsys
-):
+def test_doctor_uses_packaged_default_when_workspace_asset_is_missing(project, capsys):
     (project / "profiles" / "default" / "voice.md").unlink()
 
     assert main(["--root", str(project), "doctor"]) == 0
@@ -114,9 +112,7 @@ def test_provider_select_persists_workspace_choice(project, capsys):
         == 0
     )
     output = json.loads(capsys.readouterr().out)
-    configuration = yaml.safe_load(
-        (project / "content-creator.yaml").read_text(encoding="utf-8")
-    )
+    configuration = yaml.safe_load((project / "content-creator.yaml").read_text(encoding="utf-8"))
 
     assert output["provider"] == "codex-native"
     assert configuration["provider"]["default"] == "codex-native"
@@ -140,9 +136,7 @@ def test_agent_scaffold_preserves_repository_customisation(tmp_path, capsys):
     assert "writer.md" in difference["changed"]
 
 
-def test_configuration_errors_are_reported_without_a_traceback(
-    project, capsys, monkeypatch
-):
+def test_configuration_errors_are_reported_without_a_traceback(project, capsys, monkeypatch):
     class FailingOrchestrator:
         def __init__(self, root):
             self.root = root
@@ -185,10 +179,7 @@ research:
             return order
 
     monkeypatch.setattr(cli, "Orchestrator", FakeOrchestrator)
-    assert (
-        main(["--root", str(project), "run", "--brief", str(brief)])
-        == 0
-    )
+    assert main(["--root", str(project), "run", "--brief", str(brief)]) == 0
     output = json.loads(capsys.readouterr().out)
     assert output["content_pack"] == "general-text"
     assert output["research_depth"] == "none"

@@ -33,16 +33,10 @@ def validate_draft(
                 errors.append("Banned phrase: {}".format(phrase))
 
     length = order.pack_options.get("length")
-    if (
-        "word-count" in enabled
-        and isinstance(length, str)
-        and re.fullmatch(r"\d+:\d+", length)
-    ):
+    if "word-count" in enabled and isinstance(length, str) and re.fullmatch(r"\d+:\d+", length):
         minimum, maximum = (int(item) for item in length.split(":"))
         if not minimum <= len(words) <= maximum:
-            errors.append(
-                "Content must be between {} and {} words".format(minimum, maximum)
-            )
+            errors.append("Content must be between {} and {} words".format(minimum, maximum))
     if (
         "citation-integrity" in enabled
         and order.research_depth != ResearchDepth.NONE
@@ -63,7 +57,5 @@ def validate_research_brief(brief: ResearchBrief) -> List[str]:
             errors.append("Evidence item {} has no source".format(index))
         for url in evidence.source_urls:
             if url not in known_urls:
-                errors.append(
-                    "Evidence item {} references an unknown source".format(index)
-                )
+                errors.append("Evidence item {} references an unknown source".format(index))
     return errors

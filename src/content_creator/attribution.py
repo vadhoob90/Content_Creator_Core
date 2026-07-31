@@ -9,9 +9,7 @@ from .voices import AttributionResult
 def _names(author_name: str, aliases: Optional[Iterable[str]]) -> List[str]:
     return list(
         dict.fromkeys(
-            name.strip()
-            for name in [author_name, *(aliases or [])]
-            if name and name.strip()
+            name.strip() for name in [author_name, *(aliases or [])] if name and name.strip()
         )
     )
 
@@ -45,10 +43,7 @@ def classify_attribution(
             )
     if kind == "transcript":
         first_names = [re.escape(name.split()[0]) for name in names]
-        if any(
-            re.search(r"(?:^|\s)" + first + r"\s*:", text, re.I)
-            for first in first_names
-        ):
+        if any(re.search(r"(?:^|\s)" + first + r"\s*:", text, re.I) for first in first_names):
             return AttributionResult(
                 classification="interview",
                 confidence=0.85,
@@ -84,13 +79,9 @@ def isolate_attributed_text(
     cleaned = text.strip()
     names = _names(author_name, aliases)
     if attribution.classification == "directly_authored":
-        name_pattern = "(?:{})".format(
-            "|".join(re.escape(name) for name in names)
-        )
+        name_pattern = "(?:{})".format("|".join(re.escape(name) for name in names))
         cleaned = re.sub(
-            r"^\s*(?:written\s+by|by|author[:\s]+)\s*"
-            + name_pattern
-            + r"\s*[.,:;—-]*\s*",
+            r"^\s*(?:written\s+by|by|author[:\s]+)\s*" + name_pattern + r"\s*[.,:;—-]*\s*",
             "",
             cleaned,
             count=1,
@@ -100,9 +91,7 @@ def isolate_attributed_text(
 
     if kind == "transcript" and attribution.classification == "interview":
         speaker_names = {
-            value
-            for name in names
-            for value in (name.lower(), name.split()[0].lower())
+            value for name in names for value in (name.lower(), name.split()[0].lower())
         }
         selected = []
         active = False
@@ -122,8 +111,6 @@ def isolate_attributed_text(
             return "", "no-attributed-speaker-turns"
 
     scope = (
-        "shared-source-weighted"
-        if attribution.classification == "co_authored"
-        else "full-source"
+        "shared-source-weighted" if attribution.classification == "co_authored" else "full-source"
     )
     return cleaned, scope

@@ -103,9 +103,7 @@ def test_learning_memory_deduplicates_same_role_and_principle(project):
     memory.apply("run-1", extraction)
     memory.apply("run-2", extraction)
     saved = json.loads(
-        (
-            project / "profiles" / "default" / "learnings" / "memory.json"
-        ).read_text(encoding="utf-8")
+        (project / "profiles" / "default" / "learnings" / "memory.json").read_text(encoding="utf-8")
     )
     assert len(saved["records"]) == 1
 

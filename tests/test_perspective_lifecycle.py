@@ -55,11 +55,7 @@ def test_perspective_activation_is_versioned_idempotent_and_tamper_evident(proje
     resolved = registry.resolve("legal-training")
     assert resolved["active_entry_ids"] == ["training-001"]
 
-    profile = (
-        project
-        / resolved["path"]
-        / "perspective.md"
-    )
+    profile = project / resolved["path"] / "perspective.md"
     profile.write_text("tampered", encoding="utf-8")
     with pytest.raises(PerspectiveError, match="hash mismatch"):
         registry.resolve("legal-training")
@@ -160,9 +156,7 @@ def test_deactivation_blocks_new_use_but_preserves_historical_resolution(project
 
     with pytest.raises(PerspectiveError, match="not active"):
         registry.resolve("space-law")
-    assert registry.resolve(
-        "space-law", "1.0.0", allow_inactive=True
-    )["version"] == "1.0.0"
+    assert registry.resolve("space-law", "1.0.0", allow_inactive=True)["version"] == "1.0.0"
 
 
 @pytest.mark.parametrize("provider", ["anthropic", "openai"])
@@ -198,12 +192,8 @@ def test_run_pins_perspective_and_provider_receives_same_contract(project, provi
             pack_options={"length": "50:600"},
         )
     )
-    context = json.loads(
-        (project / "runs" / state.id / "resolved-context.json").read_text()
-    )
-    provenance = json.loads(
-        (project / "runs" / state.id / "claim-provenance.json").read_text()
-    )
+    context = json.loads((project / "runs" / state.id / "resolved-context.json").read_text())
+    provenance = json.loads((project / "runs" / state.id / "claim-provenance.json").read_text())
 
     assert state.status == RunStatus.READY
     assert state.work_order.resolved_perspective
@@ -304,12 +294,8 @@ def test_publication_creates_only_context_scoped_candidate_then_requires_approva
         )
     )
     state = orchestrator.publish(state.id, filename="space.md")
-    proposals = PerspectiveProposalStore(
-        project, "default", "space-law"
-    ).list()
-    legal_entries = PerspectiveRegistry(
-        project, "default"
-    ).current_entries("legal-training")
+    proposals = PerspectiveProposalStore(project, "default", "space-law").list()
+    legal_entries = PerspectiveRegistry(project, "default").current_entries("legal-training")
     space_before = PerspectiveRegistry(project, "default").resolve("space-law")
 
     assert state.status == RunStatus.PUBLISHED

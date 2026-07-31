@@ -39,9 +39,7 @@ def _install_active_voice(project, signature):
     version = project / "profiles" / "alice" / "versions" / "1.0.0"
     version.mkdir(parents=True)
     (version / "profile.md").write_text("# Alice voice", encoding="utf-8")
-    (version / "linguistic-signature.json").write_text(
-        json.dumps(signature), encoding="utf-8"
-    )
+    (version / "linguistic-signature.json").write_text(json.dumps(signature), encoding="utf-8")
     (version / "source-index.json").write_text("[]", encoding="utf-8")
     components = {
         "profile": "profile.md",
@@ -58,8 +56,7 @@ def _install_active_voice(project, signature):
                 "candidate_hash": "sha256:fixture",
                 "components": components,
                 "component_hashes": {
-                    name: hash_file(version / filename)
-                    for name, filename in components.items()
+                    name: hash_file(version / filename) for name, filename in components.items()
                 },
                 "supported_packs": {
                     "linkedin-post": "high",
@@ -106,10 +103,7 @@ def test_assessment_reports_material_outliers_without_authorship_claim():
     assert report["type"] == "statistical_voice_score"
     assert report["method"] == "deterministic"
     assert 0 <= report["score"] < 100
-    assert any(
-        item["feature"] == "second_person_per_1000_words"
-        for item in report["outliers"]
-    )
+    assert any(item["feature"] == "second_person_per_1000_words" for item in report["outliers"])
     assert "not proof of authorship" in report["claim_limit"]
 
 
@@ -126,9 +120,7 @@ def test_assessment_refuses_to_overstate_a_small_corpus():
 
 
 def test_disabled_score_does_not_enter_the_run(project):
-    fake = FakeProvider(
-        {"writer": [valid_draft()], "critic": [passing_critique()]}
-    )
+    fake = FakeProvider({"writer": [valid_draft()], "critic": [passing_critique()]})
     orchestrator = Orchestrator(
         project,
         registry=ProviderRegistry({"anthropic": fake}),
@@ -143,32 +135,24 @@ def test_disabled_score_does_not_enter_the_run(project):
         )
     )
 
-    assert not (
-        project / "runs" / state.id / "statistical-voice-score-01.json"
-    ).exists()
-    critic_request = next(
-        request for request in fake.requests if request.role == "critic"
-    )
+    assert not (project / "runs" / state.id / "statistical-voice-score-01.json").exists()
+    critic_request = next(request for request in fake.requests if request.role == "critic")
     critic_payload = json.loads(critic_request.user.split("\nINPUT\n", 1)[1])
     assert "statistical_voice_score" not in critic_payload
 
 
 def test_enabled_score_is_advisory_to_critic_only(project):
     _install_active_voice(project, _signature())
-    configuration = yaml.safe_load(
-        (project / "content-creator.yaml").read_text(encoding="utf-8")
-    ) if (project / "content-creator.yaml").exists() else {}
+    configuration = (
+        yaml.safe_load((project / "content-creator.yaml").read_text(encoding="utf-8"))
+        if (project / "content-creator.yaml").exists()
+        else {}
+    )
     configuration["statistical_voice_score"] = {"enabled": True}
-    (project / "content-creator.yaml").write_text(
-        yaml.safe_dump(configuration), encoding="utf-8"
-    )
+    (project / "content-creator.yaml").write_text(yaml.safe_dump(configuration), encoding="utf-8")
     assessed_draft = "\n\n".join(valid_draft() for _ in range(10))
-    fake = FakeProvider(
-        {"writer": [assessed_draft], "critic": [passing_critique()]}
-    )
-    orchestrator = Orchestrator(
-        project, registry=ProviderRegistry({"anthropic": fake})
-    )
+    fake = FakeProvider({"writer": [assessed_draft], "critic": [passing_critique()]})
+    orchestrator = Orchestrator(project, registry=ProviderRegistry({"anthropic": fake}))
 
     state = orchestrator.start(
         WorkOrder(
@@ -204,12 +188,8 @@ def test_voice_preference_enables_score_when_workspace_default_is_off(project):
         selected_by="Alice",
     )
     assessed_draft = "\n\n".join(valid_draft() for _ in range(10))
-    fake = FakeProvider(
-        {"writer": [assessed_draft], "critic": [passing_critique()]}
-    )
-    orchestrator = Orchestrator(
-        project, registry=ProviderRegistry({"anthropic": fake})
-    )
+    fake = FakeProvider({"writer": [assessed_draft], "critic": [passing_critique()]})
+    orchestrator = Orchestrator(project, registry=ProviderRegistry({"anthropic": fake}))
 
     state = orchestrator.start(
         WorkOrder(
@@ -222,9 +202,9 @@ def test_voice_preference_enables_score_when_workspace_default_is_off(project):
     )
 
     report = json.loads(
-        (
-            project / "runs" / state.id / "statistical-voice-score-01.json"
-        ).read_text(encoding="utf-8")
+        (project / "runs" / state.id / "statistical-voice-score-01.json").read_text(
+            encoding="utf-8"
+        )
     )
     assert report["method"] == "deterministic"
     assert report["score"] is not None
@@ -233,9 +213,7 @@ def test_voice_preference_enables_score_when_workspace_default_is_off(project):
 def test_short_form_pack_never_supplies_score_to_critic(project):
     _install_active_voice(project, _signature())
     configuration = {"statistical_voice_score": {"enabled": True}}
-    (project / "content-creator.yaml").write_text(
-        yaml.safe_dump(configuration), encoding="utf-8"
-    )
+    (project / "content-creator.yaml").write_text(yaml.safe_dump(configuration), encoding="utf-8")
     save_score_preference(
         project,
         "alice",
@@ -243,12 +221,8 @@ def test_short_form_pack_never_supplies_score_to_critic(project):
         method="deterministic",
         selected_by="Alice",
     )
-    fake = FakeProvider(
-        {"writer": [valid_draft()], "critic": [passing_critique()]}
-    )
-    orchestrator = Orchestrator(
-        project, registry=ProviderRegistry({"anthropic": fake})
-    )
+    fake = FakeProvider({"writer": [valid_draft()], "critic": [passing_critique()]})
+    orchestrator = Orchestrator(project, registry=ProviderRegistry({"anthropic": fake}))
 
     state = orchestrator.start(
         WorkOrder(
@@ -260,12 +234,8 @@ def test_short_form_pack_never_supplies_score_to_critic(project):
         )
     )
 
-    assert not (
-        project / "runs" / state.id / "statistical-voice-score-01.json"
-    ).exists()
-    critic_request = next(
-        request for request in fake.requests if request.role == "critic"
-    )
+    assert not (project / "runs" / state.id / "statistical-voice-score-01.json").exists()
+    critic_request = next(request for request in fake.requests if request.role == "critic")
     critic_payload = json.loads(critic_request.user.split("\nINPUT\n", 1)[1])
     assert "statistical_voice_score" not in critic_payload
 
@@ -273,9 +243,7 @@ def test_short_form_pack_never_supplies_score_to_critic(project):
 def test_voice_preference_can_disable_workspace_default(project):
     _install_active_voice(project, _signature())
     configuration = {"statistical_voice_score": {"enabled": True}}
-    (project / "content-creator.yaml").write_text(
-        yaml.safe_dump(configuration), encoding="utf-8"
-    )
+    (project / "content-creator.yaml").write_text(yaml.safe_dump(configuration), encoding="utf-8")
     save_score_preference(
         project,
         "alice",
@@ -283,12 +251,8 @@ def test_voice_preference_can_disable_workspace_default(project):
         method="deterministic",
         selected_by="Alice",
     )
-    fake = FakeProvider(
-        {"writer": [valid_draft()], "critic": [passing_critique()]}
-    )
-    orchestrator = Orchestrator(
-        project, registry=ProviderRegistry({"anthropic": fake})
-    )
+    fake = FakeProvider({"writer": [valid_draft()], "critic": [passing_critique()]})
+    orchestrator = Orchestrator(project, registry=ProviderRegistry({"anthropic": fake}))
 
     state = orchestrator.start(
         WorkOrder(
@@ -300,14 +264,10 @@ def test_voice_preference_can_disable_workspace_default(project):
         )
     )
 
-    assert not (
-        project / "runs" / state.id / "statistical-voice-score-01.json"
-    ).exists()
+    assert not (project / "runs" / state.id / "statistical-voice-score-01.json").exists()
 
 
-def test_cli_can_score_explicitly_while_automation_is_disabled(
-    project, capsys
-):
+def test_cli_can_score_explicitly_while_automation_is_disabled(project, capsys):
     _install_active_voice(project, _signature())
     draft = project / "draft.md"
     draft.write_text(valid_draft() + "\n\n" + valid_draft(), encoding="utf-8")

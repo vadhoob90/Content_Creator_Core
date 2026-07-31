@@ -50,9 +50,7 @@ class ContentPack(BaseModel):
             "destination",
         ]
     )
-    allowed_research: List[str] = Field(
-        default_factory=lambda: ["none", "light", "deep"]
-    )
+    allowed_research: List[str] = Field(default_factory=lambda: ["none", "light", "deep"])
 
 
 class PackRegistry:
@@ -62,9 +60,7 @@ class PackRegistry:
         self._packs: Dict[str, ContentPack] = {}
 
     def path(self, pack_id: str, filename: str = "pack.json") -> Path:
-        return self.resources.path(
-            Path("packs") / pack_id / filename
-        )
+        return self.resources.path(Path("packs") / pack_id / filename)
 
     def get(self, pack_id: str) -> ContentPack:
         if pack_id in self._packs:
@@ -74,18 +70,14 @@ class PackRegistry:
             raise PackError("Unknown content pack: {}".format(pack_id))
         pack = ContentPack.model_validate_json(path.read_text(encoding="utf-8"))
         if pack.id != pack_id:
-            raise PackError(
-                "Pack id {} does not match directory {}".format(pack.id, pack_id)
-            )
+            raise PackError("Pack id {} does not match directory {}".format(pack.id, pack_id))
         self._packs[pack_id] = pack
         return pack
 
-    def resolve(
-        self, pack_id: str, overrides: Optional[Dict[str, Any]] = None
-    ) -> ContentPack:
+    def resolve(self, pack_id: str, overrides: Optional[Dict[str, Any]] = None) -> ContentPack:
         chain: List[ContentPack] = []
         seen = set()
-        current = self.get(pack_id)
+        current: Optional[ContentPack] = self.get(pack_id)
         while current:
             if current.id in seen:
                 raise PackError("Content pack inheritance cycle")
@@ -117,9 +109,7 @@ class PackRegistry:
         requested = deepcopy(overrides or {})
         forbidden = sorted(set(requested) - set(data["allowed_run_overrides"]))
         if forbidden:
-            raise PackError(
-                "Forbidden pack override(s): {}".format(", ".join(forbidden))
-            )
+            raise PackError("Forbidden pack override(s): {}".format(", ".join(forbidden)))
         if "destination" in requested:
             data["destination"] = requested.pop("destination")
         length = requested.get("length")
@@ -141,6 +131,5 @@ class PackRegistry:
 
     def list(self) -> List[ContentPack]:
         return [
-            self.get(path.parent.name)
-            for path in self.resources.matching("packs", "*/pack.json")
+            self.get(path.parent.name) for path in self.resources.matching("packs", "*/pack.json")
         ]

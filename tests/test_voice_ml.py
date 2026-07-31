@@ -80,9 +80,7 @@ def _comparison_text(index, repeats=22):
     distinctive_sequence = " ".join([marker] * 12)
     return (
         "You must act now! Why wait? The {} result is absolutely essential. "
-        "You should always move quickly! This is definitely obvious. ".format(
-            distinctive_sequence
-        )
+        "You should always move quickly! This is definitely obvious. ".format(distinctive_sequence)
     ) * repeats
 
 
@@ -102,9 +100,7 @@ def _install_voice(project, count):
     version.mkdir(parents=True)
     (version / "profile.md").write_text("# Alice voice", encoding="utf-8")
     (version / "source-index.json").write_text("[]", encoding="utf-8")
-    (version / "linguistic-signature.json").write_text(
-        json.dumps(signature), encoding="utf-8"
-    )
+    (version / "linguistic-signature.json").write_text(json.dumps(signature), encoding="utf-8")
     components = {
         "profile": "profile.md",
         "sources": "source-index.json",
@@ -120,8 +116,7 @@ def _install_voice(project, count):
                 "candidate_hash": "sha256:fixture",
                 "components": components,
                 "component_hashes": {
-                    name: hash_file(version / filename)
-                    for name, filename in components.items()
+                    name: hash_file(version / filename) for name, filename in components.items()
                 },
                 "supported_packs": {"linkedin-article": "high"},
                 "authorisation": {"confirmed": True},
@@ -217,12 +212,8 @@ def test_reliable_model_trains_to_json_and_infers_without_pickle(project):
     result = train_voice_ml_model(project, "alice", None, comparison)
     artifact_path = ml_model_path(project, "alice", "1.0.0")
     artifact = json.loads(artifact_path.read_text(encoding="utf-8"))
-    author_report = assess_with_ml_artifact(
-        project, "alice", "1.0.0", _author_text(1), 100
-    )
-    comparison_report = assess_with_ml_artifact(
-        project, "alice", "1.0.0", _comparison_text(1), 100
-    )
+    author_report = assess_with_ml_artifact(project, "alice", "1.0.0", _author_text(1), 100)
+    comparison_report = assess_with_ml_artifact(project, "alice", "1.0.0", _comparison_text(1), 100)
     configured_report = assess_voice_draft(
         project,
         "alice",

@@ -7,7 +7,7 @@ name = "content-creator"
 version = "0.10.0"
 description = "Provider-neutral content creation and voice workflow"
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.11"
 license = "AGPL-3.0-or-later"
 license-files = ["LICENSE.md", "NOTICE"]
 authors = [{ name = "Bharath Vadhoola" }]
@@ -28,15 +28,15 @@ openai = ["openai>=2.48,<3"]
 anthropic = ["anthropic>=0.120,<1"]
 providers = ["openai>=2.48,<3", "anthropic>=0.120,<1"]
 ml = [
-  "scikit-learn>=1.6,<1.7; python_version < '3.11'",
-  "scikit-learn>=1.9,<2; python_version >= '3.11'",
+  "scikit-learn>=1.9,<2",
 ]
 dev = [
-  "pytest>=8,<9",
+  "mypy>=1.15,<2",
+  "pip-audit>=2.9,<3",
+  "pytest>=9.0.3,<10",
   "pytest-cov>=5,<7",
   "ruff>=0.9",
-  "scikit-learn>=1.6,<1.7; python_version < '3.11'",
-  "scikit-learn>=1.9,<2; python_version >= '3.11'",
+  "scikit-learn>=1.9,<2",
 ]
 
 [project.scripts]
@@ -67,9 +67,39 @@ where = ["src"]
 addopts = "-q"
 testpaths = ["tests"]
 
+[tool.coverage.run]
+source = ["content_creator"]
+
+[tool.coverage.report]
+fail_under = 88
+show_missing = true
+skip_covered = false
+
+[tool.mypy]
+python_version = "3.11"
+files = [
+  "src/content_creator/diagnostics.py",
+  "src/content_creator/domain.py",
+  "src/content_creator/packs.py",
+  "src/content_creator/providers/base.py",
+  "src/content_creator/resource_paths.py",
+  "src/content_creator/routing.py",
+  "src/content_creator/upgrade.py",
+  "src/content_creator/workspace.py",
+]
+check_untyped_defs = true
+disallow_incomplete_defs = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_unreachable = true
+ignore_missing_imports = true
+follow_imports = "skip"
+disable_error_code = ["import-untyped"]
+
 [tool.ruff]
 line-length = 100
-target-version = "py39"
+target-version = "py311"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
@@ -78,5 +108,6 @@ ignore = [
   "UP007",
   "UP032",
   "UP035",
+  "UP042",
   "UP045",
 ]

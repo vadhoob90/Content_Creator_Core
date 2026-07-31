@@ -49,9 +49,7 @@ def test_packaged_core_resources_match_repository_sources():
         source_root = ROOT / source_directory
         packaged_root = packaged / packaged_directory
         source_files = {
-            path.relative_to(source_root): path
-            for path in source_root.rglob("*")
-            if path.is_file()
+            path.relative_to(source_root): path for path in source_root.rglob("*") if path.is_file()
         }
         packaged_files = {
             path.relative_to(packaged_root): path
@@ -83,26 +81,20 @@ def test_readme_is_a_streamlined_operator_journey():
     assert "publish externally" in readme
     assert "```bash" not in readme
     assert (
-        "[Create a thin content workspace]"
-        "(docs/guides/creating-a-content-workspace.md)" in readme
+        "[Create a thin content workspace](docs/guides/creating-a-content-workspace.md)" in readme
     )
     assert "[Voice onboarding](docs/guides/voice-onboarding.md)" in readme
-    assert (
-        "[Content Creator Coordinator]"
-        "(docs/guides/content-coordinator.md)" in readme
-    )
+    assert "[Content Creator Coordinator](docs/guides/content-coordinator.md)" in readme
 
 
 def test_linked_guides_preserve_detailed_operator_commands():
-    workspace_guide = (
-        ROOT / "docs" / "guides" / "creating-a-content-workspace.md"
-    ).read_text(encoding="utf-8")
-    voice_guide = (
-        ROOT / "docs" / "guides" / "voice-onboarding.md"
-    ).read_text(encoding="utf-8")
-    coordinator_guide = (
-        ROOT / "docs" / "guides" / "content-coordinator.md"
-    ).read_text(encoding="utf-8")
+    workspace_guide = (ROOT / "docs" / "guides" / "creating-a-content-workspace.md").read_text(
+        encoding="utf-8"
+    )
+    voice_guide = (ROOT / "docs" / "guides" / "voice-onboarding.md").read_text(encoding="utf-8")
+    coordinator_guide = (ROOT / "docs" / "guides" / "content-coordinator.md").read_text(
+        encoding="utf-8"
+    )
 
     assert "content-creator workspace create" in workspace_guide
     assert "--strategy source-derived" in voice_guide
@@ -110,21 +102,17 @@ def test_linked_guides_preserve_detailed_operator_commands():
     assert "voice approve example-person-general" in voice_guide
     assert "content-creator --workspace . run" in coordinator_guide
     assert "selected voice's learning memory" in coordinator_guide
-    diagnostic_guide = (
-        ROOT / "docs" / "guides" / "runtime-diagnostics.md"
-    ).read_text(encoding="utf-8")
+    diagnostic_guide = (ROOT / "docs" / "guides" / "runtime-diagnostics.md").read_text(
+        encoding="utf-8"
+    )
     assert "awaiting_diagnostic_decision" in diagnostic_guide
     assert "--diagnostic-decision prepare-issue" in diagnostic_guide
 
 
 def test_chat_app_comparison_uses_neutral_non_product_language():
-    guide = (
-        ROOT / "docs" / "guides" / "why-not-just-chat.md"
-    ).read_text(encoding="utf-8")
+    guide = (ROOT / "docs" / "guides" / "why-not-just-chat.md").read_text(encoding="utf-8")
 
-    assert guide.startswith(
-        "# Content Creator compared with a general-purpose chat app"
-    )
+    assert guide.startswith("# Content Creator compared with a general-purpose chat app")
     assert "Representative general-purpose chat app" in guide
     assert "## Intended role" in guide
     assert "ChatGPT or Claude" not in guide
@@ -132,9 +120,7 @@ def test_chat_app_comparison_uses_neutral_non_product_language():
 
 
 def test_core_development_readme_covers_clone_and_validation():
-    guide = (ROOT / "docs" / "core" / "README.md").read_text(
-        encoding="utf-8"
-    )
+    guide = (ROOT / "docs" / "core" / "README.md").read_text(encoding="utf-8")
 
     assert "git clone" in guide
     assert 'python -m pip install -e ".[dev]"' in guide
@@ -164,18 +150,14 @@ def test_documentation_uses_an_explicit_fictional_voice_placeholder():
         ROOT / "docs" / "work-package" / "general-text-pack.md",
     ]
 
-    combined = "\n".join(
-        path.read_text(encoding="utf-8") for path in example_documents
-    )
+    combined = "\n".join(path.read_text(encoding="utf-8") for path in example_documents)
 
     assert "Example Person" in combined
     assert "example-person" in combined
 
 
 def test_migration_audit_tracks_all_linkedin_writer_capabilities():
-    audit = (
-        ROOT / "docs" / "linkedin-writer-migration-audit.md"
-    ).read_text(encoding="utf-8")
+    audit = (ROOT / "docs" / "linkedin-writer-migration-audit.md").read_text(encoding="utf-8")
 
     for capability in (
         "Six post/article × research routes",
@@ -189,9 +171,7 @@ def test_migration_audit_tracks_all_linkedin_writer_capabilities():
 
 
 def test_release_workflow_is_tag_driven_and_uses_trusted_publishing():
-    workflow = (
-        ROOT / ".github" / "workflows" / "release.yml"
-    ).read_text(encoding="utf-8")
+    workflow = (ROOT / ".github" / "workflows" / "release.yml").read_text(encoding="utf-8")
 
     assert 'tags:\n      - "v*"' in workflow
     assert "workflow_dispatch" not in workflow
