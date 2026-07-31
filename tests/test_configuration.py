@@ -115,10 +115,10 @@ def test_diagnostic_policy_rejects_unbounded_retries(project):
         _ = Configuration(project).diagnostic_policy
 
 
-def test_voice_assessment_is_off_by_default(project):
-    assert Configuration(project).voice_assessment_policy == {
+def test_statistical_voice_score_is_off_by_default(project):
+    assert Configuration(project).statistical_voice_score_policy == {
         "enabled": False,
-        "mode": "statistical",
+        "method": "deterministic",
         "minimum_sources": 20,
         "minimum_draft_words": 100,
         "outlier_iqr_multiplier": 1.5,
@@ -126,23 +126,38 @@ def test_voice_assessment_is_off_by_default(project):
     }
 
 
-def test_voice_assessment_policy_validates_bounds(project):
+def test_statistical_voice_score_policy_validates_bounds(project):
     path = project / "content-creator.yaml"
     path.write_text(
-        yaml.safe_dump({"voice_assessment": {"minimum_sources": 2}}),
+        yaml.safe_dump({"statistical_voice_score": {"minimum_sources": 2}}),
         encoding="utf-8",
     )
 
     with pytest.raises(ConfigurationError, match="minimum_sources"):
-        _ = Configuration(project).voice_assessment_policy
+        _ = Configuration(project).statistical_voice_score_policy
 
 
-def test_voice_assessment_rejects_unknown_mode(project):
+def test_statistical_voice_score_rejects_unknown_method(project):
     path = project / "content-creator.yaml"
     path.write_text(
-        yaml.safe_dump({"voice_assessment": {"mode": "automatic-ml"}}),
+        yaml.safe_dump(
+            {"statistical_voice_score": {"method": "automatic-ml"}}
+        ),
         encoding="utf-8",
     )
 
-    with pytest.raises(ConfigurationError, match="statistical or ml"):
-        _ = Configuration(project).voice_assessment_policy
+    with pytest.raises(ConfigurationError, match="deterministic or ml"):
+        _ = Configuration(project).statistical_voice_score_policy
+
+
+def test_legacy_voice_assessment_configuration_is_mapped(project):
+    path = project / "content-creator.yaml"
+    path.write_text(
+        yaml.safe_dump({"voice_assessment": {"enabled": True, "mode": "statistical"}}),
+        encoding="utf-8",
+    )
+
+    policy = Configuration(project).statistical_voice_score_policy
+
+    assert policy["enabled"] is True
+    assert policy["method"] == "deterministic"

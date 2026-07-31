@@ -47,38 +47,52 @@ Inspect the candidate signature without opening repository files directly:
 content-creator voice signature <voice-id>
 ```
 
-## Optional draft assessment
+## Optional statistical voice score
 
-Core can compare a draft with the resolved active voice's written linguistic
-distribution. This feature is disabled by default and remains advisory: it does
-not change validation errors, quality scores, or publication gates. When enabled,
-the per-revision report is stored as
-`runs/<run-id>/voice-assessment-<revision>.json` and supplied only to the critic.
-The writer never receives numerical targets.
+Core can compute a `statistical_voice_score` for a draft through either a
+deterministic corpus-distribution method or an optional ML classifier. This
+feature is disabled by default and remains advisory: it does not change
+validation errors, quality scores, or publication gates. When enabled, the
+per-revision report is stored as
+`runs/<run-id>/statistical-voice-score-<revision>.json` and supplied only to the
+critic. The writer never receives numerical targets.
 
-Enable automated assessment in `content-creator.yaml`:
+New source-derived voices choose disabled, deterministic, or ML scoring during
+the guided voice-creation workflow. The choice is stored under
+`profiles/<voice-id>/statistical-voice-score.json`, so voices in the same
+workspace can use different methods. Change it later with:
+
+```bash
+content-creator --workspace . voice score-config <voice-id> \
+  --enable --method deterministic --selected-by "<author>"
+```
+
+Use `--disable` to turn automatic scoring off. Workspace defaults and
+deterministic thresholds remain configurable in `content-creator.yaml`:
 
 ```yaml
-voice_assessment:
-  enabled: true
-  mode: statistical
+statistical_voice_score:
+  enabled: false
+  method: deterministic
   minimum_sources: 20
   minimum_draft_words: 100
   outlier_iqr_multiplier: 1.5
   max_reported_outliers: 8
 ```
 
-Disable it by setting `enabled: false` or omitting the section. An explicit
-offline comparison is available regardless of that automation setting:
+An explicit offline score is available regardless of the automatic setting:
 
 ```bash
-content-creator --workspace . voice assess <voice-id> --draft path/to/draft.md
+content-creator --workspace . voice score <voice-id> \
+  --draft path/to/draft.md --method deterministic
 ```
 
-The assessment reports only material outliers beyond the configured
-interquartile-range envelope. It deliberately produces no authorship probability
-or aggregate similarity score. Too-small corpora and short drafts return an
-insufficient-evidence status instead of a misleading result.
+The deterministic score is a 0–100 compatibility measure. It penalises only
+distance beyond the configured interquartile-range envelopes; values anywhere
+inside an envelope receive the same treatment, so moving toward the corpus
+centre cannot improve the score. The report also preserves material outliers,
+reliability, evidence coverage, and claim limits. Too-small corpora and short
+drafts return an insufficient-evidence status and no score.
 
 ## Optional machine-learning classifier
 
@@ -116,18 +130,21 @@ correctly matched:
 - a class imbalance greater than 2:1 also requires explicit acceptance.
 
 Training never activates the classifier. After reviewing its evaluation, the
-author separately opts into ML assessment:
+author separately opts into ML scoring:
 
-```yaml
-voice_assessment:
-  enabled: true
-  mode: ml
-  minimum_draft_words: 100
+```bash
+content-creator --workspace . voice score-config <voice-id> \
+  --enable --method ml --selected-by "<author>"
 ```
 
-Set `mode: statistical` or `enabled: false` to stop using it. The classifier
-score remains advisory, is supplied only to the critic, and is not an
-authorship probability, validation error, quality score, or publication gate.
+Use `voice score <voice-id> --draft <path> --method ml` for an explicit score.
+The ML and deterministic values share a 0–100 display scale but are not directly
+interchangeable: deterministic scoring measures compatibility with observed
+author ranges, while ML measures compatibility with the author corpus relative
+to the supplied comparison corpus. Every result therefore retains its method.
+The score remains advisory, is supplied only to the critic, and is not an
+authorship probability, validation error, direct rubric weight, or publication
+gate.
 
 ## Measurements are evidence, not instructions
 

@@ -1,5 +1,21 @@
 # Voice onboarding
 
+During guided source-derived voice creation, ask the author whether statistical
+voice scoring should be disabled, deterministic, or ML-based. The choice is
+explicit and voice-scoped; omission remains disabled. Pass it to creation with:
+
+```bash
+content-creator voice create \
+  --author-name "<author>" \
+  --statistical-voice-score deterministic \
+  <other source and authorisation options>
+```
+
+Deterministic scoring needs no training. ML selection records the preference,
+but a matched comparison corpus must still be supplied and trained after the
+source-derived voice is activated. Starter voices have no author evidence and
+cannot enable statistical voice scoring.
+
 Every new thin workspace begins with an explicit decision: derive a personal
 voice from authorised writing, or begin with a neutral starter.
 

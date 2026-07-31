@@ -430,8 +430,8 @@ def train_voice_ml_model(
         "preflight": preflight,
         "evaluation": artifact["evaluation"],
         "activation": (
-            "Training does not enable ML assessment. Set voice_assessment.mode to ml "
-            "and voice_assessment.enabled to true after reviewing the evaluation."
+            "Training does not enable ML scoring. Run voice score-config for this "
+            "voice with --enable --method ml after reviewing the evaluation."
         ),
     }
 
@@ -447,11 +447,16 @@ def assess_with_ml_artifact(
     if not path.exists():
         return {
             "schema_version": "1.0",
+            "type": "statistical_voice_score",
+            "method": "ml",
             "framework": ML_FRAMEWORK,
             "framework_version": ML_FRAMEWORK_VERSION,
             "status": "ml_model_unavailable",
             "voice_id": voice_id,
             "voice_version": voice_version,
+            "score": None,
+            "score_scale": {"minimum": 0, "maximum": 100},
+            "evidence_coverage": 0.0,
             "reason": "No trained ML model exists for the resolved voice version.",
         }
     artifact = json.loads(path.read_text(encoding="utf-8"))
@@ -462,11 +467,16 @@ def assess_with_ml_artifact(
     if word_count < minimum_draft_words:
         return {
             "schema_version": "1.0",
+            "type": "statistical_voice_score",
+            "method": "ml",
             "framework": ML_FRAMEWORK,
             "framework_version": ML_FRAMEWORK_VERSION,
             "status": "insufficient_draft",
             "voice_id": voice_id,
             "voice_version": voice_version,
+            "score": None,
+            "score_scale": {"minimum": 0, "maximum": 100},
+            "evidence_coverage": 0.0,
             "reason": "The draft has {} words; {} are required.".format(
                 word_count, minimum_draft_words
             ),
@@ -492,12 +502,21 @@ def assess_with_ml_artifact(
     )[:5]
     return {
         "schema_version": "1.0",
+        "type": "statistical_voice_score",
+        "method": "ml",
         "framework": ML_FRAMEWORK,
         "framework_version": ML_FRAMEWORK_VERSION,
         "status": "ml_above_threshold" if score >= threshold else "ml_below_threshold",
         "voice_id": voice_id,
         "voice_version": voice_version,
         "draft": {"word_count": word_count},
+        "score": round(score * 100.0, 1),
+        "score_scale": {"minimum": 0, "maximum": 100},
+        "score_interpretation": (
+            "Classifier compatibility with the author corpus relative to the "
+            "supplied comparison corpus. It is not an authorship probability."
+        ),
+        "evidence_coverage": 1.0,
         "model_score": round(score, 4),
         "decision_threshold": threshold,
         "top_feature_contributions": [

@@ -229,7 +229,7 @@ def test_reliable_model_trains_to_json_and_infers_without_pickle(project):
         "1.0.0",
         _author_text(2),
         {
-            "mode": "ml",
+            "method": "ml",
             "minimum_draft_words": 100,
             "minimum_sources": 20,
             "outlier_iqr_multiplier": 1.5,
@@ -241,5 +241,8 @@ def test_reliable_model_trains_to_json_and_infers_without_pickle(project):
     assert artifact["classifier"]["type"] == "logistic-regression"
     assert "pickle" not in artifact
     assert author_report["model_score"] > comparison_report["model_score"]
+    assert author_report["type"] == "statistical_voice_score"
+    assert author_report["method"] == "ml"
+    assert author_report["score"] == round(author_report["model_score"] * 100, 1)
     assert author_report["claim_limit"].startswith("The classifier score")
     assert configured_report["framework"] == artifact["framework"]
