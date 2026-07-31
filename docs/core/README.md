@@ -44,7 +44,9 @@ src/content_creator/
 ├── orchestrator.py       workflow execution and checkpoints
 ├── voices.py             voice lifecycle, activation, and onboarding
 ├── voice_builder.py      source-derived voice analysis
+├── linguistics.py        deterministic voice measurements and statistics
 ├── perspectives.py       perspective provenance and resolution
+├── diagnostics.py        local runtime diagnostic journal and summaries
 ├── providers/            normalized provider adapters
 ├── workspace.py          thin-repository generator
 └── resources/            packaged contracts, packs, rubrics, and defaults
@@ -155,6 +157,12 @@ Changes to voices or perspectives should test:
 - run-level resolved context; and
 - migration from previous manifests or workspace configuration.
 
+Changes to linguistic measurement should additionally test deterministic
+feature extraction, attribution weighting, spoken/written separation,
+distribution summaries, and empty or insufficient corpora. The [statistical
+voice evidence guide](../guides/linguistic-voice-framework.md) documents the
+public interpretation limits that implementation changes must preserve.
+
 ## Providers and live evaluation
 
 Core supports subscription-backed native adapters and API adapters. Normal
@@ -241,13 +249,13 @@ commit reaches `main`.
 ### Publish the release
 
 Create the matching annotated tag only after the release PR is merged. For
-example, for `0.7.1`:
+example, for `0.8.0`:
 
 ```bash
 git switch main
 git pull --ff-only origin main
-git tag -a v0.7.1 -m "Content Creator 0.7.1"
-git push origin v0.7.1
+git tag -a v0.8.0 -m "Content Creator 0.8.0"
+git push origin v0.8.0
 ```
 
 Pushing the tag triggers `.github/workflows/release.yml`. The workflow:
@@ -279,13 +287,13 @@ Author workspaces remain on their pinned package until deliberately upgraded.
 Preview the upgrade first:
 
 ```bash
-uv run content-creator --workspace . workspace upgrade --to v0.7.1
+uv run content-creator --workspace . workspace upgrade --to v0.8.0
 ```
 
 Apply the reviewed preview explicitly:
 
 ```bash
-uv run content-creator --workspace . workspace upgrade --to v0.7.1 --apply
+uv run content-creator --workspace . workspace upgrade --to v0.8.0 --apply
 ```
 
 The apply operation updates the package requirement and lockfile, runs doctor,
@@ -300,6 +308,7 @@ unpinned package version.
 ## Further technical guides
 
 - [How voice is derived](../guides/how-voice-is-derived.md)
+- [Statistical voice evidence](../guides/linguistic-voice-framework.md)
 - [Voice onboarding](../guides/voice-onboarding.md)
 - [Perspective provenance](../guides/perspective-provenance.md)
 - [Repository-owned agents](../guides/repository-agents.md)
