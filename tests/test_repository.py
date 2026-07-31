@@ -71,10 +71,13 @@ def test_readme_is_a_streamlined_operator_journey():
     assert "### 1. Create an author workspace" in readme
     assert "### 2. Choose a voice route" in readme
     assert "### 3. Ask for content naturally" in readme
-    assert "flowchart LR" in readme
-    assert "Voice Analyst → Profile Critic" in readme
-    assert "Briefing Agent → Researcher" in readme
-    assert "No external publication" in readme
+    assert readme.count("flowchart TD") == 2
+    assert "### Voice setup" in readme
+    assert "### Content loop" in readme
+    assert "Voice Analyst" in readme
+    assert "Briefing Agent" in readme
+    assert "Statistical voice evidence" in readme
+    assert "publish externally" in readme
     assert "```bash" not in readme
     assert (
         "[Create a thin content workspace]"
@@ -136,10 +139,10 @@ def test_core_development_readme_covers_clone_and_validation():
     assert "pytest" in guide
     assert "Core versus a thin workspace" in guide
     assert "Merging a change into `main` does not publish it" in guide
-    assert "git tag -a v0.7.1" in guide
+    assert "git tag -a v0.8.0" in guide
     assert ".github/workflows/release.yml" in guide
     assert "Trusted Publisher registration is a one-time" in guide
-    assert "workspace upgrade --to v0.7.1 --apply" in guide
+    assert "workspace upgrade --to v0.8.0 --apply" in guide
 
 
 def test_work_package_uses_the_repository_cli_name():

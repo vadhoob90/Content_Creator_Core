@@ -16,12 +16,14 @@ After setup, run `content-creator --workspace . start` to see the next task and
 
 - [Voice onboarding](guides/voice-onboarding.md)
 - [Voice creation](guides/voice-creation.md)
-- [How voice is derived](guides/how-voice-is-derived.md)
+- [How voice is derived, end to end](guides/how-voice-is-derived.md)
 - [Privacy and authorised sources](guides/privacy-and-sources.md)
-- [Linguistic voice framework](guides/linguistic-voice-framework.md)
+- [Statistical voice evidence and the linguistic framework](guides/linguistic-voice-framework.md)
 
 Voice activation remains an explicit human action. A new subject may require a
 governed [perspective](guides/perspective-provenance.md), not a new voice.
+The statistical measurements describe patterns in the authorised corpus; they
+do not prove authorship or provide mechanical targets for generated prose.
 
 ## I want to create content
 
