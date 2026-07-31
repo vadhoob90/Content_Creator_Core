@@ -37,7 +37,7 @@ from .routing import build_route
 from .runner import AgentRunner
 from .storage import RunStore, StorageError, slugify
 from .validation import validate_draft, validate_research_brief
-from .voice_assessment import assess_voice_draft
+from .voice_assessment import assess_voice_draft, resolve_score_policy
 from .voice_evaluation import evaluate_voice_output
 from .voices import VoiceRegistry, hash_file
 
@@ -669,20 +669,24 @@ class Orchestrator:
                 perspective_evaluation,
             )
 
-            voice_assessment = None
-            voice_assessment_policy = self.configuration.voice_assessment_policy
-            if voice_assessment_policy["enabled"]:
-                voice_assessment = assess_voice_draft(
+            statistical_voice_score = None
+            score_policy = resolve_score_policy(
+                self.root,
+                state.work_order.voice_id,
+                self.configuration.statistical_voice_score_policy,
+            )
+            if score_policy["enabled"]:
+                statistical_voice_score = assess_voice_draft(
                     self.root,
                     state.work_order.voice_id,
                     state.work_order.voice_version,
                     draft,
-                    voice_assessment_policy,
+                    score_policy,
                 )
                 self.store.write_artifact(
                     state.id,
-                    "voice-assessment-{:02d}.json".format(revision),
-                    voice_assessment,
+                    "statistical-voice-score-{:02d}.json".format(revision),
+                    statistical_voice_score,
                 )
 
             state.status = RunStatus.REVIEWING
@@ -698,8 +702,8 @@ class Orchestrator:
                     else None
                 ),
             }
-            if voice_assessment is not None:
-                critique_payload["voice_assessment"] = voice_assessment
+            if statistical_voice_score is not None:
+                critique_payload["statistical_voice_score"] = statistical_voice_score
             critique = self.runner.run(
                 role="critic",
                 role_key="critic-{}".format(state.work_order.format),
@@ -709,10 +713,10 @@ class Orchestrator:
                     "For each prior issue, return a machine-readable status of "
                     "resolved, unresolved, or author_rejected separately from its note."
                     + (
-                        " Treat the voice assessment as advisory evidence only. "
+                        " Treat the statistical voice score as advisory evidence only. "
                         "Account for context and natural variation; do not request a "
                         "change solely to improve numerical conformity."
-                        if voice_assessment is not None
+                        if statistical_voice_score is not None
                         else ""
                     )
                 ),

@@ -187,17 +187,30 @@ class Configuration:
         return policy
 
     @property
-    def voice_assessment_policy(self) -> Dict[str, Any]:
+    def statistical_voice_score_policy(self) -> Dict[str, Any]:
         path = self.root / "content-creator.yaml"
         data = self._read_yaml(path) if path.exists() else {}
-        configured = data.get("voice_assessment", {}) or {}
+        configured = data.get("statistical_voice_score")
+        if configured is None:
+            # Compatibility with the unreleased voice-assessment configuration.
+            configured = data.get("voice_assessment", {}) or {}
+            if "mode" in configured and "method" not in configured:
+                configured = dict(configured)
+                legacy_mode = configured.pop("mode")
+                if legacy_mode not in {"statistical", "ml"}:
+                    raise ConfigurationError(
+                        "voice_assessment.mode must be statistical or ml"
+                    )
+                configured["method"] = (
+                    "deterministic" if legacy_mode == "statistical" else "ml"
+                )
         if not isinstance(configured, dict):
             raise ConfigurationError(
-                "voice_assessment configuration must be a mapping"
+                "statistical_voice_score configuration must be a mapping"
             )
         policy = {
             "enabled": False,
-            "mode": "statistical",
+            "method": "deterministic",
             "minimum_sources": 20,
             "minimum_draft_words": 100,
             "outlier_iqr_multiplier": 1.5,
@@ -205,10 +218,12 @@ class Configuration:
         }
         policy.update(configured)
         if not isinstance(policy["enabled"], bool):
-            raise ConfigurationError("voice_assessment.enabled must be a boolean")
-        if policy["mode"] not in {"statistical", "ml"}:
             raise ConfigurationError(
-                "voice_assessment.mode must be statistical or ml"
+                "statistical_voice_score.enabled must be a boolean"
+            )
+        if policy["method"] not in {"deterministic", "ml"}:
+            raise ConfigurationError(
+                "statistical_voice_score.method must be deterministic or ml"
             )
         for name, minimum, maximum in (
             ("minimum_sources", 3, 1000),
@@ -218,18 +233,24 @@ class Configuration:
             value = policy[name]
             if not isinstance(value, int) or not minimum <= value <= maximum:
                 raise ConfigurationError(
-                    "voice_assessment.{} must be an integer from {} to {}".format(
+                    "statistical_voice_score.{} must be an integer from {} to {}".format(
                         name, minimum, maximum
                     )
                 )
         multiplier = policy["outlier_iqr_multiplier"]
         if isinstance(multiplier, bool) or not isinstance(multiplier, (int, float)):
             raise ConfigurationError(
-                "voice_assessment.outlier_iqr_multiplier must be a number"
+                "statistical_voice_score.outlier_iqr_multiplier must be a number"
             )
         if not 1.0 <= float(multiplier) <= 5.0:
             raise ConfigurationError(
-                "voice_assessment.outlier_iqr_multiplier must be from 1.0 to 5.0"
+                "statistical_voice_score.outlier_iqr_multiplier must be from 1.0 to 5.0"
             )
         policy["outlier_iqr_multiplier"] = float(multiplier)
         return policy
+
+    @property
+    def voice_assessment_policy(self) -> Dict[str, Any]:
+        """Compatibility alias for callers using the pre-release name."""
+
+        return self.statistical_voice_score_policy

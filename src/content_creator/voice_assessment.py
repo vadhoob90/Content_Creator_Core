@@ -1,15 +1,75 @@
 from __future__ import annotations
 
 import json
+import math
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, Optional
 
 from .linguistics import extract_linguistic_features
+from .storage import RunStore
 from .voices import VoiceRegistry
 
 ASSESSMENT_FRAMEWORK = "lightweight-corpus-stylistics-assessment"
 ASSESSMENT_VERSION = "1.0"
+SCORE_TYPE = "statistical_voice_score"
+SCORE_METHODS = {"deterministic", "ml"}
 _NON_STYLE_FEATURES = {"word_count", "sentence_count", "paragraph_count"}
+
+
+def score_preference_path(root: Path, voice_id: str) -> Path:
+    return root.resolve() / "profiles" / voice_id / "statistical-voice-score.json"
+
+
+def load_score_preference(root: Path, voice_id: str) -> Optional[Dict[str, Any]]:
+    path = score_preference_path(root, voice_id)
+    if not path.exists():
+        return None
+    preference = json.loads(path.read_text(encoding="utf-8"))
+    if preference.get("voice_id") != voice_id:
+        raise ValueError("Statistical voice score preference identity mismatch")
+    if preference.get("method") not in SCORE_METHODS:
+        raise ValueError("Statistical voice score method must be deterministic or ml")
+    if not isinstance(preference.get("enabled"), bool):
+        raise ValueError("Statistical voice score enabled value must be a boolean")
+    return preference
+
+
+def save_score_preference(
+    root: Path,
+    voice_id: str,
+    *,
+    enabled: bool,
+    method: str,
+    selected_by: Optional[str] = None,
+) -> Dict[str, Any]:
+    if method not in SCORE_METHODS:
+        raise ValueError("Statistical voice score method must be deterministic or ml")
+    preference = {
+        "schema_version": "1.0",
+        "voice_id": voice_id,
+        "enabled": enabled,
+        "method": method,
+        "selected_by": selected_by,
+        "selected_at": datetime.now(timezone.utc).isoformat(),
+    }
+    RunStore._atomic_text(
+        score_preference_path(root, voice_id),
+        json.dumps(preference, indent=2),
+    )
+    return preference
+
+
+def resolve_score_policy(
+    root: Path, voice_id: str, workspace_policy: Dict[str, Any]
+) -> Dict[str, Any]:
+    policy = dict(workspace_policy)
+    preference = load_score_preference(root, voice_id)
+    if preference is not None:
+        policy["enabled"] = preference["enabled"]
+        policy["method"] = preference["method"]
+        policy["voice_preference"] = preference
+    return policy
 
 
 def _unavailable(
@@ -17,14 +77,20 @@ def _unavailable(
     voice_version: Optional[str],
     status: str,
     reason: str,
+    method: str = "deterministic",
 ) -> Dict[str, Any]:
     return {
         "schema_version": "1.0",
+        "type": SCORE_TYPE,
+        "method": method,
         "framework": ASSESSMENT_FRAMEWORK,
         "framework_version": ASSESSMENT_VERSION,
         "status": status,
         "voice_id": voice_id,
         "voice_version": voice_version,
+        "score": None,
+        "score_scale": {"minimum": 0, "maximum": 100},
+        "evidence_coverage": 0.0,
         "reason": reason,
         "outliers": [],
         "claim_limit": (
@@ -99,10 +165,12 @@ def assess_linguistic_signature(
 
     outliers = []
     evaluated = 0
+    eligible = 0
     for name, value in features.items():
         if name in _NON_STYLE_FEATURES or name not in baseline:
             continue
         distribution = baseline[name]
+        eligible += 1
         q1 = float(distribution["q1"])
         q3 = float(distribution["q3"])
         observed_min = float(distribution["min"])
@@ -157,13 +225,37 @@ def assess_linguistic_signature(
         key=lambda item: (-item["distance_beyond_envelope_iqr"], item["feature"])
     )
     reported = outliers[:max_reported_outliers]
+    # Only distance beyond the tolerated IQR envelope is penalised. Values
+    # anywhere inside the envelope receive the same treatment, so the score
+    # cannot reward regression toward the corpus median.
+    capped_excess = sum(
+        min(float(item["distance_beyond_envelope_iqr"]), 4.0)
+        for item in outliers
+    )
+    score = round(100.0 * math.exp(-(capped_excess / evaluated)), 1)
+    evidence_coverage = round(evaluated / max(eligible, 1), 4)
     return {
         "schema_version": "1.0",
+        "type": SCORE_TYPE,
+        "method": "deterministic",
         "framework": ASSESSMENT_FRAMEWORK,
         "framework_version": ASSESSMENT_VERSION,
         "status": "material_outliers" if outliers else "no_material_outliers",
         "voice_id": voice_id,
         "voice_version": voice_version,
+        "score": score,
+        "score_scale": {"minimum": 0, "maximum": 100},
+        "score_interpretation": (
+            "Compatibility with the observed feature envelopes; higher is more "
+            "compatible. Values within an envelope are not rewarded for moving "
+            "closer to its centre."
+        ),
+        "evidence_coverage": evidence_coverage,
+        "reliability": {
+            "status": "adequate",
+            "source_count": source_count,
+            "minimum_sources": minimum_sources,
+        },
         "baseline": baseline_details,
         "draft": {"word_count": word_count},
         "evaluated_feature_count": evaluated,
@@ -191,15 +283,21 @@ def assess_voice_draft(
 ) -> Dict[str, Any]:
     """Resolve an active voice signature and assess one draft against it."""
 
+    method = policy.get("method", policy.get("mode", "deterministic"))
+    if method == "statistical":
+        method = "deterministic"
+    if method not in SCORE_METHODS:
+        raise ValueError("Statistical voice score method must be deterministic or ml")
     if voice_id == "default":
         return _unavailable(
             voice_id,
             voice_version,
             "unavailable",
             "The default placeholder voice has no source-derived signature.",
+            method,
         )
     resolved = VoiceRegistry(root).resolve(voice_id, voice_version)
-    if policy["mode"] == "ml":
+    if method == "ml":
         from .voice_ml import assess_with_ml_artifact
 
         return assess_with_ml_artifact(
@@ -223,6 +321,7 @@ def assess_voice_draft(
             resolved.get("version"),
             "unavailable",
             "The resolved voice has no linguistic signature.",
+            method,
         )
     signature = json.loads(signature_path.read_text(encoding="utf-8"))
     return assess_linguistic_signature(
