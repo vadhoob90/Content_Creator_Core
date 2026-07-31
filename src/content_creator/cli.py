@@ -108,7 +108,7 @@ def build_parser() -> argparse.ArgumentParser:
         dest="command",
         required=True,
         metavar=(
-            "{start,overview,workspace,doctor,run,status,publish,"
+            "{start,overview,workspace,doctor,run,status,submission,publish,"
             "diagnostics,advanced}"
         ),
     )
@@ -419,6 +419,17 @@ def build_parser() -> argparse.ArgumentParser:
     status = sub.add_parser("status", help="Show persisted run state")
     status.add_argument("run_id")
 
+    submission = sub.add_parser(
+        "submission",
+        help="Resolve an idempotent submission without executing it",
+    )
+    submission_sub = submission.add_subparsers(
+        dest="submission_command",
+        required=True,
+    )
+    submission_status = submission_sub.add_parser("status")
+    submission_status.add_argument("idempotency_key")
+
     resume = sub.add_parser("approve-research", help=argparse.SUPPRESS)
     resume.add_argument("run_id")
     resume.add_argument("--notes")
@@ -487,6 +498,13 @@ def _add_run_arguments(parser) -> None:
     parser.add_argument(
         "--parent-run",
         help="Prior run whose content lineage this revision continues",
+    )
+    parser.add_argument(
+        "--idempotency-key",
+        help=(
+            "Stable retry key; equivalent reuse returns the existing run and "
+            "conflicting reuse fails"
+        ),
     )
 
 
@@ -844,7 +862,14 @@ def _main(argv=None) -> int:
             )
         elif args.content_session:
             order.content_session_id = args.content_session
-        _print(orchestrator.start(order))
+        if args.idempotency_key is None:
+            state = orchestrator.start(order)
+        else:
+            state = orchestrator.start(
+                order,
+                idempotency_key=args.idempotency_key,
+            )
+        _print(state)
         return 0
     if args.command == "diagnostics":
         if args.diagnostics_command in {"show", "preflight"}:
@@ -859,6 +884,14 @@ def _main(argv=None) -> int:
         return 0
     if args.command == "status":
         _print(orchestrator.store.load(args.run_id))
+        return 0
+    if args.command == "submission":
+        state = orchestrator.store.load_by_idempotency_key(
+            args.idempotency_key
+        )
+        if state is None:
+            raise ValueError("Unknown idempotency key")
+        _print(state)
         return 0
     if args.command == "approve-research":
         _print(orchestrator.resume_research(args.run_id, True, notes=args.notes))

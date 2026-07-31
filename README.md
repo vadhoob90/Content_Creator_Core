@@ -100,6 +100,11 @@ The Content Creator Coordinator reads the workspace state, proposes the
 appropriate voice and format, follows the required research and review
 checkpoints, and preserves the run artifacts.
 
+Automation and agent hosts can attach an `--idempotency-key` to a run. An
+equivalent retry returns the existing `run_id` and state instead of executing
+the content route twice; conflicting reuse fails safely. Intentional revisions
+use a new key plus `--parent-run`.
+
 The result always comes back for human review. “Publish” means saving an
 approved copy inside the author repository; Core does not post to external
 platforms.

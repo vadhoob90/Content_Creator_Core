@@ -504,6 +504,11 @@ of the installed Content Creator workflow.
     publication action.
 11. Return the final draft for author review.
 
+When an exact invocation may be retried, reuse one stable `--idempotency-key`
+for that submission or inspect it with `submission status <key>`. Changed
+instructions and deliberate revisions require a new key. Revisions also pass
+`--parent-run <run-id>` to preserve content lineage.
+
 An instruction to move the active draft into its published directory is author
 approval for repository-local publication and learning extraction. It does not
 authorise posting externally.

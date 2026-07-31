@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 from pathlib import Path
 from typing import Dict, Optional
@@ -73,10 +74,15 @@ class Orchestrator:
     def plan_request(self, request: str, provider: Optional[str] = None) -> WorkOrder:
         return self.intake.plan(request, provider=provider)
 
-    def start(self, order: WorkOrder) -> RunState:
+    def start(
+        self,
+        order: WorkOrder,
+        idempotency_key: Optional[str] = None,
+    ) -> RunState:
         self.diagnostics.begin_invocation(order.content_session_id)
+        submitted_order = order.model_copy(deep=True)
         try:
-            return self._start(order)
+            return self._start(order, idempotency_key, submitted_order)
         except Exception as exc:
             if self.diagnostics.run_id is None:
                 diagnostic = self.diagnostics.record_invocation_failure(exc)
@@ -88,7 +94,12 @@ class Orchestrator:
                     pass
             raise
 
-    def _start(self, order: WorkOrder) -> RunState:
+    def _start(
+        self,
+        order: WorkOrder,
+        idempotency_key: Optional[str] = None,
+        submitted_order: Optional[WorkOrder] = None,
+    ) -> RunState:
         pack = self.packs.resolve(order.content_pack, order.pack_options)
         order.pack_options = {**pack.defaults, "destination": pack.destination}
         if pack.format != order.format:
@@ -105,6 +116,19 @@ class Orchestrator:
             )
         route_plan = build_route(order)
         supplied_brief = self._preflight_supplied_research(order)
+        submission_fingerprint = self._submission_fingerprint(
+            submitted_order or order, supplied_brief
+        )
+        if idempotency_key is not None:
+            existing = self.store.load_by_idempotency_key(
+                idempotency_key, submission_fingerprint
+            )
+            if existing:
+                self.diagnostics.bind_run(
+                    existing.id,
+                    existing.work_order.content_session_id,
+                )
+                return existing
         order.resolved_voice = False
         resolved_voice = VoiceRegistry(self.root).resolve(
             order.voice_id, order.voice_version
@@ -173,7 +197,21 @@ class Orchestrator:
         )
         state = RunState(work_order=order, route_plan=route_plan)
         state.events.append(RunEvent(name="planned", detail=state.route_plan.route))
-        self.store.create(state)
+        if idempotency_key is not None:
+            state.events.append(RunEvent(name="submission_accepted"))
+            state, created = self.store.create_idempotent(
+                state,
+                idempotency_key,
+                submission_fingerprint,
+            )
+            if not created:
+                self.diagnostics.bind_run(
+                    state.id,
+                    state.work_order.content_session_id,
+                )
+                return state
+        else:
+            self.store.create(state)
         self.diagnostics.bind_run(state.id, order.content_session_id)
         self.store.write_artifact(state.id, "work-order.json", order)
         self.store.write_artifact(state.id, "route-plan.json", state.route_plan)
@@ -506,6 +544,32 @@ class Orchestrator:
                 )
             )
         return brief
+
+    @staticmethod
+    def _submission_fingerprint(
+        order: WorkOrder,
+        supplied_brief: Optional[ResearchBrief],
+    ) -> str:
+        payload = order.model_dump(mode="json")
+        for transient in (
+            "content_session_id",
+            "resolved_voice",
+            "resolved_perspective",
+            "supplied_research_path",
+        ):
+            payload.pop(transient, None)
+        payload["supplied_research"] = (
+            supplied_brief.model_dump(mode="json")
+            if supplied_brief
+            else None
+        )
+        encoded = json.dumps(
+            payload,
+            sort_keys=True,
+            separators=(",", ":"),
+            ensure_ascii=False,
+        ).encode("utf-8")
+        return hashlib.sha256(encoded).hexdigest()
 
     def _research(
         self,
