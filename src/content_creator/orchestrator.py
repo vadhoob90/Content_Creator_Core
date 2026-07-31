@@ -91,6 +91,20 @@ class Orchestrator:
     def _start(self, order: WorkOrder) -> RunState:
         pack = self.packs.resolve(order.content_pack, order.pack_options)
         order.pack_options = {**pack.defaults, "destination": pack.destination}
+        if pack.format != order.format:
+            raise OrchestrationError(
+                "Pack {} expects format {}, received {}".format(
+                    pack.id, pack.format, order.format
+                )
+            )
+        if order.research_depth.value not in pack.allowed_research:
+            raise OrchestrationError(
+                "Pack {} does not allow {} research".format(
+                    pack.id, order.research_depth.value
+                )
+            )
+        route_plan = build_route(order)
+        supplied_brief = self._preflight_supplied_research(order)
         order.resolved_voice = False
         resolved_voice = VoiceRegistry(self.root).resolve(
             order.voice_id, order.voice_version
@@ -157,19 +171,7 @@ class Orchestrator:
         resolved_perspective = (
             resolved_perspectives[0] if resolved_perspectives else None
         )
-        if pack.format != order.format:
-            raise OrchestrationError(
-                "Pack {} expects format {}, received {}".format(
-                    pack.id, pack.format, order.format
-                )
-            )
-        if order.research_depth.value not in pack.allowed_research:
-            raise OrchestrationError(
-                "Pack {} does not allow {} research".format(
-                    pack.id, order.research_depth.value
-                )
-            )
-        state = RunState(work_order=order, route_plan=build_route(order))
+        state = RunState(work_order=order, route_plan=route_plan)
         state.events.append(RunEvent(name="planned", detail=state.route_plan.route))
         self.store.create(state)
         self.diagnostics.bind_run(state.id, order.content_session_id)
@@ -245,7 +247,7 @@ class Orchestrator:
             },
         )
         try:
-            brief = self._research(state)
+            brief = self._research(state, supplied_brief)
             if brief:
                 self.store.write_artifact(state.id, "research.json", brief)
                 provenance = json.loads(
@@ -476,7 +478,40 @@ class Orchestrator:
         self.store.save_state(state)
         return result
 
-    def _research(self, state: RunState) -> Optional[ResearchBrief]:
+    def _preflight_supplied_research(
+        self, order: WorkOrder
+    ) -> Optional[ResearchBrief]:
+        if order.research_source != ResearchSource.SUPPLIED:
+            return None
+        path = Path(order.supplied_research_path or "")
+        if not path.is_absolute():
+            path = self.root / path
+        try:
+            payload = path.read_text(encoding="utf-8")
+        except OSError as exc:
+            raise OrchestrationError(
+                "Supplied research file could not be read"
+            ) from exc
+        try:
+            brief = ResearchBrief.model_validate_json(payload)
+        except ValueError as exc:
+            raise OrchestrationError(
+                "Supplied research is not valid ResearchBrief JSON"
+            ) from exc
+        research_errors = validate_research_brief(brief)
+        if research_errors:
+            raise OrchestrationError(
+                "Research brief failed validation: {}".format(
+                    "; ".join(research_errors)
+                )
+            )
+        return brief
+
+    def _research(
+        self,
+        state: RunState,
+        supplied_brief: Optional[ResearchBrief] = None,
+    ) -> Optional[ResearchBrief]:
         order = state.work_order
         if order.research_depth == ResearchDepth.NONE:
             state.events.append(RunEvent(name="research_skipped"))
@@ -484,10 +519,11 @@ class Orchestrator:
         state.status = RunStatus.RESEARCHING
         self.store.save_state(state)
         if order.research_source == ResearchSource.SUPPLIED:
-            path = Path(order.supplied_research_path or "")
-            if not path.is_absolute():
-                path = self.root / path
-            brief = ResearchBrief.model_validate_json(path.read_text(encoding="utf-8"))
+            if supplied_brief is None:
+                raise OrchestrationError(
+                    "Supplied research did not pass preflight"
+                )
+            brief = supplied_brief
         else:
             brief = self.runner.run(
                 role="researcher",
@@ -502,11 +538,13 @@ class Orchestrator:
                 provider=order.provider,
                 tools=["web_search"],
             )
-        research_errors = validate_research_brief(brief)
-        if research_errors:
-            raise OrchestrationError(
-                "Research brief failed validation: {}".format("; ".join(research_errors))
-            )
+            research_errors = validate_research_brief(brief)
+            if research_errors:
+                raise OrchestrationError(
+                    "Research brief failed validation: {}".format(
+                        "; ".join(research_errors)
+                    )
+                )
         state.events.append(RunEvent(name="research_complete"))
         self.store.save_state(state)
         return brief
