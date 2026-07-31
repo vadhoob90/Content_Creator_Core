@@ -10,7 +10,8 @@ route, supplied
 research, research pause/resume and rejection, failure persistence, bounded
 revision, publication safety, documentation commands, and learning status.
 Regression coverage also verifies typed prior-issue dispositions, fail-safe
-legacy status normalisation, and lifecycle-consistent active voice prompts.
+legacy status normalisation, lifecycle-consistent active voice prompts, and
+supplied-research rejection before normal run persistence.
 
 `content-creator eval` is the offline harness. It executes the committed route
 matrix with deterministic responses for the selected provider contracts. This includes
