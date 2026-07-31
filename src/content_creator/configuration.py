@@ -197,6 +197,7 @@ class Configuration:
             )
         policy = {
             "enabled": False,
+            "mode": "statistical",
             "minimum_sources": 20,
             "minimum_draft_words": 100,
             "outlier_iqr_multiplier": 1.5,
@@ -205,6 +206,10 @@ class Configuration:
         policy.update(configured)
         if not isinstance(policy["enabled"], bool):
             raise ConfigurationError("voice_assessment.enabled must be a boolean")
+        if policy["mode"] not in {"statistical", "ml"}:
+            raise ConfigurationError(
+                "voice_assessment.mode must be statistical or ml"
+            )
         for name, minimum, maximum in (
             ("minimum_sources", 3, 1000),
             ("minimum_draft_words", 25, 10000),
