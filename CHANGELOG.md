@@ -8,6 +8,48 @@ release tag.
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-07-31
+
+### Added
+
+- A unified, voice-scoped `statistical_voice_score` with deterministic and ML
+  methods, explicit voice-creation selection, on-demand `voice score`, and
+  later `voice score-config` controls. Both methods report a 0–100 score with
+  method, reliability, evidence coverage, observations, and claim limits.
+- Deterministic scoring that penalises only distance beyond robust
+  interquartile-range envelopes, so drafts cannot improve their score merely
+  by moving closer to the historical corpus centre.
+- Optional, default-off draft comparison against an active voice's linguistic
+  distribution. Enabled runs preserve a per-revision advisory artifact and
+  expose material outliers only to the critic, without changing deterministic
+  validation or quality-gate calculations.
+- Explicit offline deterministic scoring through
+  `content-creator voice score <voice-id> --draft <path> --method deterministic`,
+  including minimum evidence gates and no authorship or identity claim.
+- Explicit, optional regularised logistic-regression training from an active
+  voice and matched non-author documents. Reliability preflight refuses
+  unusable corpora, pauses on low-confidence data, and requires an explicit
+  override before training; training never activates ML assessment.
+- Version-scoped, author-workspace JSON model artifacts and dependency-free
+  inference. Raw corpus text, local paths, and unsafe pickle payloads are not
+  persisted in the model.
+
+### Changed
+
+- Automatic score artifacts and critic payloads now use the common
+  `statistical_voice_score` name. The score remains critic-only advisory
+  evidence with no direct rubric weight, validation effect, or publication
+  gate.
+
+### Migration
+
+- Existing workspaces remain default-off. The pre-release `voice_assessment`
+  configuration is accepted as a compatibility alias, while new workspaces use
+  `statistical_voice_score` with `method: deterministic` or `method: ml`.
+- Existing voices without a voice-scoped preference continue to use the
+  workspace default. Creating or onboarding a new source-derived voice records
+  an explicit disabled, deterministic, or ML preference.
+
 ## [0.8.0] - 2026-07-31
 
 ### Added

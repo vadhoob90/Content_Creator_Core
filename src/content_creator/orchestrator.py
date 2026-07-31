@@ -37,6 +37,7 @@ from .routing import build_route
 from .runner import AgentRunner
 from .storage import RunStore, StorageError, slugify
 from .validation import validate_draft, validate_research_brief
+from .voice_assessment import assess_voice_draft, resolve_score_policy
 from .voice_evaluation import evaluate_voice_output
 from .voices import VoiceRegistry, hash_file
 
@@ -668,8 +669,41 @@ class Orchestrator:
                 perspective_evaluation,
             )
 
+            statistical_voice_score = None
+            score_policy = resolve_score_policy(
+                self.root,
+                state.work_order.voice_id,
+                self.configuration.statistical_voice_score_policy,
+            )
+            if score_policy["enabled"]:
+                statistical_voice_score = assess_voice_draft(
+                    self.root,
+                    state.work_order.voice_id,
+                    state.work_order.voice_version,
+                    draft,
+                    score_policy,
+                )
+                self.store.write_artifact(
+                    state.id,
+                    "statistical-voice-score-{:02d}.json".format(revision),
+                    statistical_voice_score,
+                )
+
             state.status = RunStatus.REVIEWING
             self.store.save_state(state)
+            critique_payload = {
+                "work_order": state.work_order.model_dump(mode="json"),
+                "draft": draft,
+                "research": brief.model_dump(mode="json") if brief else None,
+                "validation_errors": validation_errors,
+                "prior_critique": (
+                    previous_critique.model_dump(mode="json")
+                    if previous_critique
+                    else None
+                ),
+            }
+            if statistical_voice_score is not None:
+                critique_payload["statistical_voice_score"] = statistical_voice_score
             critique = self.runner.run(
                 role="critic",
                 role_key="critic-{}".format(state.work_order.format),
@@ -678,18 +712,15 @@ class Orchestrator:
                     "Return issues and scores; do not decide whether to publish. "
                     "For each prior issue, return a machine-readable status of "
                     "resolved, unresolved, or author_rejected separately from its note."
+                    + (
+                        " Treat the statistical voice score as advisory evidence only. "
+                        "Account for context and natural variation; do not request a "
+                        "change solely to improve numerical conformity."
+                        if statistical_voice_score is not None
+                        else ""
+                    )
                 ),
-                payload={
-                    "work_order": state.work_order.model_dump(mode="json"),
-                    "draft": draft,
-                    "research": brief.model_dump(mode="json") if brief else None,
-                    "validation_errors": validation_errors,
-                    "prior_critique": (
-                        previous_critique.model_dump(mode="json")
-                        if previous_critique
-                        else None
-                    ),
-                },
+                payload=critique_payload,
                 order=state.work_order,
                 output_model=Critique,
                 provider=state.work_order.provider,

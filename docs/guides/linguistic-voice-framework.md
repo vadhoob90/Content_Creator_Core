@@ -47,6 +47,105 @@ Inspect the candidate signature without opening repository files directly:
 content-creator voice signature <voice-id>
 ```
 
+## Optional statistical voice score
+
+Core can compute a `statistical_voice_score` for a draft through either a
+deterministic corpus-distribution method or an optional ML classifier. This
+feature is disabled by default and remains advisory: it does not change
+validation errors, quality scores, or publication gates. When enabled, the
+per-revision report is stored as
+`runs/<run-id>/statistical-voice-score-<revision>.json` and supplied only to the
+critic. The writer never receives numerical targets.
+
+New source-derived voices choose disabled, deterministic, or ML scoring during
+the guided voice-creation workflow. The choice is stored under
+`profiles/<voice-id>/statistical-voice-score.json`, so voices in the same
+workspace can use different methods. Change it later with:
+
+```bash
+content-creator --workspace . voice score-config <voice-id> \
+  --enable --method deterministic --selected-by "<author>"
+```
+
+Use `--disable` to turn automatic scoring off. Workspace defaults and
+deterministic thresholds remain configurable in `content-creator.yaml`:
+
+```yaml
+statistical_voice_score:
+  enabled: false
+  method: deterministic
+  minimum_sources: 20
+  minimum_draft_words: 100
+  outlier_iqr_multiplier: 1.5
+  max_reported_outliers: 8
+```
+
+An explicit offline score is available regardless of the automatic setting:
+
+```bash
+content-creator --workspace . voice score <voice-id> \
+  --draft path/to/draft.md --method deterministic
+```
+
+The deterministic score is a 0–100 compatibility measure. It penalises only
+distance beyond the configured interquartile-range envelopes; values anywhere
+inside an envelope receive the same treatment, so moving toward the corpus
+centre cannot improve the score. The report also preserves material outliers,
+reliability, evidence coverage, and claim limits. Too-small corpora and short
+drafts return an insufficient-evidence status and no score.
+
+## Optional machine-learning classifier
+
+Machine-learning training is a separate, explicit author action. It is local
+and makes no provider call. It never runs
+during voice building, content generation, workspace initialisation, or package
+installation. Install the optional training dependency and supply a matched
+non-author comparison corpus:
+
+```bash
+python -m pip install 'content-creator[ml]==<the-workspace-pinned-version>'
+
+content-creator --workspace . voice train-ml <voice-id> \
+  --comparison-documents /absolute/path/to/matched-comparison-writing
+```
+
+Core trains one regularised logistic-regression classifier from the active
+voice's written feature vectors and the supplied comparison documents. Raw
+source text and comparison paths are not stored in Core or in the model. The
+author workspace receives a version-scoped JSON artifact under
+`profiles/<voice-id>/models/<voice-version>/` containing the feature schema,
+scaler values, coefficients, data fingerprints, evaluation results, and
+reliability assessment. Inference reads that JSON directly and does not load a
+pickle or require scikit-learn.
+
+Training reliability is reported before fitting. These are conservative volume
+heuristics, not proof that the documents are independent, representative, or
+correctly matched:
+
+- fewer than 10 documents or 5,000 words in either class refuses training;
+- fewer than 40 documents or 20,000 words in either class produces a prominent
+  low-confidence warning and does not train by default;
+- after reviewing that warning, the author may explicitly repeat the command
+  with `--accept-low-confidence`;
+- a class imbalance greater than 2:1 also requires explicit acceptance.
+
+Training never activates the classifier. After reviewing its evaluation, the
+author separately opts into ML scoring:
+
+```bash
+content-creator --workspace . voice score-config <voice-id> \
+  --enable --method ml --selected-by "<author>"
+```
+
+Use `voice score <voice-id> --draft <path> --method ml` for an explicit score.
+The ML and deterministic values share a 0–100 display scale but are not directly
+interchangeable: deterministic scoring measures compatibility with observed
+author ranges, while ML measures compatibility with the author corpus relative
+to the supplied comparison corpus. Every result therefore retains its method.
+The score remains advisory, is supplied only to the critic, and is not an
+authorship probability, validation error, direct rubric weight, or publication
+gate.
+
 ## Measurements are evidence, not instructions
 
 The writer must not mechanically target an average sentence length or repeat

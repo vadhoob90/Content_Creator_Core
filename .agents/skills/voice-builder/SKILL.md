@@ -24,8 +24,12 @@ silently.
 ## Create a candidate
 
 1. Confirm that the user is authorised to analyse the sources.
-2. Put URLs in a text file and private documents outside Git-tracked paths.
-3. Run:
+2. Ask whether statistical voice scoring should be disabled, deterministic, or
+   ML-based for this voice. Do not silently enable it. Explain that deterministic
+   scoring needs no training, while ML requires a separately authorised matched
+   comparison corpus after voice activation. Starter voices cannot use scoring.
+3. Put URLs in a text file and private documents outside Git-tracked paths.
+4. Run:
 
 ```bash
 content-creator voice create \
@@ -34,6 +38,7 @@ content-creator voice create \
   --use general-text \
   --sources "<URL file>" \
   --documents "<document directory>" \
+  --statistical-voice-score deterministic \
   --provider codex-native
 ```
 
@@ -49,6 +54,59 @@ The build creates `linguistic-signature.json` using the repository's lightweight
 corpus-stylistics framework. It reports attribution-weighted measurements and
 keeps spoken and written registers separate. Treat these measurements as
 descriptive evidence, never as proof of authorship or rigid generation targets.
+
+## Compute a statistical voice score
+
+When the author asks to score a draft without changing automatic settings, run:
+
+```bash
+content-creator voice score <voice-id> \
+  --draft "<draft path>" \
+  --method deterministic
+```
+
+Use `--method ml` only when a trained model exists. The output always identifies
+the method, score, reliability, evidence coverage, observations, and claim
+limits. Never present the number without its method and reliability context.
+
+To change automatic scoring later, use:
+
+```bash
+content-creator voice score-config <voice-id> \
+  --enable \
+  --method deterministic \
+  --selected-by "<author>"
+```
+
+Use `--disable` to turn it off. Automatic scores remain critic-only advisory
+evidence and have no direct quality-gate weight.
+
+## Train an optional ML classifier
+
+Never train or activate an ML classifier during ordinary voice creation. Use
+this path only when the author explicitly asks to train one and supplies an
+authorised, matched non-author comparison corpus.
+
+Run:
+
+```bash
+content-creator voice train-ml <voice-id> \
+  --comparison-documents "<comparison directory>"
+```
+
+The command performs a reliability preflight before fitting. If it returns
+`insufficient_data`, do not train. If it returns
+`warning_confirmation_required`, show every warning and stop. Use
+`--accept-low-confidence` only after the author explicitly accepts those
+warnings in a separate instruction. Training creates a version-scoped JSON
+artifact but never enables it.
+
+After the author reviews the evaluation, enable use only through their explicit
+voice-scoped choice with `voice score-config <voice-id> --enable --method ml`.
+
+The classifier score remains critic-only advisory evidence. Never call it an
+authorship probability, use it as a publication gate, or feed numerical targets
+to the writer.
 
 ## Review and improve
 

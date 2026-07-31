@@ -77,6 +77,8 @@ def test_workspace_create_generates_complete_thin_repository(
     assert configuration["coordinator"]["default_voice"] == "alice-general"
     assert configuration["coordinator"]["default_pack"] == "linkedin-post"
     assert configuration["coordinator"]["external_publication"] == "disabled"
+    assert configuration["statistical_voice_score"]["enabled"] is False
+    assert configuration["statistical_voice_score"]["method"] == "deterministic"
     onboarding = json.loads(
         (
             destination / "profiles" / "alice-general" / "onboarding.json"

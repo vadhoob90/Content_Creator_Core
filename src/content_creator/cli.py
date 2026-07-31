@@ -11,7 +11,7 @@ from typing import Optional
 import yaml
 
 from .agent_resources import STANDARD_TEMPLATE, AgentWorkspace
-from .configuration import ConfigurationError
+from .configuration import Configuration, ConfigurationError
 from .coordinator import ContentCoordinator
 from .diagnostics import DiagnosticDecisionRequired
 from .domain import (
@@ -45,7 +45,13 @@ from .providers import ProviderError, ProviderRegistry
 from .runner import AgentOutputError
 from .storage import RunStore, StorageError
 from .upgrade import WorkspaceUpgradeError, WorkspaceUpgrader
+from .voice_assessment import (
+    assess_voice_draft,
+    load_score_preference,
+    save_score_preference,
+)
 from .voice_builder import VoiceBuilder
+from .voice_ml import MLDependencyError, train_voice_ml_model
 from .voices import (
     Authorisation,
     VoiceManifest,
@@ -297,6 +303,12 @@ def build_parser() -> argparse.ArgumentParser:
         help="Person making the onboarding choice",
     )
     voice_onboard.add_argument("--use", action="append", default=[])
+    voice_onboard.add_argument(
+        "--statistical-voice-score",
+        choices=["disabled", "deterministic", "ml"],
+        default="disabled",
+        help="Voice-scoped score preference selected during onboarding",
+    )
     voice_create = voice_sub.add_parser("create")
     voice_create.add_argument(
         "--name",
@@ -321,6 +333,12 @@ def build_parser() -> argparse.ArgumentParser:
     voice_create.add_argument("--no-build", action="store_true")
     voice_create.add_argument("--provider", choices=PROVIDERS)
     voice_create.add_argument(
+        "--statistical-voice-score",
+        choices=["disabled", "deterministic", "ml"],
+        default="disabled",
+        help="Voice-scoped score preference selected during creation",
+    )
+    voice_create.add_argument(
         "--offline-analysis",
         action="store_true",
         help="Use deterministic fixture analysis instead of an LLM",
@@ -331,6 +349,62 @@ def build_parser() -> argparse.ArgumentParser:
         if command in {"build", "rebuild"}:
             item.add_argument("--provider", choices=PROVIDERS)
             item.add_argument("--offline-analysis", action="store_true")
+    voice_assess = voice_sub.add_parser(
+        "assess",
+        help="Compare a draft with an active voice's linguistic distribution",
+    )
+    voice_assess.add_argument("voice_id")
+    voice_assess.add_argument("--draft", required=True)
+    voice_assess.add_argument("--voice-version")
+    voice_score = voice_sub.add_parser(
+        "score",
+        help="Compute a statistical voice score for one draft",
+    )
+    voice_score.add_argument("voice_id")
+    voice_score.add_argument("--draft", required=True)
+    voice_score.add_argument("--voice-version")
+    voice_score.add_argument(
+        "--method",
+        choices=["deterministic", "ml"],
+        required=True,
+    )
+    voice_score_config = voice_sub.add_parser(
+        "score-config",
+        help="Change automatic statistical voice scoring for one voice",
+    )
+    voice_score_config.add_argument("voice_id")
+    voice_score_config.add_argument(
+        "--method",
+        choices=["deterministic", "ml"],
+    )
+    score_config_state = voice_score_config.add_mutually_exclusive_group(
+        required=True
+    )
+    score_config_state.add_argument("--enable", action="store_true")
+    score_config_state.add_argument("--disable", action="store_true")
+    voice_score_config.add_argument("--selected-by")
+    voice_train_ml = voice_sub.add_parser(
+        "train-ml",
+        help="Explicitly train an optional author-versus-comparison voice model",
+    )
+    voice_train_ml.add_argument("voice_id")
+    voice_train_ml.add_argument("--voice-version")
+    voice_train_ml.add_argument(
+        "--comparison-documents",
+        action="append",
+        required=True,
+        help="Matched non-author file or directory; repeat for several",
+    )
+    voice_train_ml.add_argument(
+        "--accept-low-confidence",
+        action="store_true",
+        help="Train after explicitly accepting preflight reliability warnings",
+    )
+    voice_train_ml.add_argument(
+        "--replace",
+        action="store_true",
+        help="Replace the model for the resolved immutable voice version",
+    )
     voice_sub.add_parser("list")
     voice_sub.add_parser(
         "verify-all",
@@ -953,6 +1027,11 @@ def _voice_command(root: Path, args) -> int:
         display_name = args.label or "{} — General".format(args.author_name)
         intended_uses = args.use or ["general-text"]
         if args.strategy == VoiceStrategy.STARTER.value:
+            if args.statistical_voice_score != "disabled":
+                raise ValueError(
+                    "Starter voices cannot use statistical voice scoring because "
+                    "they have no author evidence"
+                )
             resolved = registry.activate_starter(
                 voice_id=voice_id,
                 display_name=display_name,
@@ -960,11 +1039,19 @@ def _voice_command(root: Path, args) -> int:
                 selected_by=args.selected_by,
                 intended_uses=intended_uses,
             )
+            score_preference = save_score_preference(
+                root,
+                voice_id,
+                enabled=False,
+                method="deterministic",
+                selected_by=args.selected_by,
+            )
             _print(
                 {
                     "status": "starter-active",
                     "voice": resolved,
                     "perspective_mode": "disabled",
+                    "statistical_voice_score": score_preference,
                     "perspective_disabled_reason": (
                         "starter-voice-without-author-evidence"
                     ),
@@ -1000,12 +1087,25 @@ def _voice_command(root: Path, args) -> int:
             perspective_mode="pending-source-derived-activation",
         )
         save_voice_onboarding(root, record)
+        score_method = (
+            "deterministic"
+            if args.statistical_voice_score == "disabled"
+            else args.statistical_voice_score
+        )
+        score_preference = save_score_preference(
+            root,
+            voice_id,
+            enabled=args.statistical_voice_score != "disabled",
+            method=score_method,
+            selected_by=args.selected_by,
+        )
         _print(
             {
                 "status": record.status,
                 "voice_id": voice_id,
                 "strategy": record.strategy,
                 "perspective_mode": record.perspective_mode,
+                "statistical_voice_score": score_preference,
                 "next_steps": [
                     "Add authorised writing with voice add-sources.",
                     "Build, review, verify, and approve the candidate voice.",
@@ -1050,6 +1150,18 @@ def _voice_command(root: Path, args) -> int:
                 selected_at=datetime.now(timezone.utc).isoformat(),
                 perspective_mode="pending-source-derived-activation",
             ),
+        )
+        score_method = (
+            "deterministic"
+            if args.statistical_voice_score == "disabled"
+            else args.statistical_voice_score
+        )
+        save_score_preference(
+            root,
+            voice_id,
+            enabled=args.statistical_voice_score != "disabled",
+            method=score_method,
+            selected_by=args.authorised_by,
         )
         _print(order if args.no_build else builder.build(voice_id))
         return 0
@@ -1105,6 +1217,50 @@ def _voice_command(root: Path, args) -> int:
             }
         )
         return 0
+    if command in {"assess", "score"}:
+        draft_path = Path(args.draft).expanduser()
+        if not draft_path.is_absolute():
+            draft_path = root / draft_path
+        if not draft_path.is_file():
+            raise StorageError("Draft does not exist: {}".format(draft_path))
+        policy = Configuration(root).statistical_voice_score_policy
+        policy["method"] = (
+            "deterministic" if command == "assess" else args.method
+        )
+        _print(
+            assess_voice_draft(
+                root,
+                args.voice_id,
+                args.voice_version,
+                draft_path.read_text(encoding="utf-8"),
+                policy,
+            )
+        )
+        return 0
+    if command == "score-config":
+        if not (root / "profiles" / args.voice_id).is_dir():
+            raise StorageError("Unknown voice: {}".format(args.voice_id))
+        existing_preference = load_score_preference(root, args.voice_id) or {}
+        preference = save_score_preference(
+            root,
+            args.voice_id,
+            enabled=args.enable,
+            method=args.method or existing_preference.get("method", "deterministic"),
+            selected_by=args.selected_by,
+        )
+        _print(preference)
+        return 0
+    if command == "train-ml":
+        result = train_voice_ml_model(
+            root,
+            args.voice_id,
+            args.voice_version,
+            [Path(item) for item in _documents(args.comparison_documents)],
+            accept_low_confidence=args.accept_low_confidence,
+            replace=args.replace,
+        )
+        _print(result)
+        return 0 if result["trained"] else 5
     if command == "diff":
         voice_root = root / "profiles" / args.voice_id
 
@@ -1148,6 +1304,9 @@ def _voice_command(root: Path, args) -> int:
                 ),
                 "candidate": candidate_status,
                 "active": active,
+                "statistical_voice_score": load_score_preference(
+                    root, args.voice_id
+                ),
             }
         )
         return 0
@@ -1353,6 +1512,7 @@ def main(argv=None) -> int:
         OrchestrationError,
         PackError,
         ProviderError,
+        MLDependencyError,
         StorageError,
         WorkspaceUpgradeError,
     ) as exc:
