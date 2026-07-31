@@ -116,6 +116,56 @@ def test_supplied_research_skips_researcher_and_checkpoint(project, format_, dep
     assert all(request.role != "researcher" for request in fake.requests)
 
 
+@pytest.mark.parametrize(
+    ("filename", "payload", "message"),
+    [
+        ("missing.json", None, "could not be read"),
+        ("malformed.json", "{not-json", "not valid ResearchBrief JSON"),
+        (
+            "unknown-source.json",
+            {
+                **research_brief(),
+                "evidence": [
+                    {
+                        "claim": "An invalid reference",
+                        "source_urls": ["https://unknown.example/source"],
+                        "confidence": "high",
+                    }
+                ],
+            },
+            "unknown source",
+        ),
+    ],
+)
+def test_invalid_supplied_research_fails_before_run_persistence(
+    project, filename, payload, message
+):
+    if payload is not None:
+        content = payload if isinstance(payload, str) else json.dumps(payload)
+        (project / filename).write_text(content, encoding="utf-8")
+    orchestrator = Orchestrator(project)
+
+    with pytest.raises(OrchestrationError, match=message) as raised:
+        orchestrator.start(
+            WorkOrder(
+                request="write",
+                topic="topic",
+                content_pack="linkedin-post",
+                format="post",
+                research_depth="light",
+                research_source="supplied",
+                supplied_research_path=filename,
+            )
+        )
+
+    assert not list((project / "runs").glob("*/state.json"))
+    diagnostic_path = project / raised.value.diagnostic_path
+    summary = json.loads(diagnostic_path.read_text(encoding="utf-8"))
+    assert summary["status"] == "failed_before_run"
+    assert summary["classification"] == "content_workflow"
+    assert summary["support_worthy"] is False
+
+
 def test_research_rejection_stops_before_writer(project):
     fake = FakeProvider({"researcher": [research_brief()]})
     orchestrator = Orchestrator(

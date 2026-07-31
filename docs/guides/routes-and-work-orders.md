@@ -25,3 +25,11 @@ clarification questions rather than guessing.
 Deep agent research persists `research.json` and returns
 `awaiting_research_approval`. `approve-research` resumes from disk;
 `reject-research` records the author's decision and stops before drafting.
+
+Supplied research is a preflight input. Core reads its JSON, validates the
+`ResearchBrief` schema, and verifies that every evidence URL exists in the
+brief's source list before allocating a normal run. Missing, malformed, or
+referentially invalid supplied briefs are recorded as invocation diagnostics
+under `.content-creator/invocations/`; they do not create failed entries under
+`runs/`. Agent-generated research remains part of the persisted run because it
+is produced during execution.

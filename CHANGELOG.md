@@ -10,6 +10,10 @@ release tag.
 
 ### Fixed
 
+- Supplied research is now loaded and validated during preflight, before a
+  normal run is allocated. Missing, malformed, or internally inconsistent
+  briefs produce a separate invocation diagnostic rather than a failed content
+  run.
 - Prior critique issues now use a typed machine disposition with a separate
   explanatory note. Legacy free-form statuses are normalised fail-safe so
   explanatory `resolved` and `author_rejected` values no longer cause false
