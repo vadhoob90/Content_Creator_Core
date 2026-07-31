@@ -7,6 +7,12 @@ Each author works in a small, independent repository containing their voices,
 agents, learning, drafts, and approved content. This Core repository supplies
 the reusable workflow, validation, and safety boundaries.
 
+Here, **voice** means the author's written communication style: observable
+patterns in how they shape text. It is not a model of the whole person and does
+not claim to capture their identity, personality, beliefs, expertise, or inner
+character. Authorised transcripts may provide supporting evidence, but the
+resulting voice guides text creation.
+
 Read [Why not just use a chat app?](docs/guides/why-not-just-chat.md) for the
 design rationale.
 
@@ -118,6 +124,12 @@ to the author.
 Read the [statistical and linguistic voice
 framework](docs/guides/linguistic-voice-framework.md), or inspect a built
 candidate with `content-creator voice signature <voice-id>`.
+
+Core can also calculate an optional `statistical_voice_score` for a draft using
+either deterministic distribution comparison or an explicitly trained ML
+classifier. Scoring is disabled by default and remains critic-only advisory
+evidence: it is not an authorship probability, writing target, quality-gate
+input, or publication gate.
 
 ### 3. Ask for content naturally
 
