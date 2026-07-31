@@ -199,6 +199,16 @@ def assess_voice_draft(
             "The default placeholder voice has no source-derived signature.",
         )
     resolved = VoiceRegistry(root).resolve(voice_id, voice_version)
+    if policy["mode"] == "ml":
+        from .voice_ml import assess_with_ml_artifact
+
+        return assess_with_ml_artifact(
+            root,
+            voice_id,
+            resolved["version"],
+            draft,
+            policy["minimum_draft_words"],
+        )
     version_root = root.resolve() / resolved["path"]
     signature_path = version_root / "linguistic-signature.json"
     manifest_path = version_root / "manifest.json"

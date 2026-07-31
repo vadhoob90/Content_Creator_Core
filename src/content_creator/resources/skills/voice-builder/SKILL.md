@@ -50,6 +50,39 @@ corpus-stylistics framework. It reports attribution-weighted measurements and
 keeps spoken and written registers separate. Treat these measurements as
 descriptive evidence, never as proof of authorship or rigid generation targets.
 
+## Train an optional ML classifier
+
+Never train or activate an ML classifier during ordinary voice creation. Use
+this path only when the author explicitly asks to train one and supplies an
+authorised, matched non-author comparison corpus.
+
+Run:
+
+```bash
+content-creator voice train-ml <voice-id> \
+  --comparison-documents "<comparison directory>"
+```
+
+The command performs a reliability preflight before fitting. If it returns
+`insufficient_data`, do not train. If it returns
+`warning_confirmation_required`, show every warning and stop. Use
+`--accept-low-confidence` only after the author explicitly accepts those
+warnings in a separate instruction. Training creates a version-scoped JSON
+artifact but never enables it.
+
+After the author reviews the evaluation, enable use only through their explicit
+workspace choice:
+
+```yaml
+voice_assessment:
+  enabled: true
+  mode: ml
+```
+
+The classifier score remains critic-only advisory evidence. Never call it an
+authorship probability, use it as a publication gate, or feed numerical targets
+to the writer.
+
 ## Review and improve
 
 Run:

@@ -116,6 +116,7 @@ def initialise_workspace(
             },
             "voice_assessment": {
                 "enabled": False,
+                "mode": "statistical",
                 "minimum_sources": 20,
                 "minimum_draft_words": 100,
                 "outlier_iqr_multiplier": 1.5,

@@ -27,10 +27,16 @@ Changelog = "https://github.com/vadhoob90/Content_Creator_Core/blob/main/CHANGEL
 openai = ["openai>=2.48,<3"]
 anthropic = ["anthropic>=0.120,<1"]
 providers = ["openai>=2.48,<3", "anthropic>=0.120,<1"]
+ml = [
+  "scikit-learn>=1.6,<1.7; python_version < '3.11'",
+  "scikit-learn>=1.9,<2; python_version >= '3.11'",
+]
 dev = [
   "pytest>=8,<9",
   "pytest-cov>=5,<7",
   "ruff>=0.9",
+  "scikit-learn>=1.6,<1.7; python_version < '3.11'",
+  "scikit-learn>=1.9,<2; python_version >= '3.11'",
 ]
 
 [project.scripts]
