@@ -33,8 +33,11 @@ Deep agent research requires author approval of the research brief.
 
 An instruction to move the reviewed piece into its pack's published directory
 is author approval. Resolve the exact run, never overwrite, surface factual
-blockers, call `content-creator publish`, and report learning changes.
-Repository publication never means external distribution.
+blockers, and call `content-creator publish`. If Core returns
+`awaiting_diagnostic_decision`, present the consolidated support candidate
+once and wait for the author's publish-only or prepare-issue choice. Recovered
+diagnostics stay silent during draft iterations; fatal Core diagnostics are
+immediate. Repository publication never means external distribution.
 
 Explicit feedback may become active learning. Publication-only inference
 remains provisional. Never rewrite a stable voice profile from one session.

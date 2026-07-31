@@ -104,6 +104,11 @@ The result always comes back for human review. “Publish” means saving an
 approved copy inside the author repository; Core does not post to external
 platforms.
 
+Recovered Core diagnostics remain out of the editorial conversation until the
+author approves the piece. At that publication boundary, Core presents one
+sanitised, consolidated support candidate and keeps external issue submission
+under explicit human control. Fatal Core diagnostics are surfaced immediately.
+
 See [Content Creator Coordinator](docs/guides/content-coordinator.md) for
 conversational and direct terminal use.
 

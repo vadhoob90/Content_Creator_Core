@@ -95,6 +95,10 @@ explicit deterministic approval. Never claim a proposal is active.
 - Preserve work orders, route plans, claim provenance, research, drafts,
   perspective evaluation, validation, critiques, quality decisions, and model
   selections under `runs/<run-id>/`.
+- When revising an existing piece through another run, pass
+  `--parent-run <run-id>`. Core carries the parent's `content_session_id`
+  forward so recovered diagnostics are consolidated across the complete
+  editorial lineage.
 
 ## Finalise
 
@@ -104,6 +108,17 @@ author approval:
 ```bash
 content-creator publish <run-id> --feedback "<explicit feedback, if any>"
 ```
+
+If publication returns `awaiting_diagnostic_decision`, do not treat it as a
+failure and do not silently choose for the author. Present the sanitised,
+consolidated Core support candidate once and offer the exact returned actions:
+publish only, publish and prepare an issue, or inspect the diagnostic. Do not
+surface recovered diagnostics during ordinary draft iterations. Fatal Core
+diagnostics are surfaced immediately because there may be no publication
+boundary. After `prepare-issue`, use the host's authenticated GitHub
+integration to search for duplicates and obtain explicit approval before
+creating or updating an issue. Then record the resulting URL with
+`diagnostics link-issue`.
 
 Publication writes only to the selected pack's repository destination. It does
 not post externally. It then records approval and updates only the active

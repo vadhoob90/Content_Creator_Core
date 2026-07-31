@@ -1,7 +1,12 @@
 # Learning and publication
 
 The instruction to move a reviewed piece to `published/` is the approval
-trigger. The application:
+trigger. Before the move, Core checks deferred operational diagnostics across
+the piece's content lineage. If an eligible Core support candidate exists,
+publication pauses once for a `publish-only` or `prepare-issue` decision. See
+[Runtime diagnostics and Core support candidates](runtime-diagnostics.md).
+
+After that pre-publication decision, the application:
 
 1. Resolves `final.md` for the specified run
 2. Refuses to overwrite an existing target

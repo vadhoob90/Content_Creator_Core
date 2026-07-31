@@ -104,6 +104,11 @@ def test_linked_guides_preserve_detailed_operator_commands():
     assert "voice approve example-person-general" in voice_guide
     assert "content-creator --workspace . run" in coordinator_guide
     assert "selected voice's learning memory" in coordinator_guide
+    diagnostic_guide = (
+        ROOT / "docs" / "guides" / "runtime-diagnostics.md"
+    ).read_text(encoding="utf-8")
+    assert "awaiting_diagnostic_decision" in diagnostic_guide
+    assert "--diagnostic-decision prepare-issue" in diagnostic_guide
 
 
 def test_chat_app_comparison_uses_neutral_non_product_language():
@@ -131,10 +136,10 @@ def test_core_development_readme_covers_clone_and_validation():
     assert "pytest" in guide
     assert "Core versus a thin workspace" in guide
     assert "Merging a change into `main` does not publish it" in guide
-    assert "git tag -a v0.6.1" in guide
+    assert "git tag -a v0.7.1" in guide
     assert ".github/workflows/release.yml" in guide
     assert "Trusted Publisher registration is a one-time" in guide
-    assert "workspace upgrade --to v0.6.1 --apply" in guide
+    assert "workspace upgrade --to v0.7.1 --apply" in guide
 
 
 def test_work_package_uses_the_repository_cli_name():

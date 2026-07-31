@@ -161,7 +161,13 @@ def test_revision_limit_preserves_latest_draft(project):
 
 def test_failure_is_persisted(project):
     orchestrator = make_orchestrator(
-        project, {"writer": [ProviderError("provider down")]}
+        project,
+        {
+            "writer": [
+                ProviderError("provider down"),
+                ProviderError("provider down"),
+            ]
+        },
     )
     with pytest.raises(ProviderError):
         orchestrator.start(

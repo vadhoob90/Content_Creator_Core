@@ -8,11 +8,38 @@ release tag.
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-07-31
+
+### Added
+
+- Fail-safe, workspace-local runtime diagnostic journals, sanitised summaries,
+  deterministic issue fingerprints, and Core support candidates.
+- Bounded retry recording for invalid structured output and narrowly
+  classified transient provider failures.
+- Content lineage through `content_session_id`, `parent_run_id`, and the
+  `--parent-run` revision option.
+- A one-time pre-publication diagnostic decision with `publish-only` and
+  `prepare-issue` outcomes, plus issue-link lifecycle recording.
+- Immediate support candidates for fatal Core failures and invocation
+  diagnostics for failures that occur before a run is created.
+
 ### Changed
 
 - Linked the PyPI package from the main README, reframed the chat-app
   comparison in neutral terms, and documented the complete maintainer release
   and downstream-upgrade process.
+- Coordinator actions and packaged host instructions now defer recovered
+  diagnostics during editorial iteration and surface them once at publication.
+- Workspaces ignore local invocation diagnostics and generated workspaces
+  include bounded diagnostic policy defaults.
+
+### Migration
+
+- Existing workspaces receive safe diagnostic defaults without a configuration
+  change. Hosts should handle publish exit code `4` by presenting the returned
+  support candidate and repeating publication with `--diagnostic-decision`.
+- Hosts should pass `--parent-run <run-id>` when a new run revises an existing
+  piece so diagnostics aggregate across the complete editorial lineage.
 
 ## [0.6.0] - 2026-07-30
 

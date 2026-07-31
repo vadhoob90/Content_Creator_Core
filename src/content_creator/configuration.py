@@ -156,3 +156,32 @@ class Configuration:
                 "coordinator.require_final_review must be a boolean"
             )
         return policy
+
+    @property
+    def diagnostic_policy(self) -> Dict[str, Any]:
+        path = self.root / "content-creator.yaml"
+        data = self._read_yaml(path) if path.exists() else {}
+        configured = data.get("diagnostics", {}) or {}
+        if not isinstance(configured, dict):
+            raise ConfigurationError(
+                "diagnostics configuration must be a mapping"
+            )
+        policy = {
+            "enabled": True,
+            "max_attempts": 2,
+            "defer_recovered_until_publication": True,
+        }
+        policy.update(configured)
+        if not isinstance(policy["enabled"], bool):
+            raise ConfigurationError("diagnostics.enabled must be a boolean")
+        if not isinstance(policy["max_attempts"], int) or not (
+            1 <= policy["max_attempts"] <= 3
+        ):
+            raise ConfigurationError(
+                "diagnostics.max_attempts must be an integer from 1 to 3"
+            )
+        if policy["defer_recovered_until_publication"] is not True:
+            raise ConfigurationError(
+                "diagnostics.defer_recovered_until_publication must be true"
+            )
+        return policy

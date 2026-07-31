@@ -13,6 +13,7 @@ import yaml
 from .agent_resources import STANDARD_TEMPLATE, AgentWorkspace
 from .configuration import ConfigurationError
 from .coordinator import ContentCoordinator
+from .diagnostics import DiagnosticDecisionRequired
 from .domain import (
     AuthorContribution,
     PerspectiveSelection,
@@ -25,8 +26,8 @@ from .experience import render_overview, render_start
 from .health import WorkspaceHealth
 from .intake import ClarificationRequired
 from .learning import LearningMemory
-from .orchestrator import Orchestrator
-from .packs import PackRegistry
+from .orchestrator import OrchestrationError, Orchestrator
+from .packs import PackError, PackRegistry
 from .perspective_assessment import (
     create_blind_comparison,
     record_blind_comparison,
@@ -41,7 +42,8 @@ from .perspectives import (
     PerspectiveRegistry,
 )
 from .providers import ProviderError, ProviderRegistry
-from .storage import RunStore
+from .runner import AgentOutputError
+from .storage import RunStore, StorageError
 from .upgrade import WorkspaceUpgradeError, WorkspaceUpgrader
 from .voice_builder import VoiceBuilder
 from .voices import (
@@ -105,7 +107,10 @@ def build_parser() -> argparse.ArgumentParser:
     sub = parser.add_subparsers(
         dest="command",
         required=True,
-        metavar="{start,overview,workspace,doctor,run,status,publish,advanced}",
+        metavar=(
+            "{start,overview,workspace,doctor,run,status,publish,"
+            "diagnostics,advanced}"
+        ),
     )
     initialise = sub.add_parser(
         "init", help=argparse.SUPPRESS
@@ -245,6 +250,20 @@ def build_parser() -> argparse.ArgumentParser:
     coordinator_runs.add_argument("--limit", type=int, default=20)
     coordinator_next = coordinator_sub.add_parser("next-actions")
     coordinator_next.add_argument("run_id")
+
+    diagnostics = sub.add_parser(
+        "diagnostics",
+        help="Inspect deferred runtime diagnostics",
+    )
+    diagnostics_sub = diagnostics.add_subparsers(
+        dest="diagnostics_command", required=True
+    )
+    for command in ("show", "preflight"):
+        item = diagnostics_sub.add_parser(command)
+        item.add_argument("run_id")
+    diagnostics_link = diagnostics_sub.add_parser("link-issue")
+    diagnostics_link.add_argument("run_id")
+    diagnostics_link.add_argument("--issue-url", required=True)
 
     pack = sub.add_parser("pack", help=argparse.SUPPRESS)
     pack_sub = pack.add_subparsers(dest="pack_command", required=True)
@@ -412,6 +431,10 @@ def build_parser() -> argparse.ArgumentParser:
     publish.add_argument("run_id")
     publish.add_argument("--filename")
     publish.add_argument("--feedback")
+    publish.add_argument(
+        "--diagnostic-decision",
+        choices=["publish-only", "prepare-issue"],
+    )
 
     evaluate = sub.add_parser("eval", help=argparse.SUPPRESS)
     evaluate.add_argument("--mode", choices=["replay", "live"], default="replay")
@@ -457,6 +480,14 @@ def _add_run_arguments(parser) -> None:
     parser.add_argument("--structure")
     parser.add_argument("--destination")
     parser.add_argument("--length", help="Word range such as 700:900")
+    parser.add_argument(
+        "--content-session",
+        help="Stable lineage id shared by revisions of the same piece",
+    )
+    parser.add_argument(
+        "--parent-run",
+        help="Prior run whose content lineage this revision continues",
+    )
 
 
 def _main(argv=None) -> int:
@@ -805,7 +836,26 @@ def _main(argv=None) -> int:
                 reusable_perspective_entry_ids=args.perspective_entry,
                 provenance_notes=["Supplied through the run command"],
             )
+        if args.parent_run:
+            parent = orchestrator.store.load(args.parent_run)
+            order.parent_run_id = parent.id
+            order.content_session_id = (
+                parent.work_order.content_session_id
+            )
+        elif args.content_session:
+            order.content_session_id = args.content_session
         _print(orchestrator.start(order))
+        return 0
+    if args.command == "diagnostics":
+        if args.diagnostics_command in {"show", "preflight"}:
+            _print(orchestrator.diagnostic_preflight(args.run_id))
+            return 0
+        if not (
+            args.issue_url.startswith("https://github.com/")
+            or args.issue_url.startswith("https://www.github.com/")
+        ):
+            raise ValueError("--issue-url must be a GitHub HTTPS URL")
+        _print(orchestrator.link_diagnostic_issue(args.run_id, args.issue_url))
         return 0
     if args.command == "status":
         _print(orchestrator.store.load(args.run_id))
@@ -819,7 +869,10 @@ def _main(argv=None) -> int:
     if args.command == "publish":
         _print(
             orchestrator.publish(
-                args.run_id, filename=args.filename, feedback=args.feedback
+                args.run_id,
+                filename=args.filename,
+                feedback=args.feedback,
+                diagnostic_decision=args.diagnostic_decision,
             )
         )
         return 0
@@ -1258,14 +1311,26 @@ def command_needs_model(args) -> bool:
 def main(argv=None) -> int:
     try:
         return _main(argv)
-    except (ConfigurationError, ProviderError, WorkspaceUpgradeError) as exc:
-        _print(
-            {
-                "status": "error",
-                "error_type": exc.__class__.__name__,
-                "error": str(exc),
-            }
-        )
+    except DiagnosticDecisionRequired as exc:
+        _print(exc.preflight)
+        return 4
+    except (
+        AgentOutputError,
+        ConfigurationError,
+        OrchestrationError,
+        PackError,
+        ProviderError,
+        StorageError,
+        WorkspaceUpgradeError,
+    ) as exc:
+        result = {
+            "status": "error",
+            "error_type": exc.__class__.__name__,
+            "error": str(exc),
+        }
+        if getattr(exc, "diagnostic_path", None):
+            result["diagnostic_summary"] = exc.diagnostic_path
+        _print(result)
         return 8
 
 
