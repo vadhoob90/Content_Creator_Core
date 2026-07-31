@@ -109,6 +109,11 @@ def initialise_workspace(
                 "require_final_review": True,
                 "external_publication": "disabled",
             },
+            "diagnostics": {
+                "enabled": True,
+                "max_attempts": 2,
+                "defer_recovered_until_publication": True,
+            },
         }
         if perspective_mode:
             configuration["perspective"] = {
@@ -441,6 +446,7 @@ build/
 outputs/
 runs/
 .eval-results/
+.content-creator/
 .voice-cache/
 profiles/*/work-order.json
 voice-material/**/*
@@ -501,6 +507,12 @@ of the installed Content Creator workflow.
 An instruction to move the active draft into its published directory is author
 approval for repository-local publication and learning extraction. It does not
 authorise posting externally.
+
+Recovered operational diagnostics stay deferred throughout normal draft
+iterations. If publication returns `awaiting_diagnostic_decision`, present the
+sanitised Core support candidate once and ask whether to publish only or
+publish and prepare an issue. Surface fatal Core diagnostics immediately.
+Never create an external issue without explicit approval.
 
 Do not invent sources, personal context, organisational claims, or
 measurements. Do not commit, push, or publish externally unless explicitly

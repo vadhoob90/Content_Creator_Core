@@ -51,6 +51,13 @@ The returned commands are argument arrays so a host does not need to parse a
 shell command. Mutating actions identify whether explicit human confirmation is
 required.
 
+Recovered Core diagnostics are not presented during ordinary drafting. When
+the author approves publication, `publish` either completes normally or
+returns `awaiting_diagnostic_decision` without moving the draft. The host must
+then present the consolidated candidate once and offer the returned
+`publish-only` and `publish-and-prepare-issue` actions. Fatal Core diagnostics
+are exposed immediately because there may be no later publication boundary.
+
 ## Workspace policy
 
 Each downstream repository may configure the interface:
@@ -116,6 +123,17 @@ repository:
 ```bash
 uv run content-creator --workspace . publish <run-id> \
   --feedback "Preserve the concrete opening."
+```
+
+If Core pauses for diagnostics, repeat the approved publication with the
+author's separate diagnostic choice:
+
+```bash
+uv run content-creator --workspace . publish <run-id> \
+  --diagnostic-decision publish-only
+
+uv run content-creator --workspace . publish <run-id> \
+  --diagnostic-decision prepare-issue
 ```
 
 Repository publication never overwrites an existing file, updates only the

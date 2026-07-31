@@ -93,3 +93,23 @@ def test_runner_rejects_invalid_structured_output(project):
         assert "invalid structured output" in str(exc)
     else:
         raise AssertionError("Expected AgentOutputError")
+
+
+def test_diagnostic_policy_has_safe_defaults(project):
+    policy = Configuration(project).diagnostic_policy
+
+    assert policy == {
+        "enabled": True,
+        "max_attempts": 2,
+        "defer_recovered_until_publication": True,
+    }
+
+
+def test_diagnostic_policy_rejects_unbounded_retries(project):
+    path = project / "content-creator.yaml"
+    data = yaml.safe_load(path.read_text()) if path.exists() else {}
+    data["diagnostics"] = {"max_attempts": 10}
+    path.write_text(yaml.safe_dump(data), encoding="utf-8")
+
+    with pytest.raises(ConfigurationError, match="from 1 to 3"):
+        _ = Configuration(project).diagnostic_policy

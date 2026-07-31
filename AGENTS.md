@@ -23,6 +23,12 @@ When the user instructs you to move the active draft into the selected pack's
 published directory, treat that as approval. Never overwrite an existing
 publication and never publish externally.
 
+If Core returns `awaiting_diagnostic_decision`, surface the consolidated,
+sanitised support candidate once at this publication boundary. Ask whether to
+publish only or publish and prepare a Core issue. Do not surface recovered
+diagnostics during normal draft iterations. Surface fatal Core diagnostics
+immediately.
+
 After the move, run learning extraction and update only the active voice's
 incremental learning memory.
 

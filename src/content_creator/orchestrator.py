@@ -6,6 +6,7 @@ from typing import Dict, Optional
 
 from .configuration import Configuration
 from .context import resolved_context
+from .diagnostics import DiagnosticDecisionRequired, RuntimeDiagnostics
 from .domain import (
     Critique,
     LearningExtraction,
@@ -54,7 +55,16 @@ class Orchestrator:
         self.configuration = Configuration(self.root)
         self.registry = registry or ProviderRegistry(root=self.root)
         self.prompts = PromptAssembler(self.root)
-        self.runner = AgentRunner(self.configuration, self.registry, self.prompts)
+        self.diagnostics = RuntimeDiagnostics(
+            self.root,
+            enabled=self.configuration.diagnostic_policy["enabled"],
+        )
+        self.runner = AgentRunner(
+            self.configuration,
+            self.registry,
+            self.prompts,
+            diagnostics=self.diagnostics,
+        )
         self.intake = BriefingAgent(self.runner)
         self.store = RunStore(self.root)
         self.packs = PackRegistry(self.root)
@@ -64,6 +74,21 @@ class Orchestrator:
         return self.intake.plan(request, provider=provider)
 
     def start(self, order: WorkOrder) -> RunState:
+        self.diagnostics.begin_invocation(order.content_session_id)
+        try:
+            return self._start(order)
+        except Exception as exc:
+            if self.diagnostics.run_id is None:
+                diagnostic = self.diagnostics.record_invocation_failure(exc)
+                try:
+                    exc.diagnostic_path = str(
+                        diagnostic.relative_to(self.root)
+                    )
+                except (AttributeError, ValueError):
+                    pass
+            raise
+
+    def _start(self, order: WorkOrder) -> RunState:
         pack = self.packs.resolve(order.content_pack, order.pack_options)
         order.pack_options = {**pack.defaults, "destination": pack.destination}
         order.resolved_voice = False
@@ -147,6 +172,7 @@ class Orchestrator:
         state = RunState(work_order=order, route_plan=build_route(order))
         state.events.append(RunEvent(name="planned", detail=state.route_plan.route))
         self.store.create(state)
+        self.diagnostics.bind_run(state.id, order.content_session_id)
         self.store.write_artifact(state.id, "work-order.json", order)
         self.store.write_artifact(state.id, "route-plan.json", state.route_plan)
         self.store.write_artifact(
@@ -249,6 +275,8 @@ class Orchestrator:
         self, run_id: str, approved: bool, notes: Optional[str] = None
     ) -> RunState:
         state = self.store.load(run_id)
+        self.diagnostics.begin_invocation(state.work_order.content_session_id)
+        self.diagnostics.bind_run(run_id, state.work_order.content_session_id)
         if state.status != RunStatus.AWAITING_RESEARCH_APPROVAL:
             raise OrchestrationError("Run is not awaiting research approval")
         if not approved:
@@ -260,17 +288,32 @@ class Orchestrator:
         brief = ResearchBrief.model_validate_json(
             self.store.read_artifact(run_id, "research.json")
         )
-        return self._draft_and_review(state, brief)
+        try:
+            return self._draft_and_review(state, brief)
+        except Exception as exc:
+            self._fail(state, exc)
+            raise
 
     def publish(
         self,
         run_id: str,
         filename: Optional[str] = None,
         feedback: Optional[str] = None,
+        diagnostic_decision: Optional[str] = None,
     ) -> RunState:
         state = self.store.load(run_id)
+        self.diagnostics.begin_invocation(state.work_order.content_session_id)
+        self.diagnostics.bind_run(run_id, state.work_order.content_session_id)
         if state.status not in {RunStatus.READY, RunStatus.NEEDS_AUTHOR}:
             raise OrchestrationError("Only a reviewed draft can be published")
+        preflight = self.diagnostics.preflight(run_id)
+        if preflight["requires_diagnostic_decision"]:
+            if diagnostic_decision is None:
+                self._apply_diagnostic_state(state, preflight)
+                self.store.save_state(state)
+                raise DiagnosticDecisionRequired(preflight)
+            preflight = self.diagnostics.decide(run_id, diagnostic_decision)
+            self._apply_diagnostic_state(state, preflight)
         draft = self.store.read_artifact(run_id, "final.md").rstrip() + "\n"
         pack = self.packs.get(state.work_order.content_pack)
         target_dir = self.root / pack.destination
@@ -411,7 +454,27 @@ class Orchestrator:
         state.events.append(RunEvent(name="published", detail=state.published_path))
         self._persist_model_history(state.id)
         self.store.save_state(state)
+        post_publish = self.diagnostics.preflight(run_id)
+        self._apply_diagnostic_state(state, post_publish)
+        self.store.save_state(state)
         return state
+
+    def diagnostic_preflight(self, run_id: str) -> Dict:
+        state = self.store.load(run_id)
+        self.diagnostics.begin_invocation(state.work_order.content_session_id)
+        self.diagnostics.bind_run(run_id, state.work_order.content_session_id)
+        result = self.diagnostics.preflight(run_id)
+        self._apply_diagnostic_state(state, result)
+        self.store.save_state(state)
+        return result
+
+    def link_diagnostic_issue(self, run_id: str, issue_url: str) -> Dict:
+        result = self.diagnostics.link_issue(run_id, issue_url)
+        state = self.store.load(run_id)
+        preflight = self.diagnostics.preflight(run_id)
+        self._apply_diagnostic_state(state, preflight)
+        self.store.save_state(state)
+        return result
 
     def _research(self, state: RunState) -> Optional[ResearchBrief]:
         order = state.work_order
@@ -608,11 +671,13 @@ class Orchestrator:
                     input_tokens=(
                         self.runner.responses[index].input_tokens
                         if index < len(self.runner.responses)
+                        and self.runner.responses[index] is not None
                         else None
                     ),
                     output_tokens=(
                         self.runner.responses[index].output_tokens
                         if index < len(self.runner.responses)
+                        and self.runner.responses[index] is not None
                         else None
                     ),
                 )
@@ -624,4 +689,18 @@ class Orchestrator:
         state.status = RunStatus.FAILED
         state.last_error = str(exc)
         state.events.append(RunEvent(name="failed", detail=str(exc)))
+        self.diagnostics.record_terminal_failure(exc)
         self.store.save_state(state)
+        preflight = self.diagnostics.preflight(state.id)
+        self._apply_diagnostic_state(state, preflight)
+        self.store.save_state(state)
+
+    @staticmethod
+    def _apply_diagnostic_state(state: RunState, preflight: Dict) -> None:
+        state.diagnostic_summary_path = preflight.get("diagnostic_summary")
+        state.support_candidate_path = preflight.get("support_candidate")
+        state.pending_support_count = sum(
+            1
+            for item in preflight.get("candidates", [])
+            if item.get("status") in {"deferred", "presented"}
+        )
