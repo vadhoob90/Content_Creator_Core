@@ -118,8 +118,8 @@ def test_documented_command_families_are_parseable():
         ["run", "--brief", "brief.yaml"],
         ["run", "Revise", "--parent-run", "run-id"],
         ["eval"],
-        ["workspace", "upgrade", "--to", "v0.7.0"],
-        ["workspace", "upgrade", "--to", "v0.7.0", "--apply"],
+        ["workspace", "upgrade", "--to", "v0.8.0"],
+        ["workspace", "upgrade", "--to", "v0.8.0", "--apply"],
     ]
     for command in commands:
         assert parser.parse_args(command).command
