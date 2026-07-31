@@ -129,7 +129,9 @@ Core can also calculate an optional `statistical_voice_score` for a draft using
 either deterministic distribution comparison or an explicitly trained ML
 classifier. Scoring is disabled by default and remains critic-only advisory
 evidence: it is not an authorship probability, writing target, quality-gate
-input, or publication gate.
+input, or publication gate. Automatic workflow scoring additionally requires
+an eligible long-form content pack. The explicit `voice score` command remains
+available for deliberate, ad hoc assessment of any sufficiently long text.
 
 ### 3. Ask for content naturally
 

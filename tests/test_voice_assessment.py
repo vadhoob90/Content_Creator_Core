@@ -61,7 +61,10 @@ def _install_active_voice(project, signature):
                     name: hash_file(version / filename)
                     for name, filename in components.items()
                 },
-                "supported_packs": {"linkedin-post": "high"},
+                "supported_packs": {
+                    "linkedin-post": "high",
+                    "linkedin-article": "high",
+                },
                 "authorisation": {"confirmed": True},
             }
         ),
@@ -159,7 +162,7 @@ def test_enabled_score_is_advisory_to_critic_only(project):
     (project / "content-creator.yaml").write_text(
         yaml.safe_dump(configuration), encoding="utf-8"
     )
-    assessed_draft = valid_draft() + "\n\n" + valid_draft()
+    assessed_draft = "\n\n".join(valid_draft() for _ in range(10))
     fake = FakeProvider(
         {"writer": [assessed_draft], "critic": [passing_critique()]}
     )
@@ -171,9 +174,9 @@ def test_enabled_score_is_advisory_to_critic_only(project):
         WorkOrder(
             request="write",
             topic="topic",
-            content_pack="linkedin-post",
+            content_pack="linkedin-article",
             voice_id="alice",
-            format="post",
+            format="article",
         )
     )
 
@@ -200,9 +203,48 @@ def test_voice_preference_enables_score_when_workspace_default_is_off(project):
         method="deterministic",
         selected_by="Alice",
     )
-    assessed_draft = valid_draft() + "\n\n" + valid_draft()
+    assessed_draft = "\n\n".join(valid_draft() for _ in range(10))
     fake = FakeProvider(
         {"writer": [assessed_draft], "critic": [passing_critique()]}
+    )
+    orchestrator = Orchestrator(
+        project, registry=ProviderRegistry({"anthropic": fake})
+    )
+
+    state = orchestrator.start(
+        WorkOrder(
+            request="write",
+            topic="topic",
+            content_pack="linkedin-article",
+            voice_id="alice",
+            format="article",
+        )
+    )
+
+    report = json.loads(
+        (
+            project / "runs" / state.id / "statistical-voice-score-01.json"
+        ).read_text(encoding="utf-8")
+    )
+    assert report["method"] == "deterministic"
+    assert report["score"] is not None
+
+
+def test_short_form_pack_never_supplies_score_to_critic(project):
+    _install_active_voice(project, _signature())
+    configuration = {"statistical_voice_score": {"enabled": True}}
+    (project / "content-creator.yaml").write_text(
+        yaml.safe_dump(configuration), encoding="utf-8"
+    )
+    save_score_preference(
+        project,
+        "alice",
+        enabled=True,
+        method="deterministic",
+        selected_by="Alice",
+    )
+    fake = FakeProvider(
+        {"writer": [valid_draft()], "critic": [passing_critique()]}
     )
     orchestrator = Orchestrator(
         project, registry=ProviderRegistry({"anthropic": fake})
@@ -218,13 +260,14 @@ def test_voice_preference_enables_score_when_workspace_default_is_off(project):
         )
     )
 
-    report = json.loads(
-        (
-            project / "runs" / state.id / "statistical-voice-score-01.json"
-        ).read_text(encoding="utf-8")
+    assert not (
+        project / "runs" / state.id / "statistical-voice-score-01.json"
+    ).exists()
+    critic_request = next(
+        request for request in fake.requests if request.role == "critic"
     )
-    assert report["method"] == "deterministic"
-    assert report["score"] is not None
+    critic_payload = json.loads(critic_request.user.split("\nINPUT\n", 1)[1])
+    assert "statistical_voice_score" not in critic_payload
 
 
 def test_voice_preference_can_disable_workspace_default(project):

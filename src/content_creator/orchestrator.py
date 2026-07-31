@@ -675,7 +675,10 @@ class Orchestrator:
                 state.work_order.voice_id,
                 self.configuration.statistical_voice_score_policy,
             )
-            if score_policy["enabled"]:
+            if (
+                score_policy["enabled"]
+                and pack.statistical_voice_score.eligible
+            ):
                 statistical_voice_score = assess_voice_draft(
                     self.root,
                     state.work_order.voice_id,

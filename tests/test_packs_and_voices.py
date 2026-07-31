@@ -18,6 +18,8 @@ def test_linkedin_capabilities_live_in_content_packs(project):
     assert packs["linkedin-post"].format == "post"
     assert packs["linkedin-article"].format == "article"
     assert packs["linkedin-post"].destination == "content/linkedin-post/published"
+    assert packs["linkedin-post"].statistical_voice_score.eligible is False
+    assert packs["linkedin-article"].statistical_voice_score.eligible is True
 
 
 def test_pack_and_format_mismatch_fails_before_a_run_is_created(project):

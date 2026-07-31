@@ -5,6 +5,7 @@
   "format": "article",
   "destination": "content/linkedin-article/published",
   "defaults": {"length": "800:1800"},
+  "statistical_voice_score": {"eligible": true},
   "validators": [],
   "rubric": "rubric.yaml",
   "allowed_research": ["none", "light", "deep"]
