@@ -99,6 +99,11 @@ explicit deterministic approval. Never claim a proposal is active.
   `--parent-run <run-id>`. Core carries the parent's `content_session_id`
   forward so recovered diagnostics are consolidated across the complete
   editorial lineage.
+- When an exact run invocation may be retried, attach one stable
+  `--idempotency-key` and reuse it only for that equivalent submission. If the
+  outcome is unclear, retry with the same key or inspect it with `submission
+  status <key>`. Never reuse the key for changed instructions. A deliberate
+  revision uses a new key together with `--parent-run`.
 
 ## Finalise
 

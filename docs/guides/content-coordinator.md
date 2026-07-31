@@ -51,6 +51,12 @@ The returned commands are argument arrays so a host does not need to parse a
 shell command. Mutating actions identify whether explicit human confirmation is
 required.
 
+Hosts that may retry a `run` invocation should generate one stable
+`--idempotency-key` for that exact submission. If completion is unclear, retry
+with the same key or call `submission status <key>`; Core returns the existing
+run instead of executing it again. A changed request or intentional revision
+must use a new key. Revisions should also pass `--parent-run <run-id>`.
+
 Recovered Core diagnostics are not presented during ordinary drafting. When
 the author approves publication, `publish` either completes normally or
 returns `awaiting_diagnostic_decision` without moving the draft. The host must

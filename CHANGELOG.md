@@ -8,6 +8,12 @@ release tag.
 
 ## [Unreleased]
 
+### Added
+
+- Atomic, workspace-local idempotent run submission through
+  `--idempotency-key`, hashed key storage, canonical work-order fingerprints,
+  duplicate reuse, conflict rejection, and read-only submission lookup.
+
 ### Fixed
 
 - Supplied research is now loaded and validated during preflight, before a

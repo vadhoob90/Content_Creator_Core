@@ -33,3 +33,37 @@ referentially invalid supplied briefs are recorded as invocation diagnostics
 under `.content-creator/invocations/`; they do not create failed entries under
 `runs/`. Agent-generated research remains part of the persisted run because it
 is produced during execution.
+
+## Idempotent submission and intentional revisions
+
+Callers that may retry an uncertain invocation should supply a stable key:
+
+```bash
+content-creator --workspace . run \
+  "Write the launch post" \
+  --pack linkedin-post \
+  --voice <voice-id> \
+  --idempotency-key launch-post-request-1
+```
+
+Core hashes the key before persistence and atomically associates it with a
+canonical fingerprint and one `run_id`. Repeating the equivalent submission
+returns that run at its current state without rerunning research, drafting,
+review, learning, or publication. Reusing the key with a different work order
+fails as a workflow validation error.
+
+Inspect a known submission without executing it:
+
+```bash
+content-creator --workspace . submission status launch-post-request-1
+```
+
+The command works while the run is active and after it reaches a terminal or
+human-checkpoint state. Normal `status <run-id>` and `coordinator next-actions
+<run-id>` remain authoritative for continuation. Research approval and
+publication retain their existing state gates and are never repeated by
+idempotent submission.
+
+A deliberate revision is not a retry. Give it a new idempotency key and pass
+`--parent-run <prior-run-id>` so it receives a distinct run while preserving
+the existing content lineage.

@@ -91,6 +91,10 @@ class ContentCoordinator:
                 self._operation("workspace.start", ["start", "<request>"]),
                 self._operation("run.plan", ["plan", "<request>"]),
                 self._operation("run.create", ["run", "<request>"], mutates=True),
+                self._operation(
+                    "run.submission-status",
+                    ["submission", "status", "<idempotency-key>"],
+                ),
                 self._operation("run.list", ["coordinator", "runs"]),
                 self._operation(
                     "run.next-actions",

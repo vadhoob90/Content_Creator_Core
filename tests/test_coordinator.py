@@ -19,6 +19,7 @@ def test_coordinator_capabilities_expose_approval_boundaries(project, capsys):
 
     operations = {item["id"]: item for item in result["operations"]}
     assert operations["workspace.inspect"]["mutates_workspace"] is False
+    assert operations["run.submission-status"]["mutates_workspace"] is False
     assert operations["research.approve"]["requires_explicit_approval"] is True
     assert operations["content.publish-local"]["requires_explicit_approval"] is True
     assert result["boundaries"]["external_publication"] is False
