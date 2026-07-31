@@ -13,6 +13,10 @@ class PackError(ValueError):
     pass
 
 
+class StatisticalVoiceScorePackPolicy(BaseModel):
+    eligible: bool = False
+
+
 class ContentPack(BaseModel):
     schema_version: str = "1.0"
     id: str
@@ -23,6 +27,9 @@ class ContentPack(BaseModel):
     rubric: Optional[str] = "rubric.yaml"
     rubrics: List[str] = Field(default_factory=list)
     prompts: Dict[str, str] = Field(default_factory=dict)
+    statistical_voice_score: StatisticalVoiceScorePackPolicy = Field(
+        default_factory=StatisticalVoiceScorePackPolicy
+    )
     validators: List[str] = Field(default_factory=list)
     integrity_validators: List[str] = Field(
         default_factory=lambda: [
@@ -91,7 +98,7 @@ class PackRegistry:
         data = chain[-1].model_dump()
         for child in reversed(chain[:-1]):
             child_data = child.model_dump(exclude_unset=True)
-            for mapping in ("defaults", "prompts"):
+            for mapping in ("defaults", "prompts", "statistical_voice_score"):
                 merged = dict(data.get(mapping, {}))
                 merged.update(child_data.get(mapping, {}))
                 child_data[mapping] = merged
