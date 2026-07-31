@@ -25,7 +25,9 @@ governed [perspective](guides/perspective-provenance.md), not a new voice.
 The statistical measurements describe patterns in the authorised corpus; they
 do not prove authorship or provide mechanical targets for generated prose.
 Optional deterministic or ML draft scoring is disabled by default and remains
-advisory evidence for the critic, never a publication gate.
+advisory evidence for the critic, never a publication gate. Automatic scoring
+also requires an eligible content pack; explicit ad hoc scoring remains
+available independently of pack eligibility.
 
 ## I want to create content
 

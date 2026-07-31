@@ -8,6 +8,36 @@ release tag.
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-07-31
+
+### Added
+
+- Pack-owned `statistical_voice_score.eligible` policy so automatic draft
+  scoring is explicitly limited to content formats with sufficiently stable
+  evidence.
+- Regression coverage proving that ineligible packs create no statistical
+  score artifact and supply no score to the critic, even when workspace and
+  voice preferences enable scoring.
+
+### Changed
+
+- Automatic statistical scoring now requires both voice or workspace opt-in
+  and explicit content-pack eligibility. The built-in `linkedin-article` pack
+  is eligible; `linkedin-post` and mixed-format `general-text` remain fail-safe
+  off.
+- Documentation now distinguishes automatic workflow scoring from the
+  explicit `voice score` command, which remains available for deliberate,
+  ad hoc assessment of any sufficiently long text.
+
+### Migration
+
+- Existing and custom packs default to ineligible when the new field is
+  absent. Pack authors must add
+  `"statistical_voice_score": {"eligible": true}` only after validating that
+  the pack's content length and reference evidence support stable comparison.
+- No stored-run or voice migration is required. Explicit offline scoring is
+  unchanged.
+
 ## [0.9.0] - 2026-07-31
 
 ### Added
