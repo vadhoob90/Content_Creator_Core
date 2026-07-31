@@ -47,6 +47,7 @@ from .storage import RunStore, StorageError
 from .upgrade import WorkspaceUpgradeError, WorkspaceUpgrader
 from .voice_assessment import assess_voice_draft
 from .voice_builder import VoiceBuilder
+from .voice_ml import MLDependencyError, train_voice_ml_model
 from .voices import (
     Authorisation,
     VoiceManifest,
@@ -339,6 +340,28 @@ def build_parser() -> argparse.ArgumentParser:
     voice_assess.add_argument("voice_id")
     voice_assess.add_argument("--draft", required=True)
     voice_assess.add_argument("--voice-version")
+    voice_train_ml = voice_sub.add_parser(
+        "train-ml",
+        help="Explicitly train an optional author-versus-comparison voice model",
+    )
+    voice_train_ml.add_argument("voice_id")
+    voice_train_ml.add_argument("--voice-version")
+    voice_train_ml.add_argument(
+        "--comparison-documents",
+        action="append",
+        required=True,
+        help="Matched non-author file or directory; repeat for several",
+    )
+    voice_train_ml.add_argument(
+        "--accept-low-confidence",
+        action="store_true",
+        help="Train after explicitly accepting preflight reliability warnings",
+    )
+    voice_train_ml.add_argument(
+        "--replace",
+        action="store_true",
+        help="Replace the model for the resolved immutable voice version",
+    )
     voice_sub.add_parser("list")
     voice_sub.add_parser(
         "verify-all",
@@ -1129,6 +1152,17 @@ def _voice_command(root: Path, args) -> int:
             )
         )
         return 0
+    if command == "train-ml":
+        result = train_voice_ml_model(
+            root,
+            args.voice_id,
+            args.voice_version,
+            [Path(item) for item in _documents(args.comparison_documents)],
+            accept_low_confidence=args.accept_low_confidence,
+            replace=args.replace,
+        )
+        _print(result)
+        return 0 if result["trained"] else 5
     if command == "diff":
         voice_root = root / "profiles" / args.voice_id
 
@@ -1377,6 +1411,7 @@ def main(argv=None) -> int:
         OrchestrationError,
         PackError,
         ProviderError,
+        MLDependencyError,
         StorageError,
         WorkspaceUpgradeError,
     ) as exc:

@@ -14,9 +14,16 @@ release tag.
   distribution. Enabled runs preserve a per-revision advisory artifact and
   expose material outliers only to the critic, without changing deterministic
   validation or quality-gate calculations.
-- Explicit offline assessment through
+- Explicit offline statistical assessment through
   `content-creator voice assess <voice-id> --draft <path>`, including minimum
   evidence gates and no authorship probability or aggregate similarity score.
+- Explicit, optional regularised logistic-regression training from an active
+  voice and matched non-author documents. Reliability preflight refuses
+  unusable corpora, pauses on low-confidence data, and requires an explicit
+  override before training; training never activates ML assessment.
+- Version-scoped, author-workspace JSON model artifacts and dependency-free
+  inference. Raw corpus text, local paths, and unsafe pickle payloads are not
+  persisted in the model.
 
 ## [0.8.0] - 2026-07-31
 

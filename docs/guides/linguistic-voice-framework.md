@@ -61,6 +61,7 @@ Enable automated assessment in `content-creator.yaml`:
 ```yaml
 voice_assessment:
   enabled: true
+  mode: statistical
   minimum_sources: 20
   minimum_draft_words: 100
   outlier_iqr_multiplier: 1.5
@@ -78,6 +79,55 @@ The assessment reports only material outliers beyond the configured
 interquartile-range envelope. It deliberately produces no authorship probability
 or aggregate similarity score. Too-small corpora and short drafts return an
 insufficient-evidence status instead of a misleading result.
+
+## Optional machine-learning classifier
+
+Machine-learning training is a separate, explicit author action. It is local
+and makes no provider call. It never runs
+during voice building, content generation, workspace initialisation, or package
+installation. Install the optional training dependency and supply a matched
+non-author comparison corpus:
+
+```bash
+python -m pip install 'content-creator[ml]==<the-workspace-pinned-version>'
+
+content-creator --workspace . voice train-ml <voice-id> \
+  --comparison-documents /absolute/path/to/matched-comparison-writing
+```
+
+Core trains one regularised logistic-regression classifier from the active
+voice's written feature vectors and the supplied comparison documents. Raw
+source text and comparison paths are not stored in Core or in the model. The
+author workspace receives a version-scoped JSON artifact under
+`profiles/<voice-id>/models/<voice-version>/` containing the feature schema,
+scaler values, coefficients, data fingerprints, evaluation results, and
+reliability assessment. Inference reads that JSON directly and does not load a
+pickle or require scikit-learn.
+
+Training reliability is reported before fitting. These are conservative volume
+heuristics, not proof that the documents are independent, representative, or
+correctly matched:
+
+- fewer than 10 documents or 5,000 words in either class refuses training;
+- fewer than 40 documents or 20,000 words in either class produces a prominent
+  low-confidence warning and does not train by default;
+- after reviewing that warning, the author may explicitly repeat the command
+  with `--accept-low-confidence`;
+- a class imbalance greater than 2:1 also requires explicit acceptance.
+
+Training never activates the classifier. After reviewing its evaluation, the
+author separately opts into ML assessment:
+
+```yaml
+voice_assessment:
+  enabled: true
+  mode: ml
+  minimum_draft_words: 100
+```
+
+Set `mode: statistical` or `enabled: false` to stop using it. The classifier
+score remains advisory, is supplied only to the critic, and is not an
+authorship probability, validation error, quality score, or publication gate.
 
 ## Measurements are evidence, not instructions
 

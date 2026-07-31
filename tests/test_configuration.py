@@ -118,6 +118,7 @@ def test_diagnostic_policy_rejects_unbounded_retries(project):
 def test_voice_assessment_is_off_by_default(project):
     assert Configuration(project).voice_assessment_policy == {
         "enabled": False,
+        "mode": "statistical",
         "minimum_sources": 20,
         "minimum_draft_words": 100,
         "outlier_iqr_multiplier": 1.5,
@@ -133,4 +134,15 @@ def test_voice_assessment_policy_validates_bounds(project):
     )
 
     with pytest.raises(ConfigurationError, match="minimum_sources"):
+        _ = Configuration(project).voice_assessment_policy
+
+
+def test_voice_assessment_rejects_unknown_mode(project):
+    path = project / "content-creator.yaml"
+    path.write_text(
+        yaml.safe_dump({"voice_assessment": {"mode": "automatic-ml"}}),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ConfigurationError, match="statistical or ml"):
         _ = Configuration(project).voice_assessment_policy
