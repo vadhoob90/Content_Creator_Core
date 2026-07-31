@@ -185,3 +185,46 @@ class Configuration:
                 "diagnostics.defer_recovered_until_publication must be true"
             )
         return policy
+
+    @property
+    def voice_assessment_policy(self) -> Dict[str, Any]:
+        path = self.root / "content-creator.yaml"
+        data = self._read_yaml(path) if path.exists() else {}
+        configured = data.get("voice_assessment", {}) or {}
+        if not isinstance(configured, dict):
+            raise ConfigurationError(
+                "voice_assessment configuration must be a mapping"
+            )
+        policy = {
+            "enabled": False,
+            "minimum_sources": 20,
+            "minimum_draft_words": 100,
+            "outlier_iqr_multiplier": 1.5,
+            "max_reported_outliers": 8,
+        }
+        policy.update(configured)
+        if not isinstance(policy["enabled"], bool):
+            raise ConfigurationError("voice_assessment.enabled must be a boolean")
+        for name, minimum, maximum in (
+            ("minimum_sources", 3, 1000),
+            ("minimum_draft_words", 25, 10000),
+            ("max_reported_outliers", 1, 50),
+        ):
+            value = policy[name]
+            if not isinstance(value, int) or not minimum <= value <= maximum:
+                raise ConfigurationError(
+                    "voice_assessment.{} must be an integer from {} to {}".format(
+                        name, minimum, maximum
+                    )
+                )
+        multiplier = policy["outlier_iqr_multiplier"]
+        if isinstance(multiplier, bool) or not isinstance(multiplier, (int, float)):
+            raise ConfigurationError(
+                "voice_assessment.outlier_iqr_multiplier must be a number"
+            )
+        if not 1.0 <= float(multiplier) <= 5.0:
+            raise ConfigurationError(
+                "voice_assessment.outlier_iqr_multiplier must be from 1.0 to 5.0"
+            )
+        policy["outlier_iqr_multiplier"] = float(multiplier)
+        return policy

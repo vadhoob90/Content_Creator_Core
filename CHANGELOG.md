@@ -8,6 +8,16 @@ release tag.
 
 ## [Unreleased]
 
+### Added
+
+- Optional, default-off draft comparison against an active voice's linguistic
+  distribution. Enabled runs preserve a per-revision advisory artifact and
+  expose material outliers only to the critic, without changing deterministic
+  validation or quality-gate calculations.
+- Explicit offline assessment through
+  `content-creator voice assess <voice-id> --draft <path>`, including minimum
+  evidence gates and no authorship probability or aggregate similarity score.
+
 ## [0.8.0] - 2026-07-31
 
 ### Added

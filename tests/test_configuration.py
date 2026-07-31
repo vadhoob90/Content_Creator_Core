@@ -113,3 +113,24 @@ def test_diagnostic_policy_rejects_unbounded_retries(project):
 
     with pytest.raises(ConfigurationError, match="from 1 to 3"):
         _ = Configuration(project).diagnostic_policy
+
+
+def test_voice_assessment_is_off_by_default(project):
+    assert Configuration(project).voice_assessment_policy == {
+        "enabled": False,
+        "minimum_sources": 20,
+        "minimum_draft_words": 100,
+        "outlier_iqr_multiplier": 1.5,
+        "max_reported_outliers": 8,
+    }
+
+
+def test_voice_assessment_policy_validates_bounds(project):
+    path = project / "content-creator.yaml"
+    path.write_text(
+        yaml.safe_dump({"voice_assessment": {"minimum_sources": 2}}),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ConfigurationError, match="minimum_sources"):
+        _ = Configuration(project).voice_assessment_policy

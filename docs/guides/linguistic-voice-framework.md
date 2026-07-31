@@ -47,6 +47,38 @@ Inspect the candidate signature without opening repository files directly:
 content-creator voice signature <voice-id>
 ```
 
+## Optional draft assessment
+
+Core can compare a draft with the resolved active voice's written linguistic
+distribution. This feature is disabled by default and remains advisory: it does
+not change validation errors, quality scores, or publication gates. When enabled,
+the per-revision report is stored as
+`runs/<run-id>/voice-assessment-<revision>.json` and supplied only to the critic.
+The writer never receives numerical targets.
+
+Enable automated assessment in `content-creator.yaml`:
+
+```yaml
+voice_assessment:
+  enabled: true
+  minimum_sources: 20
+  minimum_draft_words: 100
+  outlier_iqr_multiplier: 1.5
+  max_reported_outliers: 8
+```
+
+Disable it by setting `enabled: false` or omitting the section. An explicit
+offline comparison is available regardless of that automation setting:
+
+```bash
+content-creator --workspace . voice assess <voice-id> --draft path/to/draft.md
+```
+
+The assessment reports only material outliers beyond the configured
+interquartile-range envelope. It deliberately produces no authorship probability
+or aggregate similarity score. Too-small corpora and short drafts return an
+insufficient-evidence status instead of a misleading result.
+
 ## Measurements are evidence, not instructions
 
 The writer must not mechanically target an average sentence length or repeat
