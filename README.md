@@ -125,6 +125,12 @@ Read the [statistical and linguistic voice
 framework](docs/guides/linguistic-voice-framework.md), or inspect a built
 candidate with `content-creator voice signature <voice-id>`.
 
+Core can also calculate an optional `statistical_voice_score` for a draft using
+either deterministic distribution comparison or an explicitly trained ML
+classifier. Scoring is disabled by default and remains critic-only advisory
+evidence: it is not an authorship probability, writing target, quality-gate
+input, or publication gate.
+
 ### 3. Ask for content naturally
 
 Open the author workspace in a supported coding assistant and describe what
