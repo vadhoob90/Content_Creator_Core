@@ -236,7 +236,41 @@ class ContentCoordinator:
                         artifact=state.final_draft_path,
                     )
                 )
-            if state.status == RunStatus.READY:
+            if state.pending_support_count:
+                actions.extend(
+                    [
+                        self._action(
+                            "review-support-candidate",
+                            "Review recovered Core issues before publication",
+                            artifact=state.support_candidate_path,
+                        ),
+                        self._action(
+                            "publish-only",
+                            "Publish without preparing a Core issue",
+                            [
+                                "publish",
+                                run_id,
+                                "--diagnostic-decision",
+                                "publish-only",
+                            ],
+                            mutates=True,
+                            confirmation=True,
+                        ),
+                        self._action(
+                            "publish-and-prepare-issue",
+                            "Publish and prepare the Core issue for host submission",
+                            [
+                                "publish",
+                                run_id,
+                                "--diagnostic-decision",
+                                "prepare-issue",
+                            ],
+                            mutates=True,
+                            confirmation=True,
+                        ),
+                    ]
+                )
+            elif state.status == RunStatus.READY:
                 actions.append(
                     self._action(
                         "publish-local",
@@ -261,6 +295,14 @@ class ContentCoordinator:
                     artifact=state.published_path,
                 )
             )
+            if state.pending_support_count:
+                actions.append(
+                    self._action(
+                        "review-support-candidate",
+                        "Review a Core issue discovered during publication",
+                        artifact=state.support_candidate_path,
+                    )
+                )
         elif state.status == RunStatus.FAILED:
             actions.append(
                 self._action(
@@ -268,6 +310,14 @@ class ContentCoordinator:
                     "Inspect the persisted error before deciding whether to retry",
                 )
             )
+            if state.pending_support_count:
+                actions.append(
+                    self._action(
+                        "review-support-candidate",
+                        "Review the fatal Core diagnostic",
+                        artifact=state.support_candidate_path,
+                    )
+                )
         else:
             actions.append(
                 self._action(
@@ -280,12 +330,18 @@ class ContentCoordinator:
             "schema_version": "1.1",
             "run_id": run_id,
             "status": state.status.value,
-            "requires_human_input": state.status
-            in {
-                RunStatus.AWAITING_RESEARCH_APPROVAL,
-                RunStatus.READY,
-                RunStatus.NEEDS_AUTHOR,
-            },
+            "requires_human_input": (
+                state.status
+                in {
+                    RunStatus.AWAITING_RESEARCH_APPROVAL,
+                    RunStatus.READY,
+                    RunStatus.NEEDS_AUTHOR,
+                }
+                or bool(state.pending_support_count)
+            ),
+            "diagnostic_attention_required": bool(state.pending_support_count),
+            "diagnostic_summary": state.diagnostic_summary_path,
+            "support_candidate": state.support_candidate_path,
             "last_error": state.last_error,
             "artifacts": artifacts,
             "actions": [item.model_dump(mode="json") for item in actions],

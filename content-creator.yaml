@@ -9,3 +9,7 @@ coordinator:
   ask_before_voice_change: true
   require_final_review: true
   external_publication: disabled
+diagnostics:
+  enabled: true
+  max_attempts: 2
+  defer_recovered_until_publication: true

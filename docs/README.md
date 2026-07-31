@@ -28,6 +28,7 @@ governed [perspective](guides/perspective-provenance.md), not a new voice.
 - [Content Creator Coordinator](guides/content-coordinator.md)
 - [Routes and work orders](guides/routes-and-work-orders.md)
 - [Learning and repository publication](guides/learning-and-publication.md)
+- [Runtime diagnostics and Core support candidates](guides/runtime-diagnostics.md)
 - [Content Creator compared with a general-purpose chat app](guides/why-not-just-chat.md)
 
 Core always returns the result for review and never publishes externally.

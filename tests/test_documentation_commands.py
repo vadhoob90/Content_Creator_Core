@@ -99,10 +99,26 @@ def test_documented_command_families_are_parseable():
         ["approve-research", "run-id"],
         ["reject-research", "run-id"],
         ["publish", "run-id"],
+        [
+            "publish",
+            "run-id",
+            "--diagnostic-decision",
+            "prepare-issue",
+        ],
+        ["diagnostics", "show", "run-id"],
+        ["diagnostics", "preflight", "run-id"],
+        [
+            "diagnostics",
+            "link-issue",
+            "run-id",
+            "--issue-url",
+            "https://github.com/example/core/issues/1",
+        ],
         ["run", "--brief", "brief.yaml"],
+        ["run", "Revise", "--parent-run", "run-id"],
         ["eval"],
-        ["workspace", "upgrade", "--to", "v0.6.0"],
-        ["workspace", "upgrade", "--to", "v0.6.0", "--apply"],
+        ["workspace", "upgrade", "--to", "v0.7.0"],
+        ["workspace", "upgrade", "--to", "v0.7.0", "--apply"],
     ]
     for command in commands:
         assert parser.parse_args(command).command

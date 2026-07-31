@@ -10,6 +10,7 @@ build/
 outputs/
 runs/
 .eval-results/
+.content-creator/
 .voice-cache/
 voice-material/
 profiles/*/work-order.json

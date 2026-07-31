@@ -83,6 +83,10 @@ class PerspectiveSelection(BaseModel):
 class WorkOrder(BaseModel):
     request: str
     topic: str
+    content_session_id: str = Field(
+        default_factory=lambda: uuid4().hex[:12]
+    )
+    parent_run_id: Optional[str] = None
     content_pack: str = "general-text"
     voice_id: str = "default"
     voice_version: Optional[str] = None
@@ -109,6 +113,18 @@ class WorkOrder(BaseModel):
     def validate_repository_id(cls, value):
         if value is not None and not re.fullmatch(r"[a-z0-9][a-z0-9-]{0,62}", value):
             raise ValueError("Repository ids must use lowercase letters, digits, and hyphens")
+        return value
+
+    @field_validator("content_session_id", "parent_run_id")
+    @classmethod
+    def validate_run_reference(cls, value):
+        if value is not None and not re.fullmatch(
+            r"[a-zA-Z0-9_-]{1,64}", value
+        ):
+            raise ValueError(
+                "Run and content session ids must use letters, digits, "
+                "underscores, and hyphens"
+            )
         return value
 
     @model_validator(mode="after")
@@ -274,6 +290,27 @@ class RunState(BaseModel):
     final_draft_path: Optional[str] = None
     published_path: Optional[str] = None
     last_error: Optional[str] = None
+    diagnostic_summary_path: Optional[str] = None
+    support_candidate_path: Optional[str] = None
+    pending_support_count: int = 0
     events: List[RunEvent] = Field(default_factory=list)
     created_at: datetime = Field(default_factory=utc_now)
     updated_at: datetime = Field(default_factory=utc_now)
+
+    @model_validator(mode="before")
+    @classmethod
+    def preserve_legacy_content_session(cls, value):
+        if not isinstance(value, dict):
+            return value
+        work_order = value.get("work_order")
+        if (
+            isinstance(work_order, dict)
+            and not work_order.get("content_session_id")
+        ):
+            value = dict(value)
+            work_order = dict(work_order)
+            work_order["content_session_id"] = (
+                value.get("id") or uuid4().hex[:12]
+            )
+            value["work_order"] = work_order
+        return value

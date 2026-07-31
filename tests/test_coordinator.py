@@ -96,3 +96,32 @@ def test_coordinator_lists_recent_runs(project):
 
     assert result["runs"][0]["run_id"] == "recent-run"
     assert result["runs"][0]["requires_human_input"] is True
+
+
+def test_coordinator_replaces_publish_action_with_diagnostic_choices(project):
+    store = RunStore(project)
+    state = RunState(
+        id="diagnostic-run",
+        status=RunStatus.READY,
+        work_order=WorkOrder(request="Draft", topic="Draft"),
+        route_plan=RoutePlan(route="text-none-none", stages=["writer"]),
+        final_draft_path="runs/diagnostic-run/final.md",
+        support_candidate_path=(
+            "runs/diagnostic-run/support-candidate.json"
+        ),
+        pending_support_count=1,
+    )
+    store.create(state)
+    store.write_artifact(state.id, "final.md", "Draft")
+    store.write_artifact(state.id, "support-candidate.json", [])
+
+    result = ContentCoordinator(project).next_actions(state.id)
+    actions = {item["id"]: item for item in result["actions"]}
+
+    assert result["diagnostic_attention_required"] is True
+    assert "publish-local" not in actions
+    assert actions["publish-only"]["command"][-1] == "publish-only"
+    assert (
+        actions["publish-and-prepare-issue"]["command"][-1]
+        == "prepare-issue"
+    )
