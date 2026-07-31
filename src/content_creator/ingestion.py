@@ -46,9 +46,7 @@ def _docx_text(path: Path) -> str:
         root = ElementTree.fromstring(archive.read("word/document.xml"))
     paragraphs = []
     for paragraph in (node for node in root.iter() if node.tag.endswith("}p")):
-        text = " ".join(
-            node.text or "" for node in paragraph.iter() if node.tag.endswith("}t")
-        )
+        text = " ".join(node.text or "" for node in paragraph.iter() if node.tag.endswith("}t"))
         if text.strip():
             paragraphs.append(text)
     return normalize_text("\n\n".join(paragraphs))
@@ -59,9 +57,7 @@ def _pdf_text(path: Path) -> str:
         from pypdf import PdfReader
     except ImportError as exc:
         raise IngestionError("PDF support requires the pypdf dependency") from exc
-    return normalize_text(
-        "\n\n".join(page.extract_text() or "" for page in PdfReader(path).pages)
-    )
+    return normalize_text("\n\n".join(page.extract_text() or "" for page in PdfReader(path).pages))
 
 
 def read_source(locator: str) -> Tuple[str, str, str]:

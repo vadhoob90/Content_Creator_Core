@@ -28,4 +28,6 @@ not restrict rights granted by the licence.
 
 Do not include credentials, private data, or exploitable secrets in a public
 issue. If GitHub private vulnerability reporting is enabled for the repository,
-use that facility for security-sensitive reports.
+use that facility for security-sensitive reports. See the
+[security policy](SECURITY.md) for supported versions, scope, and reporting
+expectations.

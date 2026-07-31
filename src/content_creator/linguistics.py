@@ -10,9 +10,7 @@ FRAMEWORK_VERSION = "1.0"
 
 _WORD_RE = re.compile(r"[A-Za-z]+(?:['’][A-Za-z]+)?")
 _SENTENCE_RE = re.compile(r"(?<=[.!?])(?:[\"'’”)]*)\s+")
-_CONTRACTION_RE = re.compile(
-    r"\b(?:[A-Za-z]+(?:n't|'re|'ve|'ll|'d|'m|'s))\b", re.I
-)
+_CONTRACTION_RE = re.compile(r"\b(?:[A-Za-z]+(?:n't|'re|'ve|'ll|'d|'m|'s))\b", re.I)
 
 _FIRST_PERSON = {"i", "me", "my", "mine", "we", "us", "our", "ours"}
 _SECOND_PERSON = {"you", "your", "yours"}
@@ -111,11 +109,7 @@ def _mattr(tokens: List[str], window: int = 50) -> float:
 
 
 def _sentences(text: str) -> List[str]:
-    return [
-        item.strip()
-        for item in _SENTENCE_RE.split(text.strip())
-        if _WORD_RE.search(item)
-    ]
+    return [item.strip() for item in _SENTENCE_RE.split(text.strip()) if _WORD_RE.search(item)]
 
 
 def extract_linguistic_features(text: str) -> Dict[str, float]:
@@ -124,11 +118,7 @@ def extract_linguistic_features(text: str) -> Dict[str, float]:
     words = [item.lower().replace("’", "'") for item in _WORD_RE.findall(text)]
     sentences = _sentences(text)
     sentence_lengths = [len(_WORD_RE.findall(item)) for item in sentences]
-    paragraphs = [
-        item.strip()
-        for item in re.split(r"\n\s*\n", text)
-        if _WORD_RE.search(item)
-    ]
+    paragraphs = [item.strip() for item in re.split(r"\n\s*\n", text) if _WORD_RE.search(item)]
     paragraph_lengths = [len(_WORD_RE.findall(item)) for item in paragraphs]
     word_count = len(words)
     sentence_count = len(sentences)
@@ -137,9 +127,7 @@ def extract_linguistic_features(text: str) -> Dict[str, float]:
         "word_count": float(word_count),
         "sentence_count": float(sentence_count),
         "paragraph_count": float(len(paragraphs)),
-        "sentence_length_median": _round(median(sentence_lengths))
-        if sentence_lengths
-        else 0.0,
+        "sentence_length_median": _round(median(sentence_lengths)) if sentence_lengths else 0.0,
         "sentence_length_q1": _percentile(sentence_lengths, 0.25),
         "sentence_length_q3": _percentile(sentence_lengths, 0.75),
         "sentence_length_variation": _round(pstdev(sentence_lengths))
@@ -151,25 +139,17 @@ def extract_linguistic_features(text: str) -> Dict[str, float]:
         "long_sentence_ratio": _rate(
             sum(length >= 25 for length in sentence_lengths), sentence_count, 1
         ),
-        "paragraph_length_median": _round(median(paragraph_lengths))
-        if paragraph_lengths
-        else 0.0,
+        "paragraph_length_median": _round(median(paragraph_lengths)) if paragraph_lengths else 0.0,
         "questions_per_100_sentences": _rate(text.count("?"), sentence_count, 100),
-        "exclamations_per_100_sentences": _rate(
-            text.count("!"), sentence_count, 100
-        ),
+        "exclamations_per_100_sentences": _rate(text.count("!"), sentence_count, 100),
         "first_person_per_1000_words": _rate(
             sum(word in _FIRST_PERSON for word in words), word_count, 1000
         ),
         "second_person_per_1000_words": _rate(
             sum(word in _SECOND_PERSON for word in words), word_count, 1000
         ),
-        "modals_per_1000_words": _rate(
-            sum(word in _MODALS for word in words), word_count, 1000
-        ),
-        "hedges_per_1000_words": _rate(
-            sum(word in _HEDGES for word in words), word_count, 1000
-        ),
+        "modals_per_1000_words": _rate(sum(word in _MODALS for word in words), word_count, 1000),
+        "hedges_per_1000_words": _rate(sum(word in _HEDGES for word in words), word_count, 1000),
         "boosters_per_1000_words": _rate(
             sum(word in _BOOSTERS for word in words), word_count, 1000
         ),
@@ -185,9 +165,7 @@ def extract_linguistic_features(text: str) -> Dict[str, float]:
         "conclusion_markers_per_1000_words": _rate(
             sum(word in _CONCLUSION_MARKERS for word in words), word_count, 1000
         ),
-        "dashes_per_1000_words": _rate(
-            text.count("—") + text.count("–"), word_count, 1000
-        ),
+        "dashes_per_1000_words": _rate(text.count("—") + text.count("–"), word_count, 1000),
         "semicolons_per_1000_words": _rate(text.count(";"), word_count, 1000),
         "colons_per_1000_words": _rate(text.count(":"), word_count, 1000),
         "lexical_diversity_mattr": _mattr(words),
@@ -210,7 +188,7 @@ def _aggregate(items: Iterable[Dict]) -> Dict[str, Dict[str, float]]:
         weights = [max(float(item.get("weight", 1.0)), 0.0) for item in profiles]
         denominator = sum(weights)
         weighted_mean = (
-            sum(value * weight for value, weight in zip(values, weights)) / denominator
+            sum(value * weight for value, weight in zip(values, weights, strict=True))
             if denominator
             else sum(values) / len(values)
         )
@@ -246,10 +224,7 @@ def build_linguistic_signature(sources: Iterable[Dict]) -> Dict:
         by_kind[profile["kind"]].append(profile)
 
     cautions = [
-        (
-            "Measurements are descriptive ranges, not generation targets or proof "
-            "of authorship."
-        ),
+        ("Measurements are descriptive ranges, not generation targets or proof of authorship."),
         (
             "No matched-register reference corpus was supplied; observed features "
             "must not be labelled distinctive without comparison."
@@ -260,9 +235,7 @@ def build_linguistic_signature(sources: Iterable[Dict]) -> Dict:
         ),
     ]
     if len(source_profiles) < 3:
-        cautions.append(
-            "Fewer than three usable sources limits confidence in recurring patterns."
-        )
+        cautions.append("Fewer than three usable sources limits confidence in recurring patterns.")
     if len(by_mode) > 1:
         cautions.append(
             "Spoken and written material are reported separately because register varies."
@@ -275,9 +248,7 @@ def build_linguistic_signature(sources: Iterable[Dict]) -> Dict:
         "language_scope": "English lexicons with language-agnostic structural measures",
         "source_profiles": source_profiles,
         "overall": _aggregate(source_profiles),
-        "by_mode": {
-            name: _aggregate(profiles) for name, profiles in sorted(by_mode.items())
-        },
+        "by_mode": {name: _aggregate(profiles) for name, profiles in sorted(by_mode.items())},
         "by_source_kind": {
             name: _aggregate(profiles) for name, profiles in sorted(by_kind.items())
         },

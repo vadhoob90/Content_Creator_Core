@@ -4,7 +4,7 @@ import argparse
 import difflib
 import json
 import os
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Optional
 
@@ -79,9 +79,7 @@ class _AuthorHelpFormatter(argparse.HelpFormatter):
     def _format_action(self, action):
         if isinstance(action, argparse._SubParsersAction):
             choices = action._choices_actions
-            action._choices_actions = [
-                item for item in choices if item.help != argparse.SUPPRESS
-            ]
+            action._choices_actions = [item for item in choices if item.help != argparse.SUPPRESS]
             try:
                 return super()._format_action(action)
             finally:
@@ -114,13 +112,10 @@ def build_parser() -> argparse.ArgumentParser:
         dest="command",
         required=True,
         metavar=(
-            "{start,overview,workspace,doctor,run,status,submission,publish,"
-            "diagnostics,advanced}"
+            "{start,overview,workspace,doctor,run,status,submission,publish,diagnostics,advanced}"
         ),
     )
-    initialise = sub.add_parser(
-        "init", help=argparse.SUPPRESS
-    )
+    initialise = sub.add_parser("init", help=argparse.SUPPRESS)
     initialise.add_argument(
         "--agent-template",
         default=STANDARD_TEMPLATE,
@@ -198,9 +193,7 @@ def build_parser() -> argparse.ArgumentParser:
         help="Apply the previewed dependency and lockfile update",
     )
 
-    agents = sub.add_parser(
-        "agents", help=argparse.SUPPRESS
-    )
+    agents = sub.add_parser("agents", help=argparse.SUPPRESS)
     agent_sub = agents.add_subparsers(dest="agent_command", required=True)
     for command in ("scaffold", "status", "diff-template"):
         item = agent_sub.add_parser(command)
@@ -261,9 +254,7 @@ def build_parser() -> argparse.ArgumentParser:
         "diagnostics",
         help="Inspect deferred runtime diagnostics",
     )
-    diagnostics_sub = diagnostics.add_subparsers(
-        dest="diagnostics_command", required=True
-    )
+    diagnostics_sub = diagnostics.add_subparsers(dest="diagnostics_command", required=True)
     for command in ("show", "preflight"):
         item = diagnostics_sub.add_parser(command)
         item.add_argument("run_id")
@@ -377,9 +368,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--method",
         choices=["deterministic", "ml"],
     )
-    score_config_state = voice_score_config.add_mutually_exclusive_group(
-        required=True
-    )
+    score_config_state = voice_score_config.add_mutually_exclusive_group(required=True)
     score_config_state.add_argument("--enable", action="store_true")
     score_config_state.add_argument("--disable", action="store_true")
     voice_score_config.add_argument("--selected-by")
@@ -436,9 +425,7 @@ def build_parser() -> argparse.ArgumentParser:
         "perspective",
         help=argparse.SUPPRESS,
     )
-    perspective_sub = perspective.add_subparsers(
-        dest="perspective_command", required=True
-    )
+    perspective_sub = perspective.add_subparsers(dest="perspective_command", required=True)
     perspective_create = perspective_sub.add_parser("create")
     perspective_create.add_argument("--voice", required=True)
     perspective_create.add_argument("--context", required=True)
@@ -453,9 +440,7 @@ def build_parser() -> argparse.ArgumentParser:
     perspective_list.add_argument("--voice", required=True)
     perspective_catalogue = perspective_sub.add_parser("catalogue")
     perspective_catalogue.add_argument("--voice", required=True)
-    perspective_verify_catalogue = perspective_sub.add_parser(
-        "verify-catalogue"
-    )
+    perspective_verify_catalogue = perspective_sub.add_parser("verify-catalogue")
     perspective_verify_catalogue.add_argument("--voice", required=True)
     for command in ("status", "show", "verify", "proposals"):
         item = perspective_sub.add_parser(command)
@@ -464,9 +449,7 @@ def build_parser() -> argparse.ArgumentParser:
     perspective_approve = perspective_sub.add_parser("approve")
     perspective_approve.add_argument("--voice", required=True)
     perspective_approve.add_argument("--context", required=True)
-    perspective_approve.add_argument(
-        "--approved-by", default="repository-owner"
-    )
+    perspective_approve.add_argument("--approved-by", default="repository-owner")
     perspective_deactivate = perspective_sub.add_parser("deactivate")
     perspective_deactivate.add_argument("--voice", required=True)
     perspective_deactivate.add_argument("--context", required=True)
@@ -523,9 +506,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     evaluate = sub.add_parser("eval", help=argparse.SUPPRESS)
     evaluate.add_argument("--mode", choices=["replay", "live"], default="replay")
-    evaluate.add_argument(
-        "--providers", nargs="+", default=["anthropic", "openai"]
-    )
+    evaluate.add_argument("--providers", nargs="+", default=["anthropic", "openai"])
     sub.add_parser(
         "advanced",
         help="Show lifecycle, automation, and administration command families",
@@ -599,19 +580,11 @@ def _main(argv=None) -> int:
     if args.command == "workspace":
         if args.workspace_command == "upgrade":
             upgrader = WorkspaceUpgrader(root)
-            _print(
-                upgrader.apply(args.to)
-                if args.apply
-                else upgrader.preview(args.to)
-            )
+            _print(upgrader.apply(args.to) if args.apply else upgrader.preview(args.to))
             return 0
         destination = Path(args.directory).expanduser()
         if not destination.is_absolute():
-            destination = (
-                root / destination
-                if args.root
-                else Path.cwd() / destination
-            )
+            destination = root / destination if args.root else Path.cwd() / destination
         destination = destination.resolve()
         _print(
             WorkspaceScaffolder(destination).create(
@@ -642,19 +615,13 @@ def _main(argv=None) -> int:
         if args.provider_command == "select":
             path = root / "content-creator.yaml"
             configuration = (
-                yaml.safe_load(path.read_text(encoding="utf-8")) or {}
-                if path.exists()
-                else {}
+                yaml.safe_load(path.read_text(encoding="utf-8")) or {} if path.exists() else {}
             )
             if not isinstance(configuration, dict):
-                raise ConfigurationError(
-                    "content-creator.yaml must contain a mapping"
-                )
+                raise ConfigurationError("content-creator.yaml must contain a mapping")
             provider_configuration = configuration.get("provider", {}) or {}
             if not isinstance(provider_configuration, dict):
-                raise ConfigurationError(
-                    "provider configuration must be a mapping"
-                )
+                raise ConfigurationError("provider configuration must be a mapping")
             provider_configuration["default"] = provider_name
             configuration["provider"] = provider_configuration
             RunStore._atomic_text(
@@ -832,9 +799,7 @@ def _main(argv=None) -> int:
             return 3
     if args.command == "run":
         if args.brief:
-            data = yaml.safe_load(
-                Path(args.brief).read_text(encoding="utf-8")
-            )
+            data = yaml.safe_load(Path(args.brief).read_text(encoding="utf-8"))
             research = data.pop("research", {}) or {}
             data.setdefault("research_depth", research.get("depth", "none"))
             data.setdefault("research_source", research.get("source", "none"))
@@ -853,8 +818,7 @@ def _main(argv=None) -> int:
                 content_format = PackRegistry(root).get(args.pack).format
             depth = ResearchDepth(args.research or "none")
             source = ResearchSource(
-                args.research_source
-                or ("none" if depth == ResearchDepth.NONE else "agent")
+                args.research_source or ("none" if depth == ResearchDepth.NONE else "agent")
             )
             order = WorkOrder(
                 request=args.request,
@@ -910,16 +874,9 @@ def _main(argv=None) -> int:
             order.perspective_context = order.perspective_selections[0].context_id
         if args.perspective_version:
             if len(args.perspective_context) != 1:
-                raise ValueError(
-                    "--perspective-version requires exactly one --perspective-context"
-                )
+                raise ValueError("--perspective-version requires exactly one --perspective-context")
             order.perspective_version = args.perspective_version
-        if (
-            args.thesis
-            or args.intended_challenge
-            or args.personal_basis
-            or args.perspective_entry
-        ):
+        if args.thesis or args.intended_challenge or args.personal_basis or args.perspective_entry:
             order.author_contribution = AuthorContribution(
                 thesis=args.thesis,
                 intended_challenge=args.intended_challenge,
@@ -931,9 +888,7 @@ def _main(argv=None) -> int:
         if args.parent_run:
             parent = orchestrator.store.load(args.parent_run)
             order.parent_run_id = parent.id
-            order.content_session_id = (
-                parent.work_order.content_session_id
-            )
+            order.content_session_id = parent.work_order.content_session_id
         elif args.content_session:
             order.content_session_id = args.content_session
         if args.idempotency_key is None:
@@ -960,9 +915,7 @@ def _main(argv=None) -> int:
         _print(orchestrator.store.load(args.run_id))
         return 0
     if args.command == "submission":
-        state = orchestrator.store.load_by_idempotency_key(
-            args.idempotency_key
-        )
+        state = orchestrator.store.load_by_idempotency_key(args.idempotency_key)
         if state is None:
             raise ValueError("Unknown idempotency key")
         _print(state)
@@ -1005,8 +958,7 @@ def _documents(values: list) -> list:
                 str(item)
                 for item in sorted(path.rglob("*"))
                 if item.is_file()
-                and item.suffix.lower()
-                in {".txt", ".md", ".html", ".pdf", ".docx"}
+                and item.suffix.lower() in {".txt", ".md", ".html", ".pdf", ".docx"}
             )
         else:
             result.append(str(path))
@@ -1052,9 +1004,7 @@ def _voice_command(root: Path, args) -> int:
                     "voice": resolved,
                     "perspective_mode": "disabled",
                     "statistical_voice_score": score_preference,
-                    "perspective_disabled_reason": (
-                        "starter-voice-without-author-evidence"
-                    ),
+                    "perspective_disabled_reason": ("starter-voice-without-author-evidence"),
                     "next_step": (
                         "Create content with --voice {}. Re-run voice onboard "
                         "with --strategy source-derived when author evidence "
@@ -1063,7 +1013,7 @@ def _voice_command(root: Path, args) -> int:
                 }
             )
             return 0
-        selected_at = datetime.now(timezone.utc).isoformat()
+        selected_at = datetime.now(UTC).isoformat()
         order = VoiceWorkOrder(
             display_name=display_name,
             voice_id=voice_id,
@@ -1116,9 +1066,7 @@ def _voice_command(root: Path, args) -> int:
     if command == "create":
         author_name = args.author_name or args.name
         if not author_name:
-            raise ValueError(
-                "--author-name is required (or use legacy --name)"
-            )
+            raise ValueError("--author-name is required (or use legacy --name)")
         display_name = args.label or args.name or author_name
         voice_id = voice_id_for(args.voice_id or display_name)
         if args.voice_id and voice_id != args.voice_id:
@@ -1147,7 +1095,7 @@ def _voice_command(root: Path, args) -> int:
                 status="collecting-sources",
                 strategy=VoiceStrategy.SOURCE_DERIVED,
                 selected_by=args.authorised_by,
-                selected_at=datetime.now(timezone.utc).isoformat(),
+                selected_at=datetime.now(UTC).isoformat(),
                 perspective_mode="pending-source-derived-activation",
             ),
         )
@@ -1224,9 +1172,7 @@ def _voice_command(root: Path, args) -> int:
         if not draft_path.is_file():
             raise StorageError("Draft does not exist: {}".format(draft_path))
         policy = Configuration(root).statistical_voice_score_policy
-        policy["method"] = (
-            "deterministic" if command == "assess" else args.method
-        )
+        policy["method"] = "deterministic" if command == "assess" else args.method
         _print(
             assess_voice_draft(
                 root,
@@ -1297,16 +1243,10 @@ def _voice_command(root: Path, args) -> int:
         _print(
             {
                 "voice_id": args.voice_id,
-                "onboarding": (
-                    onboarding.model_dump(mode="json")
-                    if onboarding
-                    else None
-                ),
+                "onboarding": (onboarding.model_dump(mode="json") if onboarding else None),
                 "candidate": candidate_status,
                 "active": active,
-                "statistical_voice_score": load_score_preference(
-                    root, args.voice_id
-                ),
+                "statistical_voice_score": load_score_preference(root, args.voice_id),
             }
         )
         return 0
@@ -1318,11 +1258,7 @@ def _voice_command(root: Path, args) -> int:
         print((directory / "profile.md").read_text(encoding="utf-8"))
         return 0
     if command == "signature":
-        _print(
-            json.loads(
-                (candidate / "linguistic-signature.json").read_text(encoding="utf-8")
-            )
-        )
+        _print(json.loads((candidate / "linguistic-signature.json").read_text(encoding="utf-8")))
         return 0
     if command == "verify":
         report = _verify_voice(root, registry, args.voice_id)
@@ -1390,11 +1326,7 @@ def _perspective_command(root: Path, args) -> int:
         )
     registry = PerspectiveRegistry(root, args.voice)
     if command == "catalogue":
-        _print(
-            PerspectiveCatalogueStore(root, args.voice).load().model_dump(
-                mode="json"
-            )
-        )
+        _print(PerspectiveCatalogueStore(root, args.voice).load().model_dump(mode="json"))
         return 0
     if command == "verify-catalogue":
         result = PerspectiveCatalogueStore(root, args.voice).verify()
@@ -1404,9 +1336,7 @@ def _perspective_command(root: Path, args) -> int:
         entries = []
         if args.statement:
             if not args.evidence:
-                raise ValueError(
-                    "--evidence is required when creating a perspective statement"
-                )
+                raise ValueError("--evidence is required when creating a perspective statement")
             entries.append(
                 PerspectiveEntry(
                     type=args.type,

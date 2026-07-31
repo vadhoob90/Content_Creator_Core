@@ -46,9 +46,7 @@ def test_empty_workspace_uses_packaged_core_resources(tmp_path, capsys):
     assert template_difference["missing"] == []
 
 
-def test_repository_agent_specialises_but_does_not_replace_core_contract(
-    tmp_path, capsys
-):
+def test_repository_agent_specialises_but_does_not_replace_core_contract(tmp_path, capsys):
     assert main(["--workspace", str(tmp_path), "init"]) == 0
     capsys.readouterr()
     (tmp_path / "agents" / "writer.md").write_text(

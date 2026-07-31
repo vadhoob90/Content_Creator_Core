@@ -38,9 +38,7 @@ def test_pack_and_format_mismatch_fails_before_a_run_is_created(project):
     assert not list((project / "runs").glob("*/state.json"))
 
 
-@pytest.mark.parametrize(
-    "field", ["content_pack", "voice_id", "perspective_context"]
-)
+@pytest.mark.parametrize("field", ["content_pack", "voice_id", "perspective_context"])
 def test_repository_identifiers_reject_path_traversal(field):
     with pytest.raises(ValidationError, match="Repository ids"):
         WorkOrder(request="write", topic="topic", **{field: "../outside"})
@@ -68,9 +66,7 @@ def test_prompt_and_learning_memory_are_scoped_to_selected_voice(project):
                 "status": "active",
                 "candidate_hash": "sha256:fixture",
                 "components": {"profile": "profile.md"},
-                "component_hashes": {
-                    "profile": hash_file(version / "profile.md")
-                },
+                "component_hashes": {"profile": hash_file(version / "profile.md")},
                 "supported_packs": {"general-text": "medium"},
                 "authorisation": {"confirmed": True},
             }
@@ -122,9 +118,7 @@ def test_prompt_and_learning_memory_are_scoped_to_selected_voice(project):
     assert "not be treated as approved writing instructions" not in prompt
     assert "Prefer a concrete example." in prompt
     assert "Default Placeholder" not in prompt
-    assert LearningMemory(project, "second-voice").path == (
-        profile / "learnings" / "memory.json"
-    )
+    assert LearningMemory(project, "second-voice").path == (profile / "learnings" / "memory.json")
 
     manifest_path = version / "manifest.json"
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))

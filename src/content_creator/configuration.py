@@ -35,16 +35,10 @@ class Configuration:
         provider = os.getenv("CONTENT_CREATOR_PROVIDER")
         if not provider:
             workspace_config = self.root / "content-creator.yaml"
-            workspace = (
-                self._read_yaml(workspace_config)
-                if workspace_config.exists()
-                else {}
-            )
+            workspace = self._read_yaml(workspace_config) if workspace_config.exists() else {}
             configured = workspace.get("provider", {}) or {}
             if not isinstance(configured, dict):
-                raise ConfigurationError(
-                    "provider configuration must be a mapping"
-                )
+                raise ConfigurationError("provider configuration must be a mapping")
             provider = configured.get("default")
         if not provider:
             provider = self.models.get("defaults", {}).get("provider")
@@ -54,9 +48,7 @@ class Configuration:
                 "--provider, or set provider.default in content-creator.yaml"
             )
         if provider not in self.models["providers"]:
-            raise ConfigurationError(
-                "Unknown default provider: {}".format(provider)
-            )
+            raise ConfigurationError("Unknown default provider: {}".format(provider))
         return provider
 
     @property
@@ -99,9 +91,7 @@ class Configuration:
         )
 
     def rubric(self, name: str) -> Dict[str, Any]:
-        return self._read_yaml(
-            self.resources.path("rubrics/{}.yaml".format(name))
-        )
+        return self._read_yaml(self.resources.path("rubrics/{}.yaml".format(name)))
 
     @property
     def perspective_policy(self) -> Dict[str, Any]:
@@ -119,9 +109,7 @@ class Configuration:
         }
         policy.update(configured)
         if policy["mode"] not in {"explicit", "automatic", "disabled"}:
-            raise ConfigurationError(
-                "perspective.mode must be explicit, automatic, or disabled"
-            )
+            raise ConfigurationError("perspective.mode must be explicit, automatic, or disabled")
         return policy
 
     @property
@@ -130,9 +118,7 @@ class Configuration:
         data = self._read_yaml(path) if path.exists() else {}
         configured = data.get("coordinator", {}) or {}
         if not isinstance(configured, dict):
-            raise ConfigurationError(
-                "coordinator configuration must be a mapping"
-            )
+            raise ConfigurationError("coordinator configuration must be a mapping")
         policy = {
             "name": "Content Creator Coordinator",
             "default_voice": None,
@@ -144,17 +130,11 @@ class Configuration:
         }
         policy.update(configured)
         if policy["external_publication"] != "disabled":
-            raise ConfigurationError(
-                "coordinator.external_publication must be disabled"
-            )
+            raise ConfigurationError("coordinator.external_publication must be disabled")
         if not isinstance(policy["ask_before_voice_change"], bool):
-            raise ConfigurationError(
-                "coordinator.ask_before_voice_change must be a boolean"
-            )
+            raise ConfigurationError("coordinator.ask_before_voice_change must be a boolean")
         if not isinstance(policy["require_final_review"], bool):
-            raise ConfigurationError(
-                "coordinator.require_final_review must be a boolean"
-            )
+            raise ConfigurationError("coordinator.require_final_review must be a boolean")
         return policy
 
     @property
@@ -163,9 +143,7 @@ class Configuration:
         data = self._read_yaml(path) if path.exists() else {}
         configured = data.get("diagnostics", {}) or {}
         if not isinstance(configured, dict):
-            raise ConfigurationError(
-                "diagnostics configuration must be a mapping"
-            )
+            raise ConfigurationError("diagnostics configuration must be a mapping")
         policy = {
             "enabled": True,
             "max_attempts": 2,
@@ -174,16 +152,10 @@ class Configuration:
         policy.update(configured)
         if not isinstance(policy["enabled"], bool):
             raise ConfigurationError("diagnostics.enabled must be a boolean")
-        if not isinstance(policy["max_attempts"], int) or not (
-            1 <= policy["max_attempts"] <= 3
-        ):
-            raise ConfigurationError(
-                "diagnostics.max_attempts must be an integer from 1 to 3"
-            )
+        if not isinstance(policy["max_attempts"], int) or not (1 <= policy["max_attempts"] <= 3):
+            raise ConfigurationError("diagnostics.max_attempts must be an integer from 1 to 3")
         if policy["defer_recovered_until_publication"] is not True:
-            raise ConfigurationError(
-                "diagnostics.defer_recovered_until_publication must be true"
-            )
+            raise ConfigurationError("diagnostics.defer_recovered_until_publication must be true")
         return policy
 
     @property
@@ -198,16 +170,10 @@ class Configuration:
                 configured = dict(configured)
                 legacy_mode = configured.pop("mode")
                 if legacy_mode not in {"statistical", "ml"}:
-                    raise ConfigurationError(
-                        "voice_assessment.mode must be statistical or ml"
-                    )
-                configured["method"] = (
-                    "deterministic" if legacy_mode == "statistical" else "ml"
-                )
+                    raise ConfigurationError("voice_assessment.mode must be statistical or ml")
+                configured["method"] = "deterministic" if legacy_mode == "statistical" else "ml"
         if not isinstance(configured, dict):
-            raise ConfigurationError(
-                "statistical_voice_score configuration must be a mapping"
-            )
+            raise ConfigurationError("statistical_voice_score configuration must be a mapping")
         policy = {
             "enabled": False,
             "method": "deterministic",
@@ -218,13 +184,9 @@ class Configuration:
         }
         policy.update(configured)
         if not isinstance(policy["enabled"], bool):
-            raise ConfigurationError(
-                "statistical_voice_score.enabled must be a boolean"
-            )
+            raise ConfigurationError("statistical_voice_score.enabled must be a boolean")
         if policy["method"] not in {"deterministic", "ml"}:
-            raise ConfigurationError(
-                "statistical_voice_score.method must be deterministic or ml"
-            )
+            raise ConfigurationError("statistical_voice_score.method must be deterministic or ml")
         for name, minimum, maximum in (
             ("minimum_sources", 3, 1000),
             ("minimum_draft_words", 25, 10000),

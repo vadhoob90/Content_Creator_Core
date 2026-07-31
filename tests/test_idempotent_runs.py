@@ -62,9 +62,7 @@ def test_conflicting_idempotency_key_fails_without_second_run(project):
         )
 
     assert len(list((project / "runs").glob("*/state.json"))) == 1
-    summary = json.loads(
-        (project / raised.value.diagnostic_path).read_text(encoding="utf-8")
-    )
+    summary = json.loads((project / raised.value.diagnostic_path).read_text(encoding="utf-8"))
     assert summary["classification"] == "content_workflow"
     assert summary["support_worthy"] is False
 
@@ -89,10 +87,7 @@ def test_distinct_revision_key_preserves_content_lineage(project):
 
     assert second.id != first.id
     assert second.work_order.parent_run_id == first.id
-    assert (
-        second.work_order.content_session_id
-        == first.work_order.content_session_id
-    )
+    assert second.work_order.content_session_id == first.work_order.content_session_id
 
 
 def test_duplicate_terminal_submission_does_not_repeat_publication(project):
@@ -104,26 +99,16 @@ def test_duplicate_terminal_submission_does_not_repeat_publication(project):
             "learning-extractor": [{"candidates": []}],
         },
     )
-    first = orchestrator.start(
-        _order(), idempotency_key="published-piece"
-    )
+    first = orchestrator.start(_order(), idempotency_key="published-piece")
     published = orchestrator.publish(first.id, filename="published-piece.md")
 
-    duplicate = _orchestrator(project, {}).start(
-        _order(), idempotency_key="published-piece"
-    )
+    duplicate = _orchestrator(project, {}).start(_order(), idempotency_key="published-piece")
 
     assert duplicate.id == published.id
     assert duplicate.status == RunStatus.PUBLISHED
     assert duplicate.idempotency_reused is True
-    assert list(
-        (project / "content" / "linkedin-post" / "published").glob("*.md")
-    ) == [
-        project
-        / "content"
-        / "linkedin-post"
-        / "published"
-        / "published-piece.md"
+    assert list((project / "content" / "linkedin-post" / "published").glob("*.md")) == [
+        project / "content" / "linkedin-post" / "published" / "published-piece.md"
     ]
 
 
@@ -137,9 +122,7 @@ def test_atomic_index_allows_one_concurrent_submission(project):
             work_order=WorkOrder(request="write", topic="topic"),
             route_plan=RoutePlan(route="text-none-none", stages=["writer"]),
         )
-        return RunStore(project).create_idempotent(
-            state, key, fingerprint
-        )
+        return RunStore(project).create_idempotent(state, key, fingerprint)
 
     with ThreadPoolExecutor(max_workers=2) as executor:
         outcomes = list(executor.map(submit, [1, 2]))
@@ -177,7 +160,5 @@ def test_submission_status_resolves_key_without_execution(project, capsys):
 
 
 def test_run_parser_accepts_idempotency_key():
-    args = build_parser().parse_args(
-        ["run", "write", "--idempotency-key", "request-123"]
-    )
+    args = build_parser().parse_args(["run", "write", "--idempotency-key", "request-123"])
     assert args.idempotency_key == "request-123"

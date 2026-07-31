@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import re
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
 from typing import Dict, List, Optional
 from uuid import uuid4
@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 def utc_now() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 class ResearchDepth(str, Enum):
@@ -89,9 +89,7 @@ class PerspectiveSelection(BaseModel):
 class WorkOrder(BaseModel):
     request: str
     topic: str
-    content_session_id: str = Field(
-        default_factory=lambda: uuid4().hex[:12]
-    )
+    content_session_id: str = Field(default_factory=lambda: uuid4().hex[:12])
     parent_run_id: Optional[str] = None
     content_pack: str = "general-text"
     voice_id: str = "default"
@@ -124,12 +122,9 @@ class WorkOrder(BaseModel):
     @field_validator("content_session_id", "parent_run_id")
     @classmethod
     def validate_run_reference(cls, value):
-        if value is not None and not re.fullmatch(
-            r"[a-zA-Z0-9_-]{1,64}", value
-        ):
+        if value is not None and not re.fullmatch(r"[a-zA-Z0-9_-]{1,64}", value):
             raise ValueError(
-                "Run and content session ids must use letters, digits, "
-                "underscores, and hyphens"
+                "Run and content session ids must use letters, digits, underscores, and hyphens"
             )
         return value
 
@@ -153,19 +148,14 @@ class WorkOrder(BaseModel):
             else []
         )
         if selected and not self.perspective_context:
-            raise ValueError(
-                "reusable perspective entries require perspective_context"
-            )
+            raise ValueError("reusable perspective entries require perspective_context")
         if selected and len(self.perspective_selections) > 1:
-            raise ValueError(
-                "explicit perspective entry selection supports one context"
-            )
-        context_ids = [
-            selection.context_id for selection in self.perspective_selections
-        ]
+            raise ValueError("explicit perspective entry selection supports one context")
+        context_ids = [selection.context_id for selection in self.perspective_selections]
         if len(context_ids) != len(set(context_ids)):
             raise ValueError("Perspective contexts must be unique")
         return self
+
 
 class PlanningDecision(BaseModel):
     needs_clarification: bool = False
@@ -231,10 +221,7 @@ class Critique(BaseModel):
             return {}
         if not isinstance(value, dict):
             return value
-        return {
-            key: cls._normalise_legacy_disposition(status)
-            for key, status in value.items()
-        }
+        return {key: cls._normalise_legacy_disposition(status) for key, status in value.items()}
 
     @staticmethod
     def _normalise_legacy_disposition(value):
@@ -345,14 +332,9 @@ class RunState(BaseModel):
         if not isinstance(value, dict):
             return value
         work_order = value.get("work_order")
-        if (
-            isinstance(work_order, dict)
-            and not work_order.get("content_session_id")
-        ):
+        if isinstance(work_order, dict) and not work_order.get("content_session_id"):
             value = dict(value)
             work_order = dict(work_order)
-            work_order["content_session_id"] = (
-                value.get("id") or uuid4().hex[:12]
-            )
+            work_order["content_session_id"] = value.get("id") or uuid4().hex[:12]
             value["work_order"] = work_order
         return value

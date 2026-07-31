@@ -58,9 +58,7 @@ class RunStore:
             ).fetchone()
             if existing:
                 connection.rollback()
-                return self._existing_submission(
-                    key_hash, fingerprint, existing
-                ), False
+                return self._existing_submission(key_hash, fingerprint, existing), False
             state.idempotency_key_hash = key_hash
             connection.execute(
                 "INSERT INTO submissions "
@@ -82,9 +80,7 @@ class RunStore:
         except (OSError, sqlite3.Error) as exc:
             if connection is not None:
                 connection.rollback()
-            raise StorageError(
-                "Could not persist idempotent run submission"
-            ) from exc
+            raise StorageError("Could not persist idempotent run submission") from exc
         finally:
             if connection is not None:
                 connection.close()
@@ -107,9 +103,7 @@ class RunStore:
                 (key_hash,),
             ).fetchone()
         except sqlite3.Error as exc:
-            raise StorageError(
-                "Could not read idempotent run submission"
-            ) from exc
+            raise StorageError("Could not read idempotent run submission") from exc
         finally:
             if connection is not None:
                 connection.close()

@@ -38,9 +38,7 @@ def test_recovered_core_issue_is_deferred_until_publication(project):
     assert state.status == RunStatus.READY
     assert state.pending_support_count == 0
     assert not (project / "runs" / state.id / "support-candidate.json").exists()
-    diagnostic_text = (
-        project / "runs" / state.id / "diagnostics.jsonl"
-    ).read_text()
+    diagnostic_text = (project / "runs" / state.id / "diagnostics.jsonl").read_text()
     assert "not-json" not in diagnostic_text
     assert "Structured response did not match" in diagnostic_text
 
@@ -51,18 +49,14 @@ def test_recovered_core_issue_is_deferred_until_publication(project):
     assert preflight["requires_diagnostic_decision"] is True
     assert preflight["candidates"][0]["recovered"] is True
     assert preflight["candidates"][0]["occurrences"] == 1
-    assert not (
-        project / "content" / "linkedin-post" / "published" / "recovered.md"
-    ).exists()
+    assert not (project / "content" / "linkedin-post" / "published" / "recovered.md").exists()
 
     state = orchestrator.publish(
         state.id,
         filename="recovered.md",
         diagnostic_decision="prepare-issue",
     )
-    candidates = json.loads(
-        (project / "runs" / state.id / "support-candidate.json").read_text()
-    )
+    candidates = json.loads((project / "runs" / state.id / "support-candidate.json").read_text())
     assert state.status == RunStatus.PUBLISHED
     assert state.pending_support_count == 0
     assert candidates[0]["status"] == "issue_requested"
@@ -138,9 +132,7 @@ def test_content_lineage_aggregates_and_deduplicates_occurrences(project):
 def test_provider_failure_does_not_become_core_candidate(project):
     diagnostics = RuntimeDiagnostics(project)
     diagnostics.begin_invocation("provider-session")
-    detail = diagnostics.classify(
-        type("ProviderError", (RuntimeError,), {})("service unavailable")
-    )
+    detail = diagnostics.classify(type("ProviderError", (RuntimeError,), {})("service unavailable"))
     assert detail["classification"] == "provider"
     assert detail["support_worthy"] is False
 
@@ -148,8 +140,7 @@ def test_provider_failure_does_not_become_core_candidate(project):
 def test_diagnostic_sanitiser_removes_secrets_and_user_paths(project):
     diagnostics = RuntimeDiagnostics(project)
     value = diagnostics.sanitise(
-        "API_KEY=super-secret at /Users/example/private/file "
-        + str(project / "draft.md")
+        "API_KEY=super-secret at /Users/example/private/file " + str(project / "draft.md")
     )
     assert "super-secret" not in value
     assert "/Users/example" not in value
@@ -186,9 +177,7 @@ def test_linking_issue_completes_candidate_lifecycle(project):
         state.id,
         "https://github.com/vadhoob90/Content_Creator_Core/issues/123",
     )
-    candidates = json.loads(
-        (project / "runs" / state.id / "support-candidate.json").read_text()
-    )
+    candidates = json.loads((project / "runs" / state.id / "support-candidate.json").read_text())
     assert result["status"] == "issue_raised"
     assert candidates[0]["status"] == "issue_raised"
     assert candidates[0]["issue_url"].endswith("/123")
@@ -209,11 +198,7 @@ def test_failure_before_run_creation_preserves_invocation_summary(project):
 
     diagnostic_path = project / raised.value.diagnostic_path
     summary = json.loads(diagnostic_path.read_text())
-    latest = json.loads(
-        (
-            project / ".content-creator" / "latest-invocation.json"
-        ).read_text()
-    )
+    latest = json.loads((project / ".content-creator" / "latest-invocation.json").read_text())
     assert summary["status"] == "failed_before_run"
     assert summary["classification"] == "workspace_configuration"
     assert latest["diagnostic_summary"] == raised.value.diagnostic_path

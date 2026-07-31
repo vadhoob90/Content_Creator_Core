@@ -26,8 +26,7 @@ class BriefingAgent:
         content_format = "article" if "article" in lowered else "post"
 
         explicit_none = any(
-            phrase in lowered
-            for phrase in ("no research", "without research", "do not research")
+            phrase in lowered for phrase in ("no research", "without research", "do not research")
         )
         explicit_deep = any(
             phrase in lowered
@@ -70,11 +69,7 @@ class BriefingAgent:
         return WorkOrder(
             request=request,
             topic=request,
-            content_pack=(
-                "linkedin-article"
-                if content_format == "article"
-                else "linkedin-post"
-            ),
+            content_pack=("linkedin-article" if content_format == "article" else "linkedin-post"),
             format=content_format,
             research_depth=depth,
             research_source=source,

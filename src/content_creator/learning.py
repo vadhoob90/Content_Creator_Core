@@ -24,9 +24,7 @@ class LearningMemory:
         data = {"version": 1, "records": []}
         if self.path.exists():
             data = json.loads(self.path.read_text(encoding="utf-8"))
-        existing = {
-            (item["role"], item["principle"].strip().lower()) for item in data["records"]
-        }
+        existing = {(item["role"], item["principle"].strip().lower()) for item in data["records"]}
         for candidate in extraction.candidates:
             key = (candidate.role, candidate.principle.strip().lower())
             if key in existing:
@@ -44,24 +42,16 @@ class LearningMemory:
             ]
             record = LearningRecord(
                 **candidate.model_dump(exclude={"status", "conflicts_with"}),
-                status=(
-                    candidate.status
-                    if explicit_feedback
-                    else "provisional"
-                ),
+                status=(candidate.status if explicit_feedback else "provisional"),
                 run_id=run_id,
                 voice_id=self.path.parents[1].name,
                 voice_version=voice_version,
                 content_pack=content_pack,
-                conflicts_with=list(
-                    dict.fromkeys(candidate.conflicts_with + conflicts)
-                ),
+                conflicts_with=list(dict.fromkeys(candidate.conflicts_with + conflicts)),
             )
             data["records"].append(record.model_dump(mode="json"))
             existing.add(key)
-        RunStore._atomic_text(
-            self.path, json.dumps(data, indent=2, ensure_ascii=False)
-        )
+        RunStore._atomic_text(self.path, json.dumps(data, indent=2, ensure_ascii=False))
 
     def consolidate_candidate(self) -> Path:
         data = {"version": 1, "records": []}
@@ -74,9 +64,7 @@ class LearningMemory:
                 {
                     "status": "candidate",
                     "source_learning_ids": [
-                        item["id"]
-                        for item in data["records"]
-                        if item.get("status") == "active"
+                        item["id"] for item in data["records"] if item.get("status") == "active"
                     ],
                 },
                 indent=2,

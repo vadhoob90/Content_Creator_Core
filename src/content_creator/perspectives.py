@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import os
 import shutil
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -130,22 +130,16 @@ class PerspectiveCatalogueStore:
     def load(self) -> PerspectiveCatalogue:
         if not self.path.exists():
             return PerspectiveCatalogue()
-        catalogue = PerspectiveCatalogue.model_validate_json(
-            self.path.read_text(encoding="utf-8")
-        )
+        catalogue = PerspectiveCatalogue.model_validate_json(self.path.read_text(encoding="utf-8"))
         context_ids = [item.context_id for item in catalogue.contexts]
         if len(context_ids) != len(set(context_ids)):
             raise PerspectiveError("Perspective catalogue context ids must be unique")
         invalid = sorted(
-            context_id
-            for context_id in context_ids
-            if slugify(context_id) != context_id
+            context_id for context_id in context_ids if slugify(context_id) != context_id
         )
         if invalid:
             raise PerspectiveError(
-                "Perspective catalogue contains invalid context ids: {}".format(
-                    ", ".join(invalid)
-                )
+                "Perspective catalogue contains invalid context ids: {}".format(", ".join(invalid))
             )
         return catalogue
 
@@ -155,8 +149,7 @@ class PerspectiveCatalogueStore:
         contexts = [
             item.model_dump(mode="json")
             for item in catalogue.contexts
-            if active.get(item.context_id, {}).get("status")
-            == PerspectiveStatus.ACTIVE.value
+            if active.get(item.context_id, {}).get("status") == PerspectiveStatus.ACTIVE.value
         ]
         return {
             "schema_version": catalogue.schema_version,
@@ -168,16 +161,13 @@ class PerspectiveCatalogueStore:
         catalogue = self.load()
         registry = self.registry.list()
         unknown = sorted(
-            item.context_id
-            for item in catalogue.contexts
-            if item.context_id not in registry
+            item.context_id for item in catalogue.contexts if item.context_id not in registry
         )
         inactive = sorted(
             item.context_id
             for item in catalogue.contexts
             if item.context_id in registry
-            and registry[item.context_id].get("status")
-            != PerspectiveStatus.ACTIVE.value
+            and registry[item.context_id].get("status") != PerspectiveStatus.ACTIVE.value
         )
         return {
             "voice_id": self.voice_id,
@@ -209,9 +199,7 @@ class PerspectiveResolver:
                 raise PerspectiveError(
                     "Perspective contexts cannot be supplied when perspective use "
                     "is disabled{}".format(
-                        ": {}".format(forced_disabled_reason)
-                        if forced_disabled_reason
-                        else ""
+                        ": {}".format(forced_disabled_reason) if forced_disabled_reason else ""
                     )
                 )
             return PerspectiveResolution(
@@ -225,9 +213,7 @@ class PerspectiveResolver:
             )
         if mode == PerspectiveMode.EXPLICIT:
             return PerspectiveResolution(mode=mode)
-        catalogue = PerspectiveCatalogueStore(
-            self.root, order.voice_id
-        ).routing_payload()
+        catalogue = PerspectiveCatalogueStore(self.root, order.voice_id).routing_payload()
         if not catalogue["contexts"]:
             return PerspectiveResolution(mode=mode)
         resolution = self.runner.run(
@@ -244,9 +230,7 @@ class PerspectiveResolver:
                 "work_order": order.model_dump(mode="json"),
                 "perspective_catalogue": catalogue,
                 "allow_multiple": bool(policy.get("allow_multiple")),
-                "ask_when_ambiguous": bool(
-                    policy.get("ask_when_ambiguous")
-                ),
+                "ask_when_ambiguous": bool(policy.get("ask_when_ambiguous")),
             },
             order=order,
             output_model=PerspectiveResolution,
@@ -256,26 +240,19 @@ class PerspectiveResolver:
         allowed = {item["context_id"] for item in catalogue["contexts"]}
         selected_ids = [item.context_id for item in resolution.selected]
         if len(selected_ids) != len(set(selected_ids)):
-            raise PerspectiveError(
-                "Perspective resolver selected duplicate contexts"
-            )
+            raise PerspectiveError("Perspective resolver selected duplicate contexts")
         invalid = sorted(
-            item.context_id for item in resolution.selected
-            if item.context_id not in allowed
+            item.context_id for item in resolution.selected if item.context_id not in allowed
         )
         if invalid:
             raise PerspectiveError(
-                "Perspective resolver selected unavailable contexts: {}".format(
-                    ", ".join(invalid)
-                )
+                "Perspective resolver selected unavailable contexts: {}".format(", ".join(invalid))
             )
         if not policy.get("allow_multiple") and len(resolution.selected) > 1:
             raise PerspectiveError(
                 "Perspective resolver selected multiple contexts but allow_multiple is false"
             )
-        if resolution.needs_clarification and not policy.get(
-            "ask_when_ambiguous"
-        ):
+        if resolution.needs_clarification and not policy.get("ask_when_ambiguous"):
             resolution.needs_clarification = False
             resolution.clarification_question = None
             resolution.selected = []
@@ -288,9 +265,7 @@ class PerspectiveProposal(PerspectiveProposalCandidate):
     context_id: str
     run_id: str
     status: str = "candidate"
-    created_at: str = Field(
-        default_factory=lambda: datetime.now(timezone.utc).isoformat()
-    )
+    created_at: str = Field(default_factory=lambda: datetime.now(UTC).isoformat())
 
 
 class PerspectiveRegistry:
@@ -298,9 +273,7 @@ class PerspectiveRegistry:
         self.root = root.resolve()
         self.voice_id = slugify(voice_id)
         if self.voice_id != voice_id:
-            raise PerspectiveError(
-                "Voice ids must use lowercase letters, digits, and hyphens"
-            )
+            raise PerspectiveError("Voice ids must use lowercase letters, digits, and hyphens")
         self.base = self.root / "profiles" / self.voice_id / "perspectives"
         self.registry_path = self.base / "registry.json"
 
@@ -344,9 +317,7 @@ class PerspectiveRegistry:
         for entry in entries:
             if entry.status == PerspectiveEntryStatus.APPROVED and not entry.provenance:
                 raise PerspectiveError(
-                    "Approved perspective entries require provenance: {}".format(
-                        entry.id
-                    )
+                    "Approved perspective entries require provenance: {}".format(entry.id)
                 )
             if entry.supersedes and entry.supersedes not in known:
                 raise PerspectiveError(
@@ -405,8 +376,7 @@ class PerspectiveRegistry:
             "evaluation_report": "evaluation-report.json",
         }
         component_hashes = {
-            name: hash_file(staging / filename)
-            for name, filename in components.items()
+            name: hash_file(staging / filename) for name, filename in components.items()
         }
         manifest = PerspectiveManifest(
             owner_voice_id=self.voice_id,
@@ -446,38 +416,28 @@ class PerspectiveRegistry:
         item = self.list().get(context_id)
         if not item:
             raise PerspectiveError(
-                "Unknown perspective context {} for voice {}".format(
-                    context_id, self.voice_id
-                )
+                "Unknown perspective context {} for voice {}".format(context_id, self.voice_id)
             )
         resolved_version = version or item.get("active_version")
         if not resolved_version:
             raise PerspectiveError(
                 "Perspective context {} has no active version".format(context_id)
             )
-        if (
-            item.get("status") != PerspectiveStatus.ACTIVE.value
-            and not allow_inactive
-        ):
-            raise PerspectiveError(
-                "Perspective context {} is not active".format(context_id)
-            )
+        if item.get("status") != PerspectiveStatus.ACTIVE.value and not allow_inactive:
+            raise PerspectiveError("Perspective context {} is not active".format(context_id))
         path = self.context_root(context_id) / "versions" / resolved_version
         manifest_path = path / "manifest.json"
         if not manifest_path.exists():
             raise PerspectiveError(
-                "Missing perspective version {}@{}".format(
-                    context_id, resolved_version
-                )
+                "Missing perspective version {}@{}".format(context_id, resolved_version)
             )
         manifest = PerspectiveManifest.model_validate_json(
             manifest_path.read_text(encoding="utf-8")
         )
         for name, filename in manifest.components.items():
             component = path / filename
-            if (
-                not component.exists()
-                or hash_file(component) != manifest.component_hashes.get(name)
+            if not component.exists() or hash_file(component) != manifest.component_hashes.get(
+                name
             ):
                 raise PerspectiveError(
                     "Active perspective component hash mismatch: {}".format(name)
@@ -513,16 +473,11 @@ class PerspectiveRegistry:
         )
         for name, filename in manifest.components.items():
             component = candidate / filename
-            if (
-                not component.exists()
-                or hash_file(component) != manifest.component_hashes.get(name)
+            if not component.exists() or hash_file(component) != manifest.component_hashes.get(
+                name
             ):
-                raise PerspectiveError(
-                    "Perspective component hash mismatch: {}".format(name)
-                )
-        evaluation = json.loads(
-            (candidate / manifest.components["evaluation_report"]).read_text()
-        )
+                raise PerspectiveError("Perspective component hash mismatch: {}".format(name))
+        evaluation = json.loads((candidate / manifest.components["evaluation_report"]).read_text())
         if not evaluation.get("passed"):
             raise PerspectiveError("Perspective evaluation did not pass")
 
@@ -532,9 +487,7 @@ class PerspectiveRegistry:
             descriptor = os.open(lock, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
             os.close(descriptor)
         except FileExistsError as exc:
-            raise PerspectiveError(
-                "Perspective activation is already in progress"
-            ) from exc
+            raise PerspectiveError("Perspective activation is already in progress") from exc
         try:
             registry = self._read()
             existing = registry["contexts"].get(context_id, {})
@@ -543,10 +496,7 @@ class PerspectiveRegistry:
                 and existing.get("status") == PerspectiveStatus.ACTIVE.value
             ):
                 receipt_path = (
-                    context_root
-                    / "versions"
-                    / existing["active_version"]
-                    / "approval-receipt.json"
+                    context_root / "versions" / existing["active_version"] / "approval-receipt.json"
                 )
                 return PerspectiveApprovalReceipt.model_validate_json(
                     receipt_path.read_text(encoding="utf-8")
@@ -570,7 +520,7 @@ class PerspectiveRegistry:
                 context_id=context_id,
                 activated_version=version,
                 approved_by=approved_by,
-                approved_at=datetime.now(timezone.utc).isoformat(),
+                approved_at=datetime.now(UTC).isoformat(),
                 candidate_hash=manifest.candidate_hash,
             )
             RunStore._atomic_text(
@@ -611,7 +561,7 @@ class PerspectiveRegistry:
             raise PerspectiveError("Unknown perspective context: {}".format(context_id))
         item["status"] = PerspectiveStatus.INACTIVE.value
         item["deactivation_reason"] = reason
-        item["deactivated_at"] = datetime.now(timezone.utc).isoformat()
+        item["deactivated_at"] = datetime.now(UTC).isoformat()
         RunStore._atomic_text(
             self.registry_path,
             json.dumps(registry, indent=2),
@@ -627,9 +577,7 @@ class PerspectiveRegistry:
         ]
 
     def stage_proposal(self, context_id: str, proposal_id: str) -> PerspectiveManifest:
-        proposal_path = self.context_root(context_id) / "proposals" / (
-            proposal_id + ".json"
-        )
+        proposal_path = self.context_root(context_id) / "proposals" / (proposal_id + ".json")
         if not proposal_path.exists():
             raise PerspectiveError("Unknown perspective proposal: {}".format(proposal_id))
         proposal = PerspectiveProposal.model_validate_json(
@@ -641,9 +589,7 @@ class PerspectiveRegistry:
         known = {entry.id: entry for entry in entries}
         if proposal.change_type in {"replace", "qualify", "supersede"}:
             if not proposal.target_entry_id or proposal.target_entry_id not in known:
-                raise PerspectiveError(
-                    "Perspective proposal requires a valid target entry"
-                )
+                raise PerspectiveError("Perspective proposal requires a valid target entry")
             known[proposal.target_entry_id].status = PerspectiveEntryStatus.SUPERSEDED
         entry = PerspectiveEntry(
             id="perspective-" + proposal.id.removeprefix("proposal-"),
@@ -695,9 +641,7 @@ class PerspectiveRegistry:
             "",
             "## Approved entries",
         ]
-        active = [
-            entry for entry in entries if entry.status == PerspectiveEntryStatus.APPROVED
-        ]
+        active = [entry for entry in entries if entry.status == PerspectiveEntryStatus.APPROVED]
         if not active:
             lines.append("- No reusable perspective has been approved for this context.")
         for entry in active:
@@ -725,14 +669,7 @@ class PerspectiveProposalStore:
         self.root = root.resolve()
         self.voice_id = voice_id
         self.context_id = context_id
-        self.path = (
-            self.root
-            / "profiles"
-            / voice_id
-            / "perspectives"
-            / context_id
-            / "proposals"
-        )
+        self.path = self.root / "profiles" / voice_id / "perspectives" / context_id / "proposals"
 
     def apply(self, run_id: str, extraction: PerspectiveExtraction) -> List[Path]:
         paths = []

@@ -46,9 +46,7 @@ def test_structured_prior_issue_disposition_with_note_passes(project, status):
         )
     )
 
-    decision = evaluate_quality(
-        critique, Configuration(project).rubric("core"), []
-    )
+    decision = evaluate_quality(critique, Configuration(project).rubric("core"), [])
 
     assert decision.passed
     assert critique.prior_issue_status["legal_boundary"].status == status
@@ -66,14 +64,10 @@ def test_structured_unresolved_prior_issue_fails(project):
         )
     )
 
-    decision = evaluate_quality(
-        critique, Configuration(project).rubric("core"), []
-    )
+    decision = evaluate_quality(critique, Configuration(project).rubric("core"), [])
 
     assert not decision.passed
-    assert decision.reasons == [
-        "prior issues remain unresolved: legal_boundary"
-    ]
+    assert decision.reasons == ["prior issues remain unresolved: legal_boundary"]
 
 
 @pytest.mark.parametrize(
@@ -94,16 +88,10 @@ def test_structured_unresolved_prior_issue_fails(project):
         ("Needs another look.", PriorIssueDisposition.UNRESOLVED, False),
     ],
 )
-def test_legacy_prior_issue_status_is_normalised_fail_safe(
-    project, legacy, expected, passes
-):
-    critique = Critique.model_validate(
-        passing_critique(prior={"legal_boundary": legacy})
-    )
+def test_legacy_prior_issue_status_is_normalised_fail_safe(project, legacy, expected, passes):
+    critique = Critique.model_validate(passing_critique(prior={"legal_boundary": legacy}))
 
-    decision = evaluate_quality(
-        critique, Configuration(project).rubric("core"), []
-    )
+    decision = evaluate_quality(critique, Configuration(project).rubric("core"), [])
 
     disposition = critique.prior_issue_status["legal_boundary"]
     assert disposition.status == expected
@@ -112,9 +100,7 @@ def test_legacy_prior_issue_status_is_normalised_fail_safe(
 
 
 def test_mechanical_validation():
-    order = WorkOrder(
-        request="x", topic="x", pack_options={"length": "50:600"}
-    )
+    order = WorkOrder(request="x", topic="x", pack_options={"length": "50:600"})
     errors = validate_draft(
         "Too short — #growth",
         order,
@@ -132,9 +118,9 @@ def test_banned_phrases_come_from_pack_options():
         pack_options={"banned_phrases": ["workspace-specific phrase"]},
     )
 
-    assert validate_draft(
-        "A workspace-specific phrase appears.", order, ["banned-phrase"]
-    ) == ["Banned phrase: workspace-specific phrase"]
+    assert validate_draft("A workspace-specific phrase appears.", order, ["banned-phrase"]) == [
+        "Banned phrase: workspace-specific phrase"
+    ]
 
 
 def test_valid_researched_post_has_link():

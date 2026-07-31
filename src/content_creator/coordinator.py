@@ -146,20 +146,14 @@ class ContentCoordinator:
         policy = self.configuration.coordinator_policy
         packs = [item.id for item in PackRegistry(self.root).list()]
         voices = self._voices()
-        active_ids = [
-            item.voice_id for item in voices if item.active_status == "active"
-        ]
+        active_ids = [item.voice_id for item in voices if item.active_status == "active"]
         warnings: List[str] = []
         default_voice = policy.get("default_voice")
         if default_voice and default_voice not in active_ids:
-            warnings.append(
-                "Configured default voice is not active: {}".format(default_voice)
-            )
+            warnings.append("Configured default voice is not active: {}".format(default_voice))
         if policy["default_pack"] not in packs:
             warnings.append(
-                "Configured default pack is unavailable: {}".format(
-                    policy["default_pack"]
-                )
+                "Configured default pack is unavailable: {}".format(policy["default_pack"])
             )
         if not active_ids and not any(item.voice_id == "default" for item in voices):
             warnings.append("No active voice is available")
@@ -198,9 +192,7 @@ class ContentCoordinator:
     def runs(self, limit: int = 20) -> Dict[str, Any]:
         return {
             "schema_version": "1.0",
-            "runs": [
-                item.model_dump(mode="json") for item in self._run_summaries(limit)
-            ],
+            "runs": [item.model_dump(mode="json") for item in self._run_summaries(limit)],
         }
 
     def next_actions(self, run_id: str) -> Dict[str, Any]:
@@ -355,9 +347,7 @@ class ContentCoordinator:
         states: List[RunState] = []
         for path in self.store.runs_dir.glob("*/state.json"):
             try:
-                states.append(
-                    RunState.model_validate_json(path.read_text(encoding="utf-8"))
-                )
+                states.append(RunState.model_validate_json(path.read_text(encoding="utf-8")))
             except (OSError, ValueError):
                 continue
         states.sort(key=lambda item: item.updated_at, reverse=True)
@@ -384,8 +374,7 @@ class ContentCoordinator:
         registry = self.voice_registry.list()
         voice_ids = set(registry)
         voice_ids.update(
-            path.parent.name
-            for path in (self.root / "profiles").glob("*/onboarding.json")
+            path.parent.name for path in (self.root / "profiles").glob("*/onboarding.json")
         )
         voice_ids.update(
             path.parent.parent.name
@@ -405,9 +394,7 @@ class ContentCoordinator:
         for voice_id in sorted(voice_ids):
             active = registry.get(voice_id, {})
             onboarding = load_voice_onboarding(self.root, voice_id)
-            candidate_path = (
-                self.root / "profiles" / voice_id / "candidate" / "manifest.json"
-            )
+            candidate_path = self.root / "profiles" / voice_id / "candidate" / "manifest.json"
             candidate_status: Optional[str] = None
             if candidate_path.exists():
                 try:
@@ -426,11 +413,7 @@ class ContentCoordinator:
                     candidate_status=candidate_status,
                     onboarding_status=onboarding.status if onboarding else None,
                     strategy=active.get("strategy")
-                    or (
-                        onboarding.strategy.value
-                        if onboarding and onboarding.strategy
-                        else None
-                    ),
+                    or (onboarding.strategy.value if onboarding and onboarding.strategy else None),
                 )
             )
         return result
@@ -484,19 +467,16 @@ class ContentCoordinator:
                     command=["coordinator", "next-actions", run.run_id],
                 )
         undecided = next(
-            (
-                voice
-                for voice in snapshot.voices
-                if voice.onboarding_status == "undecided"
-            ),
+            (voice for voice in snapshot.voices if voice.onboarding_status == "undecided"),
             None,
         )
         if undecided:
             return CoordinatorAction(
                 id="choose-voice-route",
                 label=(
-                    "Choose source-derived voice or Clear Professional Starter "
-                    "for {}".format(undecided.display_name)
+                    "Choose source-derived voice or Clear Professional Starter for {}".format(
+                        undecided.display_name
+                    )
                 ),
                 command=["voice", "status", undecided.voice_id],
             )
@@ -535,9 +515,7 @@ class ContentCoordinator:
     def _artifacts(self, run_id: str) -> List[str]:
         directory = self.store.run_dir(run_id)
         return sorted(
-            str(path.relative_to(self.root))
-            for path in directory.iterdir()
-            if path.is_file()
+            str(path.relative_to(self.root)) for path in directory.iterdir() if path.is_file()
         )
 
     @staticmethod

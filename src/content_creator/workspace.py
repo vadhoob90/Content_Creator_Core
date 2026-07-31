@@ -17,15 +17,15 @@ DEFAULT_CORE_REF = "v{}".format(VERSION)
 DEFAULT_CORE_SOURCE = "registry"
 DEFAULT_PACKS = ["general-text"]
 VERSION_TAG = re.compile(r"^v(?P<version>\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?)$")
+README_CORE_START = "<!-- content-creator-core-dependency:start -->"
+README_CORE_END = "<!-- content-creator-core-dependency:end -->"
 
 
 def core_dependency(source: str, core_url: str, core_ref: str) -> str:
     if source == "registry":
         match = VERSION_TAG.fullmatch(core_ref)
         if not match:
-            raise ValueError(
-                "Registry dependencies require an immutable semantic version tag"
-            )
+            raise ValueError("Registry dependencies require an immutable semantic version tag")
         return "content-creator=={}".format(match.group("version"))
     if source == "git":
         return "content-creator @ git+{}@{}".format(
@@ -33,6 +33,37 @@ def core_dependency(source: str, core_url: str, core_ref: str) -> str:
             core_ref,
         )
     raise ValueError("Core source must be registry or git")
+
+
+def readme_core_dependency(core_ref: str, dependency: str) -> str:
+    """Render the small README section that Core upgrades may safely replace."""
+
+    return """{start}
+## Core dependency
+
+This workspace is built on the immutable Content Creator Core revision:
+[`{core_ref}`]({core_url}/tree/{core_ref}). It installs that revision as
+`{dependency}`. The dependency declaration in `pyproject.toml` and the
+resolution in `uv.lock` are authoritative.
+{end}""".format(
+        start=README_CORE_START,
+        end=README_CORE_END,
+        core_ref=core_ref,
+        core_url=DEFAULT_CORE_URL.removesuffix(".git"),
+        dependency=dependency,
+    )
+
+
+def update_readme_core_dependency(text: str, core_ref: str, dependency: str) -> tuple[str, bool]:
+    """Update only the generator-owned Core dependency block, when present."""
+
+    start = text.find(README_CORE_START)
+    end = text.find(README_CORE_END)
+    if start < 0 or end < start:
+        return text, False
+    end += len(README_CORE_END)
+    replacement = readme_core_dependency(core_ref, dependency)
+    return text[:start] + replacement + text[end:], True
 
 
 def _write_if_missing(
@@ -165,9 +196,7 @@ class WorkspaceScaffolder:
         perspective_mode: str = "automatic",
     ) -> Dict[str, Any]:
         if self.root.exists() and not self.root.is_dir():
-            raise ValueError(
-                "Workspace destination is not a directory: {}".format(self.root)
-            )
+            raise ValueError("Workspace destination is not a directory: {}".format(self.root))
         self.root.mkdir(parents=True, exist_ok=True)
 
         display_name = name.strip()
@@ -177,9 +206,7 @@ class WorkspaceScaffolder:
         if not author:
             raise ValueError("Author name cannot be empty")
         if perspective_mode not in {"automatic", "explicit", "disabled"}:
-            raise ValueError(
-                "Perspective mode must be automatic, explicit, or disabled"
-            )
+            raise ValueError("Perspective mode must be automatic, explicit, or disabled")
 
         label = (voice_label or "{} — General".format(author)).strip()
         resolved_voice_id = slugify(voice_id or label)
@@ -187,22 +214,16 @@ class WorkspaceScaffolder:
             raise ValueError("--voice-id must already be a repository-safe slug")
 
         selected_packs = list(dict.fromkeys(packs or DEFAULT_PACKS))
-        available = {
-            item.id for item in PackRegistry(self.root).list()
-        }
+        available = {item.id for item in PackRegistry(self.root).list()}
         unknown = sorted(set(selected_packs) - available)
         if unknown:
-            raise ValueError(
-                "Unknown content packs: {}".format(", ".join(unknown))
-            )
+            raise ValueError("Unknown content packs: {}".format(", ".join(unknown)))
 
         base_paths = (
             self.root / "profiles" / "registry.json",
             self.root / "content-creator.yaml",
         )
-        base_path_existed = {
-            path: path.exists() for path in base_paths
-        }
+        base_path_existed = {path: path.exists() for path in base_paths}
         base = initialise_workspace(
             self.root,
             agent_template=agent_template,
@@ -210,16 +231,10 @@ class WorkspaceScaffolder:
         )
         if not base_path_existed[self.root / "content-creator.yaml"]:
             workspace_configuration = yaml.safe_load(
-                (self.root / "content-creator.yaml").read_text(
-                    encoding="utf-8"
-                )
+                (self.root / "content-creator.yaml").read_text(encoding="utf-8")
             )
-            workspace_configuration["coordinator"]["default_voice"] = (
-                resolved_voice_id
-            )
-            workspace_configuration["coordinator"]["default_pack"] = (
-                selected_packs[0]
-            )
+            workspace_configuration["coordinator"]["default_voice"] = resolved_voice_id
+            workspace_configuration["coordinator"]["default_pack"] = selected_packs[0]
             RunStore._atomic_text(
                 self.root / "content-creator.yaml",
                 yaml.safe_dump(workspace_configuration, sort_keys=False),
@@ -227,17 +242,9 @@ class WorkspaceScaffolder:
         created: List[str] = []
         preserved: List[str] = []
         for item in base["agents"]["created"]:
-            created.append(
-                item
-                if item.startswith("learnings/")
-                else "agents/{}".format(item)
-            )
+            created.append(item if item.startswith("learnings/") else "agents/{}".format(item))
         for item in base["agents"]["preserved"]:
-            preserved.append(
-                item
-                if item.startswith("learnings/")
-                else "agents/{}".format(item)
-            )
+            preserved.append(item if item.startswith("learnings/") else "agents/{}".format(item))
         created.extend(base["skills"]["created"])
         preserved.extend(base["skills"]["preserved"])
         for path in base_paths:
@@ -249,9 +256,9 @@ class WorkspaceScaffolder:
 
         package_name = slugify(display_name)
         dependency = core_dependency(core_source, core_url, core_ref)
-        intended_uses = "\n".join(
-            "  --use {} \\".format(pack) for pack in selected_packs
-        ).rstrip(" \\")
+        intended_uses = "\n".join("  --use {} \\".format(pack) for pack in selected_packs).rstrip(
+            " \\"
+        )
 
         _write_if_missing(
             self.root,
@@ -298,6 +305,7 @@ class WorkspaceScaffolder:
                 voice_label=label,
                 packs=selected_packs,
                 core_ref=core_ref,
+                dependency=dependency,
                 intended_uses=intended_uses,
             ),
             created,
@@ -305,21 +313,14 @@ class WorkspaceScaffolder:
         )
         _write_if_missing(
             self.root,
-            self.root
-            / "profiles"
-            / resolved_voice_id
-            / "learnings"
-            / "memory.json",
+            self.root / "profiles" / resolved_voice_id / "learnings" / "memory.json",
             json.dumps({"version": 1, "records": []}, indent=2),
             created,
             preserved,
         )
         _write_if_missing(
             self.root,
-            self.root
-            / "profiles"
-            / resolved_voice_id
-            / "onboarding.json",
+            self.root / "profiles" / resolved_voice_id / "onboarding.json",
             json.dumps(
                 {
                     "schema_version": "1.0",
@@ -341,10 +342,7 @@ class WorkspaceScaffolder:
         )
         _write_if_missing(
             self.root,
-            self.root
-            / "voice-material"
-            / resolved_voice_id
-            / "source-urls.txt",
+            self.root / "voice-material" / resolved_voice_id / "source-urls.txt",
             (
                 "# Add one authorised public source URL per line.\n"
                 "# Local Markdown, text, DOCX, PDF, and HTML files may be placed\n"
@@ -388,8 +386,7 @@ class WorkspaceScaffolder:
                 "uv sync --dev",
                 "uv run content-creator --workspace . doctor",
                 (
-                    "Open the README and choose the source-derived or starter "
-                    "voice route for {}."
+                    "Open the README and choose the source-derived or starter voice route for {}."
                 ).format(resolved_voice_id),
             ],
         }
@@ -406,7 +403,7 @@ name = {package_name}
 version = "0.1.0"
 description = {description}
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.11"
 dependencies = [
   {dependency},
 ]
@@ -426,16 +423,14 @@ testpaths = ["tests"]
 
 [tool.ruff]
 line-length = 100
-target-version = "py39"
+target-version = "py311"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
 ignore = ["UP006", "UP032", "UP035", "UP045"]
 """.format(
             package_name=json.dumps(package_name),
-            description=json.dumps(
-                "{} content workspace for {}".format(display_name, author_name)
-            ),
+            description=json.dumps("{} content workspace for {}".format(display_name, author_name)),
             dependency=json.dumps(dependency),
         )
 
@@ -553,6 +548,7 @@ ownership boundaries, approval trigger, and content-integrity rules.
         voice_label: str,
         packs: List[str],
         core_ref: str,
+        dependency: str,
         intended_uses: str,
     ) -> str:
         pack_list = "\n".join("- `{}`".format(pack) for pack in packs)
@@ -564,8 +560,9 @@ perspectives, repository agents, drafts, and approved publications.
 
 Reusable routing, provider adapters, schemas, validation, versioning, content
 packs, and workflow contracts come from
-[`Content_Creator_Core`](https://github.com/vadhoob90/Content_Creator_Core),
-pinned at `{core_ref}`.
+[`Content_Creator_Core`](https://github.com/vadhoob90/Content_Creator_Core).
+
+{core_dependency_section}
 
 ## Included content packs
 
@@ -738,7 +735,7 @@ packaged resources into this repository.
 """.format(
             display_name=display_name,
             author_name=author_name,
-            core_ref=core_ref,
+            core_dependency_section=readme_core_dependency(core_ref, dependency),
             pack_list=pack_list,
             voice_id=voice_id,
             voice_label=voice_label,

@@ -37,9 +37,7 @@ def _onboard(project, capsys, strategy="starter"):
     return json.loads(capsys.readouterr().out)
 
 
-def test_starter_onboarding_activates_neutral_version_and_disables_perspectives(
-    project, capsys
-):
+def test_starter_onboarding_activates_neutral_version_and_disables_perspectives(project, capsys):
     override = project / "profiles" / "starter" / "clear-professional.md"
     override.parent.mkdir(parents=True, exist_ok=True)
     override.write_text(
@@ -117,16 +115,9 @@ def test_starter_voice_forces_disabled_perspective_resolution(project, capsys):
     assert state.status == RunStatus.READY
     assert state.work_order.perspective_mode.value == "disabled"
     run = project / "runs" / state.id
-    resolution = json.loads(
-        (run / "perspective-resolution.json").read_text(encoding="utf-8")
-    )
-    context = json.loads(
-        (run / "resolved-context.json").read_text(encoding="utf-8")
-    )
-    assert (
-        resolution["disabled_reason"]
-        == "starter-voice-without-author-evidence"
-    )
+    resolution = json.loads((run / "perspective-resolution.json").read_text(encoding="utf-8"))
+    context = json.loads((run / "resolved-context.json").read_text(encoding="utf-8"))
+    assert resolution["disabled_reason"] == "starter-voice-without-author-evidence"
     assert context["voice"]["strategy"] == "starter"
     assert context["perspectives"] == []
 
@@ -160,16 +151,11 @@ def test_source_derived_choice_creates_work_order_without_building(project, caps
 
     assert result["status"] == "collecting-sources"
     assert result["strategy"] == "source-derived"
-    assert not (
-        project / "profiles" / "example-author-general" / "candidate"
-    ).exists()
+    assert not (project / "profiles" / "example-author-general" / "candidate").exists()
     order = json.loads(
-        (
-            project
-            / "profiles"
-            / "example-author-general"
-            / "work-order.json"
-        ).read_text(encoding="utf-8")
+        (project / "profiles" / "example-author-general" / "work-order.json").read_text(
+            encoding="utf-8"
+        )
     )
     assert order["strategy"] == "source-derived"
     assert order["urls"] == []
@@ -178,9 +164,7 @@ def test_source_derived_choice_creates_work_order_without_building(project, caps
         VoiceRegistry(project).resolve("example-author-general")
 
 
-def test_starter_can_transition_to_an_approved_source_derived_voice(
-    project, capsys
-):
+def test_starter_can_transition_to_an_approved_source_derived_voice(project, capsys):
     _onboard(project, capsys)
     _onboard(project, capsys, strategy="source-derived")
     material = project / "material"
@@ -242,12 +226,9 @@ def test_starter_can_transition_to_an_approved_source_derived_voice(
     assert resolved["evidence_status"] == "author-sources"
     assert resolved["perspectives_allowed"] is True
     onboarding = json.loads(
-        (
-            project
-            / "profiles"
-            / "example-author-general"
-            / "onboarding.json"
-        ).read_text(encoding="utf-8")
+        (project / "profiles" / "example-author-general" / "onboarding.json").read_text(
+            encoding="utf-8"
+        )
     )
     assert onboarding["status"] == "source-derived-active"
     assert onboarding["perspective_mode"] == "workspace-policy"

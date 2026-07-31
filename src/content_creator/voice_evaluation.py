@@ -18,9 +18,7 @@ def evaluate_voice_output(root: Path, order: WorkOrder, draft: str) -> dict:
         allow_inactive=order.resolved_voice,
     )
     version_root = root / resolved["path"]
-    source_index = json.loads(
-        (version_root / "source-index.json").read_text(encoding="utf-8")
-    )
+    source_index = json.loads((version_root / "source-index.json").read_text(encoding="utf-8"))
     corpus = []
     for record in source_index:
         cache = root / record["cache_path"]
@@ -36,9 +34,7 @@ def evaluate_voice_output(root: Path, order: WorkOrder, draft: str) -> dict:
         re.I,
     )
     if experiential and not any(
-        phrase.lower() in source.lower()
-        for phrase in experiential
-        for source in corpus
+        phrase.lower() in source.lower() for phrase in experiential for source in corpus
     ):
         errors.append("Draft contains unsupported personal experience")
     return {"passed": not errors, "errors": errors, "overlap": overlap}

@@ -5,17 +5,8 @@ permissions:
 
 on:
   pull_request:
-    paths:
-      - "README.md"
-      - "docs/**"
-      - "tests/test_documentation_commands.py"
-      - ".github/workflows/documentation.yml"
   push:
-    paths:
-      - "README.md"
-      - "docs/**"
-      - "tests/test_documentation_commands.py"
-      - ".github/workflows/documentation.yml"
+    branches: [main]
 
 jobs:
   documentation:

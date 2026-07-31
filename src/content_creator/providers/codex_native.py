@@ -68,9 +68,7 @@ class CodexNativeProvider(NativeCliProvider):
                 command.extend(
                     [
                         "--config",
-                        'model_reasoning_effort="{}"'.format(
-                            request.selection.reasoning_effort
-                        ),
+                        'model_reasoning_effort="{}"'.format(request.selection.reasoning_effort),
                     ]
                 )
             if "web_search" in request.tools:
@@ -79,9 +77,7 @@ class CodexNativeProvider(NativeCliProvider):
                 strict_schema = self._strict_schema(request.output_schema)
                 if strict_schema:
                     schema_path = workdir / "schema.json"
-                    schema_path.write_text(
-                        json.dumps(strict_schema), encoding="utf-8"
-                    )
+                    schema_path.write_text(json.dumps(strict_schema), encoding="utf-8")
                     command.extend(["--output-schema", str(schema_path)])
                 else:
                     prompt += (
@@ -96,16 +92,12 @@ class CodexNativeProvider(NativeCliProvider):
                 cwd=workdir,
             )
             if not output_path.exists():
-                raise ProviderError(
-                    "codex-native completed without writing its final response"
-                )
+                raise ProviderError("codex-native completed without writing its final response")
             text = output_path.read_text(encoding="utf-8").strip()
             if not text:
                 detail = (result.stderr or result.stdout or "").strip()
                 raise ProviderError(
-                    "codex-native returned no text output: {}".format(
-                        self._shorten(detail)
-                    )
+                    "codex-native returned no text output: {}".format(self._shorten(detail))
                 )
         return ModelResponse(
             text=text,
@@ -136,4 +128,3 @@ class CodexNativeProvider(NativeCliProvider):
             if isinstance(properties, dict):
                 value["required"] = list(properties)
         return all(cls._make_objects_strict(item) for item in value.values())
-
