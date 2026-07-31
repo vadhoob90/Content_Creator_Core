@@ -45,6 +45,8 @@ src/content_creator/
 ├── voices.py             voice lifecycle, activation, and onboarding
 ├── voice_builder.py      source-derived voice analysis
 ├── linguistics.py        deterministic voice measurements and statistics
+├── voice_assessment.py   advisory draft-to-voice scoring
+├── voice_ml.py           optional local ML training and inference
 ├── perspectives.py       perspective provenance and resolution
 ├── diagnostics.py        local runtime diagnostic journal and summaries
 ├── providers/            normalized provider adapters
@@ -249,13 +251,13 @@ commit reaches `main`.
 ### Publish the release
 
 Create the matching annotated tag only after the release PR is merged. For
-example, for `0.8.0`:
+example, for `0.9.0`:
 
 ```bash
 git switch main
 git pull --ff-only origin main
-git tag -a v0.8.0 -m "Content Creator 0.8.0"
-git push origin v0.8.0
+git tag -a v0.9.0 -m "Content Creator 0.9.0"
+git push origin v0.9.0
 ```
 
 Pushing the tag triggers `.github/workflows/release.yml`. The workflow:
@@ -287,13 +289,13 @@ Author workspaces remain on their pinned package until deliberately upgraded.
 Preview the upgrade first:
 
 ```bash
-uv run content-creator --workspace . workspace upgrade --to v0.8.0
+uv run content-creator --workspace . workspace upgrade --to v0.9.0
 ```
 
 Apply the reviewed preview explicitly:
 
 ```bash
-uv run content-creator --workspace . workspace upgrade --to v0.8.0 --apply
+uv run content-creator --workspace . workspace upgrade --to v0.9.0 --apply
 ```
 
 The apply operation updates the package requirement and lockfile, runs doctor,

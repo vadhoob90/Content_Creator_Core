@@ -25,6 +25,10 @@ from the authorised corpus. They interpret those measurements as evidence,
 not as writing targets or proof of authorship. See the [statistical voice
 evidence guide](https://github.com/vadhoob90/Content_Creator_Core/blob/main/docs/guides/linguistic-voice-framework.md).
 
+When statistical draft scoring is enabled, Core supplies its advisory report
+only to the critic. The writer receives no numerical target, and the score does
+not change validation, rubric weighting, or publication gates.
+
 Customise the copied files for the repository. For example, a legal researcher
 and a technical researcher should use different source hierarchies while both
 remain subject to the same core evidence-integrity contract.
