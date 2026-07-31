@@ -9,10 +9,10 @@ material owned by that workspace.
 
 ## Install Core
 
-Install the immutable `v0.7.0` release:
+Install the immutable `v0.8.0` release:
 
 ```bash
-uv tool install content-creator==0.7.0
+uv tool install content-creator==0.8.0
 ```
 
 ## Generate the repository
@@ -27,7 +27,7 @@ content-creator workspace create Content_Creator_Alice \
   --voice-label "Alice — General" \
   --pack linkedin-post \
   --pack linkedin-article \
-  --core-ref v0.7.0
+  --core-ref v0.8.0
 ```
 
 Without `--pack`, the command enables `general-text`.
