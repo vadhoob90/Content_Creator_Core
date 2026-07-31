@@ -300,7 +300,7 @@ class RuntimeDiagnostics:
                 "issue_type": "invalid_configuration",
                 "support_worthy": False,
             }
-        if name == "OrchestrationError":
+        if name in {"OrchestrationError", "IdempotencyError"}:
             return {
                 "classification": "content_workflow",
                 "severity": "blocking",

@@ -333,6 +333,8 @@ class RunState(BaseModel):
     diagnostic_summary_path: Optional[str] = None
     support_candidate_path: Optional[str] = None
     pending_support_count: int = 0
+    idempotency_key_hash: Optional[str] = None
+    idempotency_reused: bool = False
     events: List[RunEvent] = Field(default_factory=list)
     created_at: datetime = Field(default_factory=utc_now)
     updated_at: datetime = Field(default_factory=utc_now)

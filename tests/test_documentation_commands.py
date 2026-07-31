@@ -96,6 +96,7 @@ def test_documented_command_families_are_parseable():
             "assessment.json",
         ],
         ["status", "run-id"],
+        ["submission", "status", "request-123"],
         ["approve-research", "run-id"],
         ["reject-research", "run-id"],
         ["publish", "run-id"],

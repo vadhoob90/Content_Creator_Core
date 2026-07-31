@@ -17,6 +17,10 @@ of the `content-creator` workflow.
 7. Preserve research, drafts, critiques, validation, and route artifacts
 8. Return the final draft for author review
 
+Attach one stable `--idempotency-key` when an exact run invocation may be
+retried. Reuse it only for the equivalent submission; changed requests and
+intentional revisions require a new key. Revisions also use `--parent-run`.
+
 ## Approval trigger
 
 When the user instructs you to move the active draft into the selected pack's
