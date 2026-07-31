@@ -7,6 +7,12 @@ Each author works in a small, independent repository containing their voices,
 agents, learning, drafts, and approved content. This Core repository supplies
 the reusable workflow, validation, and safety boundaries.
 
+Here, **voice** means the author's written communication style: observable
+patterns in how they shape text. It is not a model of the whole person and does
+not claim to capture their identity, personality, beliefs, expertise, or inner
+character. Authorised transcripts may provide supporting evidence, but the
+resulting voice guides text creation.
+
 Read [Why not just use a chat app?](docs/guides/why-not-just-chat.md) for the
 design rationale.
 

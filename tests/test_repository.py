@@ -68,6 +68,8 @@ def test_readme_is_a_streamlined_operator_journey():
 
     assert "https://pypi.org/project/content-creator/" in readme
     assert "pin an exact package version" in readme
+    assert "voice** means the author's written communication style" in readme
+    assert "It is not a model of the whole person" in readme
     assert "### 1. Create an author workspace" in readme
     assert "### 2. Choose a voice route" in readme
     assert "### 3. Ask for content naturally" in readme
