@@ -186,7 +186,21 @@ def test_voice_build_approve_idempotency_deactivate_and_reactivate(project, caps
     assert repeated == first
 
     registry = VoiceRegistry(project)
-    assert registry.resolve("example-person")["version"] == "1.0.0"
+    resolved = registry.resolve("example-person")
+    assert resolved["version"] == "1.0.0"
+    assert resolved["status"] == "active"
+    assert resolved["version_status"] == "active"
+    assert resolved["lifecycle_authority"] == "version_manifest"
+    profile = (
+        project
+        / "profiles"
+        / "example-person"
+        / "versions"
+        / "1.0.0"
+        / "profile.md"
+    ).read_text(encoding="utf-8")
+    assert "Candidate — not approved" not in profile
+    assert "Resolved manifest is authoritative" in profile
     registry.deactivate("example-person", "permission withdrawn")
     with pytest.raises(VoiceError, match="not active"):
         registry.resolve("example-person")

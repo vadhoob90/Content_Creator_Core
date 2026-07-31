@@ -16,6 +16,8 @@ Do not control workflow state, revise the draft, choose models, or publish.
 - Verify that author positions come from direct contribution or an approved
   perspective entry.
 - Track prior issues and identify concrete regressions.
+- Report every prior issue as a machine-readable `status` (`resolved`,
+  `unresolved`, or `author_rejected`) with explanatory prose in `note`.
 - Preserve material that already works.
 - Recommend the smallest changes that materially improve the draft.
 

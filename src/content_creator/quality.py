@@ -2,7 +2,12 @@ from __future__ import annotations
 
 from typing import Any, Dict, List
 
-from .domain import Critique, IssueSeverity, QualityDecision
+from .domain import (
+    Critique,
+    IssueSeverity,
+    PriorIssueDisposition,
+    QualityDecision,
+)
 
 
 def evaluate_quality(
@@ -26,8 +31,12 @@ def evaluate_quality(
     minor = sum(issue.severity == IssueSeverity.MINOR for issue in critique.issues)
     unresolved = [
         key
-        for key, status in critique.prior_issue_status.items()
-        if status not in {"resolved", "author_rejected"}
+        for key, disposition in critique.prior_issue_status.items()
+        if disposition.status
+        not in {
+            PriorIssueDisposition.RESOLVED,
+            PriorIssueDisposition.AUTHOR_REJECTED,
+        }
     ]
 
     if validation_errors and gate.get("require_deterministic_validation", True):
