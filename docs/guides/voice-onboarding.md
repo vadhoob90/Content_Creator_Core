@@ -1,21 +1,5 @@
 # Voice onboarding
 
-During guided source-derived voice creation, ask the author whether statistical
-voice scoring should be disabled, deterministic, or ML-based. The choice is
-explicit and voice-scoped; omission remains disabled. Pass it to creation with:
-
-```bash
-content-creator voice create \
-  --author-name "<author>" \
-  --statistical-voice-score deterministic \
-  <other source and authorisation options>
-```
-
-Deterministic scoring needs no training. ML selection records the preference,
-but a matched comparison corpus must still be supplied and trained after the
-source-derived voice is activated. Starter voices have no author evidence and
-cannot enable statistical voice scoring.
-
 Every new thin workspace begins with an explicit decision: derive a personal
 voice from authorised writing, or begin with a neutral starter.
 
@@ -54,11 +38,54 @@ content-creator --workspace . voice onboard example-person-general \
   --strategy source-derived \
   --author-name "Example Person" \
   --selected-by "Example Person" \
-  --use linkedin-post
+  --use linkedin-article \
+  --statistical-voice-score deterministic
 ```
 
 This records the decision and creates an empty authorised voice work order. It
 does not fabricate a candidate from no evidence.
+
+### Choose statistical voice scoring
+
+During source-derived onboarding, ask whether automatic statistical voice
+scoring should be disabled, deterministic, or ML-based. The choice is explicit
+and voice-scoped. Omitting `--statistical-voice-score` leaves it disabled, and
+it can be changed later with `voice score-config`.
+
+This setting controls automatic scoring during a content run. Automatic
+scoring occurs only when both conditions are true:
+
+1. the workspace or selected voice enables scoring; and
+2. the selected content pack declares itself eligible.
+
+Core enables automatic scoring for the long-form `linkedin-article` pack. The
+short-form `linkedin-post` pack and mixed-format `general-text` pack are
+ineligible. For an ineligible pack, Core creates no statistical score artifact
+and supplies no score to the critic, even when the voice preference is
+enabled.
+
+When a score is available, it is advisory evidence for the critic only. It is
+not supplied to the writer and is not an authorship probability, generation
+target, quality score, or publication gate.
+
+The automatic setting and pack eligibility do not prevent deliberate ad-hoc
+assessment. Any sufficiently long text can be scored explicitly against an
+active source-derived voice:
+
+```bash
+content-creator --workspace . voice score example-person-general \
+  --draft path/to/draft.md \
+  --method deterministic
+```
+
+Deterministic scoring needs no training. Selecting ML during onboarding records
+the preference but does not train a model. After the voice is activated, ML
+training separately requires a matched comparison corpus and explicit author
+action. Starter voices cannot enable either method because they contain no
+author evidence.
+
+For scoring methods, reliability gates, configuration, and limitations, see
+the [statistical and linguistic voice framework](linguistic-voice-framework.md).
 
 Point Core at an existing directory and build:
 
