@@ -59,6 +59,26 @@ move.
 Tests should cover behavior and boundaries rather than private implementation
 shape unless that shape is an intentional architecture rule.
 
+## Default development workflow
+
+Future Core work should follow this sequence:
+
+1. State the user or maintainer outcome and identify the public or persisted
+   contracts it could affect.
+2. Add a focused failing behavior test. For structural work, add a
+   characterization or architecture test before moving responsibilities.
+3. Implement the smallest coherent slice and keep domain decisions in the
+   module that owns them.
+4. Refactor only while the focused tests stay green, then run the full offline
+   baseline and `scripts/architecture_report.py --check`.
+5. Update the changelog, relevant task guide, ADR, and compatibility notes in
+   the same pull request when behavior or structure changes.
+6. Release through a protected-main pull request and immutable tag; validate
+   every pinned downstream workspace before calling the work complete.
+
+Record a deliberate exception in the pull request when a step does not apply.
+Do not silently skip a guardrail.
+
 ## Make small, reversible changes
 
 Keep substantial refactoring separate from feature work. One pull request
@@ -86,6 +106,7 @@ clear remediation path.
 - Is domain knowledge defined in one appropriate place?
 - Is a new abstraction justified by current consumers?
 - Does the dependency direction match ADR 0007?
+- Does the lifecycle or capability boundary match ADR 0008?
 - Are public and persisted contracts preserved or migrated?
 - Can the change be understood, reviewed, and reversed independently?
 - Do documentation and examples still describe the implementation accurately?

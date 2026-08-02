@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 from typing import Dict, Optional
 
+from .capabilities import DefaultRunCapabilities, RunCapabilities
 from .configuration import Configuration
 from .context import resolved_context
 from .diagnostics import DiagnosticDecisionRequired, RuntimeDiagnostics
@@ -35,10 +36,9 @@ from .providers import ProviderRegistry
 from .quality import evaluate_quality
 from .routing import build_route
 from .runner import AgentRunner
+from .stages import CallableDraftReviewStage, CallableResearchStage, LifecycleStages
 from .storage import RunStore, StorageError, slugify
 from .validation import validate_draft, validate_research_brief
-from .visuals import VisualAdapterRegistry, VisualWorkflow
-from .voice_assessment import assess_voice_draft, resolve_score_policy
 from .voice_evaluation import evaluate_voice_output
 from .voices import VoiceRegistry, hash_file
 
@@ -52,8 +52,10 @@ class Orchestrator:
         self,
         root: Path,
         registry: Optional[ProviderRegistry] = None,
-        visual_adapters: Optional[VisualAdapterRegistry] = None,
+        visual_adapters=None,
         max_revisions: int = 3,
+        capabilities: Optional[RunCapabilities] = None,
+        stages: Optional[LifecycleStages] = None,
     ):
         self.root = root.resolve()
         self.configuration = Configuration(self.root)
@@ -72,8 +74,13 @@ class Orchestrator:
         self.intake = BriefingAgent(self.runner)
         self.store = RunStore(self.root)
         self.packs = PackRegistry(self.root)
-        self.visuals = VisualWorkflow(self.root, visual_adapters)
+        self.capabilities = capabilities or DefaultRunCapabilities(self.root, visual_adapters)
+        self.visuals = self.capabilities.visuals
         self.max_revisions = max_revisions
+        self.stages = stages or LifecycleStages(
+            research=CallableResearchStage(self._research),
+            draft_review=CallableDraftReviewStage(self._draft_and_review),
+        )
 
     def plan_request(self, request: str, provider: Optional[str] = None) -> WorkOrder:
         return self.intake.plan(request, provider=provider)
@@ -267,7 +274,7 @@ class Orchestrator:
             },
         )
         try:
-            brief = self._research(state, supplied_brief)
+            brief = self.stages.research.execute(state, supplied_brief)
             if brief:
                 self.store.write_artifact(state.id, "research.json", brief)
                 provenance = json.loads(self.store.read_artifact(state.id, "claim-provenance.json"))
@@ -284,7 +291,7 @@ class Orchestrator:
                 self._persist_model_history(state.id)
                 self.store.save_state(state)
                 return state
-            return self._draft_and_review(state, brief)
+            return self.stages.draft_review.execute(state, brief)
         except Exception as exc:
             self._fail(state, exc)
             raise
@@ -303,7 +310,7 @@ class Orchestrator:
         state.events.append(RunEvent(name="research_approved", detail=notes or ""))
         brief = ResearchBrief.model_validate_json(self.store.read_artifact(run_id, "research.json"))
         try:
-            return self._draft_and_review(state, brief)
+            return self.stages.draft_review.execute(state, brief)
         except Exception as exc:
             self._fail(state, exc)
             raise
@@ -631,20 +638,14 @@ class Orchestrator:
                 perspective_evaluation,
             )
 
-            statistical_voice_score = None
-            score_policy = resolve_score_policy(
-                self.root,
+            statistical_voice_score = self.capabilities.assess_voice(
                 state.work_order.voice_id,
+                state.work_order.voice_version,
+                draft,
                 self.configuration.statistical_voice_score_policy,
+                pack.statistical_voice_score.eligible,
             )
-            if score_policy["enabled"] and pack.statistical_voice_score.eligible:
-                statistical_voice_score = assess_voice_draft(
-                    self.root,
-                    state.work_order.voice_id,
-                    state.work_order.voice_version,
-                    draft,
-                    score_policy,
-                )
+            if statistical_voice_score is not None:
                 self.store.write_artifact(
                     state.id,
                     "statistical-voice-score-{:02d}.json".format(revision),

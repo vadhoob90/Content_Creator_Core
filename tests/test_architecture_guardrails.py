@@ -89,7 +89,22 @@ def test_architecture_report_describes_modules_and_dependencies():
     assert report["summary"]["line_count"] >= 10_000
     modules = {module["module"]: module for module in report["modules"]}
     assert modules["content_creator.orchestrator"]["line_count"] >= 800
-    assert "content_creator.visuals" in modules["content_creator.orchestrator"]["imports"]
+    orchestrator_imports = modules["content_creator.orchestrator"]["imports"]
+    assert "content_creator.capabilities" in orchestrator_imports
+    assert "content_creator.stages" in orchestrator_imports
+    assert "content_creator.visuals" not in orchestrator_imports
+    assert "content_creator.voice_assessment" not in orchestrator_imports
+
+
+def test_architecture_rules_are_enforced():
+    result = subprocess.run(
+        [sys.executable, "scripts/architecture_report.py", "--check"],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
 
 
 def test_maintainability_documents_are_linked_from_the_core_guide():
@@ -99,6 +114,7 @@ def test_maintainability_documents_are_linked_from_the_core_guide():
         "development-principles.md",
         "public-contracts.md",
         "../adr/0007-modular-monolith-boundaries.md",
+        "../adr/0008-lifecycle-stages-and-capabilities.md",
     ):
         assert target in core_guide
 

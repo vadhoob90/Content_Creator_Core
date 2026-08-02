@@ -67,18 +67,53 @@ def build_report() -> dict:
     }
 
 
+def architecture_violations(report: dict) -> list[str]:
+    """Evaluate precise dependency rules that have an established green baseline."""
+    modules = {module["module"]: module for module in report["modules"]}
+    violations = []
+    cli = modules.get("content_creator.cli")
+    if not cli or cli["line_count"] > 100:
+        violations.append("content_creator.cli must remain a façade of at most 100 lines")
+
+    orchestrator = modules.get("content_creator.orchestrator", {})
+    orchestrator_imports = set(orchestrator.get("imports", []))
+    for forbidden in ("content_creator.visuals", "content_creator.voice_assessment"):
+        if forbidden in orchestrator_imports:
+            violations.append("content_creator.orchestrator must not import {}".format(forbidden))
+    for required in ("content_creator.capabilities", "content_creator.stages"):
+        if required not in orchestrator_imports:
+            violations.append("content_creator.orchestrator must compose {}".format(required))
+
+    for domain_module in ("content_creator.voices", "content_creator.perspectives"):
+        imports = set(modules.get(domain_module, {}).get("imports", []))
+        if "content_creator.versioned_artifacts" not in imports:
+            violations.append(
+                "{} must use shared versioned-artifact mechanics".format(domain_module)
+            )
+    return violations
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--json", action="store_true", help="emit machine-readable JSON")
+    parser.add_argument("--check", action="store_true", help="enforce accepted dependency rules")
     args = parser.parse_args()
     report = build_report()
+    violations = architecture_violations(report)
     if args.json:
+        report["violations"] = violations
         print(json.dumps(report, indent=2, sort_keys=True))
-        return 0
+        return 1 if args.check and violations else 0
     print("{module_count} modules, {line_count} lines".format(**report["summary"]))
     for module in sorted(report["modules"], key=lambda item: item["line_count"], reverse=True):
         print("{line_count:5}  {module}".format(**module))
-    return 0
+    if args.check:
+        if violations:
+            for violation in violations:
+                print("ERROR: {}".format(violation))
+        else:
+            print("Architecture rules: passed")
+    return 1 if args.check and violations else 0
 
 
 if __name__ == "__main__":

@@ -43,8 +43,9 @@ verification.
 ### Extension contracts
 
 Provider and visual adapter contracts are supported substitution points.
-Future workflow-stage or optional-capability contracts become public only when
-they are exported and documented as such.
+Workflow stages and `RunCapabilities` are internal composition seams: they are
+covered by architecture tests but become public only if deliberately exported
+and documented in a future release.
 
 ## Compatibility policy
 
