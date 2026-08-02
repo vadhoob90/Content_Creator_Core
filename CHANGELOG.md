@@ -8,6 +8,13 @@ release tag.
 
 ## [Unreleased]
 
+## [0.12.1] - 2026-08-02
+
+### Fixed
+
+- Visual asset manifest records now embed resolved source provenance, reuse
+  rights, and accessibility alt text rather than retaining only source IDs.
+
 ## [0.12.0] - 2026-08-02
 
 ### Added

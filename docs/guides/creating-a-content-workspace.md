@@ -9,10 +9,10 @@ material owned by that workspace.
 
 ## Install Core
 
-Install the immutable `v0.12.0` release:
+Install the immutable `v0.12.1` release:
 
 ```bash
-uv tool install content-creator==0.12.0
+uv tool install content-creator==0.12.1
 ```
 
 ## Generate the repository
@@ -27,7 +27,7 @@ content-creator workspace create Content_Creator_Alice \
   --voice-label "Alice — General" \
   --pack linkedin-post \
   --pack linkedin-article \
-  --core-ref v0.12.0
+  --core-ref v0.12.1
 ```
 
 Without `--pack`, the command enables `general-text`.
@@ -59,7 +59,7 @@ Relative destinations are resolved from the current directory. When the global
 `--workspace` option is supplied, it acts as the base directory.
 
 The generated main README names both the immutable Core revision and the exact
-dependency declaration (for example, `content-creator==0.12.0`). That small
+dependency declaration (for example, `content-creator==0.12.1`). That small
 section is marked as generator-owned so a later `workspace upgrade --apply`
 can refresh it without replacing the rest of the workspace's README.
 
