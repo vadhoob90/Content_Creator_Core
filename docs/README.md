@@ -51,6 +51,8 @@ Core always returns the result for review and never publishes externally.
 ## I develop Content Creator Core
 
 - [Core development guide](core/README.md)
+- [Development principles](core/development-principles.md)
+- [Public compatibility contracts](core/public-contracts.md)
 - [Architecture decisions](adr/0001-provider-neutral-contract.md)
 - [Package-registry distribution decision](adr/0005-package-registry-distribution.md)
 - [Changelog](../CHANGELOG.md)
