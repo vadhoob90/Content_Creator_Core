@@ -6,7 +6,7 @@ from conftest import passing_critique, valid_draft
 
 from content_creator.cli import build_parser, main
 from content_creator.domain import RoutePlan, RunState, RunStatus, WorkOrder
-from content_creator.orchestrator import Orchestrator
+from content_creator.orchestrator import OrchestrationError, Orchestrator
 from content_creator.providers import FakeProvider, ProviderRegistry
 from content_creator.storage import IdempotencyError, RunStore
 
@@ -88,6 +88,49 @@ def test_distinct_revision_key_preserves_content_lineage(project):
     assert second.id != first.id
     assert second.work_order.parent_run_id == first.id
     assert second.work_order.content_session_id == first.work_order.content_session_id
+
+
+def test_parent_revision_hydrates_reviewed_draft_and_preservation_context(project):
+    parent_draft = valid_draft()
+    first = _orchestrator(
+        project,
+        {"writer": [parent_draft], "critic": [passing_critique()]},
+    ).start(_order(), idempotency_key="piece:parent")
+    revision_provider = FakeProvider({"writer": [parent_draft], "critic": [passing_critique()]})
+    revision = Orchestrator(
+        project,
+        registry=ProviderRegistry({"anthropic": revision_provider}),
+    ).start(
+        _order(
+            request="Change only the final sentence.",
+            parent_run_id=first.id,
+        ),
+        idempotency_key="piece:targeted-revision",
+    )
+
+    writer_request = next(
+        request for request in revision_provider.requests if request.role == "writer"
+    )
+    writer_payload = json.loads(writer_request.user.split("\nINPUT\n", 1)[1])
+    context = writer_payload["revision_context"]
+    assert revision.work_order.content_session_id == first.work_order.content_session_id
+    assert context["parent_run_id"] == first.id
+    assert context["content_session_id"] == first.work_order.content_session_id
+    assert context["parent_draft"].strip() == parent_draft
+    assert "preserve all unaffected approved passages" in context["revision_instruction"]
+
+
+def test_parent_revision_requires_reviewed_draft(project):
+    parent = RunState(
+        id="unfinished-parent",
+        status=RunStatus.DRAFTING,
+        work_order=_order(),
+        route_plan=RoutePlan(route="post-none-none", stages=["writer"]),
+    )
+    RunStore(project).create(parent)
+
+    with pytest.raises(OrchestrationError, match="no reviewed draft"):
+        _orchestrator(project, {}).start(_order(request="revise", parent_run_id=parent.id))
 
 
 def test_duplicate_terminal_submission_does_not_repeat_publication(project):

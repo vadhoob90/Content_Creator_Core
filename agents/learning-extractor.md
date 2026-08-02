@@ -45,6 +45,8 @@ approved sessions or is later made explicit by the author.
 
 ## Constraints
 
+- Use only `researcher`, `writer`, or `critic` as the learning role. Never
+  invent a role or use `author`; author positions belong to perspective memory.
 - Every learning must cite a run and evidence event
 - Scope rules to the relevant format or content type
 - Deduplicate before adding

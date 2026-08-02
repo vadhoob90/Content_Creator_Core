@@ -61,6 +61,12 @@ class LearningStatus(str, Enum):
     REJECTED = "rejected"
 
 
+class LearningRole(str, Enum):
+    RESEARCHER = "researcher"
+    WRITER = "writer"
+    CRITIC = "critic"
+
+
 class AuthorContribution(BaseModel):
     thesis: Optional[str] = None
     intended_challenge: Optional[str] = None
@@ -250,7 +256,7 @@ class QualityDecision(BaseModel):
 
 
 class LearningCandidate(BaseModel):
-    role: str
+    role: LearningRole
     scope: str = "general"
     principle: str
     evidence: str
@@ -259,6 +265,16 @@ class LearningCandidate(BaseModel):
     source_event: str = "publication"
     supersedes: Optional[str] = None
     conflicts_with: List[str] = Field(default_factory=list)
+
+    @field_validator("role", mode="before")
+    @classmethod
+    def validate_learning_role(cls, value):
+        supported = ", ".join(role.value for role in LearningRole)
+        if value not in {role.value for role in LearningRole}:
+            raise ValueError(
+                "Unsupported learning role {!r}; supported roles are: {}".format(value, supported)
+            )
+        return value
 
 
 class LearningExtraction(BaseModel):

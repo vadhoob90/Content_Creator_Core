@@ -74,9 +74,11 @@ content-creator --workspace . run \
   --research none
 ```
 
-Core carries the parent's content session into the new run. At publication it
-collects unresolved diagnostics across the whole lineage, groups identical
-fingerprints, and reports the occurrence count once.
+Core carries the parent's content session and reviewed draft into the new run.
+The writer receives the parent text as a structured revision baseline with an
+explicit instruction to preserve unaffected approved passages. At publication
+Core collects unresolved diagnostics across the whole lineage, groups
+identical fingerprints, and reports the occurrence count once.
 
 ## Deferred publication boundary
 
