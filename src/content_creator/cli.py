@@ -45,6 +45,7 @@ from .providers import ProviderError, ProviderRegistry
 from .runner import AgentOutputError
 from .storage import RunStore, StorageError
 from .upgrade import WorkspaceUpgradeError, WorkspaceUpgrader
+from .visuals import VisualBrief, VisualCritique, VisualWorkflow
 from .voice_assessment import (
     assess_voice_draft,
     load_score_preference,
@@ -504,6 +505,24 @@ def build_parser() -> argparse.ArgumentParser:
         choices=["publish-only", "prepare-issue"],
     )
 
+    visual = sub.add_parser("visual", help="Manage visual assets for a reviewed run")
+    visual_sub = visual.add_subparsers(dest="visual_command", required=True)
+    visual_brief = visual_sub.add_parser("brief", help="Create a typed visual brief")
+    visual_brief.add_argument("run_id")
+    visual_brief.add_argument("brief_file")
+    for command in ("validate", "select", "approve"):
+        item = visual_sub.add_parser(command)
+        item.add_argument("run_id")
+        item.add_argument("asset_id")
+    visual_critique = visual_sub.add_parser("critique")
+    visual_critique.add_argument("run_id")
+    visual_critique.add_argument("asset_id")
+    visual_critique.add_argument("critique_file")
+    visual_publish = visual_sub.add_parser("publish")
+    visual_publish.add_argument("run_id")
+    visual_show = visual_sub.add_parser("show")
+    visual_show.add_argument("run_id")
+
     evaluate = sub.add_parser("eval", help=argparse.SUPPRESS)
     evaluate.add_argument("--mode", choices=["replay", "live"], default="replay")
     evaluate.add_argument("--providers", nargs="+", default=["anthropic", "openai"])
@@ -919,6 +938,43 @@ def _main(argv=None) -> int:
         if state is None:
             raise ValueError("Unknown idempotency key")
         _print(state)
+        return 0
+    if args.command == "visual":
+        workflow = VisualWorkflow(root)
+        state = RunStore(root).load(args.run_id)
+        profile = (
+            PackRegistry(root)
+            .resolve(
+                state.work_order.content_pack,
+                state.work_order.pack_options,
+            )
+            .visuals
+        )
+        if args.visual_command == "brief":
+            payload = json.loads(Path(args.brief_file).read_text(encoding="utf-8"))
+            payload["run_id"] = args.run_id
+            _print(workflow.create_brief(VisualBrief.model_validate(payload), profile))
+        elif args.visual_command == "validate":
+            _print(workflow.validate(args.run_id, args.asset_id, profile))
+        elif args.visual_command == "critique":
+            payload = json.loads(Path(args.critique_file).read_text(encoding="utf-8"))
+            _print(
+                workflow.record_critique(
+                    args.run_id,
+                    args.asset_id,
+                    VisualCritique.model_validate(payload),
+                )
+            )
+        elif args.visual_command == "select":
+            _print(workflow.select(args.run_id, args.asset_id))
+        elif args.visual_command == "approve":
+            _print(workflow.approve(args.run_id, args.asset_id))
+        elif args.visual_command == "publish":
+            target = workflow.publish(args.run_id, profile)
+            _print({"published_path": str(target.relative_to(root)) if target else None})
+        else:
+            manifest = RunStore(root).read_artifact(args.run_id, "visuals/manifest.json")
+            _print(json.loads(manifest))
         return 0
     if args.command == "approve-research":
         _print(orchestrator.resume_research(args.run_id, True, notes=args.notes))

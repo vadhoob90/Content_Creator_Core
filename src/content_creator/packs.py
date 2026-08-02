@@ -7,6 +7,7 @@ from typing import Any, Dict, List, Optional
 from pydantic import BaseModel, Field
 
 from .resource_paths import ResourceResolver
+from .visuals import VisualPackProfile
 
 
 class PackError(ValueError):
@@ -30,6 +31,7 @@ class ContentPack(BaseModel):
     statistical_voice_score: StatisticalVoiceScorePackPolicy = Field(
         default_factory=StatisticalVoiceScorePackPolicy
     )
+    visuals: VisualPackProfile = Field(default_factory=VisualPackProfile)
     validators: List[str] = Field(default_factory=list)
     integrity_validators: List[str] = Field(
         default_factory=lambda: [
@@ -90,7 +92,7 @@ class PackRegistry:
         data = chain[-1].model_dump()
         for child in reversed(chain[:-1]):
             child_data = child.model_dump(exclude_unset=True)
-            for mapping in ("defaults", "prompts", "statistical_voice_score"):
+            for mapping in ("defaults", "prompts", "statistical_voice_score", "visuals"):
                 merged = dict(data.get(mapping, {}))
                 merged.update(child_data.get(mapping, {}))
                 child_data[mapping] = merged
@@ -127,6 +129,13 @@ class PackRegistry:
             destination.relative_to(self.root)
         except ValueError as exc:
             raise PackError("Pack destination leaves repository root") from exc
+        visual_destination = data.get("visuals", {}).get("destination")
+        if visual_destination:
+            resolved_visual_destination = (self.root / visual_destination).resolve()
+            try:
+                resolved_visual_destination.relative_to(self.root)
+            except ValueError as exc:
+                raise PackError("Visual destination leaves repository root") from exc
         return ContentPack.model_validate(data)
 
     def list(self) -> List[ContentPack]:

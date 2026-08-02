@@ -256,13 +256,13 @@ commit reaches `main`.
 ### Publish the release
 
 Create the matching annotated tag only after the release PR is merged. For
-example, for `0.11.0`:
+example, for `0.12.0`:
 
 ```bash
 git switch main
 git pull --ff-only origin main
-git tag -a v0.11.0 -m "Content Creator 0.11.0"
-git push origin v0.11.0
+git tag -a v0.12.0 -m "Content Creator 0.12.0"
+git push origin v0.12.0
 ```
 
 Pushing the tag triggers `.github/workflows/release.yml`. The workflow:
@@ -294,13 +294,13 @@ Author workspaces remain on their pinned package until deliberately upgraded.
 Preview the upgrade first:
 
 ```bash
-uv run content-creator --workspace . workspace upgrade --to v0.11.0
+uv run content-creator --workspace . workspace upgrade --to v0.12.0
 ```
 
 Apply the reviewed preview explicitly:
 
 ```bash
-uv run content-creator --workspace . workspace upgrade --to v0.11.0 --apply
+uv run content-creator --workspace . workspace upgrade --to v0.12.0 --apply
 ```
 
 The apply operation updates the package requirement and lockfile, runs doctor,

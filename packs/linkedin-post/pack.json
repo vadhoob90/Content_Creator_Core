@@ -6,6 +6,38 @@
   "destination": "content/linkedin-post/published",
   "defaults": {"length": "50:600"},
   "statistical_voice_score": {"eligible": false},
+  "visuals": {
+    "supported": true,
+    "required": false,
+    "execution_classes": ["deterministic", "generative"],
+    "aspect_ratios": ["1:1", "4:5"],
+    "formats": ["png", "jpg", "webp"],
+    "max_file_size_bytes": 8388608,
+    "destination": "content/linkedin-post/visuals",
+    "safe_areas": [
+      {
+        "id": "feed",
+        "left": 0.05,
+        "top": 0.05,
+        "right": 0.05,
+        "bottom": 0.05,
+        "applies_to_roles": ["text", "headline"]
+      }
+    ],
+    "crop_profiles": [
+      {
+        "id": "composer-thumbnail",
+        "visible_area": {
+          "x": 0.0,
+          "y": 0.0,
+          "width": 1.0,
+          "height": 0.55,
+          "role": "crop"
+        },
+        "protected_roles": ["headline"]
+      }
+    ]
+  },
   "validators": [],
   "rubric": "rubric.yaml",
   "allowed_research": ["none", "light", "deep"]

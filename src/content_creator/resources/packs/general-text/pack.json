@@ -12,6 +12,7 @@
     "length": "300:1200"
   },
   "statistical_voice_score": {"eligible": false},
+  "visuals": {"supported": false, "required": false},
   "allowed_run_overrides": [
     "objective",
     "audience",
