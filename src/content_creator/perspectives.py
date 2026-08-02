@@ -39,7 +39,8 @@ class PerspectiveRunner(Protocol):
         provider: Optional[str] = None,
         profile: Optional[str] = None,
         tools: Optional[List[str]] = None,
-    ) -> Any: ...
+    ) -> Any:
+        raise NotImplementedError
 
 
 class PerspectiveError(RuntimeError):
