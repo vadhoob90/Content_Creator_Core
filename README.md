@@ -40,6 +40,20 @@ Prefer doing it yourself? Follow
 [Create a thin content workspace](docs/guides/creating-a-content-workspace.md)
 for the complete terminal instructions and configuration options.
 
+## Optional features to try
+
+Once the basic writing workflow is running, these optional capabilities are
+good next steps:
+
+- **Visual asset packs** — create, review, validate, approve, and publish
+  provider-independent visuals alongside content. Start with the
+  [visual asset workflow guide](docs/guides/visual-assets.md); the built-in
+  LinkedIn packs already declare optional visual profiles.
+- **Statistical voice score** — compare a draft with the selected voice's
+  authorised writing evidence using deterministic or optional ML analysis.
+  Scoring is disabled by default and remains advisory. See the
+  [statistical voice framework](docs/guides/linguistic-voice-framework.md).
+
 ## How it works
 
 The author first establishes an approved voice, then uses it in a repeatable
