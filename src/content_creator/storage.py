@@ -127,7 +127,7 @@ class RunStore:
         self,
         key_hash: str,
         fingerprint: str,
-        existing,
+        existing: sqlite3.Row,
     ) -> RunState:
         if existing[0] != fingerprint:
             raise IdempotencyError(
@@ -145,7 +145,7 @@ class RunStore:
         return directory / "idempotency.sqlite3"
 
     @staticmethod
-    def _ensure_idempotency_schema(connection) -> None:
+    def _ensure_idempotency_schema(connection: sqlite3.Connection) -> None:
         connection.execute(
             "CREATE TABLE IF NOT EXISTS submissions ("
             "key_hash TEXT PRIMARY KEY, "

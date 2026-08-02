@@ -10,10 +10,9 @@ from __future__ import annotations
 import argparse
 import difflib
 import json
-import os
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Optional
+from typing import Any, List, Optional
 
 import yaml
 
@@ -23,6 +22,7 @@ from ..coordinator import ContentCoordinator
 from ..diagnostics import DiagnosticDecisionRequired
 from ..domain import (
     AuthorContribution,
+    PerspectiveMode,
     PerspectiveSelection,
     ResearchDepth,
     ResearchSource,
@@ -48,11 +48,10 @@ from ..perspectives import (
     PerspectiveProvenance,
     PerspectiveRegistry,
 )
-from ..providers import ProviderError, ProviderRegistry
+from ..providers import ProviderError
 from ..runner import AgentOutputError
 from ..storage import RunStore, StorageError
 from ..upgrade import WorkspaceUpgradeError, WorkspaceUpgrader
-from ..visuals import VisualBrief, VisualCritique, VisualWorkflow
 from ..voice_assessment import (
     assess_voice_draft,
     load_score_preference,
@@ -79,12 +78,16 @@ from ..workspace import (
     WorkspaceScaffolder,
     initialise_workspace,
 )
+from . import operations as operations_commands
+from . import provider as provider_commands
+from . import schema as schema_commands
+from . import visual as visual_commands
 
 PROVIDERS = ["anthropic", "openai", "codex-native", "claude-native"]
 
 
 class _AuthorHelpFormatter(argparse.HelpFormatter):
-    def _format_action(self, action):
+    def _format_action(self, action: argparse.Action) -> str:
         if isinstance(action, argparse._SubParsersAction):
             choices = action._choices_actions
             action._choices_actions = [item for item in choices if item.help != argparse.SUPPRESS]
@@ -99,7 +102,7 @@ def _root(value: Optional[str]) -> Path:
     return Path(value or ".").resolve()
 
 
-def _print(value) -> None:
+def _print(value: Any) -> None:
     if hasattr(value, "model_dump"):
         value = value.model_dump(mode="json")
     print(json.dumps(value, indent=2, default=str))
@@ -123,6 +126,8 @@ def build_parser() -> argparse.ArgumentParser:
             "{start,overview,workspace,doctor,run,status,submission,publish,diagnostics,advanced}"
         ),
     )
+    schema_commands.register(sub)
+    operations_commands.register(sub)
     initialise = sub.add_parser("init", help=argparse.SUPPRESS)
     initialise.add_argument(
         "--agent-template",
@@ -211,15 +216,7 @@ def build_parser() -> argparse.ArgumentParser:
             help="Packaged agent template (default: standard)",
         )
 
-    provider = sub.add_parser("provider", help=argparse.SUPPRESS)
-    provider_sub = provider.add_subparsers(dest="provider_command", required=True)
-    provider_select = provider_sub.add_parser(
-        "select",
-        help="Persist the workspace's deliberate default provider",
-    )
-    provider_select.add_argument("provider_name", choices=PROVIDERS)
-    provider_verify = provider_sub.add_parser("verify")
-    provider_verify.add_argument("provider_name", choices=PROVIDERS)
+    provider_commands.register(sub, PROVIDERS)
 
     plan = sub.add_parser("plan", help=argparse.SUPPRESS)
     plan.add_argument("request")
@@ -512,23 +509,7 @@ def build_parser() -> argparse.ArgumentParser:
         choices=["publish-only", "prepare-issue"],
     )
 
-    visual = sub.add_parser("visual", help="Manage visual assets for a reviewed run")
-    visual_sub = visual.add_subparsers(dest="visual_command", required=True)
-    visual_brief = visual_sub.add_parser("brief", help="Create a typed visual brief")
-    visual_brief.add_argument("run_id")
-    visual_brief.add_argument("brief_file")
-    for command in ("validate", "select", "approve"):
-        item = visual_sub.add_parser(command)
-        item.add_argument("run_id")
-        item.add_argument("asset_id")
-    visual_critique = visual_sub.add_parser("critique")
-    visual_critique.add_argument("run_id")
-    visual_critique.add_argument("asset_id")
-    visual_critique.add_argument("critique_file")
-    visual_publish = visual_sub.add_parser("publish")
-    visual_publish.add_argument("run_id")
-    visual_show = visual_sub.add_parser("show")
-    visual_show.add_argument("run_id")
+    visual_commands.register(sub)
 
     evaluate = sub.add_parser("eval", help=argparse.SUPPRESS)
     evaluate.add_argument("--mode", choices=["replay", "live"], default="replay")
@@ -546,7 +527,7 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def _add_run_arguments(parser) -> None:
+def _add_run_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("request", nargs="?")
     parser.add_argument("--brief", help="JSON or YAML content brief")
     parser.add_argument("--topic")
@@ -589,7 +570,7 @@ def _add_run_arguments(parser) -> None:
     )
 
 
-def _main(argv=None) -> int:
+def _main(argv: Optional[List[str]] = None) -> int:
     args = build_parser().parse_args(argv)
     root = _root(args.root)
     if args.command == "advanced":
@@ -600,6 +581,10 @@ def _main(argv=None) -> int:
             "Use: content-creator <command> --help"
         )
         return 0
+    if args.command == "schema":
+        return schema_commands.run(root, args, _print)
+    if args.command == "operations":
+        return operations_commands.run(root, args, _print)
     if args.command == "init":
         _print(initialise_workspace(root, args.agent_template))
         return 0
@@ -637,62 +622,7 @@ def _main(argv=None) -> int:
             _print(workspace.diff_template(args.template))
         return 0
     if args.command == "provider":
-        provider_name = args.provider_name
-        if args.provider_command == "select":
-            path = root / "content-creator.yaml"
-            configuration = (
-                yaml.safe_load(path.read_text(encoding="utf-8")) or {} if path.exists() else {}
-            )
-            if not isinstance(configuration, dict):
-                raise ConfigurationError("content-creator.yaml must contain a mapping")
-            provider_configuration = configuration.get("provider", {}) or {}
-            if not isinstance(provider_configuration, dict):
-                raise ConfigurationError("provider configuration must be a mapping")
-            provider_configuration["default"] = provider_name
-            configuration["provider"] = provider_configuration
-            RunStore._atomic_text(
-                path,
-                yaml.safe_dump(configuration, sort_keys=False),
-            )
-            _print(
-                {
-                    "status": "ok",
-                    "provider": provider_name,
-                    "persisted_to": str(path),
-                }
-            )
-            return 0
-        if provider_name in {"anthropic", "openai"}:
-            variable = "{}_API_KEY".format(provider_name.upper())
-            configured = bool(os.getenv(variable))
-            _print(
-                {
-                    "provider": provider_name,
-                    "configured": configured,
-                    "credential_variable": variable,
-                }
-            )
-            return 0 if configured else 8
-        try:
-            provider = ProviderRegistry(root=root).get(provider_name)
-            authentication = provider.verify()
-        except ProviderError as exc:
-            _print(
-                {
-                    "provider": provider_name,
-                    "configured": False,
-                    "error": str(exc),
-                }
-            )
-            return 8
-        _print(
-            {
-                "provider": provider_name,
-                "configured": True,
-                **authentication,
-            }
-        )
-        return 0
+        return provider_commands.run(root, args, _print)
     if args.command == "doctor":
         report = WorkspaceHealth(root).report()
         _print(report)
@@ -885,7 +815,7 @@ def _main(argv=None) -> int:
             order.voice_id = args.voice
             order.voice_version = args.voice_version
         if args.no_perspective:
-            order.perspective_mode = "disabled"
+            order.perspective_mode = PerspectiveMode.DISABLED
             order.perspective_context = None
             order.perspective_version = None
             order.perspective_selections = []
@@ -945,48 +875,13 @@ def _main(argv=None) -> int:
         _print(orchestrator.store.load(args.run_id))
         return 0
     if args.command == "submission":
-        state = orchestrator.store.load_by_idempotency_key(args.idempotency_key)
-        if state is None:
+        submission_state = orchestrator.store.load_by_idempotency_key(args.idempotency_key)
+        if submission_state is None:
             raise ValueError("Unknown idempotency key")
-        _print(state)
+        _print(submission_state)
         return 0
     if args.command == "visual":
-        workflow = VisualWorkflow(root)
-        state = RunStore(root).load(args.run_id)
-        profile = (
-            PackRegistry(root)
-            .resolve(
-                state.work_order.content_pack,
-                state.work_order.pack_options,
-            )
-            .visuals
-        )
-        if args.visual_command == "brief":
-            payload = json.loads(Path(args.brief_file).read_text(encoding="utf-8"))
-            payload["run_id"] = args.run_id
-            _print(workflow.create_brief(VisualBrief.model_validate(payload), profile))
-        elif args.visual_command == "validate":
-            _print(workflow.validate(args.run_id, args.asset_id, profile))
-        elif args.visual_command == "critique":
-            payload = json.loads(Path(args.critique_file).read_text(encoding="utf-8"))
-            _print(
-                workflow.record_critique(
-                    args.run_id,
-                    args.asset_id,
-                    VisualCritique.model_validate(payload),
-                )
-            )
-        elif args.visual_command == "select":
-            _print(workflow.select(args.run_id, args.asset_id))
-        elif args.visual_command == "approve":
-            _print(workflow.approve(args.run_id, args.asset_id))
-        elif args.visual_command == "publish":
-            target = workflow.publish(args.run_id, profile)
-            _print({"published_path": str(target.relative_to(root)) if target else None})
-        else:
-            manifest = RunStore(root).read_artifact(args.run_id, "visuals/manifest.json")
-            _print(json.loads(manifest))
-        return 0
+        return visual_commands.run(root, args, _print)
     if args.command == "approve-research":
         _print(orchestrator.resume_research(args.run_id, True, notes=args.notes))
         return 0
@@ -1006,7 +901,7 @@ def _main(argv=None) -> int:
     return 2
 
 
-def _source_lines(path: Optional[str]) -> list:
+def _source_lines(path: Optional[str]) -> List[str]:
     if not path:
         return []
     return [
@@ -1016,8 +911,8 @@ def _source_lines(path: Optional[str]) -> list:
     ]
 
 
-def _documents(values: list) -> list:
-    result = []
+def _documents(values: List[str]) -> List[str]:
+    result: List[str] = []
     for value in values:
         path = Path(value).expanduser().resolve()
         if path.is_dir():
@@ -1032,7 +927,7 @@ def _documents(values: list) -> list:
     return result
 
 
-def _voice_command(root: Path, args) -> int:
+def _voice_command(root: Path, args: argparse.Namespace) -> int:
     runner = None
     if not getattr(args, "offline_analysis", False) and command_needs_model(args):
         runner = Orchestrator(root).runner
@@ -1277,7 +1172,7 @@ def _voice_command(root: Path, args) -> int:
     if command == "diff":
         voice_root = root / "profiles" / args.voice_id
 
-        def profile(version):
+        def profile(version: str) -> List[str]:
             directory = (
                 voice_root / "candidate"
                 if version == "candidate"
@@ -1359,7 +1254,7 @@ def _verify_voice(
     }
 
 
-def _perspective_command(root: Path, args) -> int:
+def _perspective_command(root: Path, args: argparse.Namespace) -> int:
     command = args.perspective_command
     if command == "compare-create":
         baseline = Path(args.baseline)
@@ -1491,13 +1386,13 @@ def _perspective_command(root: Path, args) -> int:
     return 2
 
 
-def command_needs_model(args) -> bool:
+def command_needs_model(args: argparse.Namespace) -> bool:
     return args.voice_command in {"build", "rebuild"} or (
         args.voice_command == "create" and not args.no_build
     )
 
 
-def main(argv=None) -> int:
+def main(argv: Optional[List[str]] = None) -> int:
     try:
         return _main(argv)
     except DiagnosticDecisionRequired as exc:
@@ -1518,8 +1413,9 @@ def main(argv=None) -> int:
             "error_type": exc.__class__.__name__,
             "error": str(exc),
         }
-        if getattr(exc, "diagnostic_path", None):
-            result["diagnostic_summary"] = exc.diagnostic_path
+        diagnostic_path = getattr(exc, "diagnostic_path", None)
+        if diagnostic_path:
+            result["diagnostic_summary"] = diagnostic_path
         _print(result)
         return 8
 

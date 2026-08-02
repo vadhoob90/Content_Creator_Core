@@ -5,7 +5,7 @@ from pathlib import Path
 
 import content_creator
 from content_creator.cli import build_parser
-from content_creator.commands import perspective, voice
+from content_creator.commands import operations, perspective, provider, schema, visual, voice
 from content_creator.domain import WorkOrder
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -39,6 +39,7 @@ def test_top_level_cli_commands_are_characterized():
         "eval",
         "init",
         "overview",
+        "operations",
         "pack",
         "packs",
         "perspective",
@@ -47,6 +48,7 @@ def test_top_level_cli_commands_are_characterized():
         "publish",
         "reject-research",
         "run",
+        "schema",
         "start",
         "status",
         "submission",
@@ -113,15 +115,27 @@ def test_maintainability_documents_are_linked_from_the_core_guide():
     for target in (
         "development-principles.md",
         "public-contracts.md",
+        "schema-compatibility.md",
+        "operations-and-recovery.md",
         "../adr/0007-modular-monolith-boundaries.md",
         "../adr/0008-lifecycle-stages-and-capabilities.md",
+        "../adr/0009-schema-governance-and-operational-recovery.md",
     ):
         assert target in core_guide
 
 
 def test_large_cli_families_have_dedicated_command_modules():
-    assert callable(voice.run)
-    assert callable(perspective.run)
+    for family in (operations, perspective, provider, schema, visual, voice):
+        assert callable(family.run)
+    for family in (operations, provider, schema, visual):
+        assert callable(family.register)
 
     cli_path = ROOT / "src" / "content_creator" / "cli.py"
     assert len(cli_path.read_text(encoding="utf-8").splitlines()) < 1_100
+
+
+def test_full_production_package_is_in_the_mypy_gate():
+    configuration = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
+
+    assert 'files = ["src/content_creator"]' in configuration
+    assert "disallow_untyped_defs = true" in configuration

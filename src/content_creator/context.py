@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 
 from .agent_resources import LEARNING_FILES, ROLE_FILES, AgentWorkspace
 from .domain import WorkOrder
@@ -19,7 +19,7 @@ def resolved_context(
     pack: ContentPack,
     voice: dict,
     perspectives: Optional[List[dict]] = None,
-) -> dict:
+) -> Dict[str, Any]:
     resources = ResourceResolver(root)
     hashes = {
         "core_rubric": hash_file(resources.path("rubrics/core.yaml")),
@@ -59,7 +59,7 @@ def resolved_context(
             if item.get("status") == "active"
         ]
         hashes["voice_learning_memory"] = hash_file(voice_memory)
-    result = {
+    result: Dict[str, Any] = {
         "schema_version": "1.1",
         "engine_version": VERSION,
         "content_pack": {"id": pack.id, "version": pack.version},

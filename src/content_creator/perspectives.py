@@ -6,7 +6,7 @@ import shutil
 from datetime import UTC, datetime
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 from uuid import uuid4
 
 from pydantic import BaseModel, Field
@@ -21,6 +21,9 @@ from .versioned_artifacts import (
     verify_components,
 )
 from .voices import VoiceRegistry
+
+if TYPE_CHECKING:
+    from .runner import AgentRunner
 
 
 class PerspectiveError(RuntimeError):
@@ -186,7 +189,7 @@ class PerspectiveCatalogueStore:
 
 
 class PerspectiveResolver:
-    def __init__(self, root: Path, runner):
+    def __init__(self, root: Path, runner: AgentRunner):
         self.root = root.resolve()
         self.runner = runner
 

@@ -6,12 +6,12 @@ import subprocess
 from pathlib import Path
 from typing import Callable, Dict, List, Optional
 
-from .base import ProviderError
+from .base import Provider, ProviderError
 
 CommandRunner = Callable[..., subprocess.CompletedProcess]
 
 
-class NativeCliProvider:
+class NativeCliProvider(Provider):
     """Shared process and authentication safeguards for subscription-backed CLIs."""
 
     name: str
@@ -25,11 +25,12 @@ class NativeCliProvider:
         command_runner: Optional[CommandRunner] = None,
     ):
         self.root = (root or Path.cwd()).resolve()
-        self.executable = executable or shutil.which(self.executable_name)
-        if not self.executable:
+        resolved_executable = executable or shutil.which(self.executable_name)
+        if not resolved_executable:
             raise ProviderError(
                 "{} is not installed or is not available on PATH".format(self.executable_name)
             )
+        self.executable: str = resolved_executable
         self.command_runner = command_runner or subprocess.run
         self._authenticated = False
 

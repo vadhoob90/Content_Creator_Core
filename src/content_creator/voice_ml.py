@@ -5,7 +5,7 @@ import json
 import math
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Optional, Tuple
+from typing import Any, Dict, Iterable, List, Optional, Set, Tuple
 
 from .ingestion import content_hash, read_source
 from .linguistics import extract_linguistic_features
@@ -120,7 +120,7 @@ def _comparison_rows(
     paths: Iterable[Path], minimum_document_words: int = 100
 ) -> Tuple[List[List[float]], int, Dict[str, Any]]:
     rows: List[List[float]] = []
-    shingle_profiles = []
+    shingle_profiles: List[Set[tuple[str, ...]]] = []
     hashes: List[str] = []
     words = 0
     skipped = {
@@ -224,7 +224,7 @@ def training_reliability(
     }
 
 
-def _require_sklearn():
+def _require_sklearn() -> Dict[str, Any]:
     try:
         import sklearn
         from sklearn.linear_model import LogisticRegression

@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 from datetime import UTC, datetime
 from enum import Enum
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional, Self
 from uuid import uuid4
 
 from pydantic import BaseModel, Field, field_validator, model_validator
@@ -84,7 +84,7 @@ class PerspectiveSelection(BaseModel):
 
     @field_validator("context_id")
     @classmethod
-    def validate_context_id(cls, value):
+    def validate_context_id(cls, value: str) -> str:
         if not re.fullmatch(r"[a-z0-9][a-z0-9-]{0,62}", value):
             raise ValueError(
                 "Perspective context ids must use lowercase letters, digits, and hyphens"
@@ -93,6 +93,7 @@ class PerspectiveSelection(BaseModel):
 
 
 class WorkOrder(BaseModel):
+    schema_version: str = "1.0"
     request: str
     topic: str
     content_session_id: str = Field(default_factory=lambda: uuid4().hex[:12])
@@ -120,14 +121,14 @@ class WorkOrder(BaseModel):
 
     @field_validator("content_pack", "voice_id", "perspective_context")
     @classmethod
-    def validate_repository_id(cls, value):
+    def validate_repository_id(cls, value: Optional[str]) -> Optional[str]:
         if value is not None and not re.fullmatch(r"[a-z0-9][a-z0-9-]{0,62}", value):
             raise ValueError("Repository ids must use lowercase letters, digits, and hyphens")
         return value
 
     @field_validator("content_session_id", "parent_run_id")
     @classmethod
-    def validate_run_reference(cls, value):
+    def validate_run_reference(cls, value: Optional[str]) -> Optional[str]:
         if value is not None and not re.fullmatch(r"[a-zA-Z0-9_-]{1,64}", value):
             raise ValueError(
                 "Run and content session ids must use letters, digits, underscores, and hyphens"
@@ -135,7 +136,7 @@ class WorkOrder(BaseModel):
         return value
 
     @model_validator(mode="after")
-    def validate_perspective_selection(self):
+    def validate_perspective_selection(self) -> Self:
         if self.perspective_context and not self.perspective_selections:
             self.perspective_selections = [
                 PerspectiveSelection(
@@ -222,7 +223,7 @@ class Critique(BaseModel):
 
     @field_validator("prior_issue_status", mode="before")
     @classmethod
-    def normalise_legacy_prior_issue_status(cls, value):
+    def normalise_legacy_prior_issue_status(cls, value: Any) -> Any:
         if value is None:
             return {}
         if not isinstance(value, dict):
@@ -230,7 +231,7 @@ class Critique(BaseModel):
         return {key: cls._normalise_legacy_disposition(status) for key, status in value.items()}
 
     @staticmethod
-    def _normalise_legacy_disposition(value):
+    def _normalise_legacy_disposition(value: Any) -> Any:
         if not isinstance(value, str):
             return value
         note = value.strip()
@@ -268,7 +269,7 @@ class LearningCandidate(BaseModel):
 
     @field_validator("role", mode="before")
     @classmethod
-    def validate_learning_role(cls, value):
+    def validate_learning_role(cls, value: Any) -> Any:
         supported = ", ".join(role.value for role in LearningRole)
         if value not in {role.value for role in LearningRole}:
             raise ValueError(
@@ -325,6 +326,7 @@ class RunEvent(BaseModel):
 
 
 class RunState(BaseModel):
+    schema_version: str = "1.0"
     id: str = Field(default_factory=lambda: uuid4().hex[:12])
     status: RunStatus = RunStatus.PLANNED
     work_order: WorkOrder
@@ -345,7 +347,7 @@ class RunState(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def preserve_legacy_content_session(cls, value):
+    def preserve_legacy_content_session(cls, value: Any) -> Any:
         if not isinstance(value, dict):
             return value
         work_order = value.get("work_order")

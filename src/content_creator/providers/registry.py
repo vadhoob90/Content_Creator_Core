@@ -24,7 +24,7 @@ class ProviderRegistry:
         if name == "openai":
             from .openai import OpenAIProvider
 
-            provider = OpenAIProvider()
+            provider: Provider = OpenAIProvider()
         elif name == "anthropic":
             from .anthropic import AnthropicProvider
 

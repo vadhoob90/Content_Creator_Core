@@ -4,7 +4,7 @@ import json
 import os
 import shutil
 from pathlib import Path
-from typing import List, Optional
+from typing import Dict, List, Optional, cast
 
 from pydantic import BaseModel, Field
 
@@ -418,7 +418,7 @@ class VoiceBuilder:
                 provider=self.provider,
             )
             evaluation["agent_judgement"] = judgement.model_dump(mode="json")
-            evaluation["hard_failures"].extend(judgement.hard_failures)
+            cast(List[str], evaluation["hard_failures"]).extend(judgement.hard_failures)
             evaluation["passed"] = (
                 evaluation["passed"] and judgement.passed and not judgement.hard_failures
             )
@@ -534,7 +534,7 @@ class VoiceBuilder:
 
     @staticmethod
     def _profile(order: VoiceWorkOrder, patterns: List[VoicePattern], corpus: dict) -> str:
-        status_counts = {}
+        status_counts: Dict[str, int] = {}
         for item in patterns:
             status_counts[item.status] = status_counts.get(item.status, 0) + 1
         lines = [

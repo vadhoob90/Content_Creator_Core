@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import time
 from pathlib import Path
-from typing import Dict, Iterable, List
+from typing import Any, Dict, Iterable, List
 
 import yaml
 
@@ -95,7 +95,7 @@ def run_replay_suite(root: Path, providers: Iterable[str]) -> Dict:
                 research_source=case["research_source"],
                 provider=provider_name,
             )
-            responses = {
+            responses: Dict[str, Iterable[Any]] = {
                 "writer": [_draft(order)],
                 "critic": [_passing_critique()],
             }

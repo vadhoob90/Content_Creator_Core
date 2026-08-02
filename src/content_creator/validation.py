@@ -28,6 +28,8 @@ def validate_draft(
         phrases = order.pack_options.get("banned_phrases", [])
         if isinstance(phrases, str):
             phrases = [phrases]
+        if not isinstance(phrases, list):
+            phrases = []
         for phrase in phrases:
             if str(phrase).lower() in lowered:
                 errors.append("Banned phrase: {}".format(phrase))

@@ -4,7 +4,7 @@ import json
 import math
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 from .linguistics import extract_linguistic_features
 from .storage import RunStore
@@ -158,7 +158,7 @@ def assess_linguistic_signature(
         report["draft"] = {"word_count": word_count}
         return report
 
-    outliers = []
+    outliers: List[Dict[str, Any]] = []
     evaluated = 0
     eligible = 0
     for name, value in features.items():

@@ -9,6 +9,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+from datetime import UTC, datetime
 from pathlib import Path
 from types import TracebackType
 from typing import Any, Mapping, Type
@@ -66,6 +67,10 @@ class ActivationLock:
         self.path.parent.mkdir(parents=True, exist_ok=True)
         try:
             descriptor = os.open(self.path, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+            metadata = json.dumps(
+                {"pid": os.getpid(), "created_at": datetime.now(UTC).isoformat()}
+            ).encode()
+            os.write(descriptor, metadata)
             os.close(descriptor)
         except FileExistsError as exc:
             raise self.error_type(self.conflict_message) from exc

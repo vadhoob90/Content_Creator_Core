@@ -3,7 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Any, Dict, List, Optional, cast
 
 from .capabilities import DefaultRunCapabilities, RunCapabilities
 from .configuration import Configuration
@@ -12,6 +12,7 @@ from .diagnostics import DiagnosticDecisionRequired, RuntimeDiagnostics
 from .domain import (
     Critique,
     LearningExtraction,
+    ModelResponse,
     ResearchBrief,
     ResearchDepth,
     ResearchSource,
@@ -52,7 +53,7 @@ class Orchestrator:
         self,
         root: Path,
         registry: Optional[ProviderRegistry] = None,
-        visual_adapters=None,
+        visual_adapters: Any = None,
         max_revisions: int = 3,
         capabilities: Optional[RunCapabilities] = None,
         stages: Optional[LifecycleStages] = None,
@@ -101,7 +102,9 @@ class Orchestrator:
             if self.diagnostics.run_id is None:
                 diagnostic = self.diagnostics.record_invocation_failure(exc)
                 try:
-                    exc.diagnostic_path = str(diagnostic.relative_to(self.root))
+                    setattr(  # noqa: B010
+                        exc, "diagnostic_path", str(diagnostic.relative_to(self.root))
+                    )
                 except (AttributeError, ValueError):
                     pass
             raise
@@ -158,7 +161,7 @@ class Orchestrator:
         order.perspective_selections = perspective_resolution.selected
         resolved_perspectives = []
         for selection in order.perspective_selections:
-            resolved_perspective = PerspectiveRegistry(self.root, order.voice_id).resolve(
+            perspective_record = PerspectiveRegistry(self.root, order.voice_id).resolve(
                 selection.context_id, selection.version
             )
             requested_entries = (
@@ -167,7 +170,7 @@ class Orchestrator:
                 else []
             )
             unknown_entries = sorted(
-                set(requested_entries) - set(resolved_perspective["active_entry_ids"])
+                set(requested_entries) - set(perspective_record["active_entry_ids"])
             )
             if unknown_entries:
                 raise OrchestrationError(
@@ -176,13 +179,13 @@ class Orchestrator:
                         ", ".join(unknown_entries),
                     )
                 )
-            resolved_perspective["selected_entry_ids"] = (
-                requested_entries if requested_entries else resolved_perspective["active_entry_ids"]
+            perspective_record["selected_entry_ids"] = (
+                requested_entries if requested_entries else perspective_record["active_entry_ids"]
             )
-            selection.version = resolved_perspective["version"]
-            resolved_perspective["selection_reason"] = selection.reason
-            resolved_perspective["selection_confidence"] = selection.confidence
-            resolved_perspectives.append(resolved_perspective)
+            selection.version = perspective_record["version"]
+            perspective_record["selection_reason"] = selection.reason
+            perspective_record["selection_confidence"] = selection.confidence
+            resolved_perspectives.append(perspective_record)
         if order.perspective_selections:
             first = order.perspective_selections[0]
             order.perspective_context = first.context_id
@@ -191,7 +194,9 @@ class Orchestrator:
         else:
             order.perspective_context = None
             order.perspective_version = None
-        resolved_perspective = resolved_perspectives[0] if resolved_perspectives else None
+        resolved_perspective: Optional[Dict[str, Any]] = (
+            resolved_perspectives[0] if resolved_perspectives else None
+        )
         state = RunState(work_order=order, route_plan=route_plan)
         state.events.append(RunEvent(name="planned", detail=state.route_plan.route))
         if idempotency_key is not None:
@@ -770,13 +775,14 @@ class Orchestrator:
             "revision_context": revision_context,
         }
 
-    def _available_critiques(self, run_id: str):
-        result = []
+    def _available_critiques(self, run_id: str) -> List[Dict[str, Any]]:
+        result: List[Dict[str, Any]] = []
         for path in sorted(self.store.run_dir(run_id).glob("critique-*.json")):
             result.append(json.loads(path.read_text(encoding="utf-8")))
         return result
 
     def _persist_model_history(self, run_id: str) -> None:
+        responses = self.runner.responses
         self.store.write_artifact(
             run_id,
             "model-selections.json",
@@ -789,15 +795,13 @@ class Orchestrator:
                     reasoning_effort=request.selection.reasoning_effort,
                     tools=request.tools,
                     input_tokens=(
-                        self.runner.responses[index].input_tokens
-                        if index < len(self.runner.responses)
-                        and self.runner.responses[index] is not None
+                        cast(ModelResponse, responses[index]).input_tokens
+                        if index < len(responses) and responses[index] is not None
                         else None
                     ),
                     output_tokens=(
-                        self.runner.responses[index].output_tokens
-                        if index < len(self.runner.responses)
-                        and self.runner.responses[index] is not None
+                        cast(ModelResponse, responses[index]).output_tokens
+                        if index < len(responses) and responses[index] is not None
                         else None
                     ),
                 )

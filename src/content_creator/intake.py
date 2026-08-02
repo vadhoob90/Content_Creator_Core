@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Optional
+from typing import List, Optional
 
 from .domain import (
     PlanningDecision,
@@ -12,7 +12,7 @@ from .runner import AgentRunner
 
 
 class ClarificationRequired(ValueError):
-    def __init__(self, questions):
+    def __init__(self, questions: List[str]) -> None:
         self.questions = questions
         super().__init__("Clarification required: {}".format("; ".join(questions)))
 

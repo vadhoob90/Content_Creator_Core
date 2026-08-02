@@ -18,7 +18,7 @@ def evaluate_perspective_output(root: Path, order: WorkOrder, draft: str) -> dic
     markers = _POSITION_MARKER.findall(draft)
     resolved = None
     resolved_perspectives = []
-    active_entries = []
+    active_entries: list[dict] = []
     for selection in order.perspective_selections:
         item = PerspectiveRegistry(root, order.voice_id).resolve(
             selection.context_id,

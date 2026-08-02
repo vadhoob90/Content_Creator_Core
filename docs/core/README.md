@@ -43,6 +43,8 @@ calls. Live provider evaluation remains an explicit action.
 src/content_creator/
 ├── cli.py                stable command-line compatibility façade
 ├── commands/             command-family parsing and dispatch
+├── schema_registry.py    versioned persisted-contract catalogue and migrations
+├── operations.py         privacy-safe support evidence and recovery inspection
 ├── orchestrator.py       workflow composition and checkpoints
 ├── stages.py             replaceable research and draft-review stages
 ├── capabilities.py       optional visual and voice-scoring seam
@@ -87,6 +89,11 @@ Before changing structure or public behavior, read the
 [ADR 0007 on modular-monolith boundaries](../adr/0007-modular-monolith-boundaries.md).
 [ADR 0008](../adr/0008-lifecycle-stages-and-capabilities.md) records the
 application-stage, optional-capability, and immutable-artifact seams.
+[ADR 0009](../adr/0009-schema-governance-and-operational-recovery.md) records
+schema evolution, operational recovery, and the strengthened typing boundary.
+See [schema compatibility](schema-compatibility.md) and
+[operations and recovery](operations-and-recovery.md) for the maintainer
+procedures.
 Use `python scripts/architecture_report.py` for a view of module size and
 internal dependencies. Run it with `--check` to enforce the accepted dependency
 rules locally; CI runs the same check.
@@ -139,6 +146,8 @@ Use `content-creator --help` and the focused command help while developing:
 content-creator workspace create --help
 content-creator voice --help
 content-creator perspective --help
+content-creator schema --help
+content-creator operations --help
 content-creator run --help
 ```
 
@@ -271,13 +280,13 @@ commit reaches `main`.
 ### Publish the release
 
 Create the matching annotated tag only after the release PR is merged. For
-example, for `0.13.0`:
+example, for `0.14.0`:
 
 ```bash
 git switch main
 git pull --ff-only origin main
-git tag -a v0.13.0 -m "Content Creator 0.13.0"
-git push origin v0.13.0
+git tag -a v0.14.0 -m "Content Creator 0.14.0"
+git push origin v0.14.0
 ```
 
 Pushing the tag triggers `.github/workflows/release.yml`. The workflow:
@@ -309,13 +318,13 @@ Author workspaces remain on their pinned package until deliberately upgraded.
 Preview the upgrade first:
 
 ```bash
-uv run content-creator --workspace . workspace upgrade --to v0.13.0
+uv run content-creator --workspace . workspace upgrade --to v0.14.0
 ```
 
 Apply the reviewed preview explicitly:
 
 ```bash
-uv run content-creator --workspace . workspace upgrade --to v0.13.0 --apply
+uv run content-creator --workspace . workspace upgrade --to v0.14.0 --apply
 ```
 
 The apply operation updates the package requirement and lockfile, runs doctor,

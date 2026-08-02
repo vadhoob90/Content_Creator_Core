@@ -8,6 +8,28 @@ release tag.
 
 ## [Unreleased]
 
+## [0.14.0] - 2026-08-02
+
+### Added
+
+- A versioned schema catalogue and deterministic `schema list` / `schema export`
+  commands for work orders, run states, and voice, perspective, and visual manifests.
+- Privacy-safe `operations support-bundle` and `operations recovery-report`
+  commands with stable failure codes, lock-owner inspection, and corrupt-state advice.
+- Schema evolution, deprecation, operational recovery, and future-development guidance.
+
+### Changed
+
+- Mypy now checks every production module and rejects untyped function definitions.
+- Provider and visual CLI families now own their parsing and execution beside the
+  existing voice, perspective, schema, and operations command modules.
+- Activation locks now record process and creation metadata for safe recovery inspection.
+
+### Migration
+
+- Existing unversioned work orders and run states remain readable as `legacy`
+  artifacts and migrate in memory to schema `1.0`. No workspace action is required.
+
 ## [0.13.0] - 2026-08-02
 
 ### Added

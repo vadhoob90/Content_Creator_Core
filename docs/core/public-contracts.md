@@ -32,6 +32,9 @@ Python API must be intentionally exported and documented.
 Readers must continue to accept supported older data. Writers use the current
 canonical form. An incompatible schema change requires a migration, fixture
 coverage for the old form, release notes, and an appropriate version bump.
+The current writer version, supported read window, export commands, and
+deprecation rules are defined in
+[schema compatibility](schema-compatibility.md).
 
 ### Generated workspaces
 
@@ -52,6 +55,7 @@ and documented in a future release.
 - Refactoring does not change observable behavior.
 - Bug fixes may tighten invalid input handling but must document the change.
 - Deprecated behavior needs a documented migration window before removal.
+- Unknown schema versions fail closed; migration never guesses or mutates its input.
 - Published PyPI versions, Git tags, and release artifacts are immutable.
 - Downstream workspaces pin exact versions and upgrade deliberately.
 

@@ -5,7 +5,7 @@ import re
 from abc import ABC, abstractmethod
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Self
 from uuid import uuid4
 
 from pydantic import BaseModel, Field, field_validator, model_validator
@@ -53,7 +53,7 @@ class BoundingBox(BaseModel):
     role: str = "content"
 
     @model_validator(mode="after")
-    def remains_on_canvas(self):
+    def remains_on_canvas(self) -> Self:
         if self.x + self.width > 1 or self.y + self.height > 1:
             raise ValueError("Bounding boxes must remain within the normalised canvas")
         return self
@@ -89,14 +89,14 @@ class VisualPackProfile(BaseModel):
 
     @field_validator("aspect_ratios")
     @classmethod
-    def validate_ratios(cls, values):
+    def validate_ratios(cls, values: List[str]) -> List[str]:
         for value in values:
             if not re.fullmatch(r"[1-9]\d*:[1-9]\d*", value):
                 raise ValueError("Aspect ratios must use positive WIDTH:HEIGHT values")
         return values
 
     @model_validator(mode="after")
-    def validate_support(self):
+    def validate_support(self) -> Self:
         if self.required and not self.supported:
             raise ValueError("A required visual profile must also be supported")
         if self.supported and not self.execution_classes:
@@ -139,7 +139,7 @@ class VisualBrief(BaseModel):
 
     @field_validator("run_id")
     @classmethod
-    def validate_run_id(cls, value):
+    def validate_run_id(cls, value: str) -> str:
         if not re.fullmatch(r"[A-Za-z0-9_-]+", value):
             raise ValueError("Invalid run id")
         return value
@@ -224,7 +224,7 @@ class VisualAdapter(ABC):
 
 
 class VisualAdapterRegistry:
-    def __init__(self):
+    def __init__(self) -> None:
         self._adapters: Dict[str, VisualAdapter] = {}
 
     def register(self, adapter: VisualAdapter) -> None:

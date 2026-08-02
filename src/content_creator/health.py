@@ -19,18 +19,19 @@ class WorkspaceHealth:
         configuration = Configuration(self.root)
         packs = PackRegistry(self.root).list()
         resources = ResourceResolver(self.root)
+        repository_agents = AgentWorkspace(self.root).status()
         checks = {
             "model_catalogue": bool(configuration.models),
             "content_packs": [pack.id for pack in packs],
             "default_voice": resources.path("profiles/default/voice.md").exists(),
             "route_cases": resources.path("evals/cases/route-matrix.yaml").exists(),
-            "repository_agents": AgentWorkspace(self.root).status(),
+            "repository_agents": repository_agents,
         }
         healthy = (
             checks["model_catalogue"]
             and bool(checks["content_packs"])
             and checks["default_voice"]
             and checks["route_cases"]
-            and checks["repository_agents"]["complete"]
+            and repository_agents["complete"]
         )
         return {"status": "ok" if healthy else "error", "checks": checks}

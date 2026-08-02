@@ -12,14 +12,14 @@ from .commands import runtime
 from .orchestrator import Orchestrator
 
 
-def build_parser():
+def build_parser() -> Any:
     """Build the backwards-compatible top-level argument parser."""
     return runtime.build_parser()
 
 
 def _sync_overrides() -> None:
     """Preserve the documented/tested ability to replace CLI dependencies."""
-    runtime.Orchestrator = Orchestrator
+    setattr(runtime, "Orchestrator", Orchestrator)  # noqa: B010
 
 
 def _main(argv: Any = None) -> int:

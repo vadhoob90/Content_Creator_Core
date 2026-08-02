@@ -174,7 +174,7 @@ class PromptAssembler:
         return result
 
     @staticmethod
-    def _active_learnings(path: Path, role: str):
+    def _active_learnings(path: Path, role: str) -> list[str]:
         if not path.exists():
             return []
         data = json.loads(path.read_text(encoding="utf-8"))
