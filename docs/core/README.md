@@ -41,7 +41,12 @@ calls. Live provider evaluation remains an explicit action.
 
 ```text
 src/content_creator/
-├── orchestrator.py       workflow execution and checkpoints
+├── cli.py                stable command-line compatibility façade
+├── commands/             command-family parsing and dispatch
+├── orchestrator.py       workflow composition and checkpoints
+├── stages.py             replaceable research and draft-review stages
+├── capabilities.py       optional visual and voice-scoring seam
+├── versioned_artifacts.py shared immutable-artifact mechanics
 ├── voices.py             voice lifecycle, activation, and onboarding
 ├── voice_builder.py      source-derived voice analysis
 ├── linguistics.py        deterministic voice measurements and statistics
@@ -80,8 +85,11 @@ Before changing structure or public behavior, read the
 [development principles](development-principles.md), the
 [public compatibility contracts](public-contracts.md), and
 [ADR 0007 on modular-monolith boundaries](../adr/0007-modular-monolith-boundaries.md).
-Use `python scripts/architecture_report.py` for an advisory view of module size
-and internal dependencies.
+[ADR 0008](../adr/0008-lifecycle-stages-and-capabilities.md) records the
+application-stage, optional-capability, and immutable-artifact seams.
+Use `python scripts/architecture_report.py` for a view of module size and
+internal dependencies. Run it with `--check` to enforce the accepted dependency
+rules locally; CI runs the same check.
 
 ## Core versus a thin workspace
 
@@ -263,13 +271,13 @@ commit reaches `main`.
 ### Publish the release
 
 Create the matching annotated tag only after the release PR is merged. For
-example, for `0.12.1`:
+example, for `0.13.0`:
 
 ```bash
 git switch main
 git pull --ff-only origin main
-git tag -a v0.12.1 -m "Content Creator 0.12.1"
-git push origin v0.12.1
+git tag -a v0.13.0 -m "Content Creator 0.13.0"
+git push origin v0.13.0
 ```
 
 Pushing the tag triggers `.github/workflows/release.yml`. The workflow:
@@ -301,13 +309,13 @@ Author workspaces remain on their pinned package until deliberately upgraded.
 Preview the upgrade first:
 
 ```bash
-uv run content-creator --workspace . workspace upgrade --to v0.12.1
+uv run content-creator --workspace . workspace upgrade --to v0.13.0
 ```
 
 Apply the reviewed preview explicitly:
 
 ```bash
-uv run content-creator --workspace . workspace upgrade --to v0.12.1 --apply
+uv run content-creator --workspace . workspace upgrade --to v0.13.0 --apply
 ```
 
 The apply operation updates the package requirement and lockfile, runs doctor,

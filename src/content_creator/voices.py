@@ -1,8 +1,6 @@
 from __future__ import annotations
 
-import hashlib
 import json
-import os
 import shutil
 from datetime import UTC, datetime
 from enum import Enum
@@ -12,6 +10,13 @@ from typing import Any, Dict, List, Optional
 from pydantic import BaseModel, Field
 
 from .storage import RunStore, slugify
+from .versioned_artifacts import (
+    ActivationLock,
+    hash_file,
+    hash_json,
+    next_major_version,
+    verify_components,
+)
 
 STARTER_TEMPLATE_ID = "clear-professional"
 
@@ -144,15 +149,6 @@ class VoiceApprovalReceipt(BaseModel):
     override_reason: Optional[str] = None
 
 
-def hash_file(path: Path) -> str:
-    return "sha256:" + hashlib.sha256(path.read_bytes()).hexdigest()
-
-
-def hash_json(value) -> str:
-    encoded = json.dumps(value, sort_keys=True, separators=(",", ":")).encode()
-    return "sha256:" + hashlib.sha256(encoded).hexdigest()
-
-
 def onboarding_path(root: Path, voice_id: str) -> Path:
     return root.resolve() / "profiles" / voice_id / "onboarding.json"
 
@@ -248,12 +244,9 @@ class VoiceRegistry:
                     manifest.status.value
                 )
             )
-        for name, filename in manifest.components.items():
-            component = path / filename
-            if not component.exists() or hash_file(component) != manifest.component_hashes.get(
-                name
-            ):
-                raise VoiceError("Active voice component hash mismatch: {}".format(name))
+        mismatches = verify_components(path, manifest.components, manifest.component_hashes)
+        if mismatches:
+            raise VoiceError("Active voice component hash mismatch: {}".format(mismatches[0]))
         return {
             "id": voice_id,
             "version": resolved_version,
@@ -305,12 +298,7 @@ class VoiceRegistry:
             return resolved
 
         voice_root = self.root / "profiles" / voice_id
-        versions = [
-            int(path.name.split(".")[0])
-            for path in (voice_root / "versions").glob("*")
-            if path.is_dir() and path.name.split(".")[0].isdigit()
-        ]
-        version = "{}.0.0".format(max(versions, default=0) + 1)
+        version = next_major_version(voice_root / "versions")
         destination = voice_root / "versions" / version
         destination.mkdir(parents=True, exist_ok=False)
         template = (
@@ -474,12 +462,9 @@ class VoiceRegistry:
         manifest = VoiceManifest.model_validate_json(manifest_path.read_text(encoding="utf-8"))
         if not manifest.authorisation.confirmed:
             raise VoiceError("Voice authorisation has not been confirmed")
-        for name, filename in manifest.components.items():
-            component = candidate / filename
-            if not component.exists() or hash_file(component) != manifest.component_hashes.get(
-                name
-            ):
-                raise VoiceError("Voice component hash mismatch: {}".format(name))
+        mismatches = verify_components(candidate, manifest.components, manifest.component_hashes)
+        if mismatches:
+            raise VoiceError("Voice component hash mismatch: {}".format(mismatches[0]))
         if manifest.status not in {
             VoiceStatus.AWAITING_APPROVAL,
             VoiceStatus.BUILT,
@@ -492,14 +477,11 @@ class VoiceRegistry:
             if not override_reason:
                 raise VoiceError("Voice evaluation did not pass")
 
-        lock = voice_root / ".activation.lock"
-        lock.parent.mkdir(parents=True, exist_ok=True)
-        try:
-            descriptor = os.open(lock, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
-            os.close(descriptor)
-        except FileExistsError as exc:
-            raise VoiceError("Voice activation is already in progress") from exc
-        try:
+        with ActivationLock(
+            voice_root / ".activation.lock",
+            "Voice activation is already in progress",
+            VoiceError,
+        ):
             registry = self._read()
             existing = registry["profiles"].get(voice_id, {})
             if (
@@ -512,12 +494,7 @@ class VoiceRegistry:
                 return VoiceApprovalReceipt.model_validate_json(
                     receipt_path.read_text(encoding="utf-8")
                 )
-            versions = [
-                int(path.name.split(".")[0])
-                for path in (voice_root / "versions").glob("*")
-                if path.is_dir() and path.name.split(".")[0].isdigit()
-            ]
-            version = "{}.0.0".format(max(versions, default=0) + 1)
+            version = next_major_version(voice_root / "versions")
             destination = voice_root / "versions" / version
             shutil.copytree(candidate, destination)
             manifest.version = version
@@ -569,8 +546,6 @@ class VoiceRegistry:
                 onboarding.perspective_disabled_reason = None
                 save_voice_onboarding(self.root, onboarding)
             return receipt
-        finally:
-            lock.unlink(missing_ok=True)
 
     def deactivate(self, voice_id: str, reason: str) -> Dict:
         registry = self._read()

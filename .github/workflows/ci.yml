@@ -24,6 +24,7 @@ jobs:
       - run: ruff check .
       - run: ruff format --check .
       - run: mypy
+      - run: python scripts/architecture_report.py --check
 
   test:
     name: Test Python ${{ matrix.python-version }}

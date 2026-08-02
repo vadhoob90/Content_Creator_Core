@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "content-creator"
-version = "0.12.1"
+version = "0.13.0"
 description = "Provider-neutral content creation and voice workflow"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -78,14 +78,20 @@ skip_covered = false
 [tool.mypy]
 python_version = "3.11"
 files = [
+  "src/content_creator/capabilities.py",
+  "src/content_creator/cli.py",
+  "src/content_creator/commands/perspective.py",
+  "src/content_creator/commands/voice.py",
   "src/content_creator/diagnostics.py",
   "src/content_creator/domain.py",
   "src/content_creator/packs.py",
   "src/content_creator/providers/base.py",
   "src/content_creator/resource_paths.py",
   "src/content_creator/routing.py",
+  "src/content_creator/stages.py",
   "src/content_creator/upgrade.py",
   "src/content_creator/visuals.py",
+  "src/content_creator/versioned_artifacts.py",
   "src/content_creator/workspace.py",
 ]
 check_untyped_defs = true

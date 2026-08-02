@@ -8,6 +8,34 @@ release tag.
 
 ## [Unreleased]
 
+## [0.13.0] - 2026-08-02
+
+### Added
+
+- A stable, small `content_creator.cli` façade with command-family modules
+  behind the existing console entry point.
+- Explicit research and draft-review stage contracts, plus a narrow optional
+  capability seam for visual workflows and statistical voice scoring.
+- Shared, tested mechanics for immutable artifact version allocation,
+  component hash verification, and exclusive activation locks.
+- Enforced architecture rules in CI, expanded Mypy coverage for new boundary
+  modules, public-contract characterization tests, ADR 0007, and developer
+  principles for future work.
+
+### Changed
+
+- Voice and perspective lifecycles now reuse the same filesystem mechanics
+  while retaining their independent domain validation, status, receipt, and
+  registry policies.
+- Core orchestration no longer directly imports visual or statistical-scoring
+  implementations; it composes them through `RunCapabilities`.
+
+### Migration
+
+- No workspace, CLI, schema, or persisted-artifact migration is required.
+  Existing integrations and exact package pins continue to work after a
+  deliberate upgrade to `0.13.0`.
+
 ## [0.12.1] - 2026-08-02
 
 ### Fixed

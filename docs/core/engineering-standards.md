@@ -24,6 +24,11 @@ life.
 - Mypy checks an explicit initial set of critical package modules. Expand that
   set incrementally until the whole implementation is covered; do not weaken a
   rule globally to avoid fixing one local problem.
+- `python scripts/architecture_report.py --check` enforces accepted modular
+  boundaries: a small CLI façade, optional capabilities outside the
+  orchestrator, explicit application stages, and shared immutable-artifact
+  mechanics. New rules need a documented green baseline before becoming
+  blocking.
 - Public APIs need useful type annotations and docstrings. Comments should
   explain constraints or intent rather than restating code.
 
@@ -79,6 +84,7 @@ Before proposing a Core change, run:
 ruff check .
 ruff format --check .
 mypy
+python scripts/architecture_report.py --check
 pytest --cov=content_creator --cov-report=term-missing
 content-creator eval
 git diff --check
