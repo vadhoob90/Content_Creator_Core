@@ -3,6 +3,11 @@
 These principles guide implementation and review in Content Creator Core. They
 are decision aids rather than slogans or mechanical scoring rules.
 
+The blocking limits and the map to all specialist controls are in
+[Architecture and development guardrails](architecture-guardrails.md). Apply
+that checklist alongside these principles; do not treat either document as a
+substitute for the other.
+
 ## Protect author authority and integrity first
 
 Correctness includes the product boundaries: human approval, voice and
@@ -119,6 +124,7 @@ clear remediation path.
 - Is a new abstraction justified by current consumers?
 - Does the dependency direction match ADR 0007?
 - Does the lifecycle or capability boundary match ADR 0008?
+- Does the module stay within ADR 0010's responsibility and size limits?
 - Does persisted state follow the schema read/write and deprecation policy?
 - Can a failure be classified and investigated without exposing author content?
 - Are public and persisted contracts preserved or migrated?

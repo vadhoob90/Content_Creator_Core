@@ -11,6 +11,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 PACKAGE_ROOT = ROOT / "src" / "content_creator"
 PACKAGE_NAME = "content_creator"
+MAX_MODULE_LINES = 500
+MAX_RUNTIME_FACADE_LINES = 300
 
 
 def module_name(path: Path) -> str:
@@ -74,6 +76,22 @@ def architecture_violations(report: dict) -> list[str]:
     cli = modules.get("content_creator.cli")
     if not cli or cli["line_count"] > 100:
         violations.append("content_creator.cli must remain a façade of at most 100 lines")
+
+    runtime = modules.get("content_creator.commands.runtime")
+    if not runtime or runtime["line_count"] > MAX_RUNTIME_FACADE_LINES:
+        violations.append(
+            "content_creator.commands.runtime must remain a façade of at most {} lines".format(
+                MAX_RUNTIME_FACADE_LINES
+            )
+        )
+
+    for name, module in sorted(modules.items()):
+        if module["line_count"] > MAX_MODULE_LINES:
+            violations.append(
+                "{} exceeds the {}-line production-module limit ({} lines)".format(
+                    name, MAX_MODULE_LINES, module["line_count"]
+                )
+            )
 
     orchestrator = modules.get("content_creator.orchestrator", {})
     orchestrator_imports = set(orchestrator.get("imports", []))

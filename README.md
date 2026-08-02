@@ -125,6 +125,9 @@ engine. The [Core development guide](docs/core/README.md) covers installation,
 architecture, testing, and releases. The
 [engineering standards](docs/core/engineering-standards.md) define the quality,
 compatibility, security, and release controls.
+The [architecture and development guardrails](docs/core/architecture-guardrails.md)
+are the quickest entry point to the enforced module, dependency, TDD, schema,
+operations, and release rules.
 
 External code contributions are not currently accepted. Bug reports and
 feature requests are welcome through GitHub Issues; read

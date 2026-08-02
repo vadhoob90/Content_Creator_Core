@@ -5,9 +5,14 @@ import shutil
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from pydantic import BaseModel, Field
-
 from .configuration import Configuration
+from .coordinator_models import CoordinatorAction as CoordinatorAction
+from .coordinator_models import ProviderStatus as ProviderStatus
+from .coordinator_models import RunSummary as RunSummary
+from .coordinator_models import VoiceStatus as VoiceStatus
+from .coordinator_models import WorkspaceSnapshot as WorkspaceSnapshot
+from .coordinator_models import action as coordinator_action
+from .coordinator_models import operation as coordinator_operation
 from .domain import RunState, RunStatus
 from .health import WorkspaceHealth
 from .packs import PackRegistry
@@ -15,61 +20,11 @@ from .storage import RunStore
 from .voices import VoiceManifest, VoiceRegistry, load_voice_onboarding
 
 
-class CoordinatorAction(BaseModel):
-    id: str
-    label: str
-    command: Optional[List[str]] = None
-    artifact: Optional[str] = None
-    mutates_workspace: bool = False
-    requires_confirmation: bool = False
-
-
-class ProviderStatus(BaseModel):
-    name: Optional[str] = None
-    status: str = "not-selected"
-    detail: Optional[str] = None
-
-
-class VoiceStatus(BaseModel):
-    voice_id: str
-    display_name: str
-    active_status: Optional[str] = None
-    active_version: Optional[str] = None
-    candidate_status: Optional[str] = None
-    onboarding_status: Optional[str] = None
-    strategy: Optional[str] = None
-
-
-class RunSummary(BaseModel):
-    run_id: str
-    status: str
-    topic: str
-    content_pack: str
-    voice_id: str
-    updated_at: str
-    requires_human_input: bool = False
-    incomplete: bool = False
-
-
-class WorkspaceSnapshot(BaseModel):
-    schema_version: str = "1.1"
-    workspace: str
-    is_workspace: bool
-    coordinator: Dict[str, Any]
-    provider: Optional[str] = None
-    provider_status: ProviderStatus
-    packs: List[str] = Field(default_factory=list)
-    voices: List[VoiceStatus] = Field(default_factory=list)
-    active_voice_ids: List[str] = Field(default_factory=list)
-    suggested_voice_id: Optional[str] = None
-    runs: List[RunSummary] = Field(default_factory=list)
-    health: Dict[str, Any]
-    warnings: List[str] = Field(default_factory=list)
-    recommended_action: CoordinatorAction
-
-
 class ContentCoordinator:
     """Read-only, deterministic interface for people and conversational hosts."""
+
+    _action = staticmethod(coordinator_action)
+    _operation = staticmethod(coordinator_operation)
 
     def __init__(self, root: Path):
         self.root = root.resolve()
@@ -516,37 +471,4 @@ class ContentCoordinator:
         directory = self.store.run_dir(run_id)
         return sorted(
             str(path.relative_to(self.root)) for path in directory.iterdir() if path.is_file()
-        )
-
-    @staticmethod
-    def _operation(
-        operation_id: str,
-        command: List[str],
-        *,
-        mutates: bool = False,
-        approval: bool = False,
-    ) -> Dict[str, Any]:
-        return {
-            "id": operation_id,
-            "command": command,
-            "mutates_workspace": mutates,
-            "requires_explicit_approval": approval,
-        }
-
-    @staticmethod
-    def _action(
-        action_id: str,
-        label: str,
-        command: Optional[List[str]] = None,
-        artifact: Optional[str] = None,
-        mutates: bool = False,
-        confirmation: bool = False,
-    ) -> CoordinatorAction:
-        return CoordinatorAction(
-            id=action_id,
-            label=label,
-            command=command,
-            artifact=artifact,
-            mutates_workspace=mutates,
-            requires_confirmation=confirmation,
         )

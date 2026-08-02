@@ -42,22 +42,30 @@ calls. Live provider evaluation remains an explicit action.
 ```text
 src/content_creator/
 ├── cli.py                stable command-line compatibility façade
-├── commands/             command-family parsing and dispatch
+├── commands/             registered command parsers, dispatch, and runtime façade
 ├── schema_registry.py    versioned persisted-contract catalogue and migrations
 ├── operations.py         privacy-safe support evidence and recovery inspection
-├── orchestrator.py       workflow composition and checkpoints
+├── orchestrator.py       public workflow and checkpoint application service
+├── orchestration_support.py workflow execution support used by the service
 ├── stages.py             replaceable research and draft-review stages
 ├── capabilities.py       optional visual and voice-scoring seam
 ├── versioned_artifacts.py shared immutable-artifact mechanics
-├── voices.py             voice lifecycle, activation, and onboarding
-├── voice_builder.py      source-derived voice analysis
+├── voices.py             voice lifecycle compatibility façade and registry
+├── voice_models.py       voice contracts and onboarding records
+├── voice_builder.py      source-derived voice build pipeline
+├── voice_profile_renderer.py voice pattern and profile rendering
 ├── linguistics.py        deterministic voice measurements and statistics
 ├── voice_assessment.py   advisory draft-to-voice scoring
-├── voice_ml.py           optional local ML training and inference
-├── perspectives.py       perspective provenance and resolution
-├── diagnostics.py        local runtime diagnostic journal and summaries
+├── voice_ml.py           optional local ML compatibility façade
+├── voice_ml_training.py  ML evidence preparation and training
+├── voice_ml_inference.py dependency-free ML artifact inference
+├── perspectives.py       perspective registry compatibility façade
+├── perspective_support.py perspective contracts, catalogue, and resolution
+├── diagnostics.py        runtime diagnostics compatibility façade
+├── diagnostic_*.py       diagnostic contracts, recording, and support workflow
 ├── providers/            normalized provider adapters
-├── workspace.py          thin-repository generator
+├── workspace.py          thin-repository generator and dependency management
+├── workspace_templates.py generated thin-workspace templates
 └── resources/            packaged contracts, packs, rubrics, and defaults
 
 agents/                   repository-editable agent starting points
@@ -84,6 +92,7 @@ Repository instructions may specialise behavior but cannot remove Core
 integrity boundaries.
 
 Before changing structure or public behavior, read the
+[architecture and development guardrails](architecture-guardrails.md), the
 [development principles](development-principles.md), the
 [public compatibility contracts](public-contracts.md), and
 [ADR 0007 on modular-monolith boundaries](../adr/0007-modular-monolith-boundaries.md).
@@ -91,12 +100,15 @@ Before changing structure or public behavior, read the
 application-stage, optional-capability, and immutable-artifact seams.
 [ADR 0009](../adr/0009-schema-governance-and-operational-recovery.md) records
 schema evolution, operational recovery, and the strengthened typing boundary.
+[ADR 0010](../adr/0010-module-responsibility-and-size-guardrails.md) records the
+command-family ownership and enforced module-size limits.
 See [schema compatibility](schema-compatibility.md) and
 [operations and recovery](operations-and-recovery.md) for the maintainer
 procedures.
 Use `python scripts/architecture_report.py` for a view of module size and
 internal dependencies. Run it with `--check` to enforce the accepted dependency
-rules locally; CI runs the same check.
+rules locally, including the 300-line runtime façade and 500-line production
+module limits; CI runs the same check.
 
 ## Core versus a thin workspace
 
@@ -280,13 +292,13 @@ commit reaches `main`.
 ### Publish the release
 
 Create the matching annotated tag only after the release PR is merged. For
-example, for `0.14.0`:
+example, for `0.15.0`:
 
 ```bash
 git switch main
 git pull --ff-only origin main
-git tag -a v0.14.0 -m "Content Creator 0.14.0"
-git push origin v0.14.0
+git tag -a v0.15.0 -m "Content Creator 0.15.0"
+git push origin v0.15.0
 ```
 
 Pushing the tag triggers `.github/workflows/release.yml`. The workflow:
@@ -318,13 +330,13 @@ Author workspaces remain on their pinned package until deliberately upgraded.
 Preview the upgrade first:
 
 ```bash
-uv run content-creator --workspace . workspace upgrade --to v0.14.0
+uv run content-creator --workspace . workspace upgrade --to v0.15.0
 ```
 
 Apply the reviewed preview explicitly:
 
 ```bash
-uv run content-creator --workspace . workspace upgrade --to v0.14.0 --apply
+uv run content-creator --workspace . workspace upgrade --to v0.15.0 --apply
 ```
 
 The apply operation updates the package requirement and lockfile, runs doctor,
@@ -341,6 +353,7 @@ unpinned package version.
 ## Further technical guides
 
 - [Core engineering standards](engineering-standards.md)
+- [Architecture and development guardrails](architecture-guardrails.md)
 - [How voice is derived](../guides/how-voice-is-derived.md)
 - [Statistical voice evidence](../guides/linguistic-voice-framework.md)
 - [Voice onboarding](../guides/voice-onboarding.md)

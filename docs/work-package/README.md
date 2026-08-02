@@ -7,6 +7,9 @@ the initial provider-neutral Core derived from LinkedIn Writer. The shipped
 product has continued to evolve; use the [documentation index](../README.md)
 for current operator guidance and the [changelog](../../CHANGELOG.md) for the
 release history.
+Current implementation work is governed by the
+[Core architecture and development guardrails](../core/architecture-guardrails.md),
+not by the historical size or module layout recorded in this work package.
 
 ## Delivered objective
 

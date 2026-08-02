@@ -2,6 +2,9 @@
 
 These standards apply to reusable code and packaged resources in Content
 Creator Core. CI is authoritative; local hooks are optional conveniences.
+Start with the [architecture and development guardrails](architecture-guardrails.md)
+for the consolidated map of these standards and the public-contract, schema,
+operations, dependency, and release controls that accompany them.
 
 ## Supported Python
 
@@ -24,10 +27,10 @@ life.
 - Mypy checks the complete production package and prohibits untyped function
   definitions. Do not exclude a module or weaken a rule to avoid a local fix.
 - `python scripts/architecture_report.py --check` enforces accepted modular
-  boundaries: a small CLI façade, optional capabilities outside the
-  orchestrator, explicit application stages, and shared immutable-artifact
-  mechanics. New rules need a documented green baseline before becoming
-  blocking.
+  boundaries: a small CLI and runtime façade, a 500-line maximum for production
+  modules, optional capabilities outside the orchestrator, explicit application
+  stages, and shared immutable-artifact mechanics. New rules need a documented
+  green baseline before becoming blocking.
 - Public APIs need useful type annotations and docstrings. Comments should
   explain constraints or intent rather than restating code.
 
