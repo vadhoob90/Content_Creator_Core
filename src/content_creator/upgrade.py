@@ -127,7 +127,36 @@ class WorkspaceUpgrader:
             )
             if readme_updated:
                 RunStore._atomic_text(readme, updated_readme.rstrip())
-        commands = [
+        completed = self._validate_upgrade(
+            pyproject,
+            lockfile,
+            readme,
+            original_project,
+            original_lock,
+            original_readme,
+            readme_updated,
+        )
+        agents = AgentWorkspace(self.root).scaffold()
+        skills = scaffold_skills(self.root)
+        report.update(
+            {
+                "status": "applied",
+                "commands": completed,
+                "scaffolded": {
+                    "agents": agents["created"],
+                    "skills": skills["created"],
+                },
+                "readme_updated": readme_updated,
+                "manual_follow_up": [
+                    "Review agent and skill template differences.",
+                    "Review and commit pyproject.toml and uv.lock deliberately.",
+                ],
+            }
+        )
+        return report
+
+    def _validation_commands(self) -> List[List[str]]:
+        return [
             ["uv", "lock", "--upgrade-package", "content-creator"],
             [
                 "uv",
@@ -148,9 +177,20 @@ class WorkspaceUpgrader:
             ],
             ["uv", "run", "pytest"],
         ]
+
+    def _validate_upgrade(
+        self,
+        pyproject: Path,
+        lockfile: Path,
+        readme: Path,
+        original_project: str,
+        original_lock: Optional[str],
+        original_readme: Optional[str],
+        readme_updated: bool,
+    ) -> List[Dict[str, Any]]:
         completed = []
         try:
-            for command in commands:
+            for command in self._validation_commands():
                 result = self.runner(command)
                 completed.append(
                     {
@@ -164,8 +204,6 @@ class WorkspaceUpgrader:
                     raise WorkspaceUpgradeError(
                         "Upgrade validation failed: {}".format(" ".join(command))
                     )
-            agents = AgentWorkspace(self.root).scaffold()
-            skills = scaffold_skills(self.root)
         except Exception:
             RunStore._atomic_text(pyproject, original_project.rstrip())
             if original_lock is None:
@@ -176,22 +214,7 @@ class WorkspaceUpgrader:
             if original_readme is not None and readme_updated:
                 RunStore._atomic_text(readme, original_readme.rstrip())
             raise
-        report.update(
-            {
-                "status": "applied",
-                "commands": completed,
-                "scaffolded": {
-                    "agents": agents["created"],
-                    "skills": skills["created"],
-                },
-                "readme_updated": readme_updated,
-                "manual_follow_up": [
-                    "Review agent and skill template differences.",
-                    "Review and commit pyproject.toml and uv.lock deliberately.",
-                ],
-            }
-        )
-        return report
+        return completed
 
     def _readme_is_managed(self) -> bool:
         readme = self.root / "README.md"

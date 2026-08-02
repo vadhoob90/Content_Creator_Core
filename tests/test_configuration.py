@@ -5,7 +5,7 @@ from content_creator.configuration import Configuration, ConfigurationError
 from content_creator.domain import Critique
 from content_creator.prompting import PromptAssembler
 from content_creator.providers import FakeProvider, ProviderRegistry
-from content_creator.runner import AgentOutputError, AgentRunner
+from content_creator.runner import AgentOutputError, AgentRunner, AgentRunOptions
 
 
 def test_model_selector_uses_first_capable_candidate(project):
@@ -85,7 +85,7 @@ def test_runner_rejects_invalid_structured_output(project):
             role_key="critic-post",
             instruction="Review",
             payload={"draft": "x"},
-            output_model=Critique,
+            options=AgentRunOptions(output_model=Critique),
         )
     except AgentOutputError as exc:
         assert "invalid structured output" in str(exc)

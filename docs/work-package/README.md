@@ -10,6 +10,8 @@ release history.
 Current implementation work is governed by the
 [Core architecture and development guardrails](../core/architecture-guardrails.md),
 not by the historical size or module layout recorded in this work package.
+Those current guardrails include function complexity, length, naming, and
+dispatch design as well as the module-size boundary.
 
 ## Delivered objective
 

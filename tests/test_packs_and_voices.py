@@ -120,12 +120,16 @@ def test_prompt_and_learning_memory_are_scoped_to_selected_voice(project):
     assert "Default Placeholder" not in prompt
     assert LearningMemory(project, "second-voice").path == (profile / "learnings" / "memory.json")
 
+    _mark_manifest_awaiting(version)
+    with pytest.raises(VoiceError, match="Voice lifecycle mismatch"):
+        VoiceRegistry(project).resolve("second-voice")
+
+
+def _mark_manifest_awaiting(version):
     manifest_path = version / "manifest.json"
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     manifest["status"] = "awaiting_approval"
     manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
-    with pytest.raises(VoiceError, match="Voice lifecycle mismatch"):
-        VoiceRegistry(project).resolve("second-voice")
 
 
 def test_general_text_resolves_and_forbidden_override_fails(project):

@@ -127,7 +127,7 @@ architecture, testing, and releases. The
 compatibility, security, and release controls.
 The [architecture and development guardrails](docs/core/architecture-guardrails.md)
 are the quickest entry point to the enforced module, dependency, TDD, schema,
-operations, and release rules.
+function readability, complexity, naming, operations, and release rules.
 
 External code contributions are not currently accepted. Bug reports and
 feature requests are welcome through GitHub Issues; read

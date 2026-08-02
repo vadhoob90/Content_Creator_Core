@@ -10,7 +10,7 @@ from .domain import WorkOrder
 from .packs import ContentPack
 from .resource_paths import ResourceResolver
 from .version import VERSION
-from .voices import hash_file
+from .versioned_artifacts import hash_file
 
 
 def resolved_context(

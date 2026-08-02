@@ -28,11 +28,13 @@ from .perspectives import (
     PerspectiveResolver,
 )
 from .routing import build_route
+from .runner import AgentRunOptions
 from .stages import CallableDraftReviewStage as CallableDraftReviewStage
 from .stages import CallableResearchStage as CallableResearchStage
 from .stages import LifecycleStages as LifecycleStages
 from .storage import RunStore, StorageError, slugify
-from .voices import VoiceRegistry, hash_file
+from .versioned_artifacts import hash_file
+from .voices import VoiceRegistry
 
 
 class Orchestrator(OrchestrationSupport):
@@ -68,151 +70,130 @@ class Orchestrator(OrchestrationSupport):
         idempotency_key: Optional[str] = None,
         submitted_order: Optional[WorkOrder] = None,
     ) -> RunState:
+        pack = self._validated_pack(order)
+        supplied_brief = self._preflight_supplied_research(order)
+        fingerprint = self._submission_fingerprint(submitted_order or order, supplied_brief)
+        existing = self._existing_submission(idempotency_key, fingerprint)
+        if existing:
+            return existing
+        context = self._resolve_start_context(order)
+        state, created = self._create_run(
+            order, context["route_plan"], idempotency_key, fingerprint
+        )
+        if not created:
+            return state
+        self._write_start_artifacts(state, pack, context)
+        return self._execute_start(state, supplied_brief)
+
+    def _validated_pack(self, order: WorkOrder) -> Any:
         pack = self.packs.resolve(order.content_pack, order.pack_options)
         order.pack_options = {**pack.defaults, "destination": pack.destination}
         if pack.format != order.format:
             raise OrchestrationError(
-                "Pack {} expects format {}, received {}".format(pack.id, pack.format, order.format)
+                f"Pack {pack.id} expects format {pack.format}, received {order.format}"
             )
         if order.research_depth.value not in pack.allowed_research:
             raise OrchestrationError(
-                "Pack {} does not allow {} research".format(pack.id, order.research_depth.value)
+                f"Pack {pack.id} does not allow {order.research_depth.value} research"
             )
-        route_plan = build_route(order)
-        supplied_brief = self._preflight_supplied_research(order)
-        submission_fingerprint = self._submission_fingerprint(
-            submitted_order or order, supplied_brief
-        )
-        if idempotency_key is not None:
-            existing = self.store.load_by_idempotency_key(idempotency_key, submission_fingerprint)
-            if existing:
-                self.diagnostics.bind_run(
-                    existing.id,
-                    existing.work_order.content_session_id,
-                )
-                return existing
+        return pack
+
+    def _existing_submission(
+        self, idempotency_key: Optional[str], fingerprint: str
+    ) -> Optional[RunState]:
+        if idempotency_key is None:
+            return None
+        existing = self.store.load_by_idempotency_key(idempotency_key, fingerprint)
+        if existing:
+            self.diagnostics.bind_run(existing.id, existing.work_order.content_session_id)
+        return existing
+
+    def _resolve_start_context(self, order: WorkOrder) -> Dict[str, Any]:
         order.resolved_voice = False
-        resolved_voice = VoiceRegistry(self.root).resolve(order.voice_id, order.voice_version)
-        order.voice_version = resolved_voice["version"]
+        voice = VoiceRegistry(self.root).resolve(order.voice_id, order.voice_version)
+        order.voice_version = voice["version"]
         order.resolved_voice = True
-        order.resolved_perspective = False
-        effective_perspective_policy = dict(self.configuration.perspective_policy)
-        if not resolved_voice.get("perspectives_allowed", True):
-            effective_perspective_policy["mode"] = "disabled"
-            effective_perspective_policy["force_disabled_reason"] = (
-                "starter-voice-without-author-evidence"
-            )
-        perspective_resolution = PerspectiveResolver(self.root, self.runner).resolve(
-            order, effective_perspective_policy
-        )
-        if perspective_resolution.needs_clarification:
+        policy = dict(self.configuration.perspective_policy)
+        if not voice.get("perspectives_allowed", True):
+            policy["mode"] = "disabled"
+            policy["force_disabled_reason"] = "starter-voice-without-author-evidence"
+        resolution = PerspectiveResolver(self.root, self.runner).resolve(order, policy)
+        if resolution.needs_clarification:
             raise OrchestrationError(
-                perspective_resolution.clarification_question
-                or "Perspective selection requires clarification"
+                resolution.clarification_question or "Perspective selection requires clarification"
             )
-        order.perspective_mode = perspective_resolution.mode
-        order.perspective_selections = perspective_resolution.selected
-        resolved_perspectives = []
-        for selection in order.perspective_selections:
-            perspective_record = PerspectiveRegistry(self.root, order.voice_id).resolve(
-                selection.context_id, selection.version
-            )
-            requested_entries = (
-                order.author_contribution.reusable_perspective_entry_ids
-                if order.author_contribution
-                else []
-            )
-            unknown_entries = sorted(
-                set(requested_entries) - set(perspective_record["active_entry_ids"])
-            )
-            if unknown_entries:
-                raise OrchestrationError(
-                    "Unavailable perspective entries in {}: {}".format(
-                        selection.context_id,
-                        ", ".join(unknown_entries),
-                    )
-                )
-            perspective_record["selected_entry_ids"] = (
-                requested_entries if requested_entries else perspective_record["active_entry_ids"]
-            )
-            selection.version = perspective_record["version"]
-            perspective_record["selection_reason"] = selection.reason
-            perspective_record["selection_confidence"] = selection.confidence
-            resolved_perspectives.append(perspective_record)
-        if order.perspective_selections:
-            first = order.perspective_selections[0]
-            order.perspective_context = first.context_id
-            order.perspective_version = first.version
-            order.resolved_perspective = True
+        order.perspective_mode = resolution.mode
+        order.perspective_selections = resolution.selected
+        perspectives = [
+            self._resolved_perspective(order, selection) for selection in resolution.selected
+        ]
+        order.resolved_perspective = bool(resolution.selected)
+        if resolution.selected:
+            order.perspective_context = resolution.selected[0].context_id
+            order.perspective_version = resolution.selected[0].version
         else:
             order.perspective_context = None
             order.perspective_version = None
-        resolved_perspective: Optional[Dict[str, Any]] = (
-            resolved_perspectives[0] if resolved_perspectives else None
+        return {
+            "route_plan": build_route(order),
+            "voice": voice,
+            "policy": policy,
+            "resolution": resolution,
+            "perspectives": perspectives,
+        }
+
+    def _resolved_perspective(self, order: WorkOrder, selection: Any) -> Dict[str, Any]:
+        record = PerspectiveRegistry(self.root, order.voice_id).resolve(
+            selection.context_id, selection.version
         )
-        state = RunState(work_order=order, route_plan=route_plan)
-        state.events.append(RunEvent(name="planned", detail=state.route_plan.route))
-        if idempotency_key is not None:
-            state.events.append(RunEvent(name="submission_accepted"))
-            state, created = self.store.create_idempotent(
-                state,
-                idempotency_key,
-                submission_fingerprint,
+        requested = (
+            order.author_contribution.reusable_perspective_entry_ids
+            if order.author_contribution
+            else []
+        )
+        unknown = sorted(set(requested) - set(record["active_entry_ids"]))
+        if unknown:
+            raise OrchestrationError(
+                f"Unavailable perspective entries in {selection.context_id}: {', '.join(unknown)}"
             )
-            if not created:
-                self.diagnostics.bind_run(
-                    state.id,
-                    state.work_order.content_session_id,
-                )
-                return state
-        else:
+        record["selected_entry_ids"] = requested or record["active_entry_ids"]
+        selection.version = record["version"]
+        record["selection_reason"] = selection.reason
+        record["selection_confidence"] = selection.confidence
+        return record
+
+    def _create_run(
+        self,
+        order: WorkOrder,
+        route_plan: Any,
+        idempotency_key: Optional[str],
+        fingerprint: str,
+    ) -> tuple[RunState, bool]:
+        state = RunState(work_order=order, route_plan=route_plan)
+        state.events.append(RunEvent(name="planned", detail=route_plan.route))
+        if idempotency_key is None:
             self.store.create(state)
-        self.diagnostics.bind_run(state.id, order.content_session_id)
+            created = True
+        else:
+            state.events.append(RunEvent(name="submission_accepted"))
+            state, created = self.store.create_idempotent(state, idempotency_key, fingerprint)
+        self.diagnostics.bind_run(state.id, state.work_order.content_session_id)
+        return state, created
+
+    def _write_start_artifacts(self, state: RunState, pack: Any, context: Dict[str, Any]) -> None:
+        order = state.work_order
+        perspectives = context["perspectives"]
         self.store.write_artifact(state.id, "work-order.json", order)
         self.store.write_artifact(state.id, "route-plan.json", state.route_plan)
         self.store.write_artifact(
             state.id,
             "resolved-context.json",
-            resolved_context(
-                self.root,
-                order,
-                pack,
-                resolved_voice,
-                resolved_perspectives,
-            ),
+            resolved_context(self.root, order, pack, context["voice"], perspectives),
         )
         self.store.write_artifact(
             state.id,
             "perspective-resolution.json",
-            {
-                **perspective_resolution.model_dump(mode="json"),
-                "selected": [
-                    {
-                        **item.model_dump(mode="json"),
-                        "version": resolved["version"],
-                    }
-                    for item, resolved in zip(
-                        order.perspective_selections,
-                        resolved_perspectives,
-                        strict=True,
-                    )
-                ],
-                "catalogue": (
-                    str(
-                        PerspectiveCatalogueStore(self.root, order.voice_id).path.relative_to(
-                            self.root
-                        )
-                    )
-                    if PerspectiveCatalogueStore(self.root, order.voice_id).path.exists()
-                    else None
-                ),
-                "catalogue_hash": (
-                    hash_file(PerspectiveCatalogueStore(self.root, order.voice_id).path)
-                    if PerspectiveCatalogueStore(self.root, order.voice_id).path.exists()
-                    else None
-                ),
-                "policy": effective_perspective_policy,
-            },
+            self._perspective_resolution_artifact(order, context),
         )
         self.store.write_artifact(
             state.id,
@@ -223,26 +204,37 @@ class Orchestrator(OrchestrationSupport):
                     if order.author_contribution
                     else None
                 ),
-                "perspective": resolved_perspective,
-                "perspectives": resolved_perspectives,
+                "perspective": perspectives[0] if perspectives else None,
+                "perspectives": perspectives,
                 "research_record": (
                     "not_required" if order.research_depth == ResearchDepth.NONE else "pending"
                 ),
                 "model_proposed_framing_is_author_position": False,
             },
         )
+
+    def _perspective_resolution_artifact(
+        self, order: WorkOrder, context: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        catalogue = PerspectiveCatalogueStore(self.root, order.voice_id).path
+        return {
+            **context["resolution"].model_dump(mode="json"),
+            "selected": [
+                {**selection.model_dump(mode="json"), "version": resolved["version"]}
+                for selection, resolved in zip(
+                    order.perspective_selections, context["perspectives"], strict=True
+                )
+            ],
+            "catalogue": str(catalogue.relative_to(self.root)) if catalogue.exists() else None,
+            "catalogue_hash": hash_file(catalogue) if catalogue.exists() else None,
+            "policy": context["policy"],
+        }
+
+    def _execute_start(self, state: RunState, supplied_brief: Optional[ResearchBrief]) -> RunState:
         try:
             brief = self.stages.research.execute(state, supplied_brief)
             if brief:
-                self.store.write_artifact(state.id, "research.json", brief)
-                provenance = json.loads(self.store.read_artifact(state.id, "claim-provenance.json"))
-                provenance["research_record"] = {
-                    "status": "completed",
-                    "evidence_claim_count": len(brief.evidence),
-                    "tensions": brief.tensions,
-                    "gaps": brief.gaps,
-                }
-                self.store.write_artifact(state.id, "claim-provenance.json", provenance)
+                self._record_research(state, brief)
             if state.route_plan.requires_research_checkpoint:
                 state.status = RunStatus.AWAITING_RESEARCH_APPROVAL
                 state.events.append(RunEvent(name="research_checkpoint"))
@@ -253,6 +245,17 @@ class Orchestrator(OrchestrationSupport):
         except Exception as exc:
             self._fail(state, exc)
             raise
+
+    def _record_research(self, state: RunState, brief: ResearchBrief) -> None:
+        self.store.write_artifact(state.id, "research.json", brief)
+        provenance = json.loads(self.store.read_artifact(state.id, "claim-provenance.json"))
+        provenance["research_record"] = {
+            "status": "completed",
+            "evidence_claim_count": len(brief.evidence),
+            "tensions": brief.tensions,
+            "gaps": brief.gaps,
+        }
+        self.store.write_artifact(state.id, "claim-provenance.json", provenance)
 
     def resume_research(self, run_id: str, approved: bool, notes: Optional[str] = None) -> RunState:
         state = self.store.load(run_id)
@@ -280,6 +283,21 @@ class Orchestrator(OrchestrationSupport):
         feedback: Optional[str] = None,
         diagnostic_decision: Optional[str] = None,
     ) -> RunState:
+        state, draft, pack, visual_asset, target = self._prepare_publication(
+            run_id, filename, diagnostic_decision
+        )
+        assessment = self._publication_assessment(state, run_id, target, feedback)
+        self.store.write_artifact(run_id, "assessment.json", assessment)
+        self._extract_learnings(state, draft, assessment, feedback)
+        self._extract_perspectives(state, draft, assessment)
+        return self._finish_publication(state, target, pack, visual_asset)
+
+    def _prepare_publication(
+        self,
+        run_id: str,
+        filename: Optional[str],
+        diagnostic_decision: Optional[str],
+    ) -> tuple[RunState, str, Any, Any, Path]:
         state = self.store.load(run_id)
         self.diagnostics.begin_invocation(state.work_order.content_session_id)
         self.diagnostics.bind_run(run_id, state.work_order.content_session_id)
@@ -294,29 +312,35 @@ class Orchestrator(OrchestrationSupport):
             preflight = self.diagnostics.decide(run_id, diagnostic_decision)
             self._apply_diagnostic_state(state, preflight)
         draft = self.store.read_artifact(run_id, "final.md").rstrip() + "\n"
-        pack = self.packs.resolve(
-            state.work_order.content_pack,
-            state.work_order.pack_options,
-        )
+        pack = self.packs.resolve(state.work_order.content_pack, state.work_order.pack_options)
         visual_asset = self.visuals.ensure_publication_ready(run_id, pack.visuals)
         target_dir = self.root / pack.destination
         target_dir.mkdir(parents=True, exist_ok=True)
-        requested = filename or "{}.md".format(slugify(state.work_order.topic))
+        requested = filename or f"{slugify(state.work_order.topic)}.md"
         target = target_dir / Path(requested).name
         if target.exists():
-            raise StorageError("Refusing to overwrite {}".format(target))
+            raise StorageError(f"Refusing to overwrite {target}")
         RunStore._atomic_text(target, draft.rstrip())
+        return state, draft, pack, visual_asset, target
 
-        assessment = {
+    def _publication_assessment(
+        self,
+        state: RunState,
+        run_id: str,
+        target: Path,
+        feedback: Optional[str],
+    ) -> Dict[str, Any]:
+        order = state.work_order
+        return {
             "run_id": run_id,
             "published_path": str(target.relative_to(self.root)),
-            "voice_id": state.work_order.voice_id,
-            "voice_version": state.work_order.voice_version,
-            "content_pack": state.work_order.content_pack,
-            "perspective_context": state.work_order.perspective_context,
-            "perspective_version": state.work_order.perspective_version,
+            "voice_id": order.voice_id,
+            "voice_version": order.voice_version,
+            "content_pack": order.content_pack,
+            "perspective_context": order.perspective_context,
+            "perspective_version": order.perspective_version,
             "perspective_selections": [
-                item.model_dump(mode="json") for item in state.work_order.perspective_selections
+                selection.model_dump(mode="json") for selection in order.perspective_selections
             ],
             "author_signal": "explicit_feedback" if feedback else "publication_approval",
             "feedback": feedback,
@@ -333,8 +357,14 @@ class Orchestrator(OrchestrationSupport):
                 "claim_provenance_clear": None,
             },
         }
-        self.store.write_artifact(run_id, "assessment.json", assessment)
 
+    def _extract_learnings(
+        self,
+        state: RunState,
+        draft: str,
+        assessment: Dict[str, Any],
+        feedback: Optional[str],
+    ) -> None:
         try:
             extraction = self.runner.run(
                 role="learning-extractor",
@@ -348,15 +378,17 @@ class Orchestrator(OrchestrationSupport):
                     "work_order": state.work_order.model_dump(mode="json"),
                     "draft": draft,
                     "assessment": assessment,
-                    "critiques": self._available_critiques(run_id),
+                    "critiques": self._available_critiques(state.id),
                 },
-                order=state.work_order,
-                output_model=LearningExtraction,
-                provider=state.work_order.provider,
+                options=AgentRunOptions(
+                    order=state.work_order,
+                    output_model=LearningExtraction,
+                    provider=state.work_order.provider,
+                ),
             )
-            self.store.write_artifact(run_id, "learning-extraction.json", extraction)
+            self.store.write_artifact(state.id, "learning-extraction.json", extraction)
             LearningMemory(self.root, state.work_order.voice_id).apply(
-                run_id,
+                state.id,
                 extraction,
                 explicit_feedback=feedback,
                 voice_version=state.work_order.voice_version,
@@ -366,72 +398,74 @@ class Orchestrator(OrchestrationSupport):
         except Exception as exc:
             state.events.append(RunEvent(name="learning_update_failed", detail=str(exc)))
 
+    def _extract_perspectives(
+        self, state: RunState, draft: str, assessment: Dict[str, Any]
+    ) -> None:
         for selection in state.work_order.perspective_selections:
             try:
-                extraction_order = state.work_order.model_copy(deep=True)
-                extraction_order.perspective_context = selection.context_id
-                extraction_order.perspective_version = selection.version
-                extraction_order.perspective_selections = [selection]
-                perspective_extraction = self.runner.run(
-                    role="perspective-extractor",
-                    role_key="perspective-extractor",
-                    instruction=(
-                        "Propose only reusable author positions evidenced by this "
-                        "published run. Preserve qualifications and keep every proposal "
-                        "in the explicitly resolved context. Compare direct author input "
-                        "and explicit feedback with active entries. When they conflict, "
-                        "use qualify, replace, or supersede and name the exact target "
-                        "entry id. Never activate a proposal. Conflict policy: {}."
-                    ).format(
-                        self.configuration.perspective_policy.get(
-                            "conflict_policy", "propose-update"
-                        )
-                    ),
-                    payload={
-                        "work_order": state.work_order.model_dump(mode="json"),
-                        "draft": draft,
-                        "assessment": assessment,
-                        "research": (
-                            json.loads(self.store.read_artifact(run_id, "research.json"))
-                            if (self.store.run_dir(run_id) / "research.json").exists()
-                            else None
-                        ),
-                    },
-                    order=extraction_order,
-                    output_model=PerspectiveExtraction,
-                    provider=state.work_order.provider,
-                )
-                self.store.write_artifact(
-                    run_id,
-                    (
-                        "perspective-extraction.json"
-                        if len(state.work_order.perspective_selections) == 1
-                        else "perspective-extraction-{}.json".format(selection.context_id)
-                    ),
-                    perspective_extraction,
-                )
-                proposal_paths = PerspectiveProposalStore(
-                    self.root,
-                    state.work_order.voice_id,
-                    selection.context_id,
-                ).apply(run_id, perspective_extraction)
-                state.events.append(
-                    RunEvent(
-                        name="perspective_candidates_proposed",
-                        detail="count={}".format(len(proposal_paths)),
-                    )
-                )
+                self._extract_perspective(state, selection, draft, assessment)
             except Exception as exc:
-                state.events.append(
-                    RunEvent(
-                        name="perspective_update_failed",
-                        detail=str(exc),
-                    )
-                )
+                state.events.append(RunEvent(name="perspective_update_failed", detail=str(exc)))
 
+    def _extract_perspective(
+        self,
+        state: RunState,
+        selection: Any,
+        draft: str,
+        assessment: Dict[str, Any],
+    ) -> None:
+        order = state.work_order
+        extraction_order = order.model_copy(deep=True)
+        extraction_order.perspective_context = selection.context_id
+        extraction_order.perspective_version = selection.version
+        extraction_order.perspective_selections = [selection]
+        instruction = (
+            "Propose only reusable author positions evidenced by this published run. "
+            "Preserve qualifications and keep every proposal in the explicitly resolved "
+            "context. Compare direct author input and explicit feedback with active entries. "
+            "When they conflict, use qualify, replace, or supersede and name the exact target "
+            "entry id. Never activate a proposal. Conflict policy: {}."
+        ).format(self.configuration.perspective_policy.get("conflict_policy", "propose-update"))
+        research_path = self.store.run_dir(state.id) / "research.json"
+        extraction = self.runner.run(
+            role="perspective-extractor",
+            role_key="perspective-extractor",
+            instruction=instruction,
+            payload={
+                "work_order": order.model_dump(mode="json"),
+                "draft": draft,
+                "assessment": assessment,
+                "research": (
+                    json.loads(self.store.read_artifact(state.id, "research.json"))
+                    if research_path.exists()
+                    else None
+                ),
+            },
+            options=AgentRunOptions(
+                order=extraction_order,
+                output_model=PerspectiveExtraction,
+                provider=order.provider,
+            ),
+        )
+        filename = (
+            "perspective-extraction.json"
+            if len(order.perspective_selections) == 1
+            else f"perspective-extraction-{selection.context_id}.json"
+        )
+        self.store.write_artifact(state.id, filename, extraction)
+        paths = PerspectiveProposalStore(self.root, order.voice_id, selection.context_id).apply(
+            state.id, extraction
+        )
+        state.events.append(
+            RunEvent(name="perspective_candidates_proposed", detail=f"count={len(paths)}")
+        )
+
+    def _finish_publication(
+        self, state: RunState, target: Path, pack: Any, visual_asset: Any
+    ) -> RunState:
         state.published_path = str(target.relative_to(self.root))
         if visual_asset is not None:
-            visual_target = self.visuals.publish(run_id, pack.visuals)
+            visual_target = self.visuals.publish(state.id, pack.visuals)
             state.published_visual_path = (
                 str(visual_target.relative_to(self.root)) if visual_target else None
             )
@@ -442,7 +476,7 @@ class Orchestrator(OrchestrationSupport):
         state.events.append(RunEvent(name="published", detail=state.published_path))
         self._persist_model_history(state.id)
         self.store.save_state(state)
-        post_publish = self.diagnostics.preflight(run_id)
+        post_publish = self.diagnostics.preflight(state.id)
         self._apply_diagnostic_state(state, post_publish)
         self.store.save_state(state)
         return state

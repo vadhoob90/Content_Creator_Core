@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Set, Tuple
@@ -9,6 +10,7 @@ from typing import Any, Dict, Iterable, List, Optional, Set, Tuple
 from .ingestion import content_hash, read_source
 from .linguistics import extract_linguistic_features
 from .storage import RunStore, StorageError
+from .voice_ml_dependencies import require_sklearn
 from .voices import VoiceRegistry
 
 ML_FRAMEWORK = "regularised-logistic-regression-stylometry"
@@ -38,14 +40,22 @@ MODEL_FEATURE_NAMES = (
     "lexical_diversity_mattr",
 )
 
+
+@dataclass(frozen=True)
+class TrainingCorpus:
+    signature: Dict[str, Any]
+    author_rows: List[List[float]]
+    author_words: int
+    comparison_rows: List[List[float]]
+    comparison_words: int
+    comparison_audit: Dict[str, Any]
+    reliability: Dict[str, Any]
+
+
 HARD_MINIMUM_DOCUMENTS_PER_CLASS = 10
 HARD_MINIMUM_WORDS_PER_CLASS = 5000
 RELIABLE_MINIMUM_DOCUMENTS_PER_CLASS = 40
 RELIABLE_MINIMUM_WORDS_PER_CLASS = 20000
-
-
-class MLDependencyError(RuntimeError):
-    pass
 
 
 def _signature_path(root: Path, resolved: Dict[str, Any]) -> Path:
@@ -223,31 +233,6 @@ def training_reliability(
     }
 
 
-def _require_sklearn() -> Dict[str, Any]:
-    try:
-        import sklearn
-        from sklearn.linear_model import LogisticRegression
-        from sklearn.metrics import balanced_accuracy_score, roc_auc_score
-        from sklearn.model_selection import StratifiedKFold, cross_validate, train_test_split
-        from sklearn.pipeline import Pipeline
-        from sklearn.preprocessing import StandardScaler
-    except ImportError as exc:
-        raise MLDependencyError(
-            "ML training requires the optional dependency. Install content-creator[ml] and retry."
-        ) from exc
-    return {
-        "sklearn": sklearn,
-        "LogisticRegression": LogisticRegression,
-        "balanced_accuracy_score": balanced_accuracy_score,
-        "roc_auc_score": roc_auc_score,
-        "StratifiedKFold": StratifiedKFold,
-        "cross_validate": cross_validate,
-        "train_test_split": train_test_split,
-        "Pipeline": Pipeline,
-        "StandardScaler": StandardScaler,
-    }
-
-
 def train_voice_ml_model(
     root: Path,
     voice_id: str,
@@ -263,7 +248,69 @@ def train_voice_ml_model(
     reliability = training_reliability(
         len(author_rows), author_words, len(comparison_rows), comparison_words
     )
-    preflight = {
+    preflight = _training_preflight(
+        author_rows,
+        author_words,
+        comparison_rows,
+        comparison_words,
+        comparison_audit,
+        reliability,
+    )
+    blocked = _blocked_training_result(
+        voice_id,
+        resolved["version"],
+        preflight,
+        reliability,
+        accept_low_confidence,
+    )
+    if blocked:
+        return blocked
+    path = ml_model_path(root, voice_id, resolved["version"])
+    if path.exists() and not replace:
+        raise StorageError(
+            f"An ML model already exists for {voice_id}@{resolved['version']}. "
+            "Use --replace to retrain it."
+        )
+    trained = _train_classifier(author_rows, comparison_rows)
+    artifact = _training_artifact(
+        voice_id,
+        resolved["version"],
+        TrainingCorpus(
+            signature=signature,
+            author_rows=author_rows,
+            author_words=author_words,
+            comparison_rows=comparison_rows,
+            comparison_words=comparison_words,
+            comparison_audit=comparison_audit,
+            reliability=reliability,
+        ),
+        trained,
+    )
+    RunStore._atomic_text(path, json.dumps(artifact, indent=2))
+    return {
+        "status": "trained",
+        "trained": True,
+        "voice_id": voice_id,
+        "voice_version": resolved["version"],
+        "model_path": str(path.relative_to(root.resolve())),
+        "preflight": preflight,
+        "evaluation": artifact["evaluation"],
+        "activation": (
+            "Training does not enable ML scoring. Run voice score-config for this "
+            "voice with --enable --method ml after reviewing the evaluation."
+        ),
+    }
+
+
+def _training_preflight(
+    author_rows: List[List[float]],
+    author_words: int,
+    comparison_rows: List[List[float]],
+    comparison_words: int,
+    comparison_audit: Dict[str, Any],
+    reliability: Dict[str, Any],
+) -> Dict[str, Any]:
+    return {
         "author": {"documents": len(author_rows), "weighted_words": author_words},
         "comparison": {
             "documents": len(comparison_rows),
@@ -272,12 +319,21 @@ def train_voice_ml_model(
         },
         "reliability": reliability,
     }
+
+
+def _blocked_training_result(
+    voice_id: str,
+    voice_version: str,
+    preflight: Dict[str, Any],
+    reliability: Dict[str, Any],
+    accept_low_confidence: bool,
+) -> Optional[Dict[str, Any]]:
     if not reliability["can_train"]:
         return {
             "status": "insufficient_data",
             "trained": False,
             "voice_id": voice_id,
-            "voice_version": resolved["version"],
+            "voice_version": voice_version,
             "preflight": preflight,
         }
     if reliability["requires_low_confidence_acceptance"] and not accept_low_confidence:
@@ -285,23 +341,21 @@ def train_voice_ml_model(
             "status": "warning_confirmation_required",
             "trained": False,
             "voice_id": voice_id,
-            "voice_version": resolved["version"],
+            "voice_version": voice_version,
             "preflight": preflight,
             "next_step": (
                 "Add more independent matched documents, or repeat with "
                 "--accept-low-confidence after reviewing the warnings."
             ),
         }
+    return None
 
-    path = ml_model_path(root, voice_id, resolved["version"])
-    if path.exists() and not replace:
-        raise StorageError(
-            "An ML model already exists for {}@{}. Use --replace to retrain it.".format(
-                voice_id, resolved["version"]
-            )
-        )
 
-    ml = _require_sklearn()
+def _train_classifier(
+    author_rows: List[List[float]],
+    comparison_rows: List[List[float]],
+) -> Dict[str, Any]:
+    ml = require_sklearn()
     X = author_rows + comparison_rows
     y = [1] * len(author_rows) + [0] * len(comparison_rows)
     pipeline = ml["Pipeline"](
@@ -334,24 +388,39 @@ def train_voice_ml_model(
         scoring={"balanced_accuracy": "balanced_accuracy", "roc_auc": "roc_auc"},
     )
     pipeline.fit(X, y)
+    return {
+        "ml": ml,
+        "pipeline": pipeline,
+        "test_y": test_y,
+        "test_scores": test_scores,
+        "test_predictions": test_predictions,
+        "folds": folds,
+        "cross_validation": cross_validation,
+    }
+
+
+def _training_artifact(
+    voice_id: str,
+    voice_version: str,
+    corpus: TrainingCorpus,
+    trained: Dict[str, Any],
+) -> Dict[str, Any]:
+    ml = trained["ml"]
+    pipeline = trained["pipeline"]
     scaler = pipeline.named_steps["scaler"]
     classifier = pipeline.named_steps["classifier"]
-    artifact = {
+    return {
         "schema_version": "1.0",
         "framework": ML_FRAMEWORK,
         "framework_version": ML_FRAMEWORK_VERSION,
         "voice_id": voice_id,
-        "voice_version": resolved["version"],
+        "voice_version": voice_version,
         "trained_at": datetime.now(UTC).isoformat(),
         "feature_schema": {
-            "linguistic_framework_version": signature.get("framework_version"),
+            "linguistic_framework_version": corpus.signature.get("framework_version"),
             "feature_names": list(MODEL_FEATURE_NAMES),
         },
-        "preprocessing": {
-            "type": "standard-scaler",
-            "mean": [round(float(value), 12) for value in scaler.mean_],
-            "scale": [round(float(value), 12) for value in scaler.scale_],
-        },
+        "preprocessing": _preprocessing(scaler),
         "classifier": {
             "type": "logistic-regression",
             "class_weight": "balanced",
@@ -360,58 +429,62 @@ def train_voice_ml_model(
             "decision_threshold": 0.5,
             "sklearn_version": ml["sklearn"].__version__,
         },
-        "training_data": {
-            "author_documents": len(author_rows),
-            "author_weighted_words": author_words,
-            "author_feature_fingerprint": _fingerprint(author_rows),
-            "comparison_documents": len(comparison_rows),
-            "comparison_words": comparison_words,
-            "comparison_feature_fingerprint": _fingerprint(comparison_rows),
-            "comparison_content_fingerprint": "sha256:"
-            + hashlib.sha256(
-                "\n".join(comparison_audit["content_hashes"]).encode("utf-8")
-            ).hexdigest(),
-        },
-        "evaluation": {
-            "holdout_fraction": 0.2,
-            "holdout_balanced_accuracy": round(
-                float(ml["balanced_accuracy_score"](test_y, test_predictions)), 4
-            ),
-            "holdout_roc_auc": round(float(ml["roc_auc_score"](test_y, test_scores)), 4),
-            "cross_validation_folds": folds,
-            "cross_validation_balanced_accuracy_mean": round(
-                float(cross_validation["test_balanced_accuracy"].mean()), 4
-            ),
-            "cross_validation_balanced_accuracy_std": round(
-                float(cross_validation["test_balanced_accuracy"].std()), 4
-            ),
-            "cross_validation_roc_auc_mean": round(
-                float(cross_validation["test_roc_auc"].mean()), 4
-            ),
-            "cross_validation_roc_auc_std": round(float(cross_validation["test_roc_auc"].std()), 4),
-            "claim_limit": (
-                "Random held-out and cross-validation results are indicative. "
-                "A separately sealed, topic- and time-aware evaluation remains "
-                "necessary before treating the model as dependable."
-            ),
-        },
-        "reliability": reliability,
+        "training_data": _training_data(corpus),
+        "evaluation": _evaluation(ml, trained),
+        "reliability": corpus.reliability,
         "claim_limit": (
             "The classifier score is an advisory comparison with the supplied "
             "corpora, not an authorship probability or identity determination."
         ),
     }
-    RunStore._atomic_text(path, json.dumps(artifact, indent=2))
+
+
+def _preprocessing(scaler: Any) -> Dict[str, Any]:
     return {
-        "status": "trained",
-        "trained": True,
-        "voice_id": voice_id,
-        "voice_version": resolved["version"],
-        "model_path": str(path.relative_to(root.resolve())),
-        "preflight": preflight,
-        "evaluation": artifact["evaluation"],
-        "activation": (
-            "Training does not enable ML scoring. Run voice score-config for this "
-            "voice with --enable --method ml after reviewing the evaluation."
+        "type": "standard-scaler",
+        "mean": [round(float(value), 12) for value in scaler.mean_],
+        "scale": [round(float(value), 12) for value in scaler.scale_],
+    }
+
+
+def _training_data(corpus: TrainingCorpus) -> Dict[str, Any]:
+    comparison_digest = hashlib.sha256(
+        "\n".join(corpus.comparison_audit["content_hashes"]).encode("utf-8")
+    ).hexdigest()
+    return {
+        "author_documents": len(corpus.author_rows),
+        "author_weighted_words": corpus.author_words,
+        "author_feature_fingerprint": _fingerprint(corpus.author_rows),
+        "comparison_documents": len(corpus.comparison_rows),
+        "comparison_words": corpus.comparison_words,
+        "comparison_feature_fingerprint": _fingerprint(corpus.comparison_rows),
+        "comparison_content_fingerprint": "sha256:" + comparison_digest,
+    }
+
+
+def _evaluation(ml: Dict[str, Any], trained: Dict[str, Any]) -> Dict[str, Any]:
+    cross_validation = trained["cross_validation"]
+    return {
+        "holdout_fraction": 0.2,
+        "holdout_balanced_accuracy": round(
+            float(ml["balanced_accuracy_score"](trained["test_y"], trained["test_predictions"])),
+            4,
+        ),
+        "holdout_roc_auc": round(
+            float(ml["roc_auc_score"](trained["test_y"], trained["test_scores"])), 4
+        ),
+        "cross_validation_folds": trained["folds"],
+        "cross_validation_balanced_accuracy_mean": round(
+            float(cross_validation["test_balanced_accuracy"].mean()), 4
+        ),
+        "cross_validation_balanced_accuracy_std": round(
+            float(cross_validation["test_balanced_accuracy"].std()), 4
+        ),
+        "cross_validation_roc_auc_mean": round(float(cross_validation["test_roc_auc"].mean()), 4),
+        "cross_validation_roc_auc_std": round(float(cross_validation["test_roc_auc"].std()), 4),
+        "claim_limit": (
+            "Random held-out and cross-validation results are indicative. "
+            "A separately sealed, topic- and time-aware evaluation remains "
+            "necessary before treating the model as dependable."
         ),
     }

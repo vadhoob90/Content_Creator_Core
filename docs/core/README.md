@@ -32,6 +32,7 @@ content-creator doctor
 content-creator eval
 pytest
 ruff check .
+python scripts/readability_report.py --check
 ```
 
 `doctor`, replay evaluation, and the test suite do not require paid model
@@ -102,6 +103,8 @@ application-stage, optional-capability, and immutable-artifact seams.
 schema evolution, operational recovery, and the strengthened typing boundary.
 [ADR 0010](../adr/0010-module-responsibility-and-size-guardrails.md) records the
 command-family ownership and enforced module-size limits.
+[ADR 0011](../adr/0011-readable-components-and-control-flow.md) records the
+function, complexity, naming, and dispatch guardrails.
 See [schema compatibility](schema-compatibility.md) and
 [operations and recovery](operations-and-recovery.md) for the maintainer
 procedures.
@@ -109,6 +112,8 @@ Use `python scripts/architecture_report.py` for a view of module size and
 internal dependencies. Run it with `--check` to enforce the accepted dependency
 rules locally, including the 300-line runtime façade and 500-line production
 module limits; CI runs the same check.
+Use `python scripts/readability_report.py --check` for the corresponding
+module, function, and signature limits across source, scripts, and tests.
 
 ## Core versus a thin workspace
 
@@ -178,6 +183,8 @@ Before proposing or publishing a Core change:
 ruff check .
 ruff format --check .
 mypy
+python scripts/architecture_report.py --check
+python scripts/readability_report.py --check
 pytest --cov=content_creator --cov-report=term-missing
 content-creator doctor
 content-creator eval
@@ -292,13 +299,13 @@ commit reaches `main`.
 ### Publish the release
 
 Create the matching annotated tag only after the release PR is merged. For
-example, for `0.15.0`:
+example, for `0.16.0`:
 
 ```bash
 git switch main
 git pull --ff-only origin main
-git tag -a v0.15.0 -m "Content Creator 0.15.0"
-git push origin v0.15.0
+git tag -a v0.16.0 -m "Content Creator 0.16.0"
+git push origin v0.16.0
 ```
 
 Pushing the tag triggers `.github/workflows/release.yml`. The workflow:
@@ -330,13 +337,13 @@ Author workspaces remain on their pinned package until deliberately upgraded.
 Preview the upgrade first:
 
 ```bash
-uv run content-creator --workspace . workspace upgrade --to v0.15.0
+uv run content-creator --workspace . workspace upgrade --to v0.16.0
 ```
 
 Apply the reviewed preview explicitly:
 
 ```bash
-uv run content-creator --workspace . workspace upgrade --to v0.15.0 --apply
+uv run content-creator --workspace . workspace upgrade --to v0.16.0 --apply
 ```
 
 The apply operation updates the package requirement and lockfile, runs doctor,

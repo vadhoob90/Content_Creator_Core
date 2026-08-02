@@ -20,6 +20,14 @@ class PromptAssembler:
         self.agent_workspace = AgentWorkspace(self.root)
 
     def system_prompt(self, role: str, order: Optional[WorkOrder] = None) -> str:
+        parts = self._base_prompt_parts(role)
+        self._append_voice_profile(parts, role, order)
+        self._append_perspectives(parts, role, order)
+        self._append_learnings(parts, role, order)
+        self._append_rubrics(parts, role, order)
+        return "\n\n---\n\n".join(parts)
+
+    def _base_prompt_parts(self, role: str) -> list[str]:
         parts = [
             self._read(self.agent_workspace.harness_path()),
             self._read(self.agent_workspace.contract_path(role)),
@@ -30,6 +38,14 @@ class PromptAssembler:
                 "## Repository learning policy\n\n"
                 + self._read(self.agent_workspace.learning_instructions_path(role))
             )
+        return parts
+
+    def _append_voice_profile(
+        self,
+        parts: list[str],
+        role: str,
+        order: Optional[WorkOrder],
+    ) -> None:
         if role in {"writer", "critic", "learning-extractor"}:
             voice_id = order.voice_id if order else "default"
             resolved = VoiceRegistry(self.root).resolve(
@@ -44,6 +60,13 @@ class PromptAssembler:
                 else profile_root / "voice.md"
             )
             parts.append(self._resolved_voice_profile(resolved, self._read(profile)))
+
+    def _append_perspectives(
+        self,
+        parts: list[str],
+        role: str,
+        order: Optional[WorkOrder],
+    ) -> None:
         if (
             order
             and order.perspective_selections
@@ -90,6 +113,13 @@ class PromptAssembler:
                     "## Perspective constraints: {}\n\n".format(selection.context_id)
                     + self._read(perspective_root / "constraints.json")
                 )
+
+    def _append_learnings(
+        self,
+        parts: list[str],
+        role: str,
+        order: Optional[WorkOrder],
+    ) -> None:
         repository_learnings = self._active_learnings(
             self.root / "learnings" / "memory.json",
             role,
@@ -103,6 +133,13 @@ class PromptAssembler:
         )
         if voice_learnings:
             parts.append("## Active voice learnings\n\n" + "\n".join(voice_learnings))
+
+    def _append_rubrics(
+        self,
+        parts: list[str],
+        role: str,
+        order: Optional[WorkOrder],
+    ) -> None:
         if order and role in {"writer", "critic"}:
             packs = PackRegistry(self.root)
             pack = packs.resolve(order.content_pack, order.pack_options)
@@ -121,7 +158,6 @@ class PromptAssembler:
             if overlay:
                 overlay_path = self.resources.path(overlay)
                 parts.append("## Pack instructions\n\n" + self._read(overlay_path))
-        return "\n\n---\n\n".join(parts)
 
     @staticmethod
     def _resolved_voice_profile(resolved: Dict[str, Any], profile: str) -> str:

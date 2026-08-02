@@ -3,14 +3,18 @@ from __future__ import annotations
 import json
 import re
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Optional
+from typing import Any, Dict, List, Optional
 
 import yaml
 
 from .agent_resources import STANDARD_TEMPLATE, AgentWorkspace
-from .packs import PackRegistry
-from .storage import RunStore, slugify
+from .storage import RunStore
 from .version import VERSION
+from .workspace_scaffolding import (
+    WorkspaceCreateRequest,
+    WorkspaceServices,
+    create_workspace,
+)
 from .workspace_templates import WorkspaceTemplates
 
 DEFAULT_CORE_URL = "https://github.com/vadhoob90/Content_Creator_Core.git"
@@ -182,212 +186,12 @@ class WorkspaceScaffolder(WorkspaceTemplates):
     def __init__(self, destination: Path):
         self.root = destination.resolve()
 
-    def create(
-        self,
-        *,
-        name: str,
-        author_name: str,
-        voice_id: Optional[str] = None,
-        voice_label: Optional[str] = None,
-        packs: Optional[Iterable[str]] = None,
-        agent_template: str = STANDARD_TEMPLATE,
-        core_source: str = DEFAULT_CORE_SOURCE,
-        core_url: str = DEFAULT_CORE_URL,
-        core_ref: str = DEFAULT_CORE_REF,
-        perspective_mode: str = "automatic",
-    ) -> Dict[str, Any]:
-        if self.root.exists() and not self.root.is_dir():
-            raise ValueError("Workspace destination is not a directory: {}".format(self.root))
-        self.root.mkdir(parents=True, exist_ok=True)
-
-        display_name = name.strip()
-        author = author_name.strip()
-        if not display_name:
-            raise ValueError("Workspace name cannot be empty")
-        if not author:
-            raise ValueError("Author name cannot be empty")
-        if perspective_mode not in {"automatic", "explicit", "disabled"}:
-            raise ValueError("Perspective mode must be automatic, explicit, or disabled")
-
-        label = (voice_label or "{} — General".format(author)).strip()
-        resolved_voice_id = slugify(voice_id or label)
-        if voice_id and resolved_voice_id != voice_id:
-            raise ValueError("--voice-id must already be a repository-safe slug")
-
-        selected_packs = list(dict.fromkeys(packs or DEFAULT_PACKS))
-        available = {item.id for item in PackRegistry(self.root).list()}
-        unknown = sorted(set(selected_packs) - available)
-        if unknown:
-            raise ValueError("Unknown content packs: {}".format(", ".join(unknown)))
-
-        base_paths = (
-            self.root / "profiles" / "registry.json",
-            self.root / "content-creator.yaml",
+    def create(self, request: WorkspaceCreateRequest) -> Dict[str, Any]:
+        services = WorkspaceServices(
+            default_core_ref=DEFAULT_CORE_REF,
+            default_packs=DEFAULT_PACKS,
+            dependency_resolver=core_dependency,
+            initialise=initialise_workspace,
+            write_if_missing=_write_if_missing,
         )
-        base_path_existed = {path: path.exists() for path in base_paths}
-        base = initialise_workspace(
-            self.root,
-            agent_template=agent_template,
-            perspective_mode=perspective_mode,
-        )
-        if not base_path_existed[self.root / "content-creator.yaml"]:
-            workspace_configuration = yaml.safe_load(
-                (self.root / "content-creator.yaml").read_text(encoding="utf-8")
-            )
-            workspace_configuration["coordinator"]["default_voice"] = resolved_voice_id
-            workspace_configuration["coordinator"]["default_pack"] = selected_packs[0]
-            RunStore._atomic_text(
-                self.root / "content-creator.yaml",
-                yaml.safe_dump(workspace_configuration, sort_keys=False),
-            )
-        created: List[str] = []
-        preserved: List[str] = []
-        for item in base["agents"]["created"]:
-            created.append(item if item.startswith("learnings/") else "agents/{}".format(item))
-        for item in base["agents"]["preserved"]:
-            preserved.append(item if item.startswith("learnings/") else "agents/{}".format(item))
-        created.extend(base["skills"]["created"])
-        preserved.extend(base["skills"]["preserved"])
-        for path in base_paths:
-            relative = str(path.relative_to(self.root))
-            if base_path_existed[path]:
-                preserved.append(relative)
-            else:
-                created.append(relative)
-
-        package_name = slugify(display_name)
-        dependency = core_dependency(core_source, core_url, core_ref)
-        intended_uses = "\n".join("  --use {} \\".format(pack) for pack in selected_packs).rstrip(
-            " \\"
-        )
-
-        _write_if_missing(
-            self.root,
-            self.root / "pyproject.toml",
-            self._pyproject(package_name, display_name, author, dependency),
-            created,
-            preserved,
-        )
-        _write_if_missing(
-            self.root,
-            self.root / ".gitignore",
-            self._gitignore(),
-            created,
-            preserved,
-        )
-        _write_if_missing(
-            self.root,
-            self.root / ".env.example",
-            self._environment(),
-            created,
-            preserved,
-        )
-        _write_if_missing(
-            self.root,
-            self.root / "AGENTS.md",
-            self._agents_guidance(display_name, author, resolved_voice_id),
-            created,
-            preserved,
-        )
-        _write_if_missing(
-            self.root,
-            self.root / "CLAUDE.md",
-            self._claude_guidance(),
-            created,
-            preserved,
-        )
-        _write_if_missing(
-            self.root,
-            self.root / "README.md",
-            self._readme(
-                display_name=display_name,
-                author_name=author,
-                voice_id=resolved_voice_id,
-                voice_label=label,
-                packs=selected_packs,
-                core_ref=core_ref,
-                dependency=dependency,
-                intended_uses=intended_uses,
-            ),
-            created,
-            preserved,
-        )
-        _write_if_missing(
-            self.root,
-            self.root / "profiles" / resolved_voice_id / "learnings" / "memory.json",
-            json.dumps({"version": 1, "records": []}, indent=2),
-            created,
-            preserved,
-        )
-        _write_if_missing(
-            self.root,
-            self.root / "profiles" / resolved_voice_id / "onboarding.json",
-            json.dumps(
-                {
-                    "schema_version": "1.0",
-                    "voice_id": resolved_voice_id,
-                    "display_name": label,
-                    "author_name": author,
-                    "status": "undecided",
-                    "strategy": None,
-                    "template_id": None,
-                    "selected_by": None,
-                    "selected_at": None,
-                    "perspective_mode": "pending",
-                    "perspective_disabled_reason": None,
-                },
-                indent=2,
-            ),
-            created,
-            preserved,
-        )
-        _write_if_missing(
-            self.root,
-            self.root / "voice-material" / resolved_voice_id / "source-urls.txt",
-            (
-                "# Add one authorised public source URL per line.\n"
-                "# Local Markdown, text, DOCX, PDF, and HTML files may be placed\n"
-                "# in this directory and supplied with --documents."
-            ),
-            created,
-            preserved,
-        )
-        _write_if_missing(
-            self.root,
-            self.root / "tests" / "test_workspace.py",
-            self._smoke_test(resolved_voice_id, selected_packs),
-            created,
-            preserved,
-        )
-        for pack in selected_packs:
-            _write_if_missing(
-                self.root,
-                self.root / "content" / pack / "published" / ".gitkeep",
-                "",
-                created,
-                preserved,
-            )
-
-        created = sorted(dict.fromkeys(created))
-        preserved = sorted(dict.fromkeys(preserved))
-        return {
-            "status": "ok",
-            "workspace": str(self.root),
-            "name": display_name,
-            "author_name": author,
-            "voice_id": resolved_voice_id,
-            "voice_label": label,
-            "packs": selected_packs,
-            "core_dependency": dependency,
-            "perspective_mode": perspective_mode,
-            "created": created,
-            "preserved": preserved,
-            "next_steps": [
-                "cd {}".format(self.root),
-                "uv sync --dev",
-                "uv run content-creator --workspace . doctor",
-                (
-                    "Open the README and choose the source-derived or starter voice route for {}."
-                ).format(resolved_voice_id),
-            ],
-        }
+        return create_workspace(self, request, services)

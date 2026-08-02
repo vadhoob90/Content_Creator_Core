@@ -77,6 +77,12 @@ class PackRegistry:
         return pack
 
     def resolve(self, pack_id: str, overrides: Optional[Dict[str, Any]] = None) -> ContentPack:
+        data = self._merged_pack(pack_id)
+        self._apply_overrides(data, overrides)
+        self._validate_destinations(data)
+        return ContentPack.model_validate(data)
+
+    def _merged_pack(self, pack_id: str) -> Dict[str, Any]:
         chain: List[ContentPack] = []
         seen = set()
         current: Optional[ContentPack] = self.get(pack_id)
@@ -107,7 +113,10 @@ class PackRegistry:
                 )
             )
             data.update(child_data)
+        return data
 
+    @staticmethod
+    def _apply_overrides(data: Dict[str, Any], overrides: Optional[Dict[str, Any]]) -> None:
         requested = deepcopy(overrides or {})
         forbidden = sorted(set(requested) - set(data["allowed_run_overrides"]))
         if forbidden:
@@ -124,6 +133,8 @@ class PackRegistry:
             ):
                 raise PackError("Length override must be MIN:MAX")
         data["defaults"] = {**data.get("defaults", {}), **requested}
+
+    def _validate_destinations(self, data: Dict[str, Any]) -> None:
         destination = (self.root / data["destination"]).resolve()
         try:
             destination.relative_to(self.root)
@@ -136,7 +147,6 @@ class PackRegistry:
                 resolved_visual_destination.relative_to(self.root)
             except ValueError as exc:
                 raise PackError("Visual destination leaves repository root") from exc
-        return ContentPack.model_validate(data)
 
     def list(self) -> List[ContentPack]:
         return [

@@ -12,6 +12,22 @@ from content_creator.voice_builder import (
 from content_creator.voices import Authorisation, SourceRecord, VoiceWorkOrder
 
 
+def _assert_agentic_evidence(project, fake):
+    analyst = json.loads(fake.requests[0].user.split("\nINPUT\n", 1)[1])
+    assert analyst["linguistic_signature"]["framework"] == "lightweight-corpus-stylistics"
+    assert analyst["sources"][0]["analysis_scope"] == "full-source-with-byline-removed"
+    assert "sentence_length_median" in analyst["sources"][0]["linguistic_features"]
+    critic = json.loads(fake.requests[1].user.split("\nINPUT\n", 1)[1])
+    evaluator = json.loads(fake.requests[2].user.split("\nINPUT\n", 1)[1])
+    assert "linguistic_signature" in critic
+    assert "linguistic_signature" in evaluator
+    assert evaluator["constraints"]["never_copy_source_phrases"]
+    assert "hard_gates" in evaluator["voice_rubric"]
+    candidate = project / "profiles" / "example-person" / "candidate"
+    assert (candidate / "analyst-report.json").exists()
+    assert (candidate / "critic-report.json").exists()
+
+
 def test_agentic_voice_build_runs_independent_analysis_criticism_and_evaluation(
     project,
 ):
@@ -82,19 +98,7 @@ def test_agentic_voice_build_runs_independent_analysis_criticism_and_evaluation(
         "profile-critic",
         "voice-evaluator",
     ]
-    analyst_payload = json.loads(fake.requests[0].user.split("\nINPUT\n", 1)[1])
-    assert analyst_payload["linguistic_signature"]["framework"] == ("lightweight-corpus-stylistics")
-    assert analyst_payload["sources"][0]["analysis_scope"] == ("full-source-with-byline-removed")
-    assert "sentence_length_median" in analyst_payload["sources"][0]["linguistic_features"]
-    critic_payload = json.loads(fake.requests[1].user.split("\nINPUT\n", 1)[1])
-    evaluator_payload = json.loads(fake.requests[2].user.split("\nINPUT\n", 1)[1])
-    assert "linguistic_signature" in critic_payload
-    assert "linguistic_signature" in evaluator_payload
-    assert evaluator_payload["constraints"]["never_copy_source_phrases"]
-    assert "hard_gates" in evaluator_payload["voice_rubric"]
-    candidate = project / "profiles" / "example-person" / "candidate"
-    assert (candidate / "analyst-report.json").exists()
-    assert (candidate / "critic-report.json").exists()
+    _assert_agentic_evidence(project, fake)
 
 
 def test_confirmed_local_documents_do_not_require_embedded_bylines(project):

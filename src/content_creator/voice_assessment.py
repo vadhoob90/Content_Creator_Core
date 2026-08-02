@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import math
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -99,19 +100,56 @@ def _unavailable(
     }
 
 
+@dataclass(frozen=True)
+class LinguisticAssessmentOptions:
+    voice_id: str
+    voice_version: Optional[str]
+    minimum_sources: int = 20
+    minimum_draft_words: int = 100
+    outlier_iqr_multiplier: float = 1.5
+    max_reported_outliers: int = 8
+
+
 def assess_linguistic_signature(
     signature: Dict[str, Any],
     draft: str,
-    *,
-    voice_id: str,
-    voice_version: Optional[str],
-    minimum_sources: int = 20,
-    minimum_draft_words: int = 100,
-    outlier_iqr_multiplier: float = 1.5,
-    max_reported_outliers: int = 8,
+    options: LinguisticAssessmentOptions,
 ) -> Dict[str, Any]:
     """Compare a draft with a voice distribution without judging authorship."""
 
+    baseline, baseline_details, source_count = _baseline(signature, options)
+    if source_count < options.minimum_sources:
+        report = _unavailable(
+            options.voice_id,
+            options.voice_version,
+            "insufficient_evidence",
+            f"The selected signature has {source_count} usable sources; "
+            f"{options.minimum_sources} are required.",
+        )
+        report["baseline"] = baseline_details
+        return report
+    features = extract_linguistic_features(draft)
+    word_count = int(features["word_count"])
+    if word_count < options.minimum_draft_words:
+        return _short_draft_report(options, baseline_details, word_count)
+    outliers, evaluated, eligible = _outliers(features, baseline, options.outlier_iqr_multiplier)
+    if evaluated == 0:
+        return _no_variation_report(options, baseline_details, word_count)
+    return _assessment_report(
+        options,
+        baseline_details,
+        word_count,
+        source_count,
+        outliers,
+        evaluated,
+        eligible,
+    )
+
+
+def _baseline(
+    signature: Dict[str, Any],
+    options: LinguisticAssessmentOptions,
+) -> tuple[dict, dict, int]:
     profiles = signature.get("source_profiles", [])
     written_profiles = [
         item for item in profiles if item.get("context", {}).get("mode") == "written"
@@ -128,36 +166,33 @@ def assess_linguistic_signature(
     baseline_details = {
         "scope": baseline_scope,
         "source_count": source_count,
-        "minimum_sources": minimum_sources,
-        "outlier_rule": "{} times the interquartile range".format(outlier_iqr_multiplier),
+        "minimum_sources": options.minimum_sources,
+        "outlier_rule": f"{options.outlier_iqr_multiplier} times the interquartile range",
     }
-    if source_count < minimum_sources:
-        report = _unavailable(
-            voice_id,
-            voice_version,
-            "insufficient_evidence",
-            "The selected signature has {} usable sources; {} are required.".format(
-                source_count, minimum_sources
-            ),
-        )
-        report["baseline"] = baseline_details
-        return report
+    return baseline, baseline_details, source_count
 
-    features = extract_linguistic_features(draft)
-    word_count = int(features["word_count"])
-    if word_count < minimum_draft_words:
-        report = _unavailable(
-            voice_id,
-            voice_version,
-            "insufficient_draft",
-            "The draft has {} words; {} are required for a stable comparison.".format(
-                word_count, minimum_draft_words
-            ),
-        )
-        report["baseline"] = baseline_details
-        report["draft"] = {"word_count": word_count}
-        return report
 
+def _short_draft_report(
+    options: LinguisticAssessmentOptions,
+    baseline_details: dict,
+    word_count: int,
+) -> Dict[str, Any]:
+    report = _unavailable(
+        options.voice_id,
+        options.voice_version,
+        "insufficient_draft",
+        f"The draft has {word_count} words; {options.minimum_draft_words} are required.",
+    )
+    report["baseline"] = baseline_details
+    report["draft"] = {"word_count": word_count}
+    return report
+
+
+def _outliers(
+    features: Dict[str, Any],
+    baseline: dict,
+    multiplier: float,
+) -> tuple[List[Dict[str, Any]], int, int]:
     outliers: List[Dict[str, Any]] = []
     evaluated = 0
     eligible = 0
@@ -174,8 +209,8 @@ def assess_linguistic_signature(
         if iqr <= 0:
             # A constant feature supplies no evidence about tolerated variation.
             continue
-        lower = q1 - (outlier_iqr_multiplier * iqr)
-        upper = q3 + (outlier_iqr_multiplier * iqr)
+        lower = q1 - (multiplier * iqr)
+        upper = q3 + (multiplier * iqr)
         if observed_min >= 0:
             lower = max(0.0, lower)
         evaluated += 1
@@ -201,21 +236,37 @@ def assess_linguistic_signature(
                 "distance_beyond_envelope_iqr": round(deviation, 4),
             }
         )
+    return outliers, evaluated, eligible
 
-    if evaluated == 0:
-        report = _unavailable(
-            voice_id,
-            voice_version,
-            "insufficient_variation",
-            "The signature has no variable style features suitable for comparison.",
-        )
-        report["baseline"] = baseline_details
-        report["draft"] = {"word_count": word_count}
-        report["evaluated_feature_count"] = 0
-        return report
 
+def _no_variation_report(
+    options: LinguisticAssessmentOptions,
+    baseline_details: dict,
+    word_count: int,
+) -> Dict[str, Any]:
+    report = _unavailable(
+        options.voice_id,
+        options.voice_version,
+        "insufficient_variation",
+        "The signature has no variable style features suitable for comparison.",
+    )
+    report["baseline"] = baseline_details
+    report["draft"] = {"word_count": word_count}
+    report["evaluated_feature_count"] = 0
+    return report
+
+
+def _assessment_report(
+    options: LinguisticAssessmentOptions,
+    baseline_details: dict,
+    word_count: int,
+    source_count: int,
+    outliers: List[Dict[str, Any]],
+    evaluated: int,
+    eligible: int,
+) -> Dict[str, Any]:
     outliers.sort(key=lambda item: (-item["distance_beyond_envelope_iqr"], item["feature"]))
-    reported = outliers[:max_reported_outliers]
+    reported = outliers[: options.max_reported_outliers]
     # Only distance beyond the tolerated IQR envelope is penalised. Values
     # anywhere inside the envelope receive the same treatment, so the score
     # cannot reward regression toward the corpus median.
@@ -229,8 +280,8 @@ def assess_linguistic_signature(
         "framework": ASSESSMENT_FRAMEWORK,
         "framework_version": ASSESSMENT_VERSION,
         "status": "material_outliers" if outliers else "no_material_outliers",
-        "voice_id": voice_id,
-        "voice_version": voice_version,
+        "voice_id": options.voice_id,
+        "voice_version": options.voice_version,
         "score": score,
         "score_scale": {"minimum": 0, "maximum": 100},
         "score_interpretation": (
@@ -242,7 +293,7 @@ def assess_linguistic_signature(
         "reliability": {
             "status": "adequate",
             "source_count": source_count,
-            "minimum_sources": minimum_sources,
+            "minimum_sources": options.minimum_sources,
         },
         "baseline": baseline_details,
         "draft": {"word_count": word_count},
@@ -315,10 +366,12 @@ def assess_voice_draft(
     return assess_linguistic_signature(
         signature,
         draft,
-        voice_id=voice_id,
-        voice_version=resolved.get("version"),
-        minimum_sources=policy["minimum_sources"],
-        minimum_draft_words=policy["minimum_draft_words"],
-        outlier_iqr_multiplier=policy["outlier_iqr_multiplier"],
-        max_reported_outliers=policy["max_reported_outliers"],
+        LinguisticAssessmentOptions(
+            voice_id=voice_id,
+            voice_version=resolved.get("version"),
+            minimum_sources=policy["minimum_sources"],
+            minimum_draft_words=policy["minimum_draft_words"],
+            outlier_iqr_multiplier=policy["outlier_iqr_multiplier"],
+            max_reported_outliers=policy["max_reported_outliers"],
+        ),
     )

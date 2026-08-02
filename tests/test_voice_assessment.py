@@ -9,6 +9,7 @@ from content_creator.linguistics import build_linguistic_signature
 from content_creator.orchestrator import Orchestrator
 from content_creator.providers import FakeProvider, ProviderRegistry
 from content_creator.voice_assessment import (
+    LinguisticAssessmentOptions,
     assess_linguistic_signature,
     load_score_preference,
     save_score_preference,
@@ -93,9 +94,11 @@ def test_assessment_reports_material_outliers_without_authorship_claim():
     report = assess_linguistic_signature(
         _signature(),
         ("You? You! You should always act now! " * 40),
-        voice_id="alice",
-        voice_version="1.0.0",
-        max_reported_outliers=50,
+        LinguisticAssessmentOptions(
+            voice_id="alice",
+            voice_version="1.0.0",
+            max_reported_outliers=50,
+        ),
     )
 
     assert report["status"] == "material_outliers"
@@ -111,8 +114,7 @@ def test_assessment_refuses_to_overstate_a_small_corpus():
     report = assess_linguistic_signature(
         _signature(8),
         valid_draft(),
-        voice_id="alice",
-        voice_version="1.0.0",
+        LinguisticAssessmentOptions(voice_id="alice", voice_version="1.0.0"),
     )
 
     assert report["status"] == "insufficient_evidence"
