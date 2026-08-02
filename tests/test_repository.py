@@ -71,13 +71,15 @@ def test_readme_is_a_streamlined_operator_journey():
     assert "### 1. Create an author workspace" in readme
     assert "### 2. Choose a voice route" in readme
     assert "### 3. Ask for content naturally" in readme
-    assert readme.count("flowchart TD") == 2
-    assert "### Voice setup" in readme
-    assert "### Content loop" in readme
-    assert "Voice Analyst" in readme
-    assert "Briefing Agent" in readme
-    assert "Statistical voice evidence" in readme
-    assert "optional `statistical_voice_score`" in readme
+    assert readme.count("flowchart") == 1
+    assert "Optional features to explore" in readme
+    assert "[Visual asset packs](docs/guides/visual-assets.md)" in readme
+    assert "[Statistical voice scoring](docs/guides/linguistic-voice-framework.md)" in readme
+    assert "statistical_voice_score" not in readme
+    assert "deterministic distribution comparison" not in readme
+    assert "provider adapters, asset lineage" not in readme
+    assert "--idempotency-key" not in readme
+    assert "awaiting_diagnostic_decision" not in readme
     assert "publish externally" in readme
     assert "```bash" not in readme
     assert (
