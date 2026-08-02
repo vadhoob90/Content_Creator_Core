@@ -5,13 +5,14 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any, Callable, Iterable
 
 import yaml
 
 from .agent_resources import STANDARD_TEMPLATE
 from .packs import PackRegistry
 from .storage import RunStore, slugify
+from .workspace_templates import WorkspaceReadmeContext
 
 
 @dataclass(frozen=True)
@@ -38,16 +39,28 @@ class WorkspaceIdentity:
     dependency: str
 
 
-def create_workspace(scaffolder: Any, request: WorkspaceCreateRequest) -> dict:
-    from .workspace import DEFAULT_CORE_REF
+@dataclass(frozen=True)
+class WorkspaceServices:
+    default_core_ref: str
+    default_packs: list[str]
+    dependency_resolver: Callable[[str, str, str], str]
+    initialise: Callable[[Path, str, str | None], dict[str, Any]]
+    write_if_missing: Callable[[Path, Path, str, list[str], list[str]], None]
+
+
+def create_workspace(
+    scaffolder: Any, request: WorkspaceCreateRequest, services: WorkspaceServices
+) -> dict:
 
     if not request.core_ref:
-        request = WorkspaceCreateRequest(**{**request.__dict__, "core_ref": DEFAULT_CORE_REF})
+        request = WorkspaceCreateRequest(
+            **{**request.__dict__, "core_ref": services.default_core_ref}
+        )
     root = scaffolder.root
     _prepare_destination(root)
-    identity = _validated_identity(root, request)
-    created, preserved = _initialise_base(root, request, identity)
-    _write_workspace_files(scaffolder, request, identity, created, preserved)
+    identity = _validated_identity(root, request, services)
+    created, preserved = _initialise_base(root, request, identity, services)
+    _write_workspace_files(scaffolder, request, identity, created, preserved, services)
     return _result(root, request, identity, created, preserved)
 
 
@@ -57,9 +70,9 @@ def _prepare_destination(root: Path) -> None:
     root.mkdir(parents=True, exist_ok=True)
 
 
-def _validated_identity(root: Path, request: WorkspaceCreateRequest) -> WorkspaceIdentity:
-    from .workspace import DEFAULT_PACKS, core_dependency
-
+def _validated_identity(
+    root: Path, request: WorkspaceCreateRequest, services: WorkspaceServices
+) -> WorkspaceIdentity:
     display_name = request.name.strip()
     author_name = request.author_name.strip()
     if not display_name or not author_name:
@@ -71,25 +84,28 @@ def _validated_identity(root: Path, request: WorkspaceCreateRequest) -> Workspac
     voice_id = slugify(request.voice_id or voice_label)
     if request.voice_id and voice_id != request.voice_id:
         raise ValueError("--voice-id must already be a repository-safe slug")
-    selected_packs = list(dict.fromkeys(request.packs or DEFAULT_PACKS))
+    selected_packs = list(dict.fromkeys(request.packs or services.default_packs))
     available = {pack.id for pack in PackRegistry(root).list()}
     unknown = sorted(set(selected_packs) - available)
     if unknown:
         raise ValueError(f"Unknown content packs: {', '.join(unknown)}")
-    dependency = core_dependency(request.core_source, request.core_url, request.core_ref)
+    dependency = services.dependency_resolver(
+        request.core_source, request.core_url, request.core_ref
+    )
     return WorkspaceIdentity(
         display_name, author_name, voice_id, voice_label, selected_packs, dependency
     )
 
 
 def _initialise_base(
-    root: Path, request: WorkspaceCreateRequest, identity: WorkspaceIdentity
+    root: Path,
+    request: WorkspaceCreateRequest,
+    identity: WorkspaceIdentity,
+    services: WorkspaceServices,
 ) -> tuple[list[str], list[str]]:
-    from .workspace import initialise_workspace
-
     base_paths = (root / "profiles" / "registry.json", root / "content-creator.yaml")
     existed = {path: path.exists() for path in base_paths}
-    base = initialise_workspace(root, request.agent_template, request.perspective_mode)
+    base = services.initialise(root, request.agent_template, request.perspective_mode)
     if not existed[root / "content-creator.yaml"]:
         configuration_path = root / "content-creator.yaml"
         configuration = yaml.safe_load(configuration_path.read_text(encoding="utf-8"))
@@ -117,10 +133,8 @@ def _write_workspace_files(
     identity: WorkspaceIdentity,
     created: list[str],
     preserved: list[str],
+    services: WorkspaceServices,
 ) -> None:
-    from .workspace import _write_if_missing
-    from .workspace_templates import WorkspaceReadmeContext
-
     root = scaffolder.root
     intended_uses = "\n".join(f"  --use {pack} \\" for pack in identity.packs).rstrip(" \\")
     readme_context = WorkspaceReadmeContext(
@@ -155,9 +169,9 @@ def _write_workspace_files(
         "tests/test_workspace.py": scaffolder._smoke_test(identity.voice_id, identity.packs),
     }
     for relative, contents in simple_files.items():
-        _write_if_missing(root, root / relative, contents, created, preserved)
+        services.write_if_missing(root, root / relative, contents, created, preserved)
     for pack in identity.packs:
-        _write_if_missing(
+        services.write_if_missing(
             root, root / "content" / pack / "published" / ".gitkeep", "", created, preserved
         )
 

@@ -10,7 +10,11 @@ import yaml
 from .agent_resources import STANDARD_TEMPLATE, AgentWorkspace
 from .storage import RunStore
 from .version import VERSION
-from .workspace_scaffolding import WorkspaceCreateRequest
+from .workspace_scaffolding import (
+    WorkspaceCreateRequest,
+    WorkspaceServices,
+    create_workspace,
+)
 from .workspace_templates import WorkspaceTemplates
 
 DEFAULT_CORE_URL = "https://github.com/vadhoob90/Content_Creator_Core.git"
@@ -183,6 +187,11 @@ class WorkspaceScaffolder(WorkspaceTemplates):
         self.root = destination.resolve()
 
     def create(self, request: WorkspaceCreateRequest) -> Dict[str, Any]:
-        from .workspace_scaffolding import create_workspace
-
-        return create_workspace(self, request)
+        services = WorkspaceServices(
+            default_core_ref=DEFAULT_CORE_REF,
+            default_packs=DEFAULT_PACKS,
+            dependency_resolver=core_dependency,
+            initialise=initialise_workspace,
+            write_if_missing=_write_if_missing,
+        )
+        return create_workspace(self, request, services)

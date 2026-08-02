@@ -4,6 +4,7 @@ Training/preflight and inference are separated so callers can depend on the
 smallest responsibility while legacy imports remain stable.
 """
 
+from .voice_ml_dependencies import MLDependencyError as MLDependencyError
 from .voice_ml_inference import assess_with_ml_artifact as assess_with_ml_artifact
 from .voice_ml_training import (
     HARD_MINIMUM_DOCUMENTS_PER_CLASS as HARD_MINIMUM_DOCUMENTS_PER_CLASS,
@@ -25,9 +26,6 @@ from .voice_ml_training import (
 )
 from .voice_ml_training import (
     RELIABLE_MINIMUM_WORDS_PER_CLASS as RELIABLE_MINIMUM_WORDS_PER_CLASS,
-)
-from .voice_ml_training import (
-    MLDependencyError as MLDependencyError,
 )
 from .voice_ml_training import (
     load_voice_signature as load_voice_signature,

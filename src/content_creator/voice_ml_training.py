@@ -10,7 +10,6 @@ from typing import Any, Dict, Iterable, List, Optional, Set, Tuple
 from .ingestion import content_hash, read_source
 from .linguistics import extract_linguistic_features
 from .storage import RunStore, StorageError
-from .voice_ml_dependencies import MLDependencyError as MLDependencyError
 from .voice_ml_dependencies import require_sklearn
 from .voices import VoiceRegistry
 

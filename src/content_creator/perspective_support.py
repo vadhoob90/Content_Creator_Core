@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from datetime import UTC, datetime
 from enum import Enum
 from pathlib import Path
@@ -133,13 +134,11 @@ class PerspectiveResolution(BaseModel):
 
 class PerspectiveCatalogueStore:
     def __init__(self, root: Path, voice_id: str):
-        # The registry façade depends on these contracts, so resolve it lazily.
-        from .perspectives import PerspectiveRegistry
-
         self.root = root.resolve()
-        self.voice_id = voice_id
-        self.registry = PerspectiveRegistry(self.root, voice_id)
-        self.path = self.registry.base / "catalogue.json"
+        self.voice_id = slugify(voice_id)
+        if self.voice_id != voice_id:
+            raise PerspectiveError("Voice ids must use lowercase letters, digits, and hyphens")
+        self.path = self.root / "profiles" / self.voice_id / "perspectives" / "catalogue.json"
 
     def load(self) -> PerspectiveCatalogue:
         if not self.path.exists():
@@ -157,9 +156,16 @@ class PerspectiveCatalogueStore:
             )
         return catalogue
 
+    def _registry_contexts(self) -> Dict[str, Any]:
+        registry_path = self.path.parent / "registry.json"
+        if not registry_path.exists():
+            return {}
+        registry = json.loads(registry_path.read_text(encoding="utf-8"))
+        return registry.get("contexts", {})
+
     def routing_payload(self) -> Dict[str, Any]:
         catalogue = self.load()
-        active = self.registry.list()
+        active = self._registry_contexts()
         contexts = [
             item.model_dump(mode="json")
             for item in catalogue.contexts
@@ -173,7 +179,7 @@ class PerspectiveCatalogueStore:
 
     def verify(self) -> Dict[str, Any]:
         catalogue = self.load()
-        registry = self.registry.list()
+        registry = self._registry_contexts()
         unknown = sorted(
             item.context_id for item in catalogue.contexts if item.context_id not in registry
         )

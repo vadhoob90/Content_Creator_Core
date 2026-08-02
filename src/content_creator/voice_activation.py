@@ -25,7 +25,8 @@ class VoiceRegistryAccess(Protocol):
     root: Path
     path: Path
 
-    def _read(self) -> dict: ...
+    def _read(self) -> dict:
+        raise NotImplementedError
 
 
 def activate_candidate(
