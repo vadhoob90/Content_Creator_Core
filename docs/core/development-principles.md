@@ -1,0 +1,91 @@
+# Development principles
+
+These principles guide implementation and review in Content Creator Core. They
+are decision aids rather than slogans or mechanical scoring rules.
+
+## Protect author authority and integrity first
+
+Correctness includes the product boundaries: human approval, voice and
+perspective isolation, source provenance, no-research routes, deterministic
+validation, and local publication. A refactoring is incomplete if it weakens
+one of these guarantees.
+
+## Prefer readability and explicit behavior
+
+Code is maintained more often than it is written. Choose names that express
+domain intent, keep control flow visible, and make state transitions explicit.
+Comments explain why a constraint exists; they do not compensate for avoidably
+unclear code.
+
+## Apply DRY to knowledge, not incidental syntax
+
+There should be one authoritative implementation of a rule such as component
+hash verification or atomic manifest persistence. Similar-looking domain
+policies may remain separate when they change for different reasons. Do not
+introduce an abstraction merely to remove a few repeated lines.
+
+## Balance reuse with YAGNI
+
+Build the smallest seam required by current consumers. Prefer two proven uses
+before generalising an internal abstraction. Delete speculative extension
+points and compatibility paths when their supported purpose has ended.
+
+## Keep modules cohesive and dependencies directed
+
+Organise by capabilities that change together. Domain rules must not depend on
+entry points or concrete external providers. Application services coordinate
+through narrow contracts, and the CLI composes them. A small change should
+normally require understanding one module and its neighbours.
+
+## Use dependency inversion selectively
+
+Use Python `Protocol` types where multiple implementations, fakes, or optional
+capabilities already require substitution. Do not wrap stable concrete code in
+an interface without a demonstrated boundary.
+
+## Practice test-driven development
+
+For new behavior:
+
+1. Add a focused failing test that expresses the contract.
+2. Implement the smallest change that passes it.
+3. Refactor while the suite remains green.
+
+For structural refactoring, first add characterization or contract tests for
+the current observable behavior. Move one responsibility at a time and prove
+that behavior is unchanged. Do not manufacture meaningless failures for a file
+move.
+
+Tests should cover behavior and boundaries rather than private implementation
+shape unless that shape is an intentional architecture rule.
+
+## Make small, reversible changes
+
+Keep substantial refactoring separate from feature work. One pull request
+should have one coherent purpose, include its tests, and leave Core releasable.
+Prefer a sequence of safe extractions over a large redesign.
+
+## Treat compatibility as a feature
+
+CLI behavior, exported Python names, schemas, persisted artifacts, generated
+workspaces, and adapter contracts are observable behavior. Inventory and test
+them before restructuring. Any deliberate incompatibility requires migration
+support and clear release communication.
+
+## Ratchet quality rather than chase metrics
+
+Coverage, typing, module size, and dependency reports expose risk; they do not
+replace engineering judgment. New work must not reduce the established
+baseline. Tighten a check only when it produces actionable signal and has a
+clear remediation path.
+
+## Review checklist
+
+- Does the change preserve author authority and integrity boundaries?
+- Is the behavior represented by a focused test?
+- Is domain knowledge defined in one appropriate place?
+- Is a new abstraction justified by current consumers?
+- Does the dependency direction match ADR 0007?
+- Are public and persisted contracts preserved or migrated?
+- Can the change be understood, reviewed, and reversed independently?
+- Do documentation and examples still describe the implementation accurately?

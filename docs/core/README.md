@@ -76,6 +76,13 @@ Core harness and role contract
 Repository instructions may specialise behavior but cannot remove Core
 integrity boundaries.
 
+Before changing structure or public behavior, read the
+[development principles](development-principles.md), the
+[public compatibility contracts](public-contracts.md), and
+[ADR 0007 on modular-monolith boundaries](../adr/0007-modular-monolith-boundaries.md).
+Use `python scripts/architecture_report.py` for an advisory view of module size
+and internal dependencies.
+
 ## Core versus a thin workspace
 
 Put a change in Core when it is reusable across authors, teams, or content
