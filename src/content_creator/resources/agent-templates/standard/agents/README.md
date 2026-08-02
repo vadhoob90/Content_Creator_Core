@@ -33,3 +33,7 @@ or publication gates.
 Customise the copied files for the repository. For example, a legal researcher
 and a technical researcher should use different source hierarchies while both
 remain subject to the same core evidence-integrity contract.
+
+Maintainers changing this packaged template must also follow the Core
+[architecture and development guardrails](https://github.com/vadhoob90/Content_Creator_Core/blob/main/docs/core/architecture-guardrails.md),
+including mirrored-resource parity, focused tests, and the full release gate.

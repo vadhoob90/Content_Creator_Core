@@ -8,6 +8,28 @@ release tag.
 
 ## [Unreleased]
 
+## [0.15.0] - 2026-08-02
+
+### Added
+
+- Blocking architecture checks that cap every production module at 500 lines and
+  keep the command runtime façade at or below 300 lines.
+- A single architecture-guardrail guide and ADR 0010, signposted from every
+  Core developer entry point.
+
+### Changed
+
+- The CLI runtime is decomposed into parser composition, general dispatch,
+  shared rendering, and independently registered voice and perspective families.
+- Orchestration, diagnostics, workspace scaffolding, coordination, voice building,
+  voice ML, visual, voice, and perspective code is split by responsibility behind
+  compatibility façades; public Python, CLI, schema, and persisted contracts are unchanged.
+
+### Migration
+
+- No workspace or persisted-data migration is required. Downstream workspaces
+  should deliberately upgrade their exact dependency pin to `content-creator==0.15.0`.
+
 ## [0.14.0] - 2026-08-02
 
 ### Added

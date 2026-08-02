@@ -52,11 +52,13 @@ Core always returns the result for review and never publishes externally.
 
 - [Core development guide](core/README.md)
 - [Development principles](core/development-principles.md)
+- [Architecture and development guardrails](core/architecture-guardrails.md)
 - [Public compatibility contracts](core/public-contracts.md)
 - [Schema compatibility and evolution](core/schema-compatibility.md)
 - [Operations and recovery](core/operations-and-recovery.md)
 - [Lifecycle stages and optional capabilities](adr/0008-lifecycle-stages-and-capabilities.md)
 - [Schema governance and operational recovery](adr/0009-schema-governance-and-operational-recovery.md)
+- [Module responsibility and size guardrails](adr/0010-module-responsibility-and-size-guardrails.md)
 - [Architecture decisions](adr/0001-provider-neutral-contract.md)
 - [Package-registry distribution decision](adr/0005-package-registry-distribution.md)
 - [Changelog](../CHANGELOG.md)

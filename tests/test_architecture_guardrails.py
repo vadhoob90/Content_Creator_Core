@@ -90,7 +90,12 @@ def test_architecture_report_describes_modules_and_dependencies():
     assert report["summary"]["module_count"] >= 30
     assert report["summary"]["line_count"] >= 10_000
     modules = {module["module"]: module for module in report["modules"]}
-    assert modules["content_creator.orchestrator"]["line_count"] >= 800
+    assert modules["content_creator.orchestrator"]["line_count"] <= 500
+    assert modules["content_creator.commands.runtime"]["line_count"] <= 300
+    oversized = {
+        name: module["line_count"] for name, module in modules.items() if module["line_count"] > 500
+    }
+    assert oversized == {}
     orchestrator_imports = modules["content_creator.orchestrator"]["imports"]
     assert "content_creator.capabilities" in orchestrator_imports
     assert "content_creator.stages" in orchestrator_imports
@@ -117,9 +122,11 @@ def test_maintainability_documents_are_linked_from_the_core_guide():
         "public-contracts.md",
         "schema-compatibility.md",
         "operations-and-recovery.md",
+        "architecture-guardrails.md",
         "../adr/0007-modular-monolith-boundaries.md",
         "../adr/0008-lifecycle-stages-and-capabilities.md",
         "../adr/0009-schema-governance-and-operational-recovery.md",
+        "../adr/0010-module-responsibility-and-size-guardrails.md",
     ):
         assert target in core_guide
 
@@ -127,7 +134,7 @@ def test_maintainability_documents_are_linked_from_the_core_guide():
 def test_large_cli_families_have_dedicated_command_modules():
     for family in (operations, perspective, provider, schema, visual, voice):
         assert callable(family.run)
-    for family in (operations, provider, schema, visual):
+    for family in (operations, perspective, provider, schema, visual, voice):
         assert callable(family.register)
 
     cli_path = ROOT / "src" / "content_creator" / "cli.py"
