@@ -808,11 +808,11 @@ def _main(argv=None) -> int:
     if args.command == "voice":
         from .voice import run
 
-        return run(root, args)
+        return run(root, args, _voice_command)
     if args.command == "perspective":
         from .perspective import run
 
-        return run(root, args)
+        return run(root, args, _perspective_command)
     if args.command == "eval":
         runner = run_live_suite if args.mode == "live" else run_replay_suite
         report = runner(root, args.providers)

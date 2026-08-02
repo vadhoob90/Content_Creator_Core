@@ -1,11 +1,9 @@
 """Voice command-family entry point."""
 
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 
-def run(root: Path, args: Any) -> int:
+def run(root: Path, args: Any, handler: Callable[[Path, Any], int]) -> int:
     """Execute one voice subcommand."""
-    from . import runtime
-
-    return runtime._voice_command(root, args)
+    return handler(root, args)
