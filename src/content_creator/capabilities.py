@@ -21,7 +21,8 @@ class RunCapabilities(Protocol):
         draft: str,
         configured_policy: Dict[str, Any],
         eligible: bool,
-    ) -> Optional[Dict[str, Any]]: ...
+    ) -> Optional[Dict[str, Any]]:
+        raise NotImplementedError
 
 
 class DefaultRunCapabilities:

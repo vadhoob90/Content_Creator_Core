@@ -13,11 +13,13 @@ class ResearchStage(Protocol):
         self,
         state: RunState,
         supplied_brief: Optional[ResearchBrief] = None,
-    ) -> Optional[ResearchBrief]: ...
+    ) -> Optional[ResearchBrief]:
+        raise NotImplementedError
 
 
 class DraftReviewStage(Protocol):
-    def execute(self, state: RunState, brief: Optional[ResearchBrief]) -> RunState: ...
+    def execute(self, state: RunState, brief: Optional[ResearchBrief]) -> RunState:
+        raise NotImplementedError
 
 
 @dataclass(frozen=True)
