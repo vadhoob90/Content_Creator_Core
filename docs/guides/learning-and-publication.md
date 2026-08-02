@@ -28,6 +28,15 @@ Active structured learnings are added to later role prompts. Provisional
 entries remain recorded but inactive. `profiles/<voice-id>/voice.md` is not rewritten
 automatically; consolidation requires a deliberate, reviewed repository change.
 
+Learning roles are schema-constrained to the prompt consumers `researcher`,
+`writer`, and `critic`. Unsupported extractor output, including `author`, is
+rejected and recorded as a visible `learning_update_failed` publication event.
+For compatibility, a legacy unsupported record may remain stored when it is
+provisional or rejected. A legacy unsupported `active` record stops prompt
+assembly with its record id and remediation: map it deliberately to a supported
+role, or mark it provisional/rejected for author review. It is never silently
+left active without a consumer.
+
 Repository-wide principles live separately in `learnings/memory.json`. They
 apply across voices in that content repository. Publication does not promote a
 voice learning into repository memory automatically; cross-voice promotion is

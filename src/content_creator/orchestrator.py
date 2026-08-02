@@ -80,6 +80,9 @@ class Orchestrator:
         order: WorkOrder,
         idempotency_key: Optional[str] = None,
     ) -> RunState:
+        if order.parent_run_id:
+            parent = self.store.load(order.parent_run_id)
+            order.content_session_id = parent.work_order.content_session_id
         self.diagnostics.begin_invocation(order.content_session_id)
         submitted_order = order.model_copy(deep=True)
         try:
@@ -566,6 +569,7 @@ class Orchestrator:
 
     def _draft_and_review(self, state: RunState, brief: Optional[ResearchBrief]) -> RunState:
         pack = self.packs.resolve(state.work_order.content_pack, state.work_order.pack_options)
+        revision_context = self._revision_context(state.work_order)
         previous_critique: Optional[Critique] = None
         prior_score: Optional[float] = None
         stagnant_rounds = 0
@@ -580,7 +584,12 @@ class Orchestrator:
                     "Write or revise the piece. Address the prior critique, but preserve "
                     "the author's intent. Return only publishable Markdown."
                 ),
-                payload=self._draft_payload(state.work_order, brief, previous_critique),
+                payload=self._draft_payload(
+                    state.work_order,
+                    brief,
+                    previous_critique,
+                    revision_context,
+                ),
                 order=state.work_order,
                 provider=state.work_order.provider,
                 profile=state.route_plan.model_profiles["writer"],
@@ -703,16 +712,46 @@ class Orchestrator:
         self.store.save_state(state)
         return state
 
+    def _revision_context(self, order: WorkOrder) -> Optional[Dict]:
+        if not order.parent_run_id:
+            return None
+        parent = self.store.load(order.parent_run_id)
+        if parent.status not in {RunStatus.READY, RunStatus.NEEDS_AUTHOR, RunStatus.PUBLISHED}:
+            raise OrchestrationError(
+                "Parent run {} has no reviewed draft to revise (status: {})".format(
+                    parent.id, parent.status.value
+                )
+            )
+        try:
+            parent_draft = self.store.read_artifact(parent.id, "final.md")
+        except StorageError as exc:
+            raise OrchestrationError(
+                "Parent run {} is missing its reviewed final draft".format(parent.id)
+            ) from exc
+        return {
+            "parent_run_id": parent.id,
+            "content_session_id": parent.work_order.content_session_id,
+            "parent_status": parent.status.value,
+            "parent_revision": parent.revision,
+            "parent_draft": parent_draft,
+            "revision_instruction": (
+                "Use the parent draft as the revision baseline. Make only the requested "
+                "changes and preserve all unaffected approved passages."
+            ),
+        }
+
     @staticmethod
     def _draft_payload(
         order: WorkOrder,
         brief: Optional[ResearchBrief],
         critique: Optional[Critique],
+        revision_context: Optional[Dict] = None,
     ) -> Dict:
         return {
             "work_order": order.model_dump(mode="json"),
             "research": brief.model_dump(mode="json") if brief else None,
             "prior_critique": critique.model_dump(mode="json") if critique else None,
+            "revision_context": revision_context,
         }
 
     def _available_critiques(self, run_id: str):

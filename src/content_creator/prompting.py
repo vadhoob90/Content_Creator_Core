@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any, Dict, Iterable, Optional
 
 from .agent_resources import LEARNING_FILES, AgentWorkspace
-from .domain import WorkOrder
+from .domain import LearningRole, WorkOrder
 from .packs import PackRegistry
 from .perspectives import PerspectiveEntry, PerspectiveRegistry
 from .resource_paths import ResourceResolver
@@ -178,6 +178,22 @@ class PromptAssembler:
         if not path.exists():
             return []
         data = json.loads(path.read_text(encoding="utf-8"))
+        supported = {item.value for item in LearningRole}
+        unsupported = [
+            item
+            for item in data.get("records", [])
+            if item.get("status") == "active" and item.get("role") not in supported
+        ]
+        if unsupported:
+            details = ", ".join(
+                "{} ({})".format(item.get("id", "unknown id"), item.get("role"))
+                for item in unsupported
+            )
+            raise ValueError(
+                "Unsupported active learning role in {}: {}. Change each role to "
+                "researcher, writer, or critic, or mark the record provisional/rejected "
+                "for author review.".format(path, details)
+            )
         return [
             "- {}".format(item["principle"])
             for item in data.get("records", [])

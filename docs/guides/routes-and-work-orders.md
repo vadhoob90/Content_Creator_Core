@@ -66,4 +66,8 @@ idempotent submission.
 
 A deliberate revision is not a retry. Give it a new idempotency key and pass
 `--parent-run <prior-run-id>` so it receives a distinct run while preserving
-the existing content lineage.
+the existing content lineage. Core loads the parent's reviewed `final.md` into
+a structured `revision_context` for every writer pass, carries forward the
+parent run and content-session identifiers, and instructs the writer to treat
+that text as the baseline while preserving unaffected approved passages. A
+parent that has not reached a reviewed state is rejected explicitly.

@@ -1,5 +1,8 @@
 import json
 
+import pytest
+from pydantic import ValidationError
+
 from content_creator.domain import LearningExtraction
 from content_creator.learning import LearningMemory
 from content_creator.prompting import PromptAssembler
@@ -106,6 +109,46 @@ def test_learning_memory_deduplicates_same_role_and_principle(project):
         (project / "profiles" / "default" / "learnings" / "memory.json").read_text(encoding="utf-8")
     )
     assert len(saved["records"]) == 1
+
+
+def test_learning_candidate_rejects_unsupported_role():
+    with pytest.raises(ValidationError, match="Unsupported learning role 'author'"):
+        LearningExtraction.model_validate(
+            {
+                "candidates": [
+                    {
+                        "role": "author",
+                        "principle": "Treat a subject position as a voice rule.",
+                        "evidence": "Publication",
+                        "status": "active",
+                        "confidence": 1,
+                    }
+                ]
+            }
+        )
+
+
+def test_legacy_unsupported_active_role_requires_author_review(project):
+    memory = {
+        "version": 1,
+        "records": [
+            {
+                "id": "legacy-author-learning",
+                "run_id": "legacy-run",
+                "role": "author",
+                "principle": "An inert legacy principle.",
+                "evidence": "Legacy extraction",
+                "status": "active",
+                "confidence": 1,
+                "created_at": "2026-01-01T00:00:00Z",
+            }
+        ],
+    }
+    path = project / "profiles" / "default" / "learnings" / "memory.json"
+    path.write_text(json.dumps(memory), encoding="utf-8")
+
+    with pytest.raises(ValueError, match=r"legacy-author-learning \(author\)"):
+        PromptAssembler(project).system_prompt("writer")
 
 
 def test_learning_conflict_is_surfaced_and_consolidation_is_candidate(project):

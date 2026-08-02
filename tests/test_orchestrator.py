@@ -359,3 +359,54 @@ def test_learning_failure_does_not_lose_approved_publication(project):
     assert state.status == RunStatus.PUBLISHED
     assert (project / "content" / "linkedin-post" / "published" / "safe.md").exists()
     assert any(event.name == "learning_update_failed" for event in state.events)
+
+
+def test_unsupported_extracted_learning_role_is_visible(project):
+    orchestrator = make_orchestrator(
+        project,
+        {
+            "writer": [valid_draft()],
+            "critic": [passing_critique()],
+            "learning-extractor": [
+                {
+                    "candidates": [
+                        {
+                            "role": "author",
+                            "principle": "Store an author position as a voice rule.",
+                            "evidence": "Publication",
+                            "status": "active",
+                            "confidence": 1,
+                        }
+                    ]
+                },
+                {
+                    "candidates": [
+                        {
+                            "role": "author",
+                            "principle": "Store an author position as a voice rule.",
+                            "evidence": "Publication",
+                            "status": "active",
+                            "confidence": 1,
+                        }
+                    ]
+                },
+            ],
+        },
+    )
+    state = orchestrator.start(
+        WorkOrder(
+            request="write",
+            topic="unsupported learning role",
+            content_pack="linkedin-post",
+            format="post",
+        )
+    )
+
+    state = orchestrator.publish(state.id, filename="unsupported-learning-role.md")
+
+    failure = next(event for event in state.events if event.name == "learning_update_failed")
+    assert "Unsupported learning role 'author'" in failure.detail
+    memory = json.loads(
+        (project / "profiles" / "default" / "learnings" / "memory.json").read_text(encoding="utf-8")
+    )
+    assert memory["records"] == []

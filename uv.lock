@@ -169,7 +169,7 @@ wheels = [
 
 [[package]]
 name = "content-creator"
-version = "0.10.0"
+version = "0.11.0"
 source = { editable = "." }
 dependencies = [
     { name = "pydantic" },
@@ -204,14 +204,14 @@ providers = [
 requires-dist = [
     { name = "anthropic", marker = "extra == 'anthropic'", specifier = ">=0.120,<1" },
     { name = "anthropic", marker = "extra == 'providers'", specifier = ">=0.120,<1" },
-    { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.15,<2" },
+    { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.15,<3" },
     { name = "openai", marker = "extra == 'openai'", specifier = ">=2.48,<3" },
     { name = "openai", marker = "extra == 'providers'", specifier = ">=2.48,<3" },
     { name = "pip-audit", marker = "extra == 'dev'", specifier = ">=2.9,<3" },
     { name = "pydantic", specifier = ">=2.8,<3" },
     { name = "pypdf", specifier = ">=5,<7" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=9.0.3,<10" },
-    { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=5,<7" },
+    { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=5,<8" },
     { name = "pyyaml", specifier = ">=6,<7" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.9" },
     { name = "scikit-learn", marker = "extra == 'dev'", specifier = ">=1.9,<2" },

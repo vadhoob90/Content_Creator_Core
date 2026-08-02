@@ -8,6 +8,16 @@ release tag.
 
 ## [Unreleased]
 
+## [0.11.0] - 2026-08-02
+
+### Added
+
+- Parent-linked revisions now hydrate the parent's reviewed draft, run id,
+  content-session id, status, and revision number into a structured writer
+  revision context with an explicit unaffected-passage preservation rule.
+- Learning candidates now use a schema-level role enum limited to the actual
+  prompt consumers: `researcher`, `writer`, and `critic`.
+
 ### Changed
 
 - Newly generated workspace READMEs now identify both the immutable Core
@@ -25,6 +35,9 @@ release tag.
 - CodeQL, weekly Dependabot updates, and a private vulnerability reporting
   policy provide code, dependency, secret, and disclosure controls alongside
   the existing release validation.
+- Core rejects parent-linked revisions whose parent has no reviewed final draft.
+- Unsupported active roles in legacy learning memory now stop prompt assembly
+  with a record-specific remediation instead of remaining silently inert.
 
 ### Security
 
@@ -34,9 +47,13 @@ release tag.
 
 ### Migration
 
-- The next Core release requires Python 3.11 or newer. Python 3.9 is
+- Core 0.11.0 requires Python 3.11 or newer. Python 3.9 is
   end-of-life, while Python 3.10 reaches end-of-life shortly; workspaces on
-  either version must upgrade Python before adopting the next Core release.
+  either version must upgrade Python before adopting this release.
+- Legacy learning records with unsupported roles may remain provisional or
+  rejected. Before upgrading, map each unsupported active record deliberately
+  to `researcher`, `writer`, or `critic`, or mark it provisional/rejected for
+  author review.
 
 ## [0.10.0] - 2026-07-31
 
