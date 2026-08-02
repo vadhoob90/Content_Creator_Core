@@ -154,6 +154,12 @@ The result always comes back for human review. “Publish” means saving an
 approved copy inside the author repository; Core does not post to external
 platforms.
 
+Content packs can also opt into provider-independent visual assets. Core owns
+typed briefs, renderer/provider adapters, asset lineage, deterministic
+validation, critique, approval, and publication gating; packs own platform
+dimensions and crop behaviour, while author workspaces retain visual voice.
+See [Visual asset workflows](docs/guides/visual-assets.md).
+
 Recovered Core diagnostics remain out of the editorial conversation until the
 author approves the piece. At that publication boundary, Core presents one
 sanitised, consolidated support candidate and keeps external issue submission

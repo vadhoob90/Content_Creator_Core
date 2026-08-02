@@ -3,7 +3,16 @@
 from .domain import WorkOrder
 from .orchestrator import Orchestrator
 from .version import VERSION
+from .visuals import VisualAdapter, VisualBrief, VisualWorkflow
 
 __version__ = VERSION
 
-__all__ = ["Orchestrator", "VERSION", "WorkOrder", "__version__"]
+__all__ = [
+    "Orchestrator",
+    "VERSION",
+    "VisualAdapter",
+    "VisualBrief",
+    "VisualWorkflow",
+    "WorkOrder",
+    "__version__",
+]

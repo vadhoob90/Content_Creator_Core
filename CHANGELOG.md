@@ -8,6 +8,39 @@ release tag.
 
 ## [Unreleased]
 
+## [0.12.0] - 2026-08-02
+
+### Added
+
+- Provider-independent visual contracts for briefs, deterministic and
+  generative adapters, source rights, rendered output evidence, asset lineage,
+  validation diagnostics, critique, selection, author approval, and manifests.
+- Pack-owned visual profiles for supported execution classes, aspect ratios,
+  formats, size limits, safe areas, crop simulations, accessibility policy,
+  and repository publication destinations.
+- A durable `runs/<run-id>/visuals/` lifecycle and `visual` CLI commands for
+  creating briefs, validating, critiquing, selecting, approving, inspecting,
+  and publishing assets.
+
+### Changed
+
+- Repository publication now gates any active visual manifest on a selected,
+  validated, author-approved, hash-matching asset with a known pack consumer.
+- The built-in LinkedIn post and article packs support optional 1:1 and 4:5
+  visual assets through deterministic or generative adapters. The base
+  `general-text` pack remains text-only and fully backward compatible.
+
+### Security
+
+- Exact in-image copy cannot pass without matching OCR or deterministic
+  renderer evidence, and source imagery with unresolved reuse rights blocks
+  visual validation.
+
+### Migration
+
+- Existing packs remain visual-disabled by default. Pack authors opt in with
+  a `visuals` profile; no stored text-only run migration is required.
+
 ## [0.11.0] - 2026-08-02
 
 ### Added

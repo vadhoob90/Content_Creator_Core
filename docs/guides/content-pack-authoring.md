@@ -12,6 +12,27 @@ A pack owns its format, destination, defaults, prompts, rubric additions and
 validators. It may request capability profiles but cannot name provider models,
 select credentials, activate voices, or remove the base integrity validators.
 
+Visual support is also pack-owned and disabled by default. A pack may declare
+provider-independent execution capabilities and platform rules:
+
+```json
+"visuals": {
+  "supported": true,
+  "required": false,
+  "execution_classes": ["deterministic", "generative"],
+  "aspect_ratios": ["1:1", "4:5"],
+  "formats": ["png", "jpg"],
+  "max_file_size_bytes": 8388608,
+  "safe_areas": [],
+  "crop_profiles": [],
+  "destination": "content/example/visuals"
+}
+```
+
+Packs define platform semantics, never author-specific palette, typography, or
+brand voice. Core validates the resolved profile and routes a typed brief to a
+registered adapter. See [Visual asset workflows](visual-assets.md).
+
 Statistical voice scoring is also a pack-owned eligibility decision and is
 off by default. A sufficiently long-form pack can opt in with:
 

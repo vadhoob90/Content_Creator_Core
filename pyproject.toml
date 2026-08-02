@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "content-creator"
-version = "0.11.0"
+version = "0.12.0"
 description = "Provider-neutral content creation and voice workflow"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -85,6 +85,7 @@ files = [
   "src/content_creator/resource_paths.py",
   "src/content_creator/routing.py",
   "src/content_creator/upgrade.py",
+  "src/content_creator/visuals.py",
   "src/content_creator/workspace.py",
 ]
 check_untyped_defs = true

@@ -332,6 +332,7 @@ class RunState(BaseModel):
     revision: int = 0
     final_draft_path: Optional[str] = None
     published_path: Optional[str] = None
+    published_visual_path: Optional[str] = None
     last_error: Optional[str] = None
     diagnostic_summary_path: Optional[str] = None
     support_candidate_path: Optional[str] = None

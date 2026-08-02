@@ -37,6 +37,7 @@ from .routing import build_route
 from .runner import AgentRunner
 from .storage import RunStore, StorageError, slugify
 from .validation import validate_draft, validate_research_brief
+from .visuals import VisualAdapterRegistry, VisualWorkflow
 from .voice_assessment import assess_voice_draft, resolve_score_policy
 from .voice_evaluation import evaluate_voice_output
 from .voices import VoiceRegistry, hash_file
@@ -51,6 +52,7 @@ class Orchestrator:
         self,
         root: Path,
         registry: Optional[ProviderRegistry] = None,
+        visual_adapters: Optional[VisualAdapterRegistry] = None,
         max_revisions: int = 3,
     ):
         self.root = root.resolve()
@@ -70,6 +72,7 @@ class Orchestrator:
         self.intake = BriefingAgent(self.runner)
         self.store = RunStore(self.root)
         self.packs = PackRegistry(self.root)
+        self.visuals = VisualWorkflow(self.root, visual_adapters)
         self.max_revisions = max_revisions
 
     def plan_request(self, request: str, provider: Optional[str] = None) -> WorkOrder:
@@ -326,7 +329,11 @@ class Orchestrator:
             preflight = self.diagnostics.decide(run_id, diagnostic_decision)
             self._apply_diagnostic_state(state, preflight)
         draft = self.store.read_artifact(run_id, "final.md").rstrip() + "\n"
-        pack = self.packs.get(state.work_order.content_pack)
+        pack = self.packs.resolve(
+            state.work_order.content_pack,
+            state.work_order.pack_options,
+        )
+        visual_asset = self.visuals.ensure_publication_ready(run_id, pack.visuals)
         target_dir = self.root / pack.destination
         target_dir.mkdir(parents=True, exist_ok=True)
         requested = filename or "{}.md".format(slugify(state.work_order.topic))
@@ -458,6 +465,14 @@ class Orchestrator:
                 )
 
         state.published_path = str(target.relative_to(self.root))
+        if visual_asset is not None:
+            visual_target = self.visuals.publish(run_id, pack.visuals)
+            state.published_visual_path = (
+                str(visual_target.relative_to(self.root)) if visual_target else None
+            )
+            state.events.append(
+                RunEvent(name="visual_published", detail=state.published_visual_path or "")
+            )
         state.status = RunStatus.PUBLISHED
         state.events.append(RunEvent(name="published", detail=state.published_path))
         self._persist_model_history(state.id)
