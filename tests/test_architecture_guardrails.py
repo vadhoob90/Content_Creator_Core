@@ -5,6 +5,7 @@ from pathlib import Path
 
 import content_creator
 from content_creator.cli import build_parser
+from content_creator.commands import perspective, voice
 from content_creator.domain import WorkOrder
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -100,3 +101,11 @@ def test_maintainability_documents_are_linked_from_the_core_guide():
         "../adr/0007-modular-monolith-boundaries.md",
     ):
         assert target in core_guide
+
+
+def test_large_cli_families_have_dedicated_command_modules():
+    assert callable(voice.run)
+    assert callable(perspective.run)
+
+    cli_path = ROOT / "src" / "content_creator" / "cli.py"
+    assert len(cli_path.read_text(encoding="utf-8").splitlines()) < 1_100
