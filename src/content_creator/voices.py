@@ -1,17 +1,13 @@
 from __future__ import annotations
 
 import json
-import shutil
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from .storage import RunStore, slugify
 from .versioned_artifacts import (
-    ActivationLock,
     hash_file,
-    hash_json,
-    next_major_version,
     verify_components,
 )
 from .voice_models import (
@@ -165,182 +161,17 @@ class VoiceRegistry:
         intended_uses: List[str],
         template_id: str = STARTER_TEMPLATE_ID,
     ) -> Dict[str, Any]:
-        if template_id != STARTER_TEMPLATE_ID:
-            raise VoiceError("Unknown starter voice template: {}".format(template_id))
-        registry = self._read()
-        existing = registry["profiles"].get(voice_id)
-        if existing and existing.get("status") == VoiceStatus.ACTIVE.value:
-            resolved = self.resolve(voice_id)
-            if resolved["strategy"] != VoiceStrategy.STARTER.value:
-                raise VoiceError(
-                    "Voice {} already has an active source-derived version".format(voice_id)
-                )
-            save_voice_onboarding(
-                self.root,
-                VoiceOnboardingRecord(
-                    voice_id=voice_id,
-                    display_name=display_name,
-                    author_name=author_name,
-                    status="starter-active",
-                    strategy=VoiceStrategy.STARTER,
-                    template_id=template_id,
-                    selected_by=selected_by,
-                    selected_at=datetime.now(UTC).isoformat(),
-                    perspective_mode="disabled",
-                    perspective_disabled_reason=("starter-voice-without-author-evidence"),
-                ),
-            )
-            return resolved
+        from .starter_voice import StarterVoiceRequest, activate_starter
 
-        voice_root = self.root / "profiles" / voice_id
-        version = next_major_version(voice_root / "versions")
-        destination = voice_root / "versions" / version
-        destination.mkdir(parents=True, exist_ok=False)
-        template = (
-            Path(__file__).with_name("resources") / "profiles" / "starter" / "clear-professional.md"
-        )
-        profile = template.read_text(encoding="utf-8").replace(
-            "{{author_name}}",
-            author_name,
-        )
-        constraints = {
-            "starter_voice": True,
-            "never_claim_personalisation": True,
-            "never_invent_personal_context": True,
-            "never_invent_author_positions": True,
-            "perspectives_allowed": False,
-        }
-        rubric = {
-            "minimums": {
-                "clarity": 8,
-                "personal_integrity": 10,
-                "non_imitation": 10,
-            },
-            "hard_gates": [
-                "unsupported_personal_context",
-                "invented_author_position",
-                "claimed_personalisation",
-            ],
-        }
-        evaluation = {
-            "schema_version": "1.0",
-            "passed": True,
-            "hard_failures": [],
-            "checks": {
-                "template_integrity": True,
-                "author_evidence": "not_supplied",
-                "personalisation_claim": False,
-                "perspectives_allowed": False,
-            },
-        }
-        artifacts = {
-            "profile.md": profile,
-            "constraints.json": json.dumps(constraints, indent=2),
-            "voice-rubric.json": json.dumps(rubric, indent=2),
-            "source-index.json": "[]",
-            "patterns.json": "[]",
-            "evaluation-report.json": json.dumps(evaluation, indent=2),
-        }
-        for filename, content in artifacts.items():
-            RunStore._atomic_text(destination / filename, content)
-        components = {
-            "profile": "profile.md",
-            "constraints": "constraints.json",
-            "rubric": "voice-rubric.json",
-            "sources": "source-index.json",
-            "patterns": "patterns.json",
-            "evaluation_report": "evaluation-report.json",
-        }
-        component_hashes = {
-            name: hash_file(destination / filename) for name, filename in components.items()
-        }
-        candidate_hash = hash_json(component_hashes)
-        authorisation = Authorisation(
-            confirmed=True,
-            attested_by=selected_by,
-            intended_uses=intended_uses,
-        )
-        manifest = VoiceManifest(
-            id=voice_id,
+        request = StarterVoiceRequest(
+            voice_id=voice_id,
             display_name=display_name,
             author_name=author_name,
-            version=version,
-            status=VoiceStatus.ACTIVE,
-            candidate_hash=candidate_hash,
-            components=components,
-            component_hashes=component_hashes,
-            supported_packs={item: "starter" for item in intended_uses},
-            authorisation=authorisation,
-            strategy=VoiceStrategy.STARTER,
-            evidence_status="none",
-            perspectives_allowed=False,
+            selected_by=selected_by,
+            intended_uses=intended_uses,
             template_id=template_id,
         )
-        RunStore._atomic_text(
-            destination / "manifest.json",
-            manifest.model_dump_json(indent=2),
-        )
-        activated_at = datetime.now(UTC).isoformat()
-        receipt = VoiceApprovalReceipt(
-            voice_id=voice_id,
-            candidate_version="starter-template",
-            activated_version=version,
-            approved_by=selected_by,
-            approved_at=activated_at,
-            candidate_hash=candidate_hash,
-            evaluation_report_hash=hash_file(destination / "evaluation-report.json"),
-        )
-        RunStore._atomic_text(
-            destination / "approval-receipt.json",
-            receipt.model_dump_json(indent=2),
-        )
-        RunStore._atomic_text(
-            destination / "voice-lock.json",
-            json.dumps(
-                {
-                    "voice_id": voice_id,
-                    "version": version,
-                    "candidate_hash": candidate_hash,
-                    "component_hashes": component_hashes,
-                    "strategy": VoiceStrategy.STARTER.value,
-                    "template_id": template_id,
-                },
-                indent=2,
-            ),
-        )
-        registry["profiles"][voice_id] = {
-            "display_name": display_name,
-            "status": VoiceStatus.ACTIVE.value,
-            "active_version": version,
-            "candidate_hash": candidate_hash,
-            "strategy": VoiceStrategy.STARTER.value,
-            "evidence_status": "none",
-            "perspectives_allowed": False,
-            "template_id": template_id,
-        }
-        RunStore._atomic_text(self.path, json.dumps(registry, indent=2))
-        save_voice_onboarding(
-            self.root,
-            VoiceOnboardingRecord(
-                voice_id=voice_id,
-                display_name=display_name,
-                author_name=author_name,
-                status="starter-active",
-                strategy=VoiceStrategy.STARTER,
-                template_id=template_id,
-                selected_by=selected_by,
-                selected_at=activated_at,
-                perspective_mode="disabled",
-                perspective_disabled_reason=("starter-voice-without-author-evidence"),
-            ),
-        )
-        memory = voice_root / "learnings" / "memory.json"
-        if not memory.exists():
-            RunStore._atomic_text(
-                memory,
-                json.dumps({"version": 1, "records": []}, indent=2),
-            )
-        return self.resolve(voice_id)
+        return activate_starter(self, request)
 
     def activate(
         self,
@@ -348,99 +179,9 @@ class VoiceRegistry:
         approved_by: str,
         override_reason: Optional[str] = None,
     ) -> VoiceApprovalReceipt:
-        voice_root = self.root / "profiles" / voice_id
-        candidate = voice_root / "candidate"
-        manifest_path = candidate / "manifest.json"
-        evaluation_path = candidate / "evaluation-report.json"
-        if not manifest_path.exists():
-            raise VoiceError("Voice candidate has not been built")
-        manifest = VoiceManifest.model_validate_json(manifest_path.read_text(encoding="utf-8"))
-        if not manifest.authorisation.confirmed:
-            raise VoiceError("Voice authorisation has not been confirmed")
-        mismatches = verify_components(candidate, manifest.components, manifest.component_hashes)
-        if mismatches:
-            raise VoiceError("Voice component hash mismatch: {}".format(mismatches[0]))
-        if manifest.status not in {
-            VoiceStatus.AWAITING_APPROVAL,
-            VoiceStatus.BUILT,
-        }:
-            raise VoiceError("Voice candidate is not awaiting approval")
-        evaluation = json.loads(evaluation_path.read_text(encoding="utf-8"))
-        if not evaluation.get("passed"):
-            if evaluation.get("hard_failures"):
-                raise VoiceError("Voice evaluation has non-overridable integrity failures")
-            if not override_reason:
-                raise VoiceError("Voice evaluation did not pass")
+        from .voice_activation import activate_candidate
 
-        with ActivationLock(
-            voice_root / ".activation.lock",
-            "Voice activation is already in progress",
-            VoiceError,
-        ):
-            registry = self._read()
-            existing = registry["profiles"].get(voice_id, {})
-            if (
-                existing.get("candidate_hash") == manifest.candidate_hash
-                and existing.get("status") == VoiceStatus.ACTIVE.value
-            ):
-                receipt_path = (
-                    voice_root / "versions" / existing["active_version"] / "approval-receipt.json"
-                )
-                return VoiceApprovalReceipt.model_validate_json(
-                    receipt_path.read_text(encoding="utf-8")
-                )
-            version = next_major_version(voice_root / "versions")
-            destination = voice_root / "versions" / version
-            shutil.copytree(candidate, destination)
-            manifest.version = version
-            manifest.status = VoiceStatus.ACTIVE
-            RunStore._atomic_text(destination / "manifest.json", manifest.model_dump_json(indent=2))
-            receipt = VoiceApprovalReceipt(
-                voice_id=voice_id,
-                candidate_version="candidate",
-                activated_version=version,
-                approved_by=approved_by,
-                approved_at=datetime.now(UTC).isoformat(),
-                candidate_hash=manifest.candidate_hash,
-                evaluation_report_hash=hash_file(evaluation_path),
-                override_reason=override_reason,
-            )
-            RunStore._atomic_text(
-                destination / "approval-receipt.json",
-                receipt.model_dump_json(indent=2),
-            )
-            RunStore._atomic_text(
-                destination / "voice-lock.json",
-                json.dumps(
-                    {
-                        "voice_id": voice_id,
-                        "version": version,
-                        "candidate_hash": manifest.candidate_hash,
-                        "component_hashes": manifest.component_hashes,
-                    },
-                    indent=2,
-                ),
-            )
-            registry["profiles"][voice_id] = {
-                "display_name": manifest.display_name,
-                "status": VoiceStatus.ACTIVE.value,
-                "active_version": version,
-                "candidate_hash": manifest.candidate_hash,
-                "strategy": manifest.strategy.value,
-                "evidence_status": manifest.evidence_status,
-                "perspectives_allowed": manifest.perspectives_allowed,
-                "template_id": manifest.template_id,
-            }
-            RunStore._atomic_text(self.path, json.dumps(registry, indent=2))
-            onboarding = load_voice_onboarding(self.root, voice_id)
-            if onboarding:
-                onboarding.status = "source-derived-active"
-                onboarding.strategy = VoiceStrategy.SOURCE_DERIVED
-                onboarding.template_id = None
-                onboarding.perspective_mode = "workspace-policy"
-                onboarding.perspective_disabled_reason = None
-                save_voice_onboarding(self.root, onboarding)
-            return receipt
+        return activate_candidate(self, voice_id, approved_by, override_reason)
 
     def deactivate(self, voice_id: str, reason: str) -> Dict:
         registry = self._read()

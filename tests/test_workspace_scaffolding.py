@@ -106,12 +106,14 @@ def test_workspace_create_generates_complete_thin_repository(tmp_path, capsys):
     assert "Content_Creator_Core/tree/v0.4.0" in readme
     assert "pyproject.toml` and the\nresolution in `uv.lock` are authoritative" in readme
 
+    _assert_generated_workspace_runs(destination, capsys)
+
+
+def _assert_generated_workspace_runs(destination, capsys):
     generated_test = (destination / "tests" / "test_workspace.py").read_text(encoding="utf-8")
     compile(generated_test, "test_workspace.py", "exec")
-
     assert main(["--workspace", str(destination), "doctor"]) == 0
-    doctor = json.loads(capsys.readouterr().out)
-    assert doctor["status"] == "ok"
+    assert json.loads(capsys.readouterr().out)["status"] == "ok"
 
 
 def test_workspace_create_is_idempotent_and_preserves_customisation(tmp_path, capsys):

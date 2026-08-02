@@ -152,131 +152,8 @@ class ContentCoordinator:
 
     def next_actions(self, run_id: str) -> Dict[str, Any]:
         state = self.store.load(run_id)
-        actions: List[CoordinatorAction] = []
         artifacts = self._artifacts(run_id)
-        if state.status == RunStatus.AWAITING_RESEARCH_APPROVAL:
-            actions.extend(
-                [
-                    self._action(
-                        "review-research",
-                        "Review the research brief",
-                        artifact="research.json",
-                    ),
-                    self._action(
-                        "approve-research",
-                        "Approve the research and resume",
-                        ["approve-research", run_id],
-                        mutates=True,
-                        confirmation=True,
-                    ),
-                    self._action(
-                        "reject-research",
-                        "Reject the research and stop",
-                        ["reject-research", run_id],
-                        mutates=True,
-                        confirmation=True,
-                    ),
-                ]
-            )
-        elif state.status in {RunStatus.READY, RunStatus.NEEDS_AUTHOR}:
-            if state.final_draft_path:
-                actions.append(
-                    self._action(
-                        "review-final",
-                        "Review the current draft",
-                        artifact=state.final_draft_path,
-                    )
-                )
-            if state.pending_support_count:
-                actions.extend(
-                    [
-                        self._action(
-                            "review-support-candidate",
-                            "Review recovered Core issues before publication",
-                            artifact=state.support_candidate_path,
-                        ),
-                        self._action(
-                            "publish-only",
-                            "Publish without preparing a Core issue",
-                            [
-                                "publish",
-                                run_id,
-                                "--diagnostic-decision",
-                                "publish-only",
-                            ],
-                            mutates=True,
-                            confirmation=True,
-                        ),
-                        self._action(
-                            "publish-and-prepare-issue",
-                            "Publish and prepare the Core issue for host submission",
-                            [
-                                "publish",
-                                run_id,
-                                "--diagnostic-decision",
-                                "prepare-issue",
-                            ],
-                            mutates=True,
-                            confirmation=True,
-                        ),
-                    ]
-                )
-            elif state.status == RunStatus.READY:
-                actions.append(
-                    self._action(
-                        "publish-local",
-                        "Move the approved draft into the repository",
-                        ["publish", run_id],
-                        mutates=True,
-                        confirmation=True,
-                    )
-                )
-            else:
-                actions.append(
-                    self._action(
-                        "provide-author-direction",
-                        "Provide author direction before another run",
-                    )
-                )
-        elif state.status == RunStatus.PUBLISHED:
-            actions.append(
-                self._action(
-                    "review-publication",
-                    "Inspect the repository publication",
-                    artifact=state.published_path,
-                )
-            )
-            if state.pending_support_count:
-                actions.append(
-                    self._action(
-                        "review-support-candidate",
-                        "Review a Core issue discovered during publication",
-                        artifact=state.support_candidate_path,
-                    )
-                )
-        elif state.status == RunStatus.FAILED:
-            actions.append(
-                self._action(
-                    "inspect-failure",
-                    "Inspect the persisted error before deciding whether to retry",
-                )
-            )
-            if state.pending_support_count:
-                actions.append(
-                    self._action(
-                        "review-support-candidate",
-                        "Review the fatal Core diagnostic",
-                        artifact=state.support_candidate_path,
-                    )
-                )
-        else:
-            actions.append(
-                self._action(
-                    "inspect-status",
-                    "Inspect the persisted run state",
-                    ["status", run_id],
-                )
-            )
+        actions = self._actions_for_state(state, run_id)
         return {
             "schema_version": "1.1",
             "run_id": run_id,
@@ -297,6 +174,130 @@ class ContentCoordinator:
             "artifacts": artifacts,
             "actions": [item.model_dump(mode="json") for item in actions],
         }
+
+    def _actions_for_state(self, state: RunState, run_id: str) -> List[CoordinatorAction]:
+        routes = {
+            RunStatus.AWAITING_RESEARCH_APPROVAL: self._research_actions,
+            RunStatus.READY: self._reviewed_actions,
+            RunStatus.NEEDS_AUTHOR: self._reviewed_actions,
+            RunStatus.PUBLISHED: self._published_actions,
+            RunStatus.FAILED: self._failed_actions,
+        }
+        handler = routes.get(state.status, self._fallback_actions)
+        return handler(state, run_id)
+
+    def _research_actions(self, state: RunState, run_id: str) -> List[CoordinatorAction]:
+        del state
+        return [
+            self._action("review-research", "Review the research brief", artifact="research.json"),
+            self._action(
+                "approve-research",
+                "Approve the research and resume",
+                ["approve-research", run_id],
+                mutates=True,
+                confirmation=True,
+            ),
+            self._action(
+                "reject-research",
+                "Reject the research and stop",
+                ["reject-research", run_id],
+                mutates=True,
+                confirmation=True,
+            ),
+        ]
+
+    def _reviewed_actions(self, state: RunState, run_id: str) -> List[CoordinatorAction]:
+        actions = []
+        if state.final_draft_path:
+            actions.append(
+                self._action(
+                    "review-final", "Review the current draft", artifact=state.final_draft_path
+                )
+            )
+        if state.pending_support_count:
+            actions.extend(self._diagnostic_publish_actions(state, run_id))
+        elif state.status == RunStatus.READY:
+            actions.append(
+                self._action(
+                    "publish-local",
+                    "Move the approved draft into the repository",
+                    ["publish", run_id],
+                    mutates=True,
+                    confirmation=True,
+                )
+            )
+        else:
+            actions.append(
+                self._action(
+                    "provide-author-direction", "Provide author direction before another run"
+                )
+            )
+        return actions
+
+    def _diagnostic_publish_actions(self, state: RunState, run_id: str) -> List[CoordinatorAction]:
+        return [
+            self._action(
+                "review-support-candidate",
+                "Review recovered Core issues before publication",
+                artifact=state.support_candidate_path,
+            ),
+            self._action(
+                "publish-only",
+                "Publish without preparing a Core issue",
+                ["publish", run_id, "--diagnostic-decision", "publish-only"],
+                mutates=True,
+                confirmation=True,
+            ),
+            self._action(
+                "publish-and-prepare-issue",
+                "Publish and prepare the Core issue for host submission",
+                ["publish", run_id, "--diagnostic-decision", "prepare-issue"],
+                mutates=True,
+                confirmation=True,
+            ),
+        ]
+
+    def _published_actions(self, state: RunState, run_id: str) -> List[CoordinatorAction]:
+        del run_id
+        actions = [
+            self._action(
+                "review-publication",
+                "Inspect the repository publication",
+                artifact=state.published_path,
+            )
+        ]
+        if state.pending_support_count:
+            actions.append(
+                self._action(
+                    "review-support-candidate",
+                    "Review a Core issue discovered during publication",
+                    artifact=state.support_candidate_path,
+                )
+            )
+        return actions
+
+    def _failed_actions(self, state: RunState, run_id: str) -> List[CoordinatorAction]:
+        del run_id
+        actions = [
+            self._action(
+                "inspect-failure", "Inspect the persisted error before deciding whether to retry"
+            )
+        ]
+        if state.pending_support_count:
+            actions.append(
+                self._action(
+                    "review-support-candidate",
+                    "Review the fatal Core diagnostic",
+                    artifact=state.support_candidate_path,
+                )
+            )
+        return actions
+
+    def _fallback_actions(self, state: RunState, run_id: str) -> List[CoordinatorAction]:
+        del state
+        return [
+            self._action("inspect-status", "Inspect the persisted run state", ["status", run_id])
+        ]
 
     def _run_summaries(self, limit: int) -> List[RunSummary]:
         states: List[RunState] = []

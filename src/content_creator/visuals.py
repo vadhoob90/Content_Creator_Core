@@ -153,7 +153,26 @@ class VisualWorkflow:
         manifest = self._load_manifest(run_id)
         asset = self._asset(manifest, asset_id)
         diagnostics: List[VisualDiagnostic] = []
+        self._validate_asset_basics(asset, brief, profile, diagnostics)
+        self._validate_copy(asset, brief, diagnostics)
+        self._validate_safe_areas(asset, brief, profile, diagnostics)
+        self._validate_crops(asset, brief, profile, diagnostics)
+        result = VisualValidation(
+            passed=not any(item.severity == DiagnosticSeverity.ERROR for item in diagnostics),
+            diagnostics=diagnostics,
+        )
+        asset.validation = result
+        self._save_manifest(manifest)
+        self.store.write_artifact(run_id, "visuals/validation.json", result)
+        return result
 
+    def _validate_asset_basics(
+        self,
+        asset: VisualAsset,
+        brief: VisualBrief,
+        profile: VisualPackProfile,
+        diagnostics: List[VisualDiagnostic],
+    ) -> None:
         ratio = self._ratio(asset.width, asset.height)
         if ratio not in profile.aspect_ratios:
             diagnostics.append(self._error("unsupported-aspect-ratio", ratio))
@@ -175,6 +194,13 @@ class VisualWorkflow:
             ]
             if unresolved:
                 diagnostics.append(self._error("unresolved-reuse-rights", ", ".join(unresolved)))
+
+    def _validate_copy(
+        self,
+        asset: VisualAsset,
+        brief: VisualBrief,
+        diagnostics: List[VisualDiagnostic],
+    ) -> None:
         if brief.exact_copy:
             if asset.extracted_copy is None:
                 diagnostics.append(
@@ -189,6 +215,14 @@ class VisualWorkflow:
                 diagnostics.append(
                     self._error("exact-copy-mismatch", "Rendered copy differs from the brief")
                 )
+
+    def _validate_safe_areas(
+        self,
+        asset: VisualAsset,
+        brief: VisualBrief,
+        profile: VisualPackProfile,
+        diagnostics: List[VisualDiagnostic],
+    ) -> None:
         safe_areas = {item.id: item for item in profile.safe_areas}
         for profile_id in brief.safe_area_profiles:
             safe = safe_areas.get(profile_id)
@@ -200,6 +234,14 @@ class VisualWorkflow:
                     diagnostics.append(
                         self._error("unsafe-placement", box.role, profile=profile_id)
                     )
+
+    def _validate_crops(
+        self,
+        asset: VisualAsset,
+        brief: VisualBrief,
+        profile: VisualPackProfile,
+        diagnostics: List[VisualDiagnostic],
+    ) -> None:
         crops = {item.id: item for item in profile.crop_profiles}
         for profile_id in brief.crop_profiles:
             crop = crops.get(profile_id)
@@ -209,15 +251,6 @@ class VisualWorkflow:
             for box in asset.content_boxes:
                 if box.role in crop.protected_roles and not self._inside(box, crop.visible_area):
                     diagnostics.append(self._error("crop-risk", box.role, profile=profile_id))
-
-        result = VisualValidation(
-            passed=not any(item.severity == DiagnosticSeverity.ERROR for item in diagnostics),
-            diagnostics=diagnostics,
-        )
-        asset.validation = result
-        self._save_manifest(manifest)
-        self.store.write_artifact(run_id, "visuals/validation.json", result)
-        return result
 
     def record_critique(self, run_id: str, asset_id: str, critique: VisualCritique) -> VisualAsset:
         manifest = self._load_manifest(run_id)

@@ -16,6 +16,38 @@ affects a public contract, persisted data, operations, or a release.
   parser composes families; it does not absorb their domain behavior.
 - Compatibility façades may re-export stable names while implementation modules
   own one cohesive responsibility.
+- Across `src/`, `scripts/`, and `tests/`, 300 module lines is the preferred
+  target, 301–400 requires a cohesion review, and 500 is the hard limit.
+
+## Function readability and control flow
+
+- Prefer functions of at most 40 physical lines. Lines 41–80 are an explicit
+  review signal; more than 80 is blocked.
+- Prefer cyclomatic complexity at most 10. Complexity 11–15 requires a focused
+  review; more than 15 is blocked.
+- Hard limits are 12 branches, 50 statements, 7 parameters (excluding
+  `self`/`cls` in the readability report), and 4 nested blocks.
+- Dispatch belongs in a typed route table or a cohesive sub-handler. A router
+  coordinates; it does not contain the work performed by every route.
+- Extract by reason to change—validation, persistence, rendering, policy, or
+  adapter interaction—not merely to satisfy a counter.
+
+`scripts/readability_report.py --check` enforces physical module/function and
+signature limits across production code, maintenance scripts, and tests. Ruff
+enforces complexity, branches, statements, parameters, and nesting. Ideal
+thresholds remain visible warnings and review prompts so they guide creation
+without forcing meaningless fragments.
+
+## Naming and documentation
+
+- Names state domain intent. Exact generic module and class names `data`,
+  `item`, `manager`, and `utils` are prohibited.
+- Generic local names are a review smell: replace them when the domain concept
+  is known; retain a conventional short name only when its small scope makes
+  the meaning unambiguous.
+- Prefer descriptive functions and variables to explanatory comments. Comments
+  record why a surprising business or safety constraint exists, never narrate
+  what plainly written code does.
 
 Run `python scripts/architecture_report.py --check` locally. CI blocks growth
 past these limits. Do not evade the check with generated monoliths, renamed
@@ -49,6 +81,7 @@ the guardrail.
 | Lifecycle and optional capabilities | [ADR 0008](../adr/0008-lifecycle-stages-and-capabilities.md) |
 | Schema and operational governance | [ADR 0009](../adr/0009-schema-governance-and-operational-recovery.md) |
 | Module responsibility and size | [ADR 0010](../adr/0010-module-responsibility-and-size-guardrails.md) |
+| Function readability, complexity, and naming | [ADR 0011](../adr/0011-readable-components-and-control-flow.md) |
 
 ## Full local gate
 
@@ -57,9 +90,9 @@ ruff check .
 ruff format --check .
 mypy
 python scripts/architecture_report.py --check
+python scripts/readability_report.py --check
 pytest --cov=content_creator --cov-report=term-missing
 content-creator doctor
 content-creator eval
 git diff --check
 ```
-

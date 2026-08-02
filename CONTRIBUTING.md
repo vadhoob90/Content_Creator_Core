@@ -28,10 +28,10 @@ not restrict rights granted by the licence.
 
 Designated maintainers start with the
 [architecture and development guardrails](docs/core/architecture-guardrails.md).
-They signpost the enforced module limits and the existing TDD, compatibility,
-schema, operational, security, documentation, and release controls. A Core
-change is incomplete until the applicable guidance and documentation are
-updated in the same pull request.
+They signpost the enforced module and function limits, complexity and naming
+rules, and the existing TDD, compatibility, schema, operational, security,
+documentation, and release controls. A Core change is incomplete until the
+applicable guidance and documentation are updated in the same pull request.
 
 ## Security reports
 

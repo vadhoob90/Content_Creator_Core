@@ -8,6 +8,29 @@ release tag.
 
 ## [Unreleased]
 
+## [0.16.0] - 2026-08-02
+
+### Added
+
+- Blocking readability checks across source, maintenance scripts, and tests:
+  500 lines per module, 80 per function, and 7 parameters.
+- Ruff hard limits of 15 cyclomatic complexity, 12 branches, 50 statements,
+  7 parameters, and 4 nested blocks, with documented lower creation ideals.
+- ADR 0011 and consolidated naming, comment, dispatch, and extraction guidance.
+
+### Changed
+
+- Command routing now uses small family handlers and dictionary dispatch.
+- Orchestration, workspace creation, voice building and activation,
+  perspectives, visual validation, and statistical voice training are split
+  into cohesive services behind stable public façades.
+- Developer entry points now signpost both module and function-level guardrails.
+
+### Migration
+
+- No persisted-data migration is required. Downstream workspaces should upgrade
+  their exact dependency pin to `content-creator==0.16.0`.
+
 ## [0.15.0] - 2026-08-02
 
 ### Added

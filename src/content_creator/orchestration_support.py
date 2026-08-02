@@ -25,7 +25,7 @@ from .perspective_evaluation import evaluate_perspective_output
 from .prompting import PromptAssembler
 from .providers import ProviderRegistry
 from .quality import evaluate_quality
-from .runner import AgentRunner
+from .runner import AgentRunner, AgentRunOptions
 from .stages import CallableDraftReviewStage, CallableResearchStage, LifecycleStages
 from .storage import RunStore, StorageError
 from .validation import validate_draft, validate_research_brief
@@ -157,10 +157,12 @@ class OrchestrationSupport:
                     "one or more sources. Represent uncertainty and counterevidence."
                 ),
                 payload={"work_order": order.model_dump(mode="json")},
-                order=order,
-                output_model=ResearchBrief,
-                provider=order.provider,
-                tools=["web_search"],
+                options=AgentRunOptions(
+                    order=order,
+                    output_model=ResearchBrief,
+                    provider=order.provider,
+                    tools=["web_search"],
+                ),
             )
             research_errors = validate_research_brief(brief)
             if research_errors:
@@ -178,132 +180,158 @@ class OrchestrationSupport:
         prior_score: Optional[float] = None
         stagnant_rounds = 0
         for revision in range(1, self.max_revisions + 1):
-            state.revision = revision
-            state.status = RunStatus.DRAFTING
-            self.store.save_state(state)
-            draft = self.runner.run(
-                role="writer",
-                role_key="writer-{}".format(state.work_order.format),
-                instruction=(
-                    "Write or revise the piece. Address the prior critique, but preserve "
-                    "the author's intent. Return only publishable Markdown."
-                ),
-                payload=self._draft_payload(
-                    state.work_order,
-                    brief,
-                    previous_critique,
-                    revision_context,
-                ),
-                order=state.work_order,
-                provider=state.work_order.provider,
-                profile=state.route_plan.model_profiles["writer"],
-            )
-            self.store.write_artifact(state.id, "draft-{:02d}.md".format(revision), draft)
-            validation_errors = validate_draft(draft, state.work_order, pack.validators)
-            voice_evaluation = evaluate_voice_output(self.root, state.work_order, draft)
-            validation_errors.extend(voice_evaluation["errors"])
-            perspective_evaluation = evaluate_perspective_output(self.root, state.work_order, draft)
-            validation_errors.extend(perspective_evaluation["errors"])
-            self.store.write_artifact(
-                state.id,
-                "validation-{:02d}.json".format(revision),
-                {"errors": validation_errors},
-            )
-            self.store.write_artifact(
-                state.id,
-                "voice-evaluation-{:02d}.json".format(revision),
-                voice_evaluation,
-            )
-            self.store.write_artifact(
-                state.id,
-                "perspective-evaluation-{:02d}.json".format(revision),
-                perspective_evaluation,
-            )
-
-            statistical_voice_score = self.capabilities.assess_voice(
-                state.work_order.voice_id,
-                state.work_order.voice_version,
-                draft,
-                self.configuration.statistical_voice_score_policy,
-                pack.statistical_voice_score.eligible,
-            )
-            if statistical_voice_score is not None:
-                self.store.write_artifact(
-                    state.id,
-                    "statistical-voice-score-{:02d}.json".format(revision),
-                    statistical_voice_score,
-                )
-
-            state.status = RunStatus.REVIEWING
-            self.store.save_state(state)
-            critique_payload = {
-                "work_order": state.work_order.model_dump(mode="json"),
-                "draft": draft,
-                "research": brief.model_dump(mode="json") if brief else None,
-                "validation_errors": validation_errors,
-                "prior_critique": (
-                    previous_critique.model_dump(mode="json") if previous_critique else None
-                ),
-            }
-            if statistical_voice_score is not None:
-                critique_payload["statistical_voice_score"] = statistical_voice_score
-            critique = self.runner.run(
-                role="critic",
-                role_key="critic-{}".format(state.work_order.format),
-                instruction=(
-                    "Assess this draft independently against the supplied rubrics. "
-                    "Return issues and scores; do not decide whether to publish. "
-                    "For each prior issue, return a machine-readable status of "
-                    "resolved, unresolved, or author_rejected separately from its note."
-                    + (
-                        " Treat the statistical voice score as advisory evidence only. "
-                        "Account for context and natural variation; do not request a "
-                        "change solely to improve numerical conformity."
-                        if statistical_voice_score is not None
-                        else ""
-                    )
-                ),
-                payload=critique_payload,
-                order=state.work_order,
-                output_model=Critique,
-                provider=state.work_order.provider,
-                profile=state.route_plan.model_profiles["critic"],
-            )
-            decision = evaluate_quality(
-                critique, self.configuration.rubric("core"), validation_errors
-            )
-            self.store.write_artifact(state.id, "critique-{:02d}.json".format(revision), critique)
-            self.store.write_artifact(state.id, "quality-{:02d}.json".format(revision), decision)
-            state.events.append(
-                RunEvent(
-                    name="revision_reviewed",
-                    detail="revision={}, score={:.2f}, passed={}".format(
-                        revision, decision.weighted_score, decision.passed
-                    ),
-                )
+            draft, critique, decision = self._draft_revision(
+                state, brief, pack, revision_context, previous_critique, revision
             )
             if decision.passed:
-                self.store.write_artifact(state.id, "final.md", draft)
-                state.final_draft_path = "runs/{}/final.md".format(state.id)
-                state.status = RunStatus.READY
-                state.events.append(RunEvent(name="quality_gate_passed"))
-                self._persist_model_history(state.id)
-                self.store.save_state(state)
-                return state
-
-            if prior_score is not None and decision.weighted_score <= prior_score:
-                stagnant_rounds += 1
-            else:
-                stagnant_rounds = 0
+                return self._accept_draft(state, draft)
+            stagnant_rounds = (
+                stagnant_rounds + 1
+                if prior_score is not None and decision.weighted_score <= prior_score
+                else 0
+            )
             if stagnant_rounds >= 2:
                 state.events.append(RunEvent(name="revision_stagnation"))
                 break
             prior_score = decision.weighted_score
             previous_critique = critique
+        return self._defer_to_author(state)
 
-        latest = self.store.read_artifact(state.id, "draft-{:02d}.md".format(state.revision))
+    def _draft_revision(
+        self,
+        state: RunState,
+        brief: Optional[ResearchBrief],
+        pack: Any,
+        revision_context: Optional[Dict],
+        previous_critique: Optional[Critique],
+        revision: int,
+    ) -> tuple[str, Critique, Any]:
+        state.revision = revision
+        state.status = RunStatus.DRAFTING
+        self.store.save_state(state)
+        draft = self.runner.run(
+            role="writer",
+            role_key=f"writer-{state.work_order.format}",
+            instruction=(
+                "Write or revise the piece. Address the prior critique, but preserve "
+                "the author's intent. Return only publishable Markdown."
+            ),
+            payload=self._draft_payload(
+                state.work_order, brief, previous_critique, revision_context
+            ),
+            options=AgentRunOptions(
+                order=state.work_order,
+                provider=state.work_order.provider,
+                profile=state.route_plan.model_profiles["writer"],
+            ),
+        )
+        self.store.write_artifact(state.id, f"draft-{revision:02d}.md", draft)
+        validation_errors, statistical_score = self._validate_revision(state, pack, draft, revision)
+        critique = self._critique_revision(
+            state, brief, draft, validation_errors, statistical_score, previous_critique
+        )
+        decision = evaluate_quality(critique, self.configuration.rubric("core"), validation_errors)
+        self.store.write_artifact(state.id, f"critique-{revision:02d}.json", critique)
+        self.store.write_artifact(state.id, f"quality-{revision:02d}.json", decision)
+        state.events.append(
+            RunEvent(
+                name="revision_reviewed",
+                detail=(
+                    f"revision={revision}, score={decision.weighted_score:.2f}, "
+                    f"passed={decision.passed}"
+                ),
+            )
+        )
+        return draft, critique, decision
+
+    def _validate_revision(
+        self, state: RunState, pack: Any, draft: str, revision: int
+    ) -> tuple[List[str], Optional[Dict[str, Any]]]:
+        errors = validate_draft(draft, state.work_order, pack.validators)
+        voice_evaluation = evaluate_voice_output(self.root, state.work_order, draft)
+        errors.extend(voice_evaluation["errors"])
+        perspective_evaluation = evaluate_perspective_output(self.root, state.work_order, draft)
+        errors.extend(perspective_evaluation["errors"])
+        self.store.write_artifact(state.id, f"validation-{revision:02d}.json", {"errors": errors})
+        self.store.write_artifact(
+            state.id, f"voice-evaluation-{revision:02d}.json", voice_evaluation
+        )
+        self.store.write_artifact(
+            state.id, f"perspective-evaluation-{revision:02d}.json", perspective_evaluation
+        )
+        statistical_score = self.capabilities.assess_voice(
+            state.work_order.voice_id,
+            state.work_order.voice_version,
+            draft,
+            self.configuration.statistical_voice_score_policy,
+            pack.statistical_voice_score.eligible,
+        )
+        if statistical_score is not None:
+            self.store.write_artifact(
+                state.id, f"statistical-voice-score-{revision:02d}.json", statistical_score
+            )
+        return errors, statistical_score
+
+    def _critique_revision(
+        self,
+        state: RunState,
+        brief: Optional[ResearchBrief],
+        draft: str,
+        validation_errors: List[str],
+        statistical_score: Optional[Dict[str, Any]],
+        previous_critique: Optional[Critique],
+    ) -> Critique:
+        state.status = RunStatus.REVIEWING
+        self.store.save_state(state)
+        payload = {
+            "work_order": state.work_order.model_dump(mode="json"),
+            "draft": draft,
+            "research": brief.model_dump(mode="json") if brief else None,
+            "validation_errors": validation_errors,
+            "prior_critique": (
+                previous_critique.model_dump(mode="json") if previous_critique else None
+            ),
+        }
+        if statistical_score is not None:
+            payload["statistical_voice_score"] = statistical_score
+        advisory = (
+            " Treat the statistical voice score as advisory evidence only. Account for "
+            "context and natural variation; do not request a change solely to improve "
+            "numerical conformity."
+            if statistical_score is not None
+            else ""
+        )
+        return self.runner.run(
+            role="critic",
+            role_key=f"critic-{state.work_order.format}",
+            instruction=(
+                "Assess this draft independently against the supplied rubrics. Return issues "
+                "and scores; do not decide whether to publish. For each prior issue, return "
+                "a machine-readable status of resolved, unresolved, or author_rejected "
+                f"separately from its note.{advisory}"
+            ),
+            payload=payload,
+            options=AgentRunOptions(
+                order=state.work_order,
+                output_model=Critique,
+                provider=state.work_order.provider,
+                profile=state.route_plan.model_profiles["critic"],
+            ),
+        )
+
+    def _accept_draft(self, state: RunState, draft: str) -> RunState:
+        self.store.write_artifact(state.id, "final.md", draft)
+        state.final_draft_path = f"runs/{state.id}/final.md"
+        state.status = RunStatus.READY
+        state.events.append(RunEvent(name="quality_gate_passed"))
+        self._persist_model_history(state.id)
+        self.store.save_state(state)
+        return state
+
+    def _defer_to_author(self, state: RunState) -> RunState:
+        latest = self.store.read_artifact(state.id, f"draft-{state.revision:02d}.md")
         self.store.write_artifact(state.id, "final.md", latest)
-        state.final_draft_path = "runs/{}/final.md".format(state.id)
+        state.final_draft_path = f"runs/{state.id}/final.md"
         state.status = RunStatus.NEEDS_AUTHOR
         state.events.append(RunEvent(name="revision_limit_reached"))
         self._persist_model_history(state.id)

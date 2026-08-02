@@ -37,3 +37,6 @@ remain subject to the same core evidence-integrity contract.
 Maintainers changing this packaged template must also follow the Core
 [architecture and development guardrails](https://github.com/vadhoob90/Content_Creator_Core/blob/main/docs/core/architecture-guardrails.md),
 including mirrored-resource parity, focused tests, and the full release gate.
+Core contributors should also run the linked readability check; generated agent
+guidance should remain self-explanatory and must not hide workflow rules in
+generic helper modules.

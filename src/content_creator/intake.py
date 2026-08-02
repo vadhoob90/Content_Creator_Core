@@ -8,7 +8,7 @@ from .domain import (
     ResearchSource,
     WorkOrder,
 )
-from .runner import AgentRunner
+from .runner import AgentRunner, AgentRunOptions
 
 
 class ClarificationRequired(ValueError):
@@ -52,8 +52,7 @@ class BriefingAgent:
                     "Use agent research when research is needed."
                 ),
                 payload={"request": request},
-                output_model=PlanningDecision,
-                provider=provider,
+                options=AgentRunOptions(output_model=PlanningDecision, provider=provider),
             )
             if decision.needs_clarification or not decision.work_order:
                 raise ClarificationRequired(

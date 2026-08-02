@@ -19,42 +19,63 @@ def assess_with_ml_artifact(
 ) -> Dict[str, Any]:
     path = ml_model_path(root, voice_id, voice_version)
     if not path.exists():
-        return {
-            "schema_version": "1.0",
-            "type": "statistical_voice_score",
-            "method": "ml",
-            "framework": ML_FRAMEWORK,
-            "framework_version": ML_FRAMEWORK_VERSION,
-            "status": "ml_model_unavailable",
-            "voice_id": voice_id,
-            "voice_version": voice_version,
-            "score": None,
-            "score_scale": {"minimum": 0, "maximum": 100},
-            "evidence_coverage": 0.0,
-            "reason": "No trained ML model exists for the resolved voice version.",
-        }
+        return _unavailable_score(voice_id, voice_version)
     artifact = json.loads(path.read_text(encoding="utf-8"))
     if artifact.get("voice_id") != voice_id or artifact.get("voice_version") != voice_version:
         raise StorageError("ML model identity does not match the resolved voice")
     features = extract_linguistic_features(draft)
     word_count = int(features["word_count"])
     if word_count < minimum_draft_words:
-        return {
-            "schema_version": "1.0",
-            "type": "statistical_voice_score",
-            "method": "ml",
-            "framework": ML_FRAMEWORK,
-            "framework_version": ML_FRAMEWORK_VERSION,
-            "status": "insufficient_draft",
-            "voice_id": voice_id,
-            "voice_version": voice_version,
-            "score": None,
-            "score_scale": {"minimum": 0, "maximum": 100},
-            "evidence_coverage": 0.0,
-            "reason": "The draft has {} words; {} are required.".format(
-                word_count, minimum_draft_words
-            ),
-        }
+        return _insufficient_score(voice_id, voice_version, word_count, minimum_draft_words)
+    return _score_artifact(artifact, features, voice_id, voice_version, word_count)
+
+
+def _unavailable_score(voice_id: str, voice_version: str) -> Dict[str, Any]:
+    return {
+        **_score_identity(voice_id, voice_version),
+        "status": "ml_model_unavailable",
+        "score": None,
+        "score_scale": {"minimum": 0, "maximum": 100},
+        "evidence_coverage": 0.0,
+        "reason": "No trained ML model exists for the resolved voice version.",
+    }
+
+
+def _insufficient_score(
+    voice_id: str,
+    voice_version: str,
+    word_count: int,
+    minimum_draft_words: int,
+) -> Dict[str, Any]:
+    return {
+        **_score_identity(voice_id, voice_version),
+        "status": "insufficient_draft",
+        "score": None,
+        "score_scale": {"minimum": 0, "maximum": 100},
+        "evidence_coverage": 0.0,
+        "reason": f"The draft has {word_count} words; {minimum_draft_words} are required.",
+    }
+
+
+def _score_identity(voice_id: str, voice_version: str) -> Dict[str, Any]:
+    return {
+        "schema_version": "1.0",
+        "type": "statistical_voice_score",
+        "method": "ml",
+        "framework": ML_FRAMEWORK,
+        "framework_version": ML_FRAMEWORK_VERSION,
+        "voice_id": voice_id,
+        "voice_version": voice_version,
+    }
+
+
+def _score_artifact(
+    artifact: Dict[str, Any],
+    features: Dict[str, Any],
+    voice_id: str,
+    voice_version: str,
+    word_count: int,
+) -> Dict[str, Any]:
     names = artifact["feature_schema"]["feature_names"]
     row = [float(features[name]) for name in names]
     means = artifact["preprocessing"]["mean"]
@@ -77,11 +98,7 @@ def assess_with_ml_artifact(
         reverse=True,
     )[:5]
     return {
-        "schema_version": "1.0",
-        "type": "statistical_voice_score",
-        "method": "ml",
-        "framework": ML_FRAMEWORK,
-        "framework_version": ML_FRAMEWORK_VERSION,
+        **_score_identity(voice_id, voice_version),
         "status": "ml_above_threshold" if score >= threshold else "ml_below_threshold",
         "voice_id": voice_id,
         "voice_version": voice_version,

@@ -114,6 +114,17 @@ def test_architecture_rules_are_enforced():
     assert result.returncode == 0, result.stdout + result.stderr
 
 
+def test_python_readability_limits_are_enforced():
+    result = subprocess.run(
+        [sys.executable, "scripts/readability_report.py", "--check"],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
 def test_maintainability_documents_are_linked_from_the_core_guide():
     core_guide = (ROOT / "docs" / "core" / "README.md").read_text(encoding="utf-8")
 

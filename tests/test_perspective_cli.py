@@ -70,19 +70,7 @@ def test_cli_creates_verifies_approves_and_lists_perspective(project, capsys):
     receipt = json.loads(capsys.readouterr().out)
     assert receipt["activated_version"] == "1.0.0"
 
-    assert (
-        main(
-            [
-                "--root",
-                str(project),
-                "perspective",
-                "list",
-                "--voice",
-                "default",
-            ]
-        )
-        == 0
-    )
+    assert main(["--root", str(project), "perspective", "list", "--voice", "default"]) == 0
     contexts = json.loads(capsys.readouterr().out)
     assert contexts["legal-training"]["status"] == "active"
 

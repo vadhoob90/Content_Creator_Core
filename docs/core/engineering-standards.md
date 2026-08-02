@@ -23,7 +23,9 @@ life.
 - The configured line length is 100 characters.
 - CI runs `ruff check .` and `ruff format --check .`.
 - Enabled lint families cover pycodestyle errors, Pyflakes, import ordering,
-  pyupgrade, and flake8-bugbear.
+  pyupgrade, flake8-bugbear, McCabe complexity, and selected Pylint design
+  limits. Complexity has an ideal of 10 and a hard maximum of 15; the configured
+  hard limits also cover branches, statements, parameters, and nesting.
 - Mypy checks the complete production package and prohibits untyped function
   definitions. Do not exclude a module or weaken a rule to avoid a local fix.
 - `python scripts/architecture_report.py --check` enforces accepted modular
@@ -31,6 +33,13 @@ life.
   modules, optional capabilities outside the orchestrator, explicit application
   stages, and shared immutable-artifact mechanics. New rules need a documented
   green baseline before becoming blocking.
+- `python scripts/readability_report.py --check` scans every Python module in
+  `src/`, `scripts/`, and `tests`: 500 module lines, 80 function lines, and 7
+  parameters are hard limits. It reports the 300-line module and 40-line
+  function ideals without failing the build.
+- Exact generic module and class names (`data`, `item`, `manager`, `utils`) are
+  blocked. Review local names for the same ambiguity; names should reveal the
+  domain concept without requiring a comment.
 - Public APIs need useful type annotations and docstrings. Comments should
   explain constraints or intent rather than restating code.
 
@@ -91,6 +100,7 @@ ruff check .
 ruff format --check .
 mypy
 python scripts/architecture_report.py --check
+python scripts/readability_report.py --check
 pytest --cov=content_creator --cov-report=term-missing
 content-creator eval
 git diff --check

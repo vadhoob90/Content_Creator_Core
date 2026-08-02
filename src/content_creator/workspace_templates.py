@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from dataclasses import dataclass
 from typing import List
 
 DEFAULT_CORE_URL = "https://github.com/vadhoob90/Content_Creator_Core.git"
@@ -25,169 +26,19 @@ resolution in `uv.lock` are authoritative.
     )
 
 
-class WorkspaceTemplates:
-    @staticmethod
-    def _pyproject(
-        package_name: str,
-        display_name: str,
-        author_name: str,
-        dependency: str,
-    ) -> str:
-        return """[project]
-name = {package_name}
-version = "0.1.0"
-description = {description}
-readme = "README.md"
-requires-python = ">=3.11"
-dependencies = [
-  {dependency},
-]
+@dataclass(frozen=True)
+class WorkspaceReadmeContext:
+    display_name: str
+    author_name: str
+    voice_id: str
+    voice_label: str
+    packs: List[str]
+    core_ref: str
+    dependency: str
+    intended_uses: str
 
-[tool.uv]
-package = false
 
-[dependency-groups]
-dev = [
-  "pytest>=8,<9",
-  "ruff>=0.9",
-]
-
-[tool.pytest.ini_options]
-addopts = "-q"
-testpaths = ["tests"]
-
-[tool.ruff]
-line-length = 100
-target-version = "py311"
-
-[tool.ruff.lint]
-select = ["E", "F", "I", "UP", "B"]
-ignore = ["UP006", "UP032", "UP035", "UP045"]
-""".format(
-            package_name=json.dumps(package_name),
-            description=json.dumps("{} content workspace for {}".format(display_name, author_name)),
-            dependency=json.dumps(dependency),
-        )
-
-    @staticmethod
-    def _gitignore() -> str:
-        return """__pycache__/
-*.py[cod]
-*.egg-info/
-.pytest_cache/
-.ruff_cache/
-.coverage
-.venv/
-dist/
-build/
-.env
-outputs/
-runs/
-.eval-results/
-.content-creator/
-.voice-cache/
-profiles/*/work-order.json
-voice-material/**/*
-!voice-material/**/
-!voice-material/**/source-urls.txt
-content/*/drafting/
-"""
-
-    @staticmethod
-    def _environment() -> str:
-        return """# Choose a native subscription-backed provider where available:
-CONTENT_CREATOR_PROVIDER=codex-native
-
-# API providers require the corresponding optional dependency and key:
-# CONTENT_CREATOR_PROVIDER=openai
-# OPENAI_API_KEY=
-# CONTENT_CREATOR_PROVIDER=anthropic
-# ANTHROPIC_API_KEY=
-"""
-
-    @staticmethod
-    def _agents_guidance(
-        display_name: str,
-        author_name: str,
-        voice_id: str,
-    ) -> str:
-        return """# {display_name} repository guidance
-
-This is a thin downstream Content Creator workspace for {author_name}.
-Reusable mechanisms belong in `vadhoob90/Content_Creator_Core`; author-specific
-voices, perspectives, sources, learnings, agents, content, and run artifacts
-belong here.
-
-## Content requests
-
-Treat natural requests to create or revise supported content as an invocation
-of the installed Content Creator workflow.
-
-1. Run `content-creator --workspace . start` and use the next action derived
-   from Core's persisted workspace state rather than chat memory.
-2. Read `profiles/{voice_id}/onboarding.json`.
-3. If its status is `undecided`, stop and ask the author to choose:
-   build a source-derived voice from their writing, or use the neutral starter.
-   Never choose on their behalf.
-4. For the starter route, run `voice onboard --strategy starter`. Treat it as
-   a neutral writing policy, never as the author's established voice.
-   Perspectives are disabled by Core while it is active.
-5. For the source-derived route, run `voice onboard --strategy source-derived`,
-   collect authorised sources, and complete review and activation.
-6. Create or validate a work order and resolve the pack and research route.
-7. Use only an active, verified voice; the intended voice is `{voice_id}`.
-8. Load only permitted voice learnings and perspectives.
-9. Preserve generated artifacts under `runs/<run-id>/`.
-10. Use `coordinator next-actions <run-id>` before offering an approval or
-    publication action.
-11. Return the final draft for author review.
-
-When an exact invocation may be retried, reuse one stable `--idempotency-key`
-for that submission or inspect it with `submission status <key>`. Changed
-instructions and deliberate revisions require a new key. Revisions also pass
-`--parent-run <run-id>` to preserve content lineage.
-
-An instruction to move the active draft into its published directory is author
-approval for repository-local publication and learning extraction. It does not
-authorise posting externally.
-
-Recovered operational diagnostics stay deferred throughout normal draft
-iterations. If publication returns `awaiting_diagnostic_decision`, present the
-sanitised Core support candidate once and ask whether to publish only or
-publish and prepare an issue. Surface fatal Core diagnostics immediately.
-Never create an external issue without explicit approval.
-
-Do not invent sources, personal context, organisational claims, or
-measurements. Do not commit, push, or publish externally unless explicitly
-requested.
-""".format(
-            display_name=display_name,
-            author_name=author_name,
-            voice_id=voice_id,
-        )
-
-    @staticmethod
-    def _claude_guidance() -> str:
-        return """# Claude repository guidance
-
-Read and follow `AGENTS.md`. It contains the canonical repository workflow,
-ownership boundaries, approval trigger, and content-integrity rules.
-"""
-
-    @staticmethod
-    def _readme(
-        *,
-        display_name: str,
-        author_name: str,
-        voice_id: str,
-        voice_label: str,
-        packs: List[str],
-        core_ref: str,
-        dependency: str,
-        intended_uses: str,
-    ) -> str:
-        pack_list = "\n".join("- `{}`".format(pack) for pack in packs)
-        return """# {display_name}
+WORKSPACE_README_TEMPLATE = """# {display_name}
 
 This is {author_name}'s thin Content Creator workspace. It owns the mutable
 editorial material: authorised voice sources, voice-scoped learning,
@@ -367,15 +218,170 @@ upgrade the pinned dependency deliberately.
 
 Do not copy `src/content_creator`, core contracts, provider adapters, or
 packaged resources into this repository.
+"""
+
+
+class WorkspaceTemplates:
+    @staticmethod
+    def _pyproject(
+        package_name: str,
+        display_name: str,
+        author_name: str,
+        dependency: str,
+    ) -> str:
+        return """[project]
+name = {package_name}
+version = "0.1.0"
+description = {description}
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+  {dependency},
+]
+
+[tool.uv]
+package = false
+
+[dependency-groups]
+dev = [
+  "pytest>=8,<9",
+  "ruff>=0.9",
+]
+
+[tool.pytest.ini_options]
+addopts = "-q"
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+ignore = ["UP006", "UP032", "UP035", "UP045"]
+""".format(
+            package_name=json.dumps(package_name),
+            description=json.dumps("{} content workspace for {}".format(display_name, author_name)),
+            dependency=json.dumps(dependency),
+        )
+
+    @staticmethod
+    def _gitignore() -> str:
+        return """__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.coverage
+.venv/
+dist/
+build/
+.env
+outputs/
+runs/
+.eval-results/
+.content-creator/
+.voice-cache/
+profiles/*/work-order.json
+voice-material/**/*
+!voice-material/**/
+!voice-material/**/source-urls.txt
+content/*/drafting/
+"""
+
+    @staticmethod
+    def _environment() -> str:
+        return """# Choose a native subscription-backed provider where available:
+CONTENT_CREATOR_PROVIDER=codex-native
+
+# API providers require the corresponding optional dependency and key:
+# CONTENT_CREATOR_PROVIDER=openai
+# OPENAI_API_KEY=
+# CONTENT_CREATOR_PROVIDER=anthropic
+# ANTHROPIC_API_KEY=
+"""
+
+    @staticmethod
+    def _agents_guidance(
+        display_name: str,
+        author_name: str,
+        voice_id: str,
+    ) -> str:
+        return """# {display_name} repository guidance
+
+This is a thin downstream Content Creator workspace for {author_name}.
+Reusable mechanisms belong in `vadhoob90/Content_Creator_Core`; author-specific
+voices, perspectives, sources, learnings, agents, content, and run artifacts
+belong here.
+
+## Content requests
+
+Treat natural requests to create or revise supported content as an invocation
+of the installed Content Creator workflow.
+
+1. Run `content-creator --workspace . start` and use the next action derived
+   from Core's persisted workspace state rather than chat memory.
+2. Read `profiles/{voice_id}/onboarding.json`.
+3. If its status is `undecided`, stop and ask the author to choose:
+   build a source-derived voice from their writing, or use the neutral starter.
+   Never choose on their behalf.
+4. For the starter route, run `voice onboard --strategy starter`. Treat it as
+   a neutral writing policy, never as the author's established voice.
+   Perspectives are disabled by Core while it is active.
+5. For the source-derived route, run `voice onboard --strategy source-derived`,
+   collect authorised sources, and complete review and activation.
+6. Create or validate a work order and resolve the pack and research route.
+7. Use only an active, verified voice; the intended voice is `{voice_id}`.
+8. Load only permitted voice learnings and perspectives.
+9. Preserve generated artifacts under `runs/<run-id>/`.
+10. Use `coordinator next-actions <run-id>` before offering an approval or
+    publication action.
+11. Return the final draft for author review.
+
+When an exact invocation may be retried, reuse one stable `--idempotency-key`
+for that submission or inspect it with `submission status <key>`. Changed
+instructions and deliberate revisions require a new key. Revisions also pass
+`--parent-run <run-id>` to preserve content lineage.
+
+An instruction to move the active draft into its published directory is author
+approval for repository-local publication and learning extraction. It does not
+authorise posting externally.
+
+Recovered operational diagnostics stay deferred throughout normal draft
+iterations. If publication returns `awaiting_diagnostic_decision`, present the
+sanitised Core support candidate once and ask whether to publish only or
+publish and prepare an issue. Surface fatal Core diagnostics immediately.
+Never create an external issue without explicit approval.
+
+Do not invent sources, personal context, organisational claims, or
+measurements. Do not commit, push, or publish externally unless explicitly
+requested.
 """.format(
             display_name=display_name,
             author_name=author_name,
-            core_dependency_section=readme_core_dependency(core_ref, dependency),
-            pack_list=pack_list,
             voice_id=voice_id,
-            voice_label=voice_label,
-            intended_uses=intended_uses,
-            first_pack=packs[0],
+        )
+
+    @staticmethod
+    def _claude_guidance() -> str:
+        return """# Claude repository guidance
+
+Read and follow `AGENTS.md`. It contains the canonical repository workflow,
+ownership boundaries, approval trigger, and content-integrity rules.
+"""
+
+    @staticmethod
+    def _readme(context: WorkspaceReadmeContext) -> str:
+        pack_list = "\n".join("- `{}`".format(pack) for pack in context.packs)
+        return WORKSPACE_README_TEMPLATE.format(
+            display_name=context.display_name,
+            author_name=context.author_name,
+            core_dependency_section=readme_core_dependency(context.core_ref, context.dependency),
+            pack_list=pack_list,
+            voice_id=context.voice_id,
+            voice_label=context.voice_label,
+            intended_uses=context.intended_uses,
+            first_pack=context.packs[0],
         )
 
     @staticmethod

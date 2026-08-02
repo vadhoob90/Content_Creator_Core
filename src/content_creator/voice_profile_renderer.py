@@ -53,10 +53,28 @@ class VoiceProfileRenderer:
 
     @staticmethod
     def _profile(order: VoiceWorkOrder, patterns: List[VoicePattern], corpus: dict) -> str:
+        lines = VoiceProfileRenderer._profile_header(order, patterns, corpus)
         status_counts: Dict[str, int] = {}
         for item in patterns:
             status_counts[item.status] = status_counts.get(item.status, 0) + 1
-        lines = [
+        lines.extend(
+            "- **{}:** {}".format(status.replace("_", " ").title(), count)
+            for status, count in sorted(status_counts.items())
+        )
+        if not status_counts:
+            lines.append("- No patterns were proposed.")
+        lines.extend(["", "## Patterns for human review", ""])
+        VoiceProfileRenderer._append_patterns(lines, patterns)
+        lines.extend(VoiceProfileRenderer._evidence_limits(corpus))
+        return "\n".join(lines)
+
+    @staticmethod
+    def _profile_header(
+        order: VoiceWorkOrder,
+        patterns: List[VoicePattern],
+        corpus: dict,
+    ) -> list[str]:
+        return [
             "# Voice Profile: {}".format(order.display_name),
             "",
             "## At a glance",
@@ -88,14 +106,9 @@ class VoiceProfileRenderer:
             "## Pattern status summary",
             "",
         ]
-        if status_counts:
-            lines.extend(
-                "- **{}:** {}".format(status.replace("_", " ").title(), count)
-                for status, count in sorted(status_counts.items())
-            )
-        else:
-            lines.append("- No patterns were proposed.")
-        lines.extend(["", "## Patterns for human review", ""])
+
+    @staticmethod
+    def _append_patterns(lines: list[str], patterns: List[VoicePattern]) -> None:
         current_category = None
         for index, item in enumerate(patterns, start=1):
             category = item.category.replace("-", " ").title()
@@ -132,24 +145,20 @@ class VoiceProfileRenderer:
                     "",
                 ]
             )
-        lines.extend(
-            [
-                "## Evidence limits",
-                "",
-                "- Usable sources: {:,}".format(corpus["usable_source_count"]),
-                "- Usable words: {:,}".format(corpus["usable_word_count"]),
-                "- Attribution-weighted words: {:,}".format(
-                    corpus["attribution_weighted_word_count"]
-                ),
-                "- Semantic analysis sources: {}".format(
-                    len(corpus.get("semantic_analysis_source_ids", []))
-                ),
-                "- Held-out evaluation sources: {}".format(
-                    len(corpus.get("held_out_source_ids", []))
-                ),
-                "- Unsupported channels require explicit human guidance.",
-                "- Without a matched-register baseline, observed features must not be",
-                "  described as distinctive to the person.",
-            ]
-        )
-        return "\n".join(lines)
+
+    @staticmethod
+    def _evidence_limits(corpus: dict) -> list[str]:
+        return [
+            "## Evidence limits",
+            "",
+            "- Usable sources: {:,}".format(corpus["usable_source_count"]),
+            "- Usable words: {:,}".format(corpus["usable_word_count"]),
+            "- Attribution-weighted words: {:,}".format(corpus["attribution_weighted_word_count"]),
+            "- Semantic analysis sources: {}".format(
+                len(corpus.get("semantic_analysis_source_ids", []))
+            ),
+            "- Held-out evaluation sources: {}".format(len(corpus.get("held_out_source_ids", []))),
+            "- Unsupported channels require explicit human guidance.",
+            "- Without a matched-register baseline, observed features must not be",
+            "  described as distinctive to the person.",
+        ]

@@ -22,6 +22,12 @@ domain intent, keep control flow visible, and make state transitions explicit.
 Comments explain why a constraint exists; they do not compensate for avoidably
 unclear code.
 
+During creation, aim below the non-blocking ideals: 300 lines per module, 40
+lines per function, cyclomatic complexity 10, 8 branches, and 30 statements.
+Crossing an ideal is a prompt to check cohesion, not an automatic instruction
+to extract. Hard limits and the exception policy are consolidated in the
+[guardrails](architecture-guardrails.md).
+
 ## Apply DRY to knowledge, not incidental syntax
 
 There should be one authoritative implementation of a rule such as component
@@ -75,7 +81,8 @@ Future Core work should follow this sequence:
 3. Implement the smallest coherent slice and keep domain decisions in the
    module that owns them.
 4. Refactor only while the focused tests stay green, then run the full offline
-   baseline and `scripts/architecture_report.py --check`.
+   baseline, `scripts/architecture_report.py --check`, and
+   `scripts/readability_report.py --check`.
 5. Update the changelog, relevant task guide, ADR, and compatibility notes in
    the same pull request when behavior or structure changes.
 6. Release through a protected-main pull request and immutable tag; validate
@@ -125,6 +132,8 @@ clear remediation path.
 - Does the dependency direction match ADR 0007?
 - Does the lifecycle or capability boundary match ADR 0008?
 - Does the module stay within ADR 0010's responsibility and size limits?
+- Does each function stay readable under ADR 0011's ideal and hard limits?
+- Do names expose domain meaning without generic containers or narrative comments?
 - Does persisted state follow the schema read/write and deprecation policy?
 - Can a failure be classified and investigated without exposing author content?
 - Are public and persisted contracts preserved or migrated?

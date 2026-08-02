@@ -3,15 +3,14 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Protocol, Type, TypeVar
+from typing import Any, Dict, List, Optional, Protocol
 from uuid import uuid4
 
 from pydantic import BaseModel, Field
 
 from .domain import PerspectiveMode, PerspectiveSelection, WorkOrder
+from .runner_models import AgentRunOptions
 from .storage import slugify
-
-T = TypeVar("T", bound=BaseModel)
 
 
 class PerspectiveRunner(Protocol):
@@ -23,11 +22,7 @@ class PerspectiveRunner(Protocol):
         role_key: str,
         instruction: str,
         payload: Dict[str, Any],
-        order: Optional[WorkOrder] = None,
-        output_model: Optional[Type[T]] = None,
-        provider: Optional[str] = None,
-        profile: Optional[str] = None,
-        tools: Optional[List[str]] = None,
+        options: AgentRunOptions | None = None,
     ) -> Any:
         raise NotImplementedError
 
@@ -251,9 +246,11 @@ class PerspectiveResolver:
                 "allow_multiple": bool(policy.get("allow_multiple")),
                 "ask_when_ambiguous": bool(policy.get("ask_when_ambiguous")),
             },
-            order=order,
-            output_model=PerspectiveResolution,
-            provider=order.provider,
+            options=AgentRunOptions(
+                order=order,
+                output_model=PerspectiveResolution,
+                provider=order.provider,
+            ),
         )
         resolution.mode = mode
         allowed = {item["context_id"] for item in catalogue["contexts"]}

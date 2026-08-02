@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "content-creator"
-version = "0.15.0"
+version = "0.16.0"
 description = "Provider-neutral content creation and voice workflow"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -94,7 +94,8 @@ line-length = 100
 target-version = "py311"
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "UP", "B"]
+select = ["E", "F", "I", "UP", "B", "C901", "PLR0912", "PLR0913", "PLR0915", "PLR1702"]
+preview = true
 ignore = [
   "UP006",
   "UP007",
@@ -103,3 +104,12 @@ ignore = [
   "UP042",
   "UP045",
 ]
+
+[tool.ruff.lint.mccabe]
+max-complexity = 15
+
+[tool.ruff.lint.pylint]
+max-args = 7
+max-branches = 12
+max-statements = 50
+max-nested-blocks = 4
