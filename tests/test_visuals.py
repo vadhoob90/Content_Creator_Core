@@ -128,6 +128,8 @@ def test_visual_lifecycle_persists_lineage_and_publishes_only_approved_asset(pro
     assert concept.relative_path.startswith("visuals/concepts/")
     assert revision.parent_asset_id == concept.asset_id
     assert revision.revision == 2
+    assert revision.alt_text == brief_for(state.id).alt_text
+    assert revision.sources[0].rights_status == RightsStatus.OWNED
     assert result.passed is True
     assert approved.status == VisualApprovalStatus.APPROVED
     assert target and target.read_bytes() == b"fixture-image-bytes"

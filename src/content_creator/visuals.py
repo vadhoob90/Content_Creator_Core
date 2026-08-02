@@ -186,6 +186,8 @@ class VisualAsset(BaseModel):
     model_or_renderer: str
     prompt_or_template_version: Optional[str] = None
     source_ids: List[str] = Field(default_factory=list)
+    sources: List[VisualSource] = Field(default_factory=list)
+    alt_text: str
     relative_path: str
     sha256: str
     width: int = Field(gt=0)
@@ -311,6 +313,8 @@ class VisualWorkflow:
             model_or_renderer=adapter.model_or_renderer,
             prompt_or_template_version=adapter.prompt_or_template_version,
             source_ids=[item.source_id for item in brief.sources],
+            sources=brief.sources,
+            alt_text=brief.alt_text,
             relative_path=relative,
             sha256=hashlib.sha256(output.content).hexdigest(),
             width=output.width,
