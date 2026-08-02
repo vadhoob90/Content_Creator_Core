@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from difflib import SequenceMatcher
 from pathlib import Path
-from typing import Optional
+from typing import Any, Dict, Optional
 
 from .domain import LearningExtraction, LearningRecord
 from .storage import RunStore
@@ -21,7 +21,7 @@ class LearningMemory:
         voice_version: Optional[str] = None,
         content_pack: Optional[str] = None,
     ) -> None:
-        data = {"version": 1, "records": []}
+        data: Dict[str, Any] = {"version": 1, "records": []}
         if self.path.exists():
             data = json.loads(self.path.read_text(encoding="utf-8"))
         existing = {(item["role"], item["principle"].strip().lower()) for item in data["records"]}
@@ -54,7 +54,7 @@ class LearningMemory:
         RunStore._atomic_text(self.path, json.dumps(data, indent=2, ensure_ascii=False))
 
     def consolidate_candidate(self) -> Path:
-        data = {"version": 1, "records": []}
+        data: Dict[str, Any] = {"version": 1, "records": []}
         if self.path.exists():
             data = json.loads(self.path.read_text(encoding="utf-8"))
         candidate = self.path.parents[1] / "learning-candidate.json"

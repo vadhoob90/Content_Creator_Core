@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 
 import pytest
@@ -43,3 +44,12 @@ def test_activation_lock_is_exclusive_and_released(tmp_path: Path):
             with ActivationLock(lock, "already active"):
                 pass
     assert not lock.exists()
+
+
+def test_activation_lock_records_owner_metadata(tmp_path: Path):
+    lock = tmp_path / ".activation.lock"
+
+    with ActivationLock(lock, "busy"):
+        metadata = json.loads(lock.read_text(encoding="utf-8"))
+        assert metadata["pid"] > 0
+        assert metadata["created_at"].endswith("+00:00")

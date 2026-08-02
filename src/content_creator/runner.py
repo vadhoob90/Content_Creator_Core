@@ -7,7 +7,7 @@ from pydantic import BaseModel, ValidationError
 
 from .configuration import Configuration
 from .diagnostics import RuntimeDiagnostics
-from .domain import ModelRequest, WorkOrder
+from .domain import ModelRequest, ModelResponse, WorkOrder
 from .prompting import PromptAssembler
 from .providers import ProviderRegistry
 
@@ -30,8 +30,8 @@ class AgentRunner:
         self.registry = registry
         self.prompts = prompts
         self.diagnostics = diagnostics
-        self.history = []
-        self.responses = []
+        self.history: list[ModelRequest] = []
+        self.responses: list[Optional[ModelResponse]] = []
 
     def run(
         self,
@@ -43,8 +43,8 @@ class AgentRunner:
         output_model: Optional[Type[T]] = None,
         provider: Optional[str] = None,
         profile: Optional[str] = None,
-        tools: Optional[list] = None,
-    ):
+        tools: Optional[list[str]] = None,
+    ) -> Any:
         required = set(tools or [])
         if output_model:
             required.add("structured_output")

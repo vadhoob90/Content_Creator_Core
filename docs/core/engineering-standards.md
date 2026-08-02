@@ -21,9 +21,8 @@ life.
 - CI runs `ruff check .` and `ruff format --check .`.
 - Enabled lint families cover pycodestyle errors, Pyflakes, import ordering,
   pyupgrade, and flake8-bugbear.
-- Mypy checks an explicit initial set of critical package modules. Expand that
-  set incrementally until the whole implementation is covered; do not weaken a
-  rule globally to avoid fixing one local problem.
+- Mypy checks the complete production package and prohibits untyped function
+  definitions. Do not exclude a module or weaken a rule to avoid a local fix.
 - `python scripts/architecture_report.py --check` enforces accepted modular
   boundaries: a small CLI façade, optional capabilities outside the
   orchestrator, explicit application stages, and shared immutable-artifact
@@ -45,6 +44,10 @@ life.
   isolated in their GitHub environments.
 - Generator changes must create a temporary workspace, run its smoke tests,
   and prove that repeated generation preserves repository-owned files.
+- Persisted-contract changes require a versioned historical fixture, a pure
+  migration test, a deterministic schema export, and compatibility notes.
+- Operational changes require fault-oriented tests for interrupted writes,
+  corrupt state, lock ownership, and privacy-safe diagnostic output as relevant.
 
 ## Security and dependencies
 

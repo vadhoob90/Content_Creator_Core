@@ -4,7 +4,7 @@ import math
 import re
 from collections import defaultdict
 from statistics import median, pstdev
-from typing import Dict, Iterable, List
+from typing import Dict, Iterable, List, Sequence
 
 FRAMEWORK_VERSION = "1.0"
 
@@ -83,7 +83,7 @@ def _rate(count: int, total: int, scale: int) -> float:
     return _round((count / total) * scale) if total else 0.0
 
 
-def _percentile(values: List[float], fraction: float) -> float:
+def _percentile(values: Sequence[float], fraction: float) -> float:
     if not values:
         return 0.0
     ordered = sorted(values)

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Collection, Dict, Optional
 
 import yaml
 
@@ -60,7 +60,7 @@ class Configuration:
         role_key: str,
         provider: Optional[str] = None,
         profile: Optional[str] = None,
-        required_capabilities=None,
+        required_capabilities: Optional[Collection[str]] = None,
     ) -> ModelSelection:
         provider_name = provider or self.default_provider
         profile_name = profile or self.models["roles"].get(role_key)

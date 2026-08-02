@@ -6,7 +6,7 @@ import shutil
 from datetime import UTC, datetime
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Protocol, Type, TypeVar
 from uuid import uuid4
 
 from pydantic import BaseModel, Field
@@ -21,6 +21,26 @@ from .versioned_artifacts import (
     verify_components,
 )
 from .voices import VoiceRegistry
+
+T = TypeVar("T", bound=BaseModel)
+
+
+class PerspectiveRunner(Protocol):
+    """Narrow application seam needed for automatic perspective resolution."""
+
+    def run(
+        self,
+        role: str,
+        role_key: str,
+        instruction: str,
+        payload: Dict[str, Any],
+        order: Optional[WorkOrder] = None,
+        output_model: Optional[Type[T]] = None,
+        provider: Optional[str] = None,
+        profile: Optional[str] = None,
+        tools: Optional[List[str]] = None,
+    ) -> Any:
+        raise NotImplementedError
 
 
 class PerspectiveError(RuntimeError):
@@ -186,7 +206,7 @@ class PerspectiveCatalogueStore:
 
 
 class PerspectiveResolver:
-    def __init__(self, root: Path, runner):
+    def __init__(self, root: Path, runner: PerspectiveRunner):
         self.root = root.resolve()
         self.runner = runner
 

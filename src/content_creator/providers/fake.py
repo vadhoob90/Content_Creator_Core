@@ -19,7 +19,7 @@ class FakeProvider(Provider):
         self.responses: Dict[str, Deque[Any]] = defaultdict(deque)
         for role, values in responses.items():
             self.responses[role].extend(values)
-        self.requests = []
+        self.requests: list[ModelRequest] = []
 
     def generate(self, request: ModelRequest) -> ModelResponse:
         self.requests.append(request)
