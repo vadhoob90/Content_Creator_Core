@@ -196,7 +196,7 @@ class VoiceBuildPipeline(VoiceProfileRenderer):
     def _attribution(
         self,
         order: VoiceWorkOrder,
-        locator: str,
+        _locator: str,
         kind: str,
         title: str,
         text: str,
@@ -206,7 +206,8 @@ class VoiceBuildPipeline(VoiceProfileRenderer):
 
         Args:
             order (VoiceWorkOrder): The work order that defines the requested content run.
-            locator (str): The source locator used to retrieve the document.
+            _locator (str): The intentionally unused source locator retained by the
+                attribution callback contract.
             kind (str): The domain category used to classify the value.
             title (str): The title text processed when attribution.
             text (str): The text to process.

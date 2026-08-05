@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 from pathlib import Path
 from typing import Any, Dict, Optional
 
@@ -37,6 +38,8 @@ from .stages import LifecycleStages as LifecycleStages
 from .storage import RunStore, StorageError, slugify
 from .versioned_artifacts import hash_file
 from .voices import VoiceRegistry
+
+logger = logging.getLogger(__name__)
 
 
 class Orchestrator(OrchestrationSupport):
@@ -80,12 +83,17 @@ class Orchestrator(OrchestrationSupport):
         except Exception as exc:
             if self.diagnostics.run_id is None:
                 diagnostic = self.diagnostics.record_invocation_failure(exc)
-                try:
-                    setattr(  # noqa: B010
-                        exc, "diagnostic_path", str(diagnostic.relative_to(self.root))
-                    )
-                except (AttributeError, ValueError):
-                    pass
+                if diagnostic is not None:
+                    try:
+                        setattr(  # noqa: B010
+                            exc, "diagnostic_path", str(diagnostic.relative_to(self.root))
+                        )
+                    except (AttributeError, ValueError) as metadata_error:
+                        logger.warning(
+                            "Unable to attach the diagnostic path to %s (%s)",
+                            exc.__class__.__name__,
+                            metadata_error.__class__.__name__,
+                        )
             raise
 
     def _start(

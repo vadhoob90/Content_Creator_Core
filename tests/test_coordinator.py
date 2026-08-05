@@ -1,4 +1,5 @@
 import json
+import logging
 
 import yaml
 
@@ -95,6 +96,18 @@ def test_coordinator_lists_recent_runs(project):
 
     assert result["runs"][0]["run_id"] == "recent-run"
     assert result["runs"][0]["requires_human_input"] is True
+
+
+def test_coordinator_warns_when_a_persisted_run_is_unreadable(project, caplog):
+    state_path = project / "runs" / "broken-run" / "state.json"
+    state_path.parent.mkdir(parents=True)
+    state_path.write_text("not-json", encoding="utf-8")
+
+    with caplog.at_level(logging.WARNING):
+        result = ContentCoordinator(project).runs()
+
+    assert result["runs"] == []
+    assert "Skipping unreadable run state at runs/broken-run/state.json" in caplog.text
 
 
 def test_coordinator_replaces_publish_action_with_diagnostic_choices(project):

@@ -18,11 +18,12 @@ from .context import CommandContext
 CommandHandler = Callable[[CommandContext], int]
 
 
-def show_advanced(context: CommandContext) -> int:
+def show_advanced(_context: CommandContext) -> int:
     """Show the advanced.
 
     Args:
-        context (CommandContext): The operation context and its resolved dependencies.
+        _context (CommandContext): The intentionally unused operation context required by
+            the command-handler contract.
 
     Returns:
         int: The resulting numeric value for show advanced.

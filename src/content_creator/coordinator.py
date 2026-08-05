@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import os
 import shutil
 from pathlib import Path
@@ -20,6 +21,8 @@ from .health import WorkspaceHealth
 from .packs import PackRegistry
 from .storage import RunStore
 from .voices import VoiceManifest, VoiceRegistry, load_voice_onboarding
+
+logger = logging.getLogger(__name__)
 
 
 class ContentCoordinator:
@@ -250,18 +253,18 @@ class ContentCoordinator:
         handler = routes.get(state.status, self._fallback_actions)
         return handler(state, run_id)
 
-    def _research_actions(self, state: RunState, run_id: str) -> List[CoordinatorAction]:
+    def _research_actions(self, _state: RunState, run_id: str) -> List[CoordinatorAction]:
         """Return the research actions.
 
         Args:
-            state (RunState): The persisted lifecycle state to inspect or update.
+            _state (RunState): The intentionally unused lifecycle state required by the
+                action-handler contract.
             run_id (str): The stable identifier for the content run.
 
         Returns:
             List[CoordinatorAction]: The resulting research actions values in their
                 documented order.
         """
-        del state
         return [
             self._action("review-research", "Review the research brief", artifact="research.json"),
             self._action(
@@ -351,18 +354,18 @@ class ContentCoordinator:
             ),
         ]
 
-    def _published_actions(self, state: RunState, run_id: str) -> List[CoordinatorAction]:
+    def _published_actions(self, state: RunState, _run_id: str) -> List[CoordinatorAction]:
         """Return the published actions.
 
         Args:
             state (RunState): The persisted lifecycle state to inspect or update.
-            run_id (str): The stable identifier for the content run.
+            _run_id (str): The intentionally unused run identifier required by the
+                action-handler contract.
 
         Returns:
             List[CoordinatorAction]: The resulting published actions values in their
                 documented order.
         """
-        del run_id
         actions = [
             self._action(
                 "review-publication",
@@ -380,18 +383,18 @@ class ContentCoordinator:
             )
         return actions
 
-    def _failed_actions(self, state: RunState, run_id: str) -> List[CoordinatorAction]:
+    def _failed_actions(self, state: RunState, _run_id: str) -> List[CoordinatorAction]:
         """Return the failed actions.
 
         Args:
             state (RunState): The persisted lifecycle state to inspect or update.
-            run_id (str): The stable identifier for the content run.
+            _run_id (str): The intentionally unused run identifier required by the
+                action-handler contract.
 
         Returns:
             List[CoordinatorAction]: The resulting failed actions values in their documented
                 order.
         """
-        del run_id
         actions = [
             self._action(
                 "inspect-failure", "Inspect the persisted error before deciding whether to retry"
@@ -407,18 +410,18 @@ class ContentCoordinator:
             )
         return actions
 
-    def _fallback_actions(self, state: RunState, run_id: str) -> List[CoordinatorAction]:
+    def _fallback_actions(self, _state: RunState, run_id: str) -> List[CoordinatorAction]:
         """Return the fallback actions.
 
         Args:
-            state (RunState): The persisted lifecycle state to inspect or update.
+            _state (RunState): The intentionally unused lifecycle state required by the
+                action-handler contract.
             run_id (str): The stable identifier for the content run.
 
         Returns:
             List[CoordinatorAction]: The resulting fallback actions values in their
                 documented order.
         """
-        del state
         return [
             self._action("inspect-status", "Inspect the persisted run state", ["status", run_id])
         ]
@@ -436,7 +439,12 @@ class ContentCoordinator:
         for path in self.store.runs_dir.glob("*/state.json"):
             try:
                 states.append(RunState.model_validate_json(path.read_text(encoding="utf-8")))
-            except (OSError, ValueError):
+            except (OSError, ValueError) as exc:
+                logger.warning(
+                    "Skipping unreadable run state at %s (%s)",
+                    path.relative_to(self.root),
+                    exc.__class__.__name__,
+                )
                 continue
         states.sort(key=lambda item: item.updated_at, reverse=True)
         return [

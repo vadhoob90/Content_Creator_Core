@@ -63,6 +63,48 @@ def docstring_lines(tree: ast.AST) -> set[int]:
     return lines
 
 
+def deleted_parameters(tree: ast.AST) -> list[dict[str, object]]:
+    """Return function parameters explicitly deleted from production code."""
+
+    class DeleteVisitor(ast.NodeVisitor):
+        def __init__(self, parameters: set[str]):
+            self.parameters = parameters
+            self.matches: list[dict[str, object]] = []
+
+        def visit_Delete(self, node: ast.Delete) -> None:
+            for target in node.targets:
+                if isinstance(target, ast.Name) and target.id in self.parameters:
+                    self.matches.append({"parameter": target.id, "line": node.lineno})
+
+        def visit_FunctionDef(self, _node: ast.FunctionDef) -> None:
+            return
+
+        def visit_AsyncFunctionDef(self, _node: ast.AsyncFunctionDef) -> None:
+            return
+
+        def visit_ClassDef(self, _node: ast.ClassDef) -> None:
+            return
+
+    violations = []
+    function_types = (ast.FunctionDef, ast.AsyncFunctionDef)
+    for function in (node for node in ast.walk(tree) if isinstance(node, function_types)):
+        arguments = function.args
+        parameters = {
+            argument.arg
+            for argument in [*arguments.posonlyargs, *arguments.args, *arguments.kwonlyargs]
+        }
+        if arguments.vararg:
+            parameters.add(arguments.vararg.arg)
+        if arguments.kwarg:
+            parameters.add(arguments.kwarg.arg)
+        visitor = DeleteVisitor(parameters)
+        for statement in function.body:
+            visitor.visit(statement)
+        for match in visitor.matches:
+            violations.append({"function": function.name, **match})
+    return violations
+
+
 def build_report() -> dict:
     """Build module size and dependency measurements for production code."""
     modules = []
@@ -80,6 +122,7 @@ def build_report() -> dict:
                 "line_count": physical_line_count,
                 "implementation_line_count": implementation_line_count,
                 "imports": internal_imports(path, tree),
+                "deleted_parameters": deleted_parameters(tree),
             }
         )
     return {
@@ -120,6 +163,16 @@ def architecture_violations(report: dict) -> list[str]:
                     MAX_MODULE_LINES,
                     module["implementation_line_count"],
                     module["line_count"],
+                )
+            )
+        for deletion in module["deleted_parameters"]:
+            violations.append(
+                "{}:{} deletes parameter {!r} in {}; prefix intentionally unused parameters "
+                "with an underscore instead".format(
+                    module["path"],
+                    deletion["line"],
+                    deletion["parameter"],
+                    deletion["function"],
                 )
             )
 

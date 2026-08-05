@@ -23,17 +23,19 @@ life.
 - The configured line length is 100 characters.
 - CI runs `ruff check .` and `ruff format --check .`.
 - Enabled lint families cover pycodestyle errors, Pyflakes, import ordering,
-  pyupgrade, flake8-bugbear, McCabe complexity, and selected Pylint design
-  limits. Complexity has an ideal of 10 and a hard maximum of 15; the configured
-  hard limits also cover branches, statements, parameters, and nesting.
+  pyupgrade, flake8-bugbear, unused arguments, silent exception suppression,
+  McCabe complexity, and selected Pylint design limits. Intentionally unused
+  parameters use an underscore prefix; do not delete a parameter merely to
+  satisfy linting. Complexity has an ideal of 10 and a hard maximum of 15; the
+  configured hard limits also cover branches, statements, parameters, and nesting.
 - Mypy checks the complete production package and prohibits untyped function
   definitions. Do not exclude a module or weaken a rule to avoid a local fix.
 - `python scripts/architecture_report.py --check` enforces accepted modular
   boundaries: a small CLI and runtime façade, a 500 implementation-line maximum
   for production modules, optional capabilities outside the orchestrator,
-  explicit application stages, and shared immutable-artifact mechanics. Physical
-  size remains visible in the report. New rules need a documented green baseline
-  before becoming blocking.
+  explicit application stages, shared immutable-artifact mechanics, and the ban
+  on deleting function parameters. Physical size remains visible in the report.
+  New rules need a documented green baseline before becoming blocking.
 - `python scripts/readability_report.py --check` scans every Python module in
   `src/`, `scripts/`, and `tests`: 500 module implementation lines, 80 function
   implementation lines, and 7 parameters are hard limits. It reports physical
@@ -74,6 +76,11 @@ life.
   migration test, a deterministic schema export, and compatibility notes.
 - Operational changes require fault-oriented tests for interrupted writes,
   corrupt state, lock ownership, and privacy-safe diagnostic output as relevant.
+- Exception handlers must re-raise, return an explicit fallback, record a bounded
+  warning or domain event, or otherwise make the degraded outcome observable.
+  Bare silent `pass` and `continue` handlers are prohibited. Best-effort
+  diagnostics must never mask the original failure or claim an artifact exists
+  when persistence failed.
 
 ## Security and dependencies
 
