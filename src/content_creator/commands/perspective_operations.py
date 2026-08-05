@@ -22,6 +22,8 @@ from .shared import print_json
 
 @dataclass(frozen=True)
 class PerspectiveCommandContext:
+    """Represent a perspective command context."""
+
     root: Path
     arguments: argparse.Namespace
     registry: PerspectiveRegistry | None = None
@@ -31,6 +33,7 @@ PerspectiveHandler = Callable[[PerspectiveCommandContext], int]
 
 
 def create_comparison(context: PerspectiveCommandContext) -> int:
+    """Create comparison."""
     baseline = Path(context.arguments.baseline)
     if not baseline.is_absolute():
         baseline = context.root / baseline
@@ -39,6 +42,7 @@ def create_comparison(context: PerspectiveCommandContext) -> int:
 
 
 def record_comparison(context: PerspectiveCommandContext) -> int:
+    """Record comparison."""
     assessment = Path(context.arguments.assessment)
     if not assessment.is_absolute():
         assessment = context.root / assessment
@@ -47,24 +51,28 @@ def record_comparison(context: PerspectiveCommandContext) -> int:
 
 
 def _registry(context: PerspectiveCommandContext) -> PerspectiveRegistry:
+    """Return the registry."""
     if context.registry is None:
         raise RuntimeError("Perspective registry is required for this command")
     return context.registry
 
 
 def show_catalogue(context: PerspectiveCommandContext) -> int:
+    """Show catalogue."""
     catalogue = PerspectiveCatalogueStore(context.root, context.arguments.voice).load()
     print_json(catalogue.model_dump(mode="json"))
     return 0
 
 
 def verify_catalogue(context: PerspectiveCommandContext) -> int:
+    """Verify catalogue."""
     result = PerspectiveCatalogueStore(context.root, context.arguments.voice).verify()
     print_json(result)
     return 0 if result["valid"] else 6
 
 
 def create(context: PerspectiveCommandContext) -> int:
+    """Create perspective operations."""
     arguments = context.arguments
     entries = []
     if arguments.statement:
@@ -96,15 +104,18 @@ def create(context: PerspectiveCommandContext) -> int:
 
 
 def list_perspectives(context: PerspectiveCommandContext) -> int:
+    """List perspectives."""
     print_json(_registry(context).list())
     return 0
 
 
 def _candidate(context: PerspectiveCommandContext) -> Path:
+    """Return the candidate."""
     return _registry(context).context_root(context.arguments.context) / "candidate"
 
 
 def show_status(context: PerspectiveCommandContext) -> int:
+    """Show status."""
     manifest_path = _candidate(context) / "manifest.json"
     manifest = (
         PerspectiveManifest.model_validate_json(manifest_path.read_text())
@@ -123,6 +134,7 @@ def show_status(context: PerspectiveCommandContext) -> int:
 
 
 def show(context: PerspectiveCommandContext) -> int:
+    """Show perspective operations."""
     directory = _candidate(context)
     if not directory.exists():
         resolved = _registry(context).resolve(context.arguments.context)
@@ -132,6 +144,7 @@ def show(context: PerspectiveCommandContext) -> int:
 
 
 def verify(context: PerspectiveCommandContext) -> int:
+    """Verify perspective operations."""
     candidate = _candidate(context)
     manifest = PerspectiveManifest.model_validate_json(
         (candidate / "manifest.json").read_text(encoding="utf-8")
@@ -153,30 +166,35 @@ def verify(context: PerspectiveCommandContext) -> int:
 
 
 def approve(context: PerspectiveCommandContext) -> int:
+    """Approve perspective operations."""
     arguments = context.arguments
     print_json(_registry(context).activate(arguments.context, arguments.approved_by))
     return 0
 
 
 def deactivate(context: PerspectiveCommandContext) -> int:
+    """Deactivate perspective operations."""
     arguments = context.arguments
     print_json(_registry(context).deactivate(arguments.context, arguments.reason))
     return 0
 
 
 def show_proposals(context: PerspectiveCommandContext) -> int:
+    """Show proposals."""
     arguments = context.arguments
     print_json(PerspectiveProposalStore(context.root, arguments.voice, arguments.context).list())
     return 0
 
 
 def stage_proposal(context: PerspectiveCommandContext) -> int:
+    """Stage proposal."""
     arguments = context.arguments
     print_json(_registry(context).stage_proposal(arguments.context, arguments.proposal))
     return 0
 
 
 def retire(context: PerspectiveCommandContext) -> int:
+    """Retire perspective operations."""
     arguments = context.arguments
     print_json(
         _registry(context).retire_entry(arguments.context, arguments.entry, arguments.reason)

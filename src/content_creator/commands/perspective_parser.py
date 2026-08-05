@@ -6,6 +6,7 @@ import argparse
 
 
 def register(sub: argparse._SubParsersAction) -> None:
+    """Register perspective parser."""
     perspective = sub.add_parser(
         "perspective",
         help=argparse.SUPPRESS,

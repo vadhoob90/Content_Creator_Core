@@ -1,3 +1,5 @@
+"""Provide upgrade capabilities."""
+
 from __future__ import annotations
 
 import hashlib
@@ -22,6 +24,8 @@ REGISTRY_DEPENDENCY = re.compile(
 
 
 class WorkspaceUpgradeError(RuntimeError):
+    """Report workspace upgrade failures."""
+
     pass
 
 
@@ -33,10 +37,12 @@ class WorkspaceUpgrader:
         root: Path,
         runner: Optional[Callable[[List[str]], subprocess.CompletedProcess]] = None,
     ):
+        """Initialize the workspace upgrader."""
         self.root = root.resolve()
         self.runner = runner or self._run
 
     def preview(self, target: str) -> Dict[str, Any]:
+        """Return the preview."""
         self._validate_target(target)
         pyproject = self.root / "pyproject.toml"
         if not pyproject.is_file():
@@ -108,6 +114,7 @@ class WorkspaceUpgrader:
         }
 
     def apply(self, target: str) -> Dict[str, Any]:
+        """Apply workspace upgrader."""
         report = self.preview(target)
         pyproject = self.root / "pyproject.toml"
         lockfile = self.root / "uv.lock"
@@ -156,6 +163,7 @@ class WorkspaceUpgrader:
         return report
 
     def _validation_commands(self) -> List[List[str]]:
+        """Return the validation commands."""
         return [
             ["uv", "lock", "--upgrade-package", "content-creator"],
             [
@@ -188,6 +196,7 @@ class WorkspaceUpgrader:
         original_readme: Optional[str],
         readme_updated: bool,
     ) -> List[Dict[str, Any]]:
+        """Validate upgrade."""
         completed = []
         try:
             for command in self._validation_commands():
@@ -217,6 +226,7 @@ class WorkspaceUpgrader:
         return completed
 
     def _readme_is_managed(self) -> bool:
+        """Return the readme is managed."""
         readme = self.root / "README.md"
         if not readme.is_file():
             return False
@@ -229,12 +239,14 @@ class WorkspaceUpgrader:
 
     @staticmethod
     def _validate_target(target: str) -> None:
+        """Validate target."""
         if not IMMUTABLE_REF.fullmatch(target):
             raise WorkspaceUpgradeError(
                 "--to must be an immutable semantic version tag or full 40-character commit"
             )
 
     def _skill_changes(self) -> Dict[str, List[str]]:
+        """Return the skill changes."""
         source_root = Path(__file__).with_name("resources") / "skills"
         destination_root = self.root / ".agents" / "skills"
         missing: List[str] = []
@@ -258,9 +270,11 @@ class WorkspaceUpgrader:
 
     @staticmethod
     def _digest(path: Path) -> str:
+        """Compute workspace upgrader."""
         return hashlib.sha256(path.read_bytes()).hexdigest()
 
     def _run(self, command: List[str]) -> subprocess.CompletedProcess:
+        """Run workspace upgrader."""
         return subprocess.run(
             command,
             cwd=self.root,

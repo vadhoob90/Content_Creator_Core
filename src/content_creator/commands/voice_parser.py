@@ -8,6 +8,7 @@ from .shared import PROVIDERS
 
 
 def _register_onboard(commands: argparse._SubParsersAction) -> None:
+    """Register onboard."""
     onboard = commands.add_parser("onboard", help="Choose a starter or source-derived voice route")
     onboard.add_argument("voice_id")
     onboard.add_argument("--strategy", choices=["starter", "source-derived"], required=True)
@@ -23,6 +24,7 @@ def _register_onboard(commands: argparse._SubParsersAction) -> None:
 
 
 def _register_create(commands: argparse._SubParsersAction) -> None:
+    """Register create."""
     create = commands.add_parser("create")
     create.add_argument("--name", help="Legacy shorthand for author, label, and id")
     create.add_argument("--voice-id")
@@ -44,6 +46,7 @@ def _register_create(commands: argparse._SubParsersAction) -> None:
 
 
 def _register_build_and_assessment(commands: argparse._SubParsersAction) -> None:
+    """Register build and assessment."""
     for command_name in ("build", "rebuild", "status", "show", "signature", "verify"):
         command = commands.add_parser(command_name)
         command.add_argument("voice_id")
@@ -69,6 +72,7 @@ def _register_build_and_assessment(commands: argparse._SubParsersAction) -> None
 
 
 def _register_training(commands: argparse._SubParsersAction) -> None:
+    """Register training."""
     train = commands.add_parser("train-ml")
     train.add_argument("voice_id")
     train.add_argument("--voice-version")
@@ -78,6 +82,7 @@ def _register_training(commands: argparse._SubParsersAction) -> None:
 
 
 def _register_lifecycle(commands: argparse._SubParsersAction) -> None:
+    """Register lifecycle."""
     commands.add_parser("list")
     commands.add_parser("verify-all")
     approve = commands.add_parser("approve")
@@ -104,6 +109,7 @@ def _register_lifecycle(commands: argparse._SubParsersAction) -> None:
 
 
 def register(subparsers: argparse._SubParsersAction) -> None:
+    """Register voice parser."""
     voice = subparsers.add_parser("voice", help=argparse.SUPPRESS)
     commands = voice.add_subparsers(dest="voice_command", required=True)
     _register_onboard(commands)

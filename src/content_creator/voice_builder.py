@@ -16,35 +16,43 @@ from .voices import SourceRecord, VoiceManifest, VoiceWorkOrder
 
 
 def _analysis_excerpt(text: str, limit: int = 6000) -> str:
+    """Return the analysis excerpt."""
     return analysis_excerpt(text, limit)
 
 
 def _even_sample(records: List[SourceRecord], limit: int) -> List[SourceRecord]:
+    """Return the even sample."""
     return even_sample(records, limit)
 
 
 class VoiceBuilder:
+    """Represent a voice builder."""
+
     def __init__(
         self,
         root: Path,
         runner: Optional[AgentRunner] = None,
         provider: Optional[str] = None,
     ):
+        """Initialize the voice builder."""
         self.root = root.resolve()
         self.runner = runner
         self.provider = provider
 
     def save_work_order(self, order: VoiceWorkOrder) -> Path:
+        """Save work order."""
         path = self.root / "profiles" / order.voice_id / "work-order.json"
         RunStore._atomic_text(path, order.model_dump_json(indent=2))
         return path
 
     def load_work_order(self, voice_id: str) -> VoiceWorkOrder:
+        """Load work order."""
         path = self.root / "profiles" / voice_id / "work-order.json"
         if not path.exists():
             raise VoiceBuildError(f"Unknown voice work order: {voice_id}")
         return VoiceWorkOrder.model_validate_json(path.read_text(encoding="utf-8"))
 
     def build(self, voice_id: str) -> VoiceManifest:
+        """Build voice builder."""
         pipeline = VoiceBuildPipeline(self.root, self.runner, self.provider)
         return pipeline.build(self.load_work_order(voice_id))

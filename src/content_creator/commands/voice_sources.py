@@ -7,6 +7,7 @@ from typing import List, Optional
 
 
 def source_lines(path: Optional[str]) -> List[str]:
+    """Return the source lines."""
     if not path:
         return []
     return [
@@ -17,6 +18,7 @@ def source_lines(path: Optional[str]) -> List[str]:
 
 
 def documents(values: List[str]) -> List[str]:
+    """Return the documents."""
     resolved_documents: List[str] = []
     for value in values:
         path = Path(value).expanduser().resolve()

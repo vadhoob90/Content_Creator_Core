@@ -11,6 +11,7 @@ from .context import CommandContext
 
 
 def _destination(context: CommandContext) -> Path:
+    """Return the destination."""
     destination = Path(context.arguments.directory).expanduser()
     if not destination.is_absolute():
         base = context.root if context.arguments.root else Path.cwd()

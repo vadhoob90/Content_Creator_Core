@@ -16,8 +16,8 @@ extraction around legitimate orchestration code.
 Core adopts two-tier readability constraints across `src/`, `scripts`, and
 `tests`:
 
-- modules: 300-line ideal, review through 400, hard maximum 500;
-- functions: 40-line ideal, hard maximum 80;
+- modules: 300 implementation-line ideal, review through 400, hard maximum 500;
+- functions: 40 implementation-line ideal, hard maximum 80;
 - cyclomatic complexity: ideal 10, hard maximum 15;
 - branches: ideal 8, hard maximum 12;
 - statements: ideal 30, hard maximum 50;
@@ -33,6 +33,10 @@ Comments explain why surprising policy exists, not what code visibly does.
 Ruff enforces control-flow hard limits. The readability report enforces module,
 function, signature, and generic top-level naming limits while reporting ideal
 thresholds as non-blocking warnings.
+
+Implementation counts exclude definition docstrings while reports retain
+physical sizes. This 2026-08-05 clarification keeps documentation from consuming
+the code budget without concealing overall file size.
 
 ## Consequences
 

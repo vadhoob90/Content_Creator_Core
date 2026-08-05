@@ -1,3 +1,5 @@
+"""Provide voice profile renderer capabilities."""
+
 from __future__ import annotations
 
 from typing import Dict, List
@@ -6,11 +8,14 @@ from .voices import SourceRecord, VoicePattern, VoiceWorkOrder
 
 
 class VoiceProfileRenderer:
+    """Represent a voice profile renderer."""
+
     @staticmethod
     def _patterns(
         records: List[SourceRecord],
         signature: dict,
     ) -> List[VoicePattern]:
+        """Return the patterns."""
         if not records:
             return []
         ids = [record.id for record in records]
@@ -53,6 +58,7 @@ class VoiceProfileRenderer:
 
     @staticmethod
     def _profile(order: VoiceWorkOrder, patterns: List[VoicePattern], corpus: dict) -> str:
+        """Return the profile."""
         lines = VoiceProfileRenderer._profile_header(order, patterns, corpus)
         status_counts: Dict[str, int] = {}
         for item in patterns:
@@ -74,6 +80,7 @@ class VoiceProfileRenderer:
         patterns: List[VoicePattern],
         corpus: dict,
     ) -> list[str]:
+        """Return the profile header."""
         return [
             "# Voice Profile: {}".format(order.display_name),
             "",
@@ -109,6 +116,7 @@ class VoiceProfileRenderer:
 
     @staticmethod
     def _append_patterns(lines: list[str], patterns: List[VoicePattern]) -> None:
+        """Return the append patterns."""
         current_category = None
         for index, item in enumerate(patterns, start=1):
             category = item.category.replace("-", " ").title()
@@ -148,6 +156,7 @@ class VoiceProfileRenderer:
 
     @staticmethod
     def _evidence_limits(corpus: dict) -> list[str]:
+        """Return the evidence limits."""
         return [
             "## Evidence limits",
             "",

@@ -15,6 +15,7 @@ from ..storage import RunStore
 
 
 def register(subparsers: Any, providers: Sequence[str]) -> None:
+    """Register provider."""
     parser = subparsers.add_parser("provider", help=argparse.SUPPRESS)
     commands = parser.add_subparsers(dest="provider_command", required=True)
     select = commands.add_parser("select", help="Persist the workspace default provider")
@@ -24,6 +25,7 @@ def register(subparsers: Any, providers: Sequence[str]) -> None:
 
 
 def run(root: Path, args: argparse.Namespace, emit: Callable[[Any], None]) -> int:
+    """Run provider."""
     provider_name = args.provider_name
     if args.provider_command == "select":
         path = root / "content-creator.yaml"

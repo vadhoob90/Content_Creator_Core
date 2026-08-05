@@ -21,8 +21,11 @@ GENERIC_NAMES = {"data", "item", "manager", "utils"}
 
 @dataclass(frozen=True)
 class ModuleMeasure:
+    """Physical and implementation size measurements for one Python module."""
+
     path: Path
     line_count: int
+    implementation_line_count: int
     generic_name: bool
     generic_classes: tuple[str, ...]
 
@@ -35,11 +38,29 @@ class FunctionMeasure:
     name: str
     line: int
     line_count: int
+    implementation_line_count: int
     parameter_count: int
 
 
+def _docstring_line_count(node: ast.AST) -> int:
+    """Return the number of source lines occupied by a definition docstring."""
+    body = node.body  # type: ignore[attr-defined]
+    if not body:
+        return 0
+    statement = body[0]
+    if not (
+        isinstance(statement, ast.Expr)
+        and isinstance(statement.value, ast.Constant)
+        and isinstance(statement.value.value, str)
+    ):
+        return 0
+    return (statement.end_lineno or statement.lineno) - statement.lineno + 1
+
+
 def _function_measure(path: Path, node: ast.FunctionDef | ast.AsyncFunctionDef) -> FunctionMeasure:
+    """Measure one function while separating documentation from implementation."""
     end_line = node.end_lineno or node.lineno
+    line_count = end_line - node.lineno + 1
     positional_parameters = [*node.args.posonlyargs, *node.args.args]
     if positional_parameters and positional_parameters[0].arg in {"self", "cls"}:
         positional_parameters = positional_parameters[1:]
@@ -48,7 +69,8 @@ def _function_measure(path: Path, node: ast.FunctionDef | ast.AsyncFunctionDef) 
         path=path.relative_to(ROOT),
         name=node.name,
         line=node.lineno,
-        line_count=end_line - node.lineno + 1,
+        line_count=line_count,
+        implementation_line_count=line_count - _docstring_line_count(node),
         parameter_count=parameter_count,
     )
 
@@ -61,10 +83,23 @@ def collect_measures() -> tuple[list[ModuleMeasure], list[FunctionMeasure]]:
         for path in sorted(scan_root.rglob("*.py")):
             source = path.read_text(encoding="utf-8")
             syntax_tree = ast.parse(source, filename=str(path))
+            line_count = len(source.splitlines())
+            documentation_lines = {
+                line
+                for node in ast.walk(syntax_tree)
+                if isinstance(
+                    node, (ast.Module, ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)
+                )
+                for line in range(
+                    (node.body[0].lineno if node.body else 0),
+                    (node.body[0].lineno if node.body else 0) + _docstring_line_count(node),
+                )
+            }
             modules.append(
                 ModuleMeasure(
                     path=path.relative_to(ROOT),
-                    line_count=len(source.splitlines()),
+                    line_count=line_count,
+                    implementation_line_count=line_count - len(documentation_lines),
                     generic_name=path.stem.lower() in GENERIC_NAMES,
                     generic_classes=tuple(
                         node.name
@@ -85,9 +120,10 @@ def violations(modules: list[ModuleMeasure], measures: list[FunctionMeasure]) ->
     """Return hard-limit failures while leaving ideal targets as review warnings."""
     failures: list[str] = []
     for module in modules:
-        if module.line_count > MAX_MODULE_LINES:
+        if module.implementation_line_count > MAX_MODULE_LINES:
             failures.append(
-                f"{module.path} has {module.line_count} lines; maximum is {MAX_MODULE_LINES}"
+                f"{module.path} has {module.implementation_line_count} implementation lines "
+                f"({module.line_count} physical); maximum is {MAX_MODULE_LINES}"
             )
         if module.generic_name:
             failures.append(f"{module.path} uses a banned generic module name")
@@ -95,9 +131,10 @@ def violations(modules: list[ModuleMeasure], measures: list[FunctionMeasure]) ->
             failures.append(f"{module.path} uses banned generic class name {class_name}")
     for measure in measures:
         location = f"{measure.path}:{measure.line} {measure.name}"
-        if measure.line_count > MAX_FUNCTION_LINES:
+        if measure.implementation_line_count > MAX_FUNCTION_LINES:
             failures.append(
-                f"{location} has {measure.line_count} lines; maximum is {MAX_FUNCTION_LINES}"
+                f"{location} has {measure.implementation_line_count} implementation lines "
+                f"({measure.line_count} physical); maximum is {MAX_FUNCTION_LINES}"
             )
         if measure.parameter_count > MAX_PARAMETERS:
             failures.append(
@@ -110,20 +147,23 @@ def warnings(modules: list[ModuleMeasure], measures: list[FunctionMeasure]) -> l
     """Return non-blocking signals for functions outside the preferred size."""
     function_warnings = [
         f"{measure.path}:{measure.line} {measure.name} exceeds the "
-        f"{IDEAL_FUNCTION_LINES}-line ideal ({measure.line_count})"
+        f"{IDEAL_FUNCTION_LINES}-line implementation ideal "
+        f"({measure.implementation_line_count}; {measure.line_count} physical)"
         for measure in measures
-        if IDEAL_FUNCTION_LINES < measure.line_count <= MAX_FUNCTION_LINES
+        if IDEAL_FUNCTION_LINES < measure.implementation_line_count <= MAX_FUNCTION_LINES
     ]
     module_warnings = [
         f"{module.path} exceeds the {IDEAL_MODULE_LINES}-line ideal "
-        f"({module.line_count}; focused review required above {REVIEW_MODULE_LINES})"
+        f"({module.implementation_line_count} implementation; {module.line_count} physical; "
+        f"focused review required above {REVIEW_MODULE_LINES})"
         for module in modules
-        if IDEAL_MODULE_LINES < module.line_count <= MAX_MODULE_LINES
+        if IDEAL_MODULE_LINES < module.implementation_line_count <= MAX_MODULE_LINES
     ]
     return [*module_warnings, *function_warnings]
 
 
 def main() -> int:
+    """Render readability warnings and optionally enforce hard limits."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--check", action="store_true", help="fail on hard-limit violations")
     args = parser.parse_args()

@@ -1,3 +1,5 @@
+"""Provide validation capabilities."""
+
 from __future__ import annotations
 
 import re
@@ -9,6 +11,7 @@ from .domain import ResearchBrief, ResearchDepth, WorkOrder
 def validate_draft(
     draft: str, order: WorkOrder, validators: Optional[List[str]] = None
 ) -> List[str]:
+    """Validate draft."""
     errors = []
     enabled = set(
         validators
@@ -49,6 +52,7 @@ def validate_draft(
 
 
 def validate_research_brief(brief: ResearchBrief) -> List[str]:
+    """Validate research brief."""
     errors = []
     known_urls = {source.url for source in brief.sources}
     for source in brief.sources:

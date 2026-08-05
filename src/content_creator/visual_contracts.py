@@ -1,3 +1,5 @@
+"""Provide visual contracts capabilities."""
+
 from __future__ import annotations
 
 import re
@@ -12,15 +14,21 @@ from .domain import utc_now
 
 
 class VisualError(RuntimeError):
+    """Report visual failures."""
+
     pass
 
 
 class ExecutionClass(str, Enum):
+    """Classify how a visual operation is executed."""
+
     DETERMINISTIC = "deterministic"
     GENERATIVE = "generative"
 
 
 class RightsStatus(str, Enum):
+    """Enumerate supported rights status values."""
+
     OWNED = "owned"
     LICENSED = "licensed"
     PUBLIC_DOMAIN = "public_domain"
@@ -29,6 +37,8 @@ class RightsStatus(str, Enum):
 
 
 class VisualApprovalStatus(str, Enum):
+    """Enumerate supported visual approval status values."""
+
     DRAFT = "draft"
     CRITIQUED = "critiqued"
     SELECTED = "selected"
@@ -38,11 +48,15 @@ class VisualApprovalStatus(str, Enum):
 
 
 class DiagnosticSeverity(str, Enum):
+    """Represent a diagnostic severity."""
+
     ERROR = "error"
     WARNING = "warning"
 
 
 class BoundingBox(BaseModel):
+    """Represent a bounding box."""
+
     x: float = Field(ge=0, le=1)
     y: float = Field(ge=0, le=1)
     width: float = Field(gt=0, le=1)
@@ -51,12 +65,15 @@ class BoundingBox(BaseModel):
 
     @model_validator(mode="after")
     def remains_on_canvas(self) -> Self:
+        """Return the remains on canvas."""
         if self.x + self.width > 1 or self.y + self.height > 1:
             raise ValueError("Bounding boxes must remain within the normalised canvas")
         return self
 
 
 class SafeAreaProfile(BaseModel):
+    """Represent a safe area profile."""
+
     id: str
     left: float = Field(default=0, ge=0, lt=0.5)
     top: float = Field(default=0, ge=0, lt=0.5)
@@ -66,12 +83,16 @@ class SafeAreaProfile(BaseModel):
 
 
 class CropProfile(BaseModel):
+    """Represent a crop profile."""
+
     id: str
     visible_area: BoundingBox
     protected_roles: List[str] = Field(default_factory=lambda: ["headline"])
 
 
 class VisualPackProfile(BaseModel):
+    """Represent a visual pack profile."""
+
     supported: bool = False
     required: bool = False
     execution_classes: List[ExecutionClass] = Field(default_factory=list)
@@ -87,6 +108,7 @@ class VisualPackProfile(BaseModel):
     @field_validator("aspect_ratios")
     @classmethod
     def validate_ratios(cls, values: List[str]) -> List[str]:
+        """Validate ratios."""
         for value in values:
             if not re.fullmatch(r"[1-9]\d*:[1-9]\d*", value):
                 raise ValueError("Aspect ratios must use positive WIDTH:HEIGHT values")
@@ -94,6 +116,7 @@ class VisualPackProfile(BaseModel):
 
     @model_validator(mode="after")
     def validate_support(self) -> Self:
+        """Validate support."""
         if self.required and not self.supported:
             raise ValueError("A required visual profile must also be supported")
         if self.supported and not self.execution_classes:
@@ -104,6 +127,8 @@ class VisualPackProfile(BaseModel):
 
 
 class VisualSource(BaseModel):
+    """Enumerate supported visual source values."""
+
     source_id: str = Field(default_factory=lambda: uuid4().hex[:12])
     uri: str
     role: str = "reference"
@@ -114,6 +139,8 @@ class VisualSource(BaseModel):
 
 
 class VisualBrief(BaseModel):
+    """Represent a visual brief."""
+
     schema_version: str = "1.0"
     run_id: str
     objective: str
@@ -137,12 +164,15 @@ class VisualBrief(BaseModel):
     @field_validator("run_id")
     @classmethod
     def validate_run_id(cls, value: str) -> str:
+        """Validate run id."""
         if not re.fullmatch(r"[A-Za-z0-9_-]+", value):
             raise ValueError("Invalid run id")
         return value
 
 
 class VisualOutput(BaseModel):
+    """Represent a visual output."""
+
     content: bytes
     width: int = Field(gt=0)
     height: int = Field(gt=0)
@@ -153,6 +183,8 @@ class VisualOutput(BaseModel):
 
 
 class VisualDiagnostic(BaseModel):
+    """Represent a visual diagnostic."""
+
     code: str
     severity: DiagnosticSeverity
     message: str
@@ -160,12 +192,16 @@ class VisualDiagnostic(BaseModel):
 
 
 class VisualValidation(BaseModel):
+    """Represent a visual validation."""
+
     passed: bool
     diagnostics: List[VisualDiagnostic] = Field(default_factory=list)
     validated_at: str = Field(default_factory=lambda: utc_now().isoformat())
 
 
 class VisualCritique(BaseModel):
+    """Represent a visual critique."""
+
     summary: str
     strengths: List[str] = Field(default_factory=list)
     issues: List[str] = Field(default_factory=list)
@@ -174,6 +210,8 @@ class VisualCritique(BaseModel):
 
 
 class VisualAsset(BaseModel):
+    """Represent a visual asset."""
+
     asset_id: str = Field(default_factory=lambda: uuid4().hex[:12])
     parent_asset_id: Optional[str] = None
     revision: int = Field(default=1, ge=1)
@@ -201,6 +239,8 @@ class VisualAsset(BaseModel):
 
 
 class VisualManifest(BaseModel):
+    """Represent a visual manifest."""
+
     schema_version: str = "1.0"
     run_id: str
     assets: List[VisualAsset] = Field(default_factory=list)
@@ -210,6 +250,8 @@ class VisualManifest(BaseModel):
 
 
 class VisualAdapter(ABC):
+    """Represent a visual adapter."""
+
     name: str
     execution_class: ExecutionClass
     model_or_renderer: str
@@ -221,21 +263,27 @@ class VisualAdapter(ABC):
 
 
 class VisualAdapterRegistry:
+    """Manage visual adapter records."""
+
     def __init__(self) -> None:
+        """Initialize the visual adapter registry."""
         self._adapters: Dict[str, VisualAdapter] = {}
 
     def register(self, adapter: VisualAdapter) -> None:
+        """Register visual adapter registry."""
         if not adapter.name:
             raise VisualError("Visual adapters need a stable name")
         self._adapters[adapter.name] = adapter
 
     def get(self, name: str) -> VisualAdapter:
+        """Return the visual adapter registry."""
         try:
             return self._adapters[name]
         except KeyError as exc:
             raise VisualError("Unknown visual adapter: {}".format(name)) from exc
 
     def route(self, brief: VisualBrief) -> VisualAdapter:
+        """Return the route."""
         if brief.preferred_adapter:
             return self.get(brief.preferred_adapter)
         candidates = list(self._adapters.values())

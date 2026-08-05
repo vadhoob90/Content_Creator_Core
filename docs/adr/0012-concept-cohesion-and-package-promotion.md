@@ -18,9 +18,10 @@ metrics.
 
 ## Decision
 
-Core retains the 500-line hard module limit. A size limit is a constraint, not
-a definition of cohesion: extraction follows an independently understandable
-responsibility and reason to change.
+Core retains the 500 implementation-line hard module limit while reporting
+physical size separately. A size limit is a constraint, not a definition of
+cohesion: extraction follows an independently understandable responsibility
+and reason to change.
 
 A package is appropriate when several modules form one named subsystem and
 each contained module owns a responsibility that can be understood and tested

@@ -1,3 +1,5 @@
+"""Provide voice ml training capabilities."""
+
 from __future__ import annotations
 
 import hashlib
@@ -43,6 +45,8 @@ MODEL_FEATURE_NAMES = (
 
 @dataclass(frozen=True)
 class TrainingCorpus:
+    """Collect labelled rows and metadata for voice-model training."""
+
     signature: Dict[str, Any]
     author_rows: List[List[float]]
     author_words: int
@@ -59,6 +63,7 @@ RELIABLE_MINIMUM_WORDS_PER_CLASS = 20000
 
 
 def _signature_path(root: Path, resolved: Dict[str, Any]) -> Path:
+    """Return the signature path."""
     version_root = root.resolve() / resolved["path"]
     signature_path = version_root / "linguistic-signature.json"
     manifest_path = version_root / "manifest.json"
@@ -73,6 +78,7 @@ def _signature_path(root: Path, resolved: Dict[str, Any]) -> Path:
 def load_voice_signature(
     root: Path, voice_id: str, voice_version: Optional[str]
 ) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+    """Load voice signature."""
     resolved = VoiceRegistry(root).resolve(voice_id, voice_version)
     path = _signature_path(root, resolved)
     if not path.exists():
@@ -85,6 +91,7 @@ def load_voice_signature(
 
 
 def ml_model_path(root: Path, voice_id: str, voice_version: str) -> Path:
+    """Return the ml model path."""
     return (
         root.resolve()
         / "profiles"
@@ -96,6 +103,7 @@ def ml_model_path(root: Path, voice_id: str, voice_version: str) -> Path:
 
 
 def _feature_row(features: Dict[str, Any]) -> List[float]:
+    """Return the feature row."""
     missing = [name for name in MODEL_FEATURE_NAMES if name not in features]
     if missing:
         raise StorageError(
@@ -105,11 +113,13 @@ def _feature_row(features: Dict[str, Any]) -> List[float]:
 
 
 def _fingerprint(rows: Iterable[List[float]]) -> str:
+    """Return the fingerprint."""
     encoded = json.dumps(list(rows), sort_keys=True, separators=(",", ":")).encode("utf-8")
     return "sha256:" + hashlib.sha256(encoded).hexdigest()
 
 
 def _author_rows(signature: Dict[str, Any]) -> Tuple[List[List[float]], int]:
+    """Return the author rows."""
     written = [
         item
         for item in signature.get("source_profiles", [])
@@ -128,6 +138,7 @@ def _author_rows(signature: Dict[str, Any]) -> Tuple[List[List[float]], int]:
 def _comparison_rows(
     paths: Iterable[Path], minimum_document_words: int = 100
 ) -> Tuple[List[List[float]], int, Dict[str, Any]]:
+    """Return the comparison rows."""
     rows: List[List[float]] = []
     shingle_profiles: List[Set[tuple[str, ...]]] = []
     hashes: List[str] = []
@@ -176,6 +187,7 @@ def training_reliability(
     comparison_documents: int,
     comparison_words: int,
 ) -> Dict[str, Any]:
+    """Return the training reliability."""
     hard_failures = []
     warnings = []
     for label, documents, words in (
@@ -242,6 +254,7 @@ def train_voice_ml_model(
     accept_low_confidence: bool = False,
     replace: bool = False,
 ) -> Dict[str, Any]:
+    """Train voice ml model."""
     resolved, signature = load_voice_signature(root, voice_id, voice_version)
     author_rows, author_words = _author_rows(signature)
     comparison_rows, comparison_words, comparison_audit = _comparison_rows(comparison_paths)
@@ -310,6 +323,7 @@ def _training_preflight(
     comparison_audit: Dict[str, Any],
     reliability: Dict[str, Any],
 ) -> Dict[str, Any]:
+    """Return the training preflight."""
     return {
         "author": {"documents": len(author_rows), "weighted_words": author_words},
         "comparison": {
@@ -328,6 +342,7 @@ def _blocked_training_result(
     reliability: Dict[str, Any],
     accept_low_confidence: bool,
 ) -> Optional[Dict[str, Any]]:
+    """Return the blocked training result."""
     if not reliability["can_train"]:
         return {
             "status": "insufficient_data",
@@ -355,6 +370,7 @@ def _train_classifier(
     author_rows: List[List[float]],
     comparison_rows: List[List[float]],
 ) -> Dict[str, Any]:
+    """Train classifier."""
     ml = require_sklearn()
     X = author_rows + comparison_rows
     y = [1] * len(author_rows) + [0] * len(comparison_rows)
@@ -405,6 +421,7 @@ def _training_artifact(
     corpus: TrainingCorpus,
     trained: Dict[str, Any],
 ) -> Dict[str, Any]:
+    """Return the training artifact."""
     ml = trained["ml"]
     pipeline = trained["pipeline"]
     scaler = pipeline.named_steps["scaler"]
@@ -440,6 +457,7 @@ def _training_artifact(
 
 
 def _preprocessing(scaler: Any) -> Dict[str, Any]:
+    """Return the preprocessing."""
     return {
         "type": "standard-scaler",
         "mean": [round(float(value), 12) for value in scaler.mean_],
@@ -448,6 +466,7 @@ def _preprocessing(scaler: Any) -> Dict[str, Any]:
 
 
 def _training_data(corpus: TrainingCorpus) -> Dict[str, Any]:
+    """Return the training data."""
     comparison_digest = hashlib.sha256(
         "\n".join(corpus.comparison_audit["content_hashes"]).encode("utf-8")
     ).hexdigest()
@@ -463,6 +482,7 @@ def _training_data(corpus: TrainingCorpus) -> Dict[str, Any]:
 
 
 def _evaluation(ml: Dict[str, Any], trained: Dict[str, Any]) -> Dict[str, Any]:
+    """Return the evaluation."""
     cross_validation = trained["cross_validation"]
     return {
         "holdout_fraction": 0.2,

@@ -9,15 +9,18 @@ affects a public contract, persisted data, operations, or a release.
 - `content_creator.cli` is a compatibility façade and remains at most 100 lines.
 - `content_creator.commands.runtime` owns error rendering and compatibility only
   and remains at most 300 lines.
-- Every production Python module remains at most 500 physical lines. Treat 400
-  lines as an early review signal: check whether contracts, parsing, persistence,
-  rendering, or policy have become separate reasons to change.
+- Every production Python module remains at most 500 implementation lines.
+  Docstring lines are reported as part of physical size but do not consume the
+  implementation budget. Treat 400 implementation lines as an early review
+  signal: check whether contracts, parsing, persistence, rendering, or policy
+  have become separate reasons to change.
 - A command family owns both parser registration and execution. The top-level
   parser composes families; it does not absorb their domain behavior.
 - Compatibility façades may re-export stable names while implementation modules
   own one cohesive responsibility.
-- Across `src/`, `scripts/`, and `tests/`, 300 module lines is the preferred
-  target, 301–400 requires a cohesion review, and 500 is the hard limit.
+- Across `src/`, `scripts/`, and `tests/`, 300 implementation lines is the
+  preferred target, 301–400 requires a cohesion review, and 500 is the hard
+  limit. Reports retain physical counts so documentation growth remains visible.
 
 Size is a constraint, not a definition of cohesion. Every extraction names an
 independently understandable responsibility and reason to change. A package is
@@ -37,8 +40,9 @@ remediation.
 
 ## Function readability and control flow
 
-- Prefer functions of at most 40 physical lines. Lines 41–80 are an explicit
-  review signal; more than 80 is blocked.
+- Prefer functions of at most 40 implementation lines. Lines 41–80 are an
+  explicit review signal; more than 80 is blocked. A function's own docstring
+  is reported in its physical size but excluded from this implementation limit.
 - Prefer cyclomatic complexity at most 10. Complexity 11–15 requires a focused
   review; more than 15 is blocked.
 - Hard limits are 12 branches, 50 statements, 7 parameters (excluding
@@ -48,8 +52,8 @@ remediation.
 - Extract by reason to change—validation, persistence, rendering, policy, or
   adapter interaction—not merely to satisfy a counter.
 
-`scripts/readability_report.py --check` enforces physical module/function and
-signature limits across production code, maintenance scripts, and tests. Ruff
+`scripts/readability_report.py --check` enforces implementation module/function
+and signature limits across production code, maintenance scripts, and tests. Ruff
 enforces complexity, branches, statements, parameters, and nesting. Ideal
 thresholds remain visible warnings and review prompts so they guide creation
 without forcing meaningless fragments.
@@ -64,6 +68,12 @@ without forcing meaningless fragments.
 - Prefer descriptive functions and variables to explanatory comments. Comments
   record why a surprising business or safety constraint exists, never narrate
   what plainly written code does.
+- Every production module, class, function, and method—including private,
+  nested, asynchronous, and special methods—has a concise, useful docstring.
+  `python scripts/documentation_report.py --check` enforces presence and
+  placement; review remains responsible for accuracy and clarity. Tests and
+  maintenance scripts are outside this blocking scope because descriptive test
+  names and short task-oriented scripts are often clearer than compulsory prose.
 
 ## Structural-change review
 
@@ -126,6 +136,7 @@ ruff format --check .
 mypy
 python scripts/architecture_report.py --check
 python scripts/readability_report.py --check
+python scripts/documentation_report.py --check
 pytest --cov=content_creator --cov-report=term-missing
 content-creator doctor
 content-creator eval

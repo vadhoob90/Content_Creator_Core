@@ -12,20 +12,28 @@ from .voices import SourceRecord, VoicePattern, VoiceWorkOrder
 
 
 class VoiceBuildError(RuntimeError):
+    """Report voice build failures."""
+
     pass
 
 
 class VoiceAnalysis(BaseModel):
+    """Capture one agent's analysis of voice evidence."""
+
     summary: str
     patterns: List[VoicePattern] = Field(default_factory=list)
 
 
 class ProfileCriticism(BaseModel):
+    """Represent a profile criticism."""
+
     rejected_pattern_ids: List[str] = Field(default_factory=list)
     warnings: List[str] = Field(default_factory=list)
 
 
 class VoiceEvaluationJudgement(BaseModel):
+    """Represent a voice evaluation judgement."""
+
     passed: bool
     scores: dict = Field(default_factory=dict)
     hard_failures: List[str] = Field(default_factory=list)
@@ -33,6 +41,7 @@ class VoiceEvaluationJudgement(BaseModel):
 
 
 def analysis_excerpt(text: str, limit: int = 6000) -> str:
+    """Return the analysis excerpt."""
     if len(text) <= limit:
         return text
     section = limit // 3
@@ -44,6 +53,7 @@ def analysis_excerpt(text: str, limit: int = 6000) -> str:
 
 
 def even_sample(records: List[SourceRecord], limit: int) -> List[SourceRecord]:
+    """Return the even sample."""
     if limit <= 0:
         return []
     if limit == 1:
@@ -54,6 +64,7 @@ def even_sample(records: List[SourceRecord], limit: int) -> List[SourceRecord]:
 
 
 def public_locator(locator: str) -> str:
+    """Return the public locator."""
     return (
         locator
         if locator.startswith(("http://", "https://"))
@@ -63,6 +74,8 @@ def public_locator(locator: str) -> str:
 
 @dataclass
 class BuildState:
+    """Represent a build state."""
+
     order: VoiceWorkOrder
     voice_root: Path
     candidate: Path

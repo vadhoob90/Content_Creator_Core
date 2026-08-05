@@ -6,10 +6,13 @@ from typing import Any, Dict
 
 
 class MLDependencyError(RuntimeError):
+    """Report mldependency failures."""
+
     pass
 
 
 def require_sklearn() -> Dict[str, Any]:
+    """Require sklearn."""
     try:
         import sklearn
         from sklearn.linear_model import LogisticRegression

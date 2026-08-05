@@ -11,6 +11,8 @@ from ..domain import utc_now
 
 
 class DiagnosticEvent(BaseModel):
+    """Represent a diagnostic event."""
+
     schema_version: str = "1.0"
     id: str = Field(default_factory=lambda: uuid4().hex)
     at: str = Field(default_factory=lambda: utc_now().isoformat())
@@ -35,6 +37,8 @@ class DiagnosticEvent(BaseModel):
 
 
 class SupportCandidate(BaseModel):
+    """Represent a support candidate."""
+
     schema_version: str = "1.0"
     content_session_id: str
     fingerprint: str
@@ -53,6 +57,9 @@ class SupportCandidate(BaseModel):
 
 
 class DiagnosticDecisionRequired(RuntimeError):
+    """Represent a diagnostic decision required."""
+
     def __init__(self, preflight: Dict[str, Any]):
+        """Initialize the diagnostic decision required."""
         super().__init__("Recovered Core issues require a publication decision")
         self.preflight = preflight

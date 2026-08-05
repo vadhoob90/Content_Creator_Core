@@ -1,3 +1,5 @@
+"""Provide configuration capabilities."""
+
 from __future__ import annotations
 
 import os
@@ -11,11 +13,16 @@ from .resource_paths import ResourceResolver
 
 
 class ConfigurationError(ValueError):
+    """Report configuration failures."""
+
     pass
 
 
 class Configuration:
+    """Represent a configuration."""
+
     def __init__(self, root: Path, model_config: Optional[Path] = None):
+        """Initialize the configuration."""
         self.root = root.resolve()
         self.resources = ResourceResolver(self.root)
         path = model_config or self.resources.path("config/models.yaml")
@@ -23,6 +30,7 @@ class Configuration:
 
     @staticmethod
     def _read_yaml(path: Path) -> Dict[str, Any]:
+        """Read yaml."""
         if not path.exists():
             raise ConfigurationError("Missing configuration: {}".format(path))
         data = yaml.safe_load(path.read_text(encoding="utf-8"))
@@ -32,6 +40,7 @@ class Configuration:
 
     @property
     def default_provider(self) -> str:
+        """Return the default provider."""
         provider = os.getenv("CONTENT_CREATOR_PROVIDER")
         if not provider:
             workspace_config = self.root / "content-creator.yaml"
@@ -53,6 +62,7 @@ class Configuration:
 
     @property
     def max_output_tokens(self) -> int:
+        """Return the max output tokens."""
         return int(self.models["defaults"].get("max_output_tokens", 6000))
 
     def selection(
@@ -62,6 +72,7 @@ class Configuration:
         profile: Optional[str] = None,
         required_capabilities: Optional[Collection[str]] = None,
     ) -> ModelSelection:
+        """Return the selection."""
         provider_name = provider or self.default_provider
         profile_name = profile or self.models["roles"].get(role_key)
         if not profile_name:
@@ -91,10 +102,12 @@ class Configuration:
         )
 
     def rubric(self, name: str) -> Dict[str, Any]:
+        """Return the rubric."""
         return self._read_yaml(self.resources.path("rubrics/{}.yaml".format(name)))
 
     @property
     def perspective_policy(self) -> Dict[str, Any]:
+        """Return the perspective policy."""
         path = self.root / "content-creator.yaml"
         data = self._read_yaml(path) if path.exists() else {}
         configured = data.get("perspective", {}) or {}
@@ -114,6 +127,7 @@ class Configuration:
 
     @property
     def coordinator_policy(self) -> Dict[str, Any]:
+        """Return the coordinator policy."""
         path = self.root / "content-creator.yaml"
         data = self._read_yaml(path) if path.exists() else {}
         configured = data.get("coordinator", {}) or {}
@@ -139,6 +153,7 @@ class Configuration:
 
     @property
     def diagnostic_policy(self) -> Dict[str, Any]:
+        """Return the diagnostic policy."""
         path = self.root / "content-creator.yaml"
         data = self._read_yaml(path) if path.exists() else {}
         configured = data.get("diagnostics", {}) or {}
@@ -160,6 +175,7 @@ class Configuration:
 
     @property
     def statistical_voice_score_policy(self) -> Dict[str, Any]:
+        """Return the statistical voice score policy."""
         path = self.root / "content-creator.yaml"
         data = self._read_yaml(path) if path.exists() else {}
         configured = data.get("statistical_voice_score")

@@ -1,3 +1,5 @@
+"""Provide voice ml inference capabilities."""
+
 from __future__ import annotations
 
 import json
@@ -17,6 +19,7 @@ def assess_with_ml_artifact(
     draft: str,
     minimum_draft_words: int,
 ) -> Dict[str, Any]:
+    """Assess with ml artifact."""
     path = ml_model_path(root, voice_id, voice_version)
     if not path.exists():
         return _unavailable_score(voice_id, voice_version)
@@ -31,6 +34,7 @@ def assess_with_ml_artifact(
 
 
 def _unavailable_score(voice_id: str, voice_version: str) -> Dict[str, Any]:
+    """Return the unavailable score."""
     return {
         **_score_identity(voice_id, voice_version),
         "status": "ml_model_unavailable",
@@ -47,6 +51,7 @@ def _insufficient_score(
     word_count: int,
     minimum_draft_words: int,
 ) -> Dict[str, Any]:
+    """Return the insufficient score."""
     return {
         **_score_identity(voice_id, voice_version),
         "status": "insufficient_draft",
@@ -58,6 +63,7 @@ def _insufficient_score(
 
 
 def _score_identity(voice_id: str, voice_version: str) -> Dict[str, Any]:
+    """Score identity."""
     return {
         "schema_version": "1.0",
         "type": "statistical_voice_score",
@@ -76,6 +82,7 @@ def _score_artifact(
     voice_version: str,
     word_count: int,
 ) -> Dict[str, Any]:
+    """Score artifact."""
     names = artifact["feature_schema"]["feature_names"]
     row = [float(features[name]) for name in names]
     means = artifact["preprocessing"]["mean"]

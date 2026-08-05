@@ -8,6 +8,7 @@ from .shared import PROVIDERS
 
 
 def register_coordinator(subparsers: argparse._SubParsersAction) -> None:
+    """Register coordinator."""
     coordinator = subparsers.add_parser("coordinator", help=argparse.SUPPRESS)
     commands = coordinator.add_subparsers(dest="coordinator_command", required=True)
     commands.add_parser("capabilities")
@@ -20,6 +21,7 @@ def register_coordinator(subparsers: argparse._SubParsersAction) -> None:
 
 
 def register_diagnostics(subparsers: argparse._SubParsersAction) -> None:
+    """Register diagnostics."""
     diagnostics = subparsers.add_parser("diagnostics", help="Inspect deferred diagnostics")
     commands = diagnostics.add_subparsers(dest="diagnostics_command", required=True)
     for command_name in ("show", "preflight"):
@@ -31,6 +33,7 @@ def register_diagnostics(subparsers: argparse._SubParsersAction) -> None:
 
 
 def register_packs(subparsers: argparse._SubParsersAction) -> None:
+    """Register packs."""
     subparsers.add_parser("packs", help=argparse.SUPPRESS)
     pack = subparsers.add_parser("pack", help=argparse.SUPPRESS)
     commands = pack.add_subparsers(dest="pack_command", required=True)
@@ -46,6 +49,7 @@ def register_packs(subparsers: argparse._SubParsersAction) -> None:
 
 
 def register_run(subparsers: argparse._SubParsersAction) -> None:
+    """Register run."""
     run = subparsers.add_parser("run", help="Create a run and execute its route")
     _add_run_arguments(run)
     status = subparsers.add_parser("status", help="Show persisted run state")
@@ -57,6 +61,7 @@ def register_run(subparsers: argparse._SubParsersAction) -> None:
 
 
 def _add_run_arguments(parser: argparse.ArgumentParser) -> None:
+    """Add run arguments."""
     parser.add_argument("request", nargs="?")
     parser.add_argument("--brief", help="JSON or YAML content brief")
     parser.add_argument("--topic")
@@ -88,6 +93,7 @@ def _add_run_arguments(parser: argparse.ArgumentParser) -> None:
 
 
 def register_publication(subparsers: argparse._SubParsersAction) -> None:
+    """Register publication."""
     for command_name in ("approve-research", "reject-research"):
         command = subparsers.add_parser(command_name, help=argparse.SUPPRESS)
         command.add_argument("run_id")
@@ -100,6 +106,7 @@ def register_publication(subparsers: argparse._SubParsersAction) -> None:
 
 
 def register_evaluation(subparsers: argparse._SubParsersAction) -> None:
+    """Register evaluation."""
     evaluate = subparsers.add_parser("eval", help=argparse.SUPPRESS)
     evaluate.add_argument("--mode", choices=["replay", "live"], default="replay")
     evaluate.add_argument("--providers", nargs="+", default=["anthropic", "openai"])

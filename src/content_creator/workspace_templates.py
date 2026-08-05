@@ -1,3 +1,5 @@
+"""Provide workspace templates capabilities."""
+
 from __future__ import annotations
 
 import json
@@ -10,6 +12,7 @@ README_CORE_END = "<!-- content-creator-core-dependency:end -->"
 
 
 def readme_core_dependency(core_ref: str, dependency: str) -> str:
+    """Return the readme core dependency."""
     return """{start}
 ## Core dependency
 
@@ -28,6 +31,8 @@ resolution in `uv.lock` are authoritative.
 
 @dataclass(frozen=True)
 class WorkspaceReadmeContext:
+    """Represent a workspace readme context."""
+
     display_name: str
     author_name: str
     voice_id: str
@@ -222,6 +227,8 @@ packaged resources into this repository.
 
 
 class WorkspaceTemplates:
+    """Render files for a newly scaffolded workspace."""
+
     @staticmethod
     def _pyproject(
         package_name: str,
@@ -229,6 +236,7 @@ class WorkspaceTemplates:
         author_name: str,
         dependency: str,
     ) -> str:
+        """Return the pyproject."""
         return """[project]
 name = {package_name}
 version = "0.1.0"
@@ -267,6 +275,7 @@ ignore = ["UP006", "UP032", "UP035", "UP045"]
 
     @staticmethod
     def _gitignore() -> str:
+        """Return the gitignore."""
         return """__pycache__/
 *.py[cod]
 *.egg-info/
@@ -291,6 +300,7 @@ content/*/drafting/
 
     @staticmethod
     def _environment() -> str:
+        """Return the environment."""
         return """# Choose a native subscription-backed provider where available:
 CONTENT_CREATOR_PROVIDER=codex-native
 
@@ -307,6 +317,7 @@ CONTENT_CREATOR_PROVIDER=codex-native
         author_name: str,
         voice_id: str,
     ) -> str:
+        """Return the agents guidance."""
         return """# {display_name} repository guidance
 
 This is a thin downstream Content Creator workspace for {author_name}.
@@ -364,6 +375,7 @@ requested.
 
     @staticmethod
     def _claude_guidance() -> str:
+        """Return the claude guidance."""
         return """# Claude repository guidance
 
 Read and follow `AGENTS.md`. It contains the canonical repository workflow,
@@ -372,6 +384,7 @@ ownership boundaries, approval trigger, and content-integrity rules.
 
     @staticmethod
     def _readme(context: WorkspaceReadmeContext) -> str:
+        """Return the readme."""
         pack_list = "\n".join("- `{}`".format(pack) for pack in context.packs)
         return WORKSPACE_README_TEMPLATE.format(
             display_name=context.display_name,
@@ -386,6 +399,7 @@ ownership boundaries, approval trigger, and content-integrity rules.
 
     @staticmethod
     def _smoke_test(voice_id: str, packs: List[str]) -> str:
+        """Return the smoke test."""
         return """import json
 from pathlib import Path
 

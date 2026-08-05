@@ -10,6 +10,7 @@ from .shared import PROVIDERS
 
 
 def register_workspace(subparsers: argparse._SubParsersAction) -> None:
+    """Register workspace."""
     initialise = subparsers.add_parser("init", help=argparse.SUPPRESS)
     initialise.add_argument("--agent-template", default=STANDARD_TEMPLATE)
     workspace = subparsers.add_parser(
@@ -39,6 +40,7 @@ def register_workspace(subparsers: argparse._SubParsersAction) -> None:
 
 
 def register_agents(subparsers: argparse._SubParsersAction) -> None:
+    """Register agents."""
     agents = subparsers.add_parser("agents", help=argparse.SUPPRESS)
     commands = agents.add_subparsers(dest="agent_command", required=True)
     for command_name in ("scaffold", "status", "diff-template"):
@@ -47,6 +49,7 @@ def register_agents(subparsers: argparse._SubParsersAction) -> None:
 
 
 def register_experience(subparsers: argparse._SubParsersAction) -> None:
+    """Register experience."""
     plan = subparsers.add_parser("plan", help=argparse.SUPPRESS)
     plan.add_argument("request")
     plan.add_argument("--provider", choices=PROVIDERS)

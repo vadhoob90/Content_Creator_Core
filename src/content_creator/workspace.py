@@ -1,3 +1,5 @@
+"""Provide workspace capabilities."""
+
 from __future__ import annotations
 
 import json
@@ -27,6 +29,7 @@ README_CORE_END = "<!-- content-creator-core-dependency:end -->"
 
 
 def core_dependency(source: str, core_url: str, core_ref: str) -> str:
+    """Return the core dependency."""
     if source == "registry":
         match = VERSION_TAG.fullmatch(core_ref)
         if not match:
@@ -78,6 +81,7 @@ def _write_if_missing(
     created: List[str],
     preserved: List[str],
 ) -> None:
+    """Write if missing."""
     relative = str(path.relative_to(root))
     if path.exists():
         preserved.append(relative)
@@ -87,6 +91,7 @@ def _write_if_missing(
 
 
 def scaffold_skills(root: Path) -> Dict[str, List[str]]:
+    """Scaffold skills."""
     created: List[str] = []
     preserved: List[str] = []
     skills_root = Path(__file__).with_name("resources") / "skills"
@@ -184,9 +189,11 @@ class WorkspaceScaffolder(WorkspaceTemplates):
     """Generate a complete thin repository that consumes Content Creator Core."""
 
     def __init__(self, destination: Path):
+        """Initialize the workspace scaffolder."""
         self.root = destination.resolve()
 
     def create(self, request: WorkspaceCreateRequest) -> Dict[str, Any]:
+        """Create workspace scaffolder."""
         services = WorkspaceServices(
             default_core_ref=DEFAULT_CORE_REF,
             default_packs=DEFAULT_PACKS,

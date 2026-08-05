@@ -1,3 +1,5 @@
+"""Provide overlap capabilities."""
+
 from __future__ import annotations
 
 import re
@@ -5,6 +7,7 @@ from typing import Iterable
 
 
 def phrase_overlap(text: str, corpus: Iterable[str], n: int = 12) -> dict:
+    """Return the phrase overlap."""
     words = re.findall(r"\b[\w'-]+\b", text.lower())
     generated = {" ".join(words[index : index + n]) for index in range(max(0, len(words) - n + 1))}
     matches = set()

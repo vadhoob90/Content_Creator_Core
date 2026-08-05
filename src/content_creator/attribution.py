@@ -1,3 +1,5 @@
+"""Provide attribution capabilities."""
+
 from __future__ import annotations
 
 import re
@@ -7,6 +9,7 @@ from .voices import AttributionResult
 
 
 def _names(author_name: str, aliases: Optional[Iterable[str]]) -> List[str]:
+    """Return the names."""
     return list(
         dict.fromkeys(
             name.strip() for name in [author_name, *(aliases or [])] if name and name.strip()
@@ -20,6 +23,7 @@ def classify_attribution(
     kind: str,
     aliases: Optional[Iterable[str]] = None,
 ) -> AttributionResult:
+    """Classify attribution."""
     names = _names(author_name, aliases)
     for name in names:
         escaped = re.escape(name)

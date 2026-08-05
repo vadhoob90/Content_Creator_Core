@@ -23,6 +23,7 @@ from .shared import print_json
 
 
 def main(argv: Optional[List[str]] = None) -> int:
+    """Run the command-line interface and return its exit status."""
     try:
         setattr(dispatch, "Orchestrator", Orchestrator)  # noqa: B010
         return dispatch.run(argv)

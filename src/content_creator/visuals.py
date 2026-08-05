@@ -1,3 +1,5 @@
+"""Provide visuals capabilities."""
+
 from __future__ import annotations
 
 import hashlib
@@ -68,12 +70,16 @@ from .visual_contracts import (
 
 
 class VisualWorkflow:
+    """Represent a visual workflow."""
+
     def __init__(self, root: Path, adapter_registry: Optional[VisualAdapterRegistry] = None):
+        """Initialize the visual workflow."""
         self.root = root.resolve()
         self.store = RunStore(self.root)
         self.adapters = adapter_registry or VisualAdapterRegistry()
 
     def create_brief(self, brief: VisualBrief, profile: VisualPackProfile) -> VisualBrief:
+        """Create brief."""
         state = self.store.load(brief.run_id)
         if state.status not in {RunStatus.READY, RunStatus.NEEDS_AUTHOR, RunStatus.PUBLISHED}:
             raise VisualError("Visual briefs require reviewed content")
@@ -104,6 +110,7 @@ class VisualWorkflow:
         adapter_name: Optional[str] = None,
         parent_asset_id: Optional[str] = None,
     ) -> VisualAsset:
+        """Execute visual workflow."""
         brief = self._load_brief(run_id)
         manifest = self._load_manifest(run_id)
         adapter = self.adapters.get(adapter_name) if adapter_name else self.adapters.route(brief)
@@ -149,6 +156,7 @@ class VisualWorkflow:
         asset_id: str,
         profile: VisualPackProfile,
     ) -> VisualValidation:
+        """Validate visual workflow."""
         brief = self._load_brief(run_id)
         manifest = self._load_manifest(run_id)
         asset = self._asset(manifest, asset_id)
@@ -173,6 +181,7 @@ class VisualWorkflow:
         profile: VisualPackProfile,
         diagnostics: List[VisualDiagnostic],
     ) -> None:
+        """Validate asset basics."""
         ratio = self._ratio(asset.width, asset.height)
         if ratio not in profile.aspect_ratios:
             diagnostics.append(self._error("unsupported-aspect-ratio", ratio))
@@ -201,6 +210,7 @@ class VisualWorkflow:
         brief: VisualBrief,
         diagnostics: List[VisualDiagnostic],
     ) -> None:
+        """Validate copy."""
         if brief.exact_copy:
             if asset.extracted_copy is None:
                 diagnostics.append(
@@ -223,6 +233,7 @@ class VisualWorkflow:
         profile: VisualPackProfile,
         diagnostics: List[VisualDiagnostic],
     ) -> None:
+        """Validate safe areas."""
         safe_areas = {item.id: item for item in profile.safe_areas}
         for profile_id in brief.safe_area_profiles:
             safe = safe_areas.get(profile_id)
@@ -242,6 +253,7 @@ class VisualWorkflow:
         profile: VisualPackProfile,
         diagnostics: List[VisualDiagnostic],
     ) -> None:
+        """Validate crops."""
         crops = {item.id: item for item in profile.crop_profiles}
         for profile_id in brief.crop_profiles:
             crop = crops.get(profile_id)
@@ -253,6 +265,7 @@ class VisualWorkflow:
                     diagnostics.append(self._error("crop-risk", box.role, profile=profile_id))
 
     def record_critique(self, run_id: str, asset_id: str, critique: VisualCritique) -> VisualAsset:
+        """Record critique."""
         manifest = self._load_manifest(run_id)
         asset = self._asset(manifest, asset_id)
         asset.critique = critique
@@ -262,6 +275,7 @@ class VisualWorkflow:
         return asset
 
     def select(self, run_id: str, asset_id: str) -> VisualAsset:
+        """Select visual workflow."""
         manifest = self._load_manifest(run_id)
         asset = self._asset(manifest, asset_id)
         if not asset.validation or not asset.validation.passed:
@@ -277,6 +291,7 @@ class VisualWorkflow:
         return asset
 
     def approve(self, run_id: str, asset_id: str) -> VisualAsset:
+        """Approve visual workflow."""
         manifest = self._load_manifest(run_id)
         asset = self._asset(manifest, asset_id)
         if manifest.selected_asset_id != asset.asset_id:
@@ -293,6 +308,7 @@ class VisualWorkflow:
     def ensure_publication_ready(
         self, run_id: str, profile: VisualPackProfile
     ) -> Optional[VisualAsset]:
+        """Ensure publication ready."""
         manifest_path = self.store.run_dir(run_id) / "visuals" / "manifest.json"
         if not manifest_path.exists():
             if profile.required:
@@ -314,6 +330,7 @@ class VisualWorkflow:
         return asset
 
     def publish(self, run_id: str, profile: VisualPackProfile) -> Optional[Path]:
+        """Publish visual workflow."""
         asset = self.ensure_publication_ready(run_id, profile)
         if asset is None:
             return None
@@ -338,6 +355,7 @@ class VisualWorkflow:
         return target
 
     def _load_brief(self, run_id: str) -> VisualBrief:
+        """Load brief."""
         try:
             return VisualBrief.model_validate_json(
                 self.store.read_artifact(run_id, "visual_brief.json")
@@ -346,17 +364,20 @@ class VisualWorkflow:
             raise VisualError("Run has no visual brief") from exc
 
     def _load_manifest(self, run_id: str) -> VisualManifest:
+        """Load manifest."""
         path = self.store.run_dir(run_id) / "visuals" / "manifest.json"
         if not path.exists():
             raise VisualError("Run has no visual manifest")
         return VisualManifest.model_validate_json(path.read_text(encoding="utf-8"))
 
     def _save_manifest(self, manifest: VisualManifest) -> None:
+        """Save manifest."""
         manifest.updated_at = utc_now().isoformat()
         self.store.write_artifact(manifest.run_id, "visuals/manifest.json", manifest)
 
     @staticmethod
     def _asset(manifest: VisualManifest, asset_id: Optional[str]) -> VisualAsset:
+        """Return the asset."""
         for asset in manifest.assets:
             if asset.asset_id == asset_id:
                 return asset
@@ -364,6 +385,7 @@ class VisualWorkflow:
 
     @staticmethod
     def _ratio(width: int, height: int) -> str:
+        """Return the ratio."""
         from math import gcd
 
         divisor = gcd(width, height)
@@ -371,10 +393,12 @@ class VisualWorkflow:
 
     @staticmethod
     def _normalise_copy(lines: List[str]) -> List[str]:
+        """Return the normalise copy."""
         return [re.sub(r"\s+", " ", line).strip() for line in lines]
 
     @staticmethod
     def _inside(inner: BoundingBox, outer: BoundingBox) -> bool:
+        """Return the inside."""
         epsilon = 1e-9
         return (
             inner.x + epsilon >= outer.x
@@ -385,6 +409,7 @@ class VisualWorkflow:
 
     @classmethod
     def _inside_safe_area(cls, box: BoundingBox, safe: SafeAreaProfile) -> bool:
+        """Return the inside safe area."""
         return cls._inside(
             box,
             BoundingBox(
@@ -397,6 +422,7 @@ class VisualWorkflow:
 
     @staticmethod
     def _error(code: str, message: str, profile: Optional[str] = None) -> VisualDiagnostic:
+        """Return the error."""
         return VisualDiagnostic(
             code=code,
             severity=DiagnosticSeverity.ERROR,

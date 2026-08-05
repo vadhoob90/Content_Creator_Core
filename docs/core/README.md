@@ -33,6 +33,7 @@ content-creator eval
 pytest
 ruff check .
 python scripts/readability_report.py --check
+python scripts/documentation_report.py --check
 ```
 
 `doctor`, replay evaluation, and the test suite do not require paid model
@@ -112,10 +113,13 @@ See [schema compatibility](schema-compatibility.md) and
 procedures.
 Use `python scripts/architecture_report.py` for a view of module size and
 internal dependencies. Run it with `--check` to enforce the accepted dependency
-rules locally, including the 300-line runtime façade and 500-line production
-module limits; CI runs the same check.
+rules locally, including the 300 implementation-line runtime façade and
+500 implementation-line production module limits; physical sizes remain visible
+and CI runs the same check.
 Use `python scripts/readability_report.py --check` for the corresponding
 module, function, and signature limits across source, scripts, and tests.
+Use `python scripts/documentation_report.py --check` to require docstrings on
+every production module, class, function, and method.
 
 ## Core versus a thin workspace
 
@@ -187,6 +191,7 @@ ruff format --check .
 mypy
 python scripts/architecture_report.py --check
 python scripts/readability_report.py --check
+python scripts/documentation_report.py --check
 pytest --cov=content_creator --cov-report=term-missing
 content-creator doctor
 content-creator eval

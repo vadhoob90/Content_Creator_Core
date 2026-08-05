@@ -1,3 +1,5 @@
+"""Provide coordinator models capabilities."""
+
 from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
@@ -6,6 +8,8 @@ from pydantic import BaseModel, Field
 
 
 class CoordinatorAction(BaseModel):
+    """Represent a coordinator action."""
+
     id: str
     label: str
     command: Optional[List[str]] = None
@@ -15,12 +19,16 @@ class CoordinatorAction(BaseModel):
 
 
 class ProviderStatus(BaseModel):
+    """Enumerate supported provider status values."""
+
     name: Optional[str] = None
     status: str = "not-selected"
     detail: Optional[str] = None
 
 
 class VoiceStatus(BaseModel):
+    """Enumerate supported voice status values."""
+
     voice_id: str
     display_name: str
     active_status: Optional[str] = None
@@ -31,6 +39,8 @@ class VoiceStatus(BaseModel):
 
 
 class RunSummary(BaseModel):
+    """Represent a run summary."""
+
     run_id: str
     status: str
     topic: str
@@ -42,6 +52,8 @@ class RunSummary(BaseModel):
 
 
 class WorkspaceSnapshot(BaseModel):
+    """Represent a workspace snapshot."""
+
     schema_version: str = "1.1"
     workspace: str
     is_workspace: bool
@@ -65,6 +77,7 @@ def operation(
     mutates: bool = False,
     approval: bool = False,
 ) -> Dict[str, Any]:
+    """Return the operation."""
     return {
         "id": operation_id,
         "command": command,
@@ -81,6 +94,7 @@ def action(
     mutates: bool = False,
     confirmation: bool = False,
 ) -> CoordinatorAction:
+    """Return the action."""
     return CoordinatorAction(
         id=action_id,
         label=label,

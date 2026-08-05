@@ -19,10 +19,12 @@ from .voice_sources import documents, source_lines
 
 
 def _score_method(selected_method: str) -> str:
+    """Score method."""
     return "deterministic" if selected_method == "disabled" else selected_method
 
 
 def _activate_starter(context: VoiceCommandContext, voice_id: str, display_name: str) -> int:
+    """Activate starter."""
     arguments = context.arguments
     if arguments.statistical_voice_score != "disabled":
         raise ValueError(
@@ -65,6 +67,7 @@ def _stage_source_derived(
     voice_id: str,
     display_name: str,
 ) -> int:
+    """Stage source derived."""
     arguments = context.arguments
     intended_uses = arguments.use or ["general-text"]
     order = VoiceWorkOrder(
@@ -114,6 +117,7 @@ def _stage_source_derived(
 
 
 def onboard(context: VoiceCommandContext) -> int:
+    """Return the onboard."""
     arguments = context.arguments
     voice_id = voice_id_for(arguments.voice_id)
     if voice_id != arguments.voice_id:
@@ -125,6 +129,7 @@ def onboard(context: VoiceCommandContext) -> int:
 
 
 def create(context: VoiceCommandContext) -> int:
+    """Create voice onboarding."""
     arguments = context.arguments
     author_name = arguments.author_name or arguments.name
     if not author_name:
@@ -154,6 +159,7 @@ def create(context: VoiceCommandContext) -> int:
 
 
 def _record_created_voice(context: VoiceCommandContext, order: VoiceWorkOrder) -> None:
+    """Record created voice."""
     arguments = context.arguments
     save_voice_onboarding(
         context.root,

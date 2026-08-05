@@ -1,3 +1,5 @@
+"""Provide packs capabilities."""
+
 from __future__ import annotations
 
 from copy import deepcopy
@@ -11,14 +13,20 @@ from .visuals import VisualPackProfile
 
 
 class PackError(ValueError):
+    """Report pack failures."""
+
     pass
 
 
 class StatisticalVoiceScorePackPolicy(BaseModel):
+    """Represent a statistical voice score pack policy."""
+
     eligible: bool = False
 
 
 class ContentPack(BaseModel):
+    """Represent a content pack."""
+
     schema_version: str = "1.0"
     id: str
     version: str
@@ -56,15 +64,20 @@ class ContentPack(BaseModel):
 
 
 class PackRegistry:
+    """Manage pack records."""
+
     def __init__(self, root: Path):
+        """Initialize the pack registry."""
         self.root = root.resolve()
         self.resources = ResourceResolver(self.root)
         self._packs: Dict[str, ContentPack] = {}
 
     def path(self, pack_id: str, filename: str = "pack.json") -> Path:
+        """Return the path."""
         return self.resources.path(Path("packs") / pack_id / filename)
 
     def get(self, pack_id: str) -> ContentPack:
+        """Return the pack registry."""
         if pack_id in self._packs:
             return self._packs[pack_id]
         path = self.path(pack_id)
@@ -77,12 +90,14 @@ class PackRegistry:
         return pack
 
     def resolve(self, pack_id: str, overrides: Optional[Dict[str, Any]] = None) -> ContentPack:
+        """Resolve pack registry."""
         data = self._merged_pack(pack_id)
         self._apply_overrides(data, overrides)
         self._validate_destinations(data)
         return ContentPack.model_validate(data)
 
     def _merged_pack(self, pack_id: str) -> Dict[str, Any]:
+        """Return the merged pack."""
         chain: List[ContentPack] = []
         seen = set()
         current: Optional[ContentPack] = self.get(pack_id)
@@ -117,6 +132,7 @@ class PackRegistry:
 
     @staticmethod
     def _apply_overrides(data: Dict[str, Any], overrides: Optional[Dict[str, Any]]) -> None:
+        """Apply overrides."""
         requested = deepcopy(overrides or {})
         forbidden = sorted(set(requested) - set(data["allowed_run_overrides"]))
         if forbidden:
@@ -135,6 +151,7 @@ class PackRegistry:
         data["defaults"] = {**data.get("defaults", {}), **requested}
 
     def _validate_destinations(self, data: Dict[str, Any]) -> None:
+        """Validate destinations."""
         destination = (self.root / data["destination"]).resolve()
         try:
             destination.relative_to(self.root)
@@ -149,6 +166,7 @@ class PackRegistry:
                 raise PackError("Visual destination leaves repository root") from exc
 
     def list(self) -> List[ContentPack]:
+        """List pack registry."""
         return [
             self.get(path.parent.name) for path in self.resources.matching("packs", "*/pack.json")
         ]

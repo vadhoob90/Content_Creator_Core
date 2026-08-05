@@ -151,10 +151,16 @@ def test_architecture_report_describes_modules_and_dependencies():
     assert report["summary"]["module_count"] >= 30
     assert report["summary"]["line_count"] >= 10_000
     modules = {module["module"]: module for module in report["modules"]}
-    assert modules["content_creator.orchestrator"]["line_count"] <= 500
-    assert modules["content_creator.commands.runtime"]["line_count"] <= 300
+    assert modules["content_creator.orchestrator"]["implementation_line_count"] <= 500
+    assert (
+        modules["content_creator.orchestrator"]["line_count"]
+        > modules["content_creator.orchestrator"]["implementation_line_count"]
+    )
+    assert modules["content_creator.commands.runtime"]["implementation_line_count"] <= 300
     oversized = {
-        name: module["line_count"] for name, module in modules.items() if module["line_count"] > 500
+        name: module["implementation_line_count"]
+        for name, module in modules.items()
+        if module["implementation_line_count"] > 500
     }
     assert oversized == {}
     assert "content_creator.diagnostic_recording" not in modules

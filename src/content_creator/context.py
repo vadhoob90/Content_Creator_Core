@@ -1,3 +1,5 @@
+"""Provide context capabilities."""
+
 from __future__ import annotations
 
 import json
@@ -20,6 +22,7 @@ def resolved_context(
     voice: dict,
     perspectives: Optional[List[dict]] = None,
 ) -> Dict[str, Any]:
+    """Return the resolved context."""
     resources = ResourceResolver(root)
     hashes = {
         "core_rubric": hash_file(resources.path("rubrics/core.yaml")),

@@ -33,6 +33,7 @@ def stage_context(
     entries: list[PerspectiveEntry],
     display_name: str | None,
 ) -> PerspectiveManifest:
+    """Stage context."""
     VoiceRegistry(registry_service.root).resolve(registry_service.voice_id)
     context_root = registry_service.context_root(context_id)
     staging = context_root / ".candidate-staging"
@@ -60,6 +61,7 @@ def stage_context(
 
 
 def _validate_entries(entries: list[PerspectiveEntry]) -> None:
+    """Validate entries."""
     entry_ids = [entry.id for entry in entries]
     if len(entry_ids) != len(set(entry_ids)):
         raise PerspectiveError("Perspective entry ids must be unique")
@@ -74,6 +76,7 @@ def _validate_entries(entries: list[PerspectiveEntry]) -> None:
 def _write_candidate_files(
     registry_service: Any, staging: Any, context_id: str, entries: list[PerspectiveEntry]
 ) -> dict[str, str]:
+    """Write candidate files."""
     RunStore._atomic_text(
         staging / "entries.json",
         json.dumps([entry.model_dump(mode="json") for entry in entries], indent=2),
@@ -112,6 +115,7 @@ def _write_candidate_files(
 
 
 def _replace_candidate(context_root: Any, staging: Any, candidate: Any) -> None:
+    """Return the replace candidate."""
     previous = context_root / ".candidate-previous"
     if previous.exists():
         shutil.rmtree(previous)
@@ -130,6 +134,7 @@ def _replace_candidate(context_root: Any, staging: Any, candidate: Any) -> None:
 def activate_context(
     registry_service: Any, context_id: str, approved_by: str
 ) -> PerspectiveApprovalReceipt:
+    """Activate context."""
     VoiceRegistry(registry_service.root).resolve(registry_service.voice_id)
     context_root = registry_service.context_root(context_id)
     candidate = context_root / "candidate"
@@ -147,6 +152,7 @@ def activate_context(
 
 
 def _validated_candidate(candidate: Any) -> PerspectiveManifest:
+    """Return the validated candidate."""
     manifest_path = candidate / "manifest.json"
     if not manifest_path.exists():
         raise PerspectiveError("Perspective candidate has not been created")
@@ -163,6 +169,7 @@ def _validated_candidate(candidate: Any) -> PerspectiveManifest:
 def _existing_receipt(
     context_root: Any, registry: dict, context_id: str, manifest: PerspectiveManifest
 ) -> PerspectiveApprovalReceipt | None:
+    """Return the existing receipt."""
     existing = registry["contexts"].get(context_id, {})
     if existing.get("candidate_hash") != manifest.candidate_hash:
         return None
@@ -179,6 +186,7 @@ def _promote(
     manifest: PerspectiveManifest,
     approved_by: str,
 ) -> PerspectiveApprovalReceipt:
+    """Return the promote."""
     context_root = registry_service.context_root(manifest.context_id)
     version = next_major_version(context_root / "versions")
     destination = context_root / "versions" / version

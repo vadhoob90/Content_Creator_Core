@@ -85,6 +85,7 @@ def _summary(
     events: List[DiagnosticEvent],
     candidates: List[SupportCandidate],
 ) -> Dict[str, Any]:
+    """Return the summary."""
     failures = [item for item in events if item.event.endswith("failed")]
     recovered_roles = {item.role for item in events if item.event == "agent_attempt_recovered"}
     return {
@@ -107,6 +108,7 @@ def _candidates(
     state: RunState,
     events: List[DiagnosticEvent],
 ) -> List[SupportCandidate]:
+    """Return the candidates."""
     grouped: Dict[str, List[DiagnosticEvent]] = {}
     support_events = [item for item in events if item.support_worthy]
     if any(item.event == "agent_attempt_failed" for item in support_events):
@@ -131,6 +133,7 @@ def _candidate(
     prior: SupportCandidate | None,
     recovered_pairs: set[tuple[str | None, str | None]],
 ) -> SupportCandidate:
+    """Return the candidate."""
     latest = items[-1]
     recovered = all(
         item.outcome == "retrying" or (item.run_id, item.role) in recovered_pairs for item in items
@@ -159,6 +162,7 @@ def _candidate(
 
 
 def _existing_candidates(store: RunStore, content_session_id: str) -> Dict[str, SupportCandidate]:
+    """Return the existing candidates."""
     result: Dict[str, SupportCandidate] = {}
     for state in _session_states(store, content_session_id):
         path = store.run_dir(state.id) / "support-candidate.json"
@@ -176,6 +180,7 @@ def _existing_candidates(store: RunStore, content_session_id: str) -> Dict[str, 
 
 
 def _session_states(store: RunStore, content_session_id: str) -> Iterable[RunState]:
+    """Return the session states."""
     for path in store.runs_dir.glob("*/state.json"):
         try:
             state = RunState.model_validate_json(path.read_text(encoding="utf-8"))
@@ -186,6 +191,7 @@ def _session_states(store: RunStore, content_session_id: str) -> Iterable[RunSta
 
 
 def _session_events(store: RunStore, content_session_id: str) -> Iterable[DiagnosticEvent]:
+    """Return the session events."""
     for state in _session_states(store, content_session_id):
         path = store.run_dir(state.id) / "diagnostics.jsonl"
         if not path.exists():
@@ -198,6 +204,7 @@ def _session_events(store: RunStore, content_session_id: str) -> Iterable[Diagno
 
 
 def _write_candidates(store: RunStore, run_id: str, candidates: List[SupportCandidate]) -> None:
+    """Write candidates."""
     if not candidates:
         return
     store.write_artifact(
@@ -229,6 +236,7 @@ def _write_candidates(store: RunStore, run_id: str, candidates: List[SupportCand
 
 
 def _title(event: DiagnosticEvent) -> str:
+    """Return the title."""
     labels = {
         "invalid_structured_output": "Structured agent output failed validation",
         "orchestration_failure": "Core orchestration failed",
@@ -238,6 +246,7 @@ def _title(event: DiagnosticEvent) -> str:
 
 
 def _candidate_summary(event: DiagnosticEvent, recovered: bool) -> str:
+    """Return the candidate summary."""
     outcome = (
         "The run recovered and continued."
         if recovered

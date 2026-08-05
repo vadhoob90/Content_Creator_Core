@@ -1,3 +1,5 @@
+"""Provide linguistics capabilities."""
+
 from __future__ import annotations
 
 import math
@@ -76,14 +78,17 @@ _CONCLUSION_MARKERS = {
 
 
 def _round(value: float) -> float:
+    """Return the round."""
     return round(float(value), 4)
 
 
 def _rate(count: int, total: int, scale: int) -> float:
+    """Return the rate."""
     return _round((count / total) * scale) if total else 0.0
 
 
 def _percentile(values: Sequence[float], fraction: float) -> float:
+    """Return the percentile."""
     if not values:
         return 0.0
     ordered = sorted(values)
@@ -97,6 +102,7 @@ def _percentile(values: Sequence[float], fraction: float) -> float:
 
 
 def _mattr(tokens: List[str], window: int = 50) -> float:
+    """Return the mattr."""
     if not tokens:
         return 0.0
     if len(tokens) <= window:
@@ -109,6 +115,7 @@ def _mattr(tokens: List[str], window: int = 50) -> float:
 
 
 def _sentences(text: str) -> List[str]:
+    """Return the sentences."""
     return [item.strip() for item in _SENTENCE_RE.split(text.strip()) if _WORD_RE.search(item)]
 
 
@@ -173,11 +180,13 @@ def extract_linguistic_features(text: str) -> Dict[str, float]:
 
 
 def linguistic_context(kind: str) -> Dict[str, str]:
+    """Return the linguistic context."""
     mode = "spoken" if kind == "transcript" else "written"
     return {"mode": mode, "source_kind": kind}
 
 
 def _aggregate(items: Iterable[Dict]) -> Dict[str, Dict[str, float]]:
+    """Return the aggregate."""
     profiles = list(items)
     if not profiles:
         return {}
@@ -204,6 +213,7 @@ def _aggregate(items: Iterable[Dict]) -> Dict[str, Dict[str, float]]:
 
 
 def build_linguistic_signature(sources: Iterable[Dict]) -> Dict:
+    """Build linguistic signature."""
     source_profiles = []
     for source in sources:
         context = linguistic_context(source["kind"])

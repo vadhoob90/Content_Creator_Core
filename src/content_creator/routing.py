@@ -1,13 +1,18 @@
+"""Provide routing capabilities."""
+
 from __future__ import annotations
 
 from .domain import ResearchDepth, ResearchSource, RoutePlan, WorkOrder
 
 
 class RoutingError(ValueError):
+    """Report routing failures."""
+
     pass
 
 
 def validate_work_order(order: WorkOrder) -> None:
+    """Validate work order."""
     if order.research_depth == ResearchDepth.NONE and order.research_source != ResearchSource.NONE:
         raise RoutingError("No-research work cannot specify a research source")
     if order.research_depth != ResearchDepth.NONE and order.research_source == ResearchSource.NONE:
@@ -17,6 +22,7 @@ def validate_work_order(order: WorkOrder) -> None:
 
 
 def build_route(order: WorkOrder) -> RoutePlan:
+    """Build route."""
     validate_work_order(order)
     stages = []
     profiles = {}

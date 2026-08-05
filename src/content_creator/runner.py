@@ -1,3 +1,5 @@
+"""Provide runner capabilities."""
+
 from __future__ import annotations
 
 import json
@@ -14,10 +16,14 @@ from .runner_models import AgentRunOptions as AgentRunOptions
 
 
 class AgentOutputError(ValueError):
+    """Report agent output failures."""
+
     pass
 
 
 class AgentRunner:
+    """Execute repository-owned agent roles through a provider."""
+
     def __init__(
         self,
         configuration: Configuration,
@@ -25,6 +31,7 @@ class AgentRunner:
         prompts: PromptAssembler,
         diagnostics: Optional[RuntimeDiagnostics] = None,
     ):
+        """Initialize the agent runner."""
         self.configuration = configuration
         self.registry = registry
         self.prompts = prompts
@@ -40,6 +47,7 @@ class AgentRunner:
         payload: Dict[str, Any],
         options: Optional[AgentRunOptions] = None,
     ) -> Any:
+        """Run agent runner."""
         resolved_options = options or AgentRunOptions()
         request = self._request(role, role_key, instruction, payload, resolved_options)
         policy = self.configuration.diagnostic_policy
@@ -58,6 +66,7 @@ class AgentRunner:
         payload: Dict[str, Any],
         options: AgentRunOptions,
     ) -> ModelRequest:
+        """Return the request."""
         required = set(options.tools)
         if options.output_model:
             required.add("structured_output")
@@ -87,6 +96,7 @@ class AgentRunner:
         max_attempts: int,
         options: AgentRunOptions,
     ) -> Any:
+        """Return the attempt."""
         self.history.append(request)
         response_index = len(self.responses)
         self.responses.append(None)
@@ -118,6 +128,7 @@ class AgentRunner:
 
     @staticmethod
     def _parse_response(response_text: str, role: str, options: AgentRunOptions) -> Any:
+        """Parse response."""
         if not options.output_model:
             return response_text.strip()
         try:
@@ -134,6 +145,7 @@ class AgentRunner:
         max_attempts: int,
         started_at: float,
     ) -> bool:
+        """Record failure."""
         retrying = bool(
             self.diagnostics and attempt < max_attempts and self.diagnostics.is_retryable(error)
         )

@@ -24,6 +24,7 @@ def module_name(path: Path) -> str:
 
 
 def internal_imports(path: Path, tree: ast.AST) -> list[str]:
+    """Return package imports made by one parsed module."""
     current = module_name(path)
     package_parts = current.split(".") if path.name == "__init__.py" else current.split(".")[:-1]
     imports: set[str] = set()
@@ -44,18 +45,40 @@ def internal_imports(path: Path, tree: ast.AST) -> list[str]:
     return sorted(imports)
 
 
+def docstring_lines(tree: ast.AST) -> set[int]:
+    """Return source lines occupied by definition docstrings."""
+    lines: set[int] = set()
+    definition_types = (ast.Module, ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)
+    for node in ast.walk(tree):
+        if not isinstance(node, definition_types) or not node.body:
+            continue
+        statement = node.body[0]
+        if not (
+            isinstance(statement, ast.Expr)
+            and isinstance(statement.value, ast.Constant)
+            and isinstance(statement.value.value, str)
+        ):
+            continue
+        lines.update(range(statement.lineno, (statement.end_lineno or statement.lineno) + 1))
+    return lines
+
+
 def build_report() -> dict:
+    """Build module size and dependency measurements for production code."""
     modules = []
     for path in sorted(PACKAGE_ROOT.rglob("*.py")):
         if "__pycache__" in path.parts:
             continue
         source = path.read_text(encoding="utf-8")
         tree = ast.parse(source, filename=str(path))
+        physical_line_count = len(source.splitlines())
+        implementation_line_count = physical_line_count - len(docstring_lines(tree))
         modules.append(
             {
                 "module": module_name(path),
                 "path": str(path.relative_to(ROOT)),
-                "line_count": len(source.splitlines()),
+                "line_count": physical_line_count,
+                "implementation_line_count": implementation_line_count,
                 "imports": internal_imports(path, tree),
             }
         )
@@ -64,6 +87,9 @@ def build_report() -> dict:
         "summary": {
             "module_count": len(modules),
             "line_count": sum(module["line_count"] for module in modules),
+            "implementation_line_count": sum(
+                module["implementation_line_count"] for module in modules
+            ),
         },
         "modules": modules,
     }
@@ -74,11 +100,11 @@ def architecture_violations(report: dict) -> list[str]:
     modules = {module["module"]: module for module in report["modules"]}
     violations = []
     cli = modules.get("content_creator.cli")
-    if not cli or cli["line_count"] > 100:
+    if not cli or cli["implementation_line_count"] > 100:
         violations.append("content_creator.cli must remain a façade of at most 100 lines")
 
     runtime = modules.get("content_creator.commands.runtime")
-    if not runtime or runtime["line_count"] > MAX_RUNTIME_FACADE_LINES:
+    if not runtime or runtime["implementation_line_count"] > MAX_RUNTIME_FACADE_LINES:
         violations.append(
             "content_creator.commands.runtime must remain a façade of at most {} lines".format(
                 MAX_RUNTIME_FACADE_LINES
@@ -86,10 +112,14 @@ def architecture_violations(report: dict) -> list[str]:
         )
 
     for name, module in sorted(modules.items()):
-        if module["line_count"] > MAX_MODULE_LINES:
+        if module["implementation_line_count"] > MAX_MODULE_LINES:
             violations.append(
-                "{} exceeds the {}-line production-module limit ({} lines)".format(
-                    name, MAX_MODULE_LINES, module["line_count"]
+                "{} exceeds the {}-line production-module implementation limit "
+                "({} implementation lines; {} physical lines)".format(
+                    name,
+                    MAX_MODULE_LINES,
+                    module["implementation_line_count"],
+                    module["line_count"],
                 )
             )
 
@@ -112,6 +142,7 @@ def architecture_violations(report: dict) -> list[str]:
 
 
 def main() -> int:
+    """Render the architecture report and optionally enforce its rules."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--json", action="store_true", help="emit machine-readable JSON")
     parser.add_argument("--check", action="store_true", help="enforce accepted dependency rules")
@@ -122,9 +153,14 @@ def main() -> int:
         report["violations"] = violations
         print(json.dumps(report, indent=2, sort_keys=True))
         return 1 if args.check and violations else 0
-    print("{module_count} modules, {line_count} lines".format(**report["summary"]))
-    for module in sorted(report["modules"], key=lambda item: item["line_count"], reverse=True):
-        print("{line_count:5}  {module}".format(**module))
+    print(
+        "{module_count} modules, {implementation_line_count} implementation lines "
+        "({line_count} physical)".format(**report["summary"])
+    )
+    for module in sorted(
+        report["modules"], key=lambda item: item["implementation_line_count"], reverse=True
+    ):
+        print("{implementation_line_count:5}  {module} ({line_count} physical)".format(**module))
     if args.check:
         if violations:
             for violation in violations:

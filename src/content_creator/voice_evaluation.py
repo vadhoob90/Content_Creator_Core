@@ -1,3 +1,5 @@
+"""Provide voice evaluation capabilities."""
+
 from __future__ import annotations
 
 import json
@@ -10,6 +12,7 @@ from .voices import VoiceRegistry
 
 
 def evaluate_voice_output(root: Path, order: WorkOrder, draft: str) -> dict:
+    """Evaluate voice output."""
     if order.voice_id == "default":
         return {"passed": True, "errors": [], "overlap": {"passed": True, "matches": []}}
     resolved = VoiceRegistry(root).resolve(

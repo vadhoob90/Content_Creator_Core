@@ -10,6 +10,7 @@ from .context import CommandContext
 
 
 def show_overview(context: CommandContext) -> int:
+    """Show overview."""
     snapshot = ContentCoordinator(context.root).snapshot(context.arguments.run_limit)
     context.emit(snapshot) if context.arguments.json else print(render_overview(snapshot))
     return 0
@@ -20,6 +21,7 @@ def _clarification(
     snapshot: WorkspaceSnapshot,
     error: ClarificationRequired,
 ) -> int:
+    """Return the clarification."""
     if context.arguments.json:
         context.emit(
             {
@@ -34,6 +36,7 @@ def _clarification(
 
 
 def start(context: CommandContext) -> int:
+    """Start experience commands."""
     coordinator = ContentCoordinator(context.root)
     snapshot = coordinator.snapshot()
     if not context.arguments.request or not snapshot.is_workspace:
@@ -65,6 +68,7 @@ def start(context: CommandContext) -> int:
 
 
 def plan(context: CommandContext) -> int:
+    """Plan experience commands."""
     try:
         context.emit(
             context.orchestrator.plan_request(

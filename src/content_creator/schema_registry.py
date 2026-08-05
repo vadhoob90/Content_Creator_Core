@@ -20,6 +20,8 @@ SUPPORTED_READ_VERSIONS = ("legacy", "1.0")
 
 
 class SchemaCompatibilityError(ValueError):
+    """Report schema compatibility failures."""
+
     pass
 
 
@@ -33,6 +35,7 @@ SCHEMA_MODELS: Dict[str, Type[BaseModel]] = {
 
 
 def schema_catalogue() -> Dict[str, Dict[str, Any]]:
+    """Return the schema catalogue."""
     result: Dict[str, Dict[str, Any]] = {}
     for name, model in SCHEMA_MODELS.items():
         schema = model.model_json_schema()
@@ -48,6 +51,7 @@ def schema_catalogue() -> Dict[str, Dict[str, Any]]:
 
 
 def write_schema_bundle(destination: Path) -> Dict[str, Any]:
+    """Write schema bundle."""
     destination.mkdir(parents=True, exist_ok=True)
     entries = []
     for name, item in schema_catalogue().items():
@@ -67,6 +71,7 @@ def write_schema_bundle(destination: Path) -> Dict[str, Any]:
 
 
 def migrate_artifact(kind: str, payload: Dict[str, Any]) -> Dict[str, Any]:
+    """Return the migrate artifact."""
     if kind not in SCHEMA_MODELS:
         raise SchemaCompatibilityError("Unknown artifact schema: {}".format(kind))
     migrated = deepcopy(payload)

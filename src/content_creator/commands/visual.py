@@ -13,6 +13,7 @@ from ..visuals import VisualBrief, VisualCritique, VisualWorkflow
 
 
 def register(subparsers: Any) -> None:
+    """Register visual."""
     parser = subparsers.add_parser("visual", help="Manage visual assets for a reviewed run")
     commands = parser.add_subparsers(dest="visual_command", required=True)
     brief = commands.add_parser("brief", help="Create a typed visual brief")
@@ -31,6 +32,7 @@ def register(subparsers: Any) -> None:
 
 
 def run(root: Path, args: argparse.Namespace, emit: Callable[[Any], None]) -> int:
+    """Run visual."""
     workflow = VisualWorkflow(root)
     store = RunStore(root)
     state = store.load(args.run_id)

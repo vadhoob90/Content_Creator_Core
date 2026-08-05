@@ -10,6 +10,7 @@ from .context import CommandContext
 
 
 def _create_pack(context: CommandContext, packs: PackRegistry) -> int:
+    """Create pack."""
     arguments = context.arguments
     destination = context.root / "packs" / arguments.pack_id
     if destination.exists():
@@ -37,6 +38,7 @@ def _create_pack(context: CommandContext, packs: PackRegistry) -> int:
 
 
 def manage_pack(context: CommandContext) -> int:
+    """Manage pack."""
     packs = PackRegistry(context.root)
     arguments = context.arguments
     if arguments.pack_command == "create":

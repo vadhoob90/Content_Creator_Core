@@ -38,12 +38,16 @@ from .voices import (
 
 
 class VoiceBuildPipeline(VoiceProfileRenderer):
+    """Represent a voice build pipeline."""
+
     def __init__(self, root: Path, runner: Optional[AgentRunner], provider: Optional[str]):
+        """Initialize the voice build pipeline."""
         self.root = root
         self.runner = runner
         self.provider = provider
 
     def build(self, order: VoiceWorkOrder) -> VoiceManifest:
+        """Build voice build pipeline."""
         state = self._prepare(order)
         self._collect_sources(state)
         self._analyse_corpus(state)
@@ -55,6 +59,7 @@ class VoiceBuildPipeline(VoiceProfileRenderer):
         return manifest
 
     def _prepare(self, order: VoiceWorkOrder) -> BuildState:
+        """Prepare voice build pipeline."""
         if order.strategy != VoiceStrategy.SOURCE_DERIVED:
             raise VoiceBuildError(
                 "Starter voices are activated from their template; select "
@@ -73,6 +78,7 @@ class VoiceBuildPipeline(VoiceProfileRenderer):
         )
 
     def _collect_sources(self, state: BuildState) -> None:
+        """Collect sources."""
         for index, locator in enumerate(state.order.urls + state.order.documents, start=1):
             try:
                 self._collect_source(state, locator, f"source-{index:03d}")
@@ -85,6 +91,7 @@ class VoiceBuildPipeline(VoiceProfileRenderer):
                 )
 
     def _collect_source(self, state: BuildState, locator: str, source_id: str) -> None:
+        """Collect source."""
         cache_path = state.cache / f"{source_id}.txt"
         metadata_path = state.cache / f"{source_id}.meta.json"
         kind, title, text = self._read_source(locator, cache_path, metadata_path)
@@ -122,6 +129,7 @@ class VoiceBuildPipeline(VoiceProfileRenderer):
 
     @staticmethod
     def _read_source(locator: str, cache_path: Path, metadata_path: Path) -> tuple[str, str, str]:
+        """Read source."""
         if not (locator.startswith(("http://", "https://")) and cache_path.exists()):
             return read_source(locator)
         text = normalize_text(cache_path.read_text(encoding="utf-8"))
@@ -142,6 +150,7 @@ class VoiceBuildPipeline(VoiceProfileRenderer):
         text: str,
         locally_attested: bool,
     ) -> AttributionResult:
+        """Return the attribution."""
         if locally_attested:
             return AttributionResult(
                 classification="directly_authored",
@@ -181,6 +190,7 @@ class VoiceBuildPipeline(VoiceProfileRenderer):
         title: str,
         text: str,
     ) -> None:
+        """Return the cache source."""
         RunStore._atomic_text(cache_path, text)
         metadata = {
             "locator": locator,
@@ -191,6 +201,7 @@ class VoiceBuildPipeline(VoiceProfileRenderer):
         RunStore._atomic_text(metadata_path, json.dumps(metadata, indent=2))
 
     def _analyse_corpus(self, state: BuildState) -> None:
+        """Return the analyse corpus."""
         state.corpus = assess_corpus(state.sources, state.order.authorisation.intended_uses)
         if state.final_candidate.exists() and not state.corpus["sufficient"]:
             raise VoiceBuildError(
@@ -222,6 +233,7 @@ class VoiceBuildPipeline(VoiceProfileRenderer):
         state.patterns = self._patterns(state.analysis_records, state.signature)
 
     def _analyse_patterns(self, state: BuildState) -> None:
+        """Return the analyse patterns."""
         if not (self.runner and state.analysis_records):
             return
         analysis = self.runner.run(
@@ -248,6 +260,7 @@ class VoiceBuildPipeline(VoiceProfileRenderer):
         state.patterns = self._reviewed_patterns(analysis, criticism, approved_ids)
 
     def _analysis_payload(self, state: BuildState) -> dict:
+        """Return the analysis payload."""
         return {
             "person": state.order.attribution_name,
             "voice_label": state.order.display_name,
@@ -274,6 +287,7 @@ class VoiceBuildPipeline(VoiceProfileRenderer):
         criticism: ProfileCriticism,
         approved_ids: set[str],
     ) -> List[VoicePattern]:
+        """Return the reviewed patterns."""
         reviewed = []
         for pattern in analysis.patterns:
             pattern.supporting_source_ids = [
@@ -289,6 +303,7 @@ class VoiceBuildPipeline(VoiceProfileRenderer):
         return reviewed
 
     def _write_profile_artifacts(self, state: BuildState) -> tuple[str, dict, dict]:
+        """Write profile artifacts."""
         state.candidate.mkdir(parents=True, exist_ok=True)
         constraints = {
             "never_invent_personal_context": True,
@@ -326,6 +341,7 @@ class VoiceBuildPipeline(VoiceProfileRenderer):
 
     @staticmethod
     def _write_agent_artifacts(state: BuildState) -> None:
+        """Write agent artifacts."""
         optional_artifacts = {
             "analyst-report.json": state.analysis_artifact,
             "critic-report.json": state.criticism_artifact,
@@ -337,6 +353,7 @@ class VoiceBuildPipeline(VoiceProfileRenderer):
     def _evaluate(
         self, state: BuildState, profile: str, constraints: dict, voice_rubric: dict
     ) -> dict:
+        """Evaluate voice build pipeline."""
         evaluation = {
             "schema_version": "1.0",
             "passed": state.corpus["sufficient"] and bool(state.patterns),
@@ -371,6 +388,7 @@ class VoiceBuildPipeline(VoiceProfileRenderer):
         constraints: dict,
         voice_rubric: dict,
     ) -> None:
+        """Apply agent evaluation."""
         if self.runner is None:
             return
         judgement = self.runner.run(
@@ -392,6 +410,7 @@ class VoiceBuildPipeline(VoiceProfileRenderer):
     def _evaluation_payload(
         state: BuildState, profile: str, constraints: dict, voice_rubric: dict
     ) -> dict:
+        """Return the evaluation payload."""
         return {
             "profile": profile,
             "constraints": constraints,
@@ -417,6 +436,7 @@ class VoiceBuildPipeline(VoiceProfileRenderer):
         }
 
     def _write_manifest(self, state: BuildState, evaluation: dict) -> VoiceManifest:
+        """Write manifest."""
         components = {
             "profile": "profile.md",
             "constraints": "constraints.json",
@@ -465,6 +485,7 @@ class VoiceBuildPipeline(VoiceProfileRenderer):
 
     @staticmethod
     def _activate_candidate(state: BuildState) -> None:
+        """Activate candidate."""
         previous = state.voice_root / ".candidate-previous"
         if previous.exists():
             shutil.rmtree(previous)

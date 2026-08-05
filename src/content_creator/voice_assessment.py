@@ -1,3 +1,5 @@
+"""Provide voice assessment capabilities."""
+
 from __future__ import annotations
 
 import json
@@ -19,10 +21,12 @@ _NON_STYLE_FEATURES = {"word_count", "sentence_count", "paragraph_count"}
 
 
 def score_preference_path(root: Path, voice_id: str) -> Path:
+    """Score preference path."""
     return root.resolve() / "profiles" / voice_id / "statistical-voice-score.json"
 
 
 def load_score_preference(root: Path, voice_id: str) -> Optional[Dict[str, Any]]:
+    """Load score preference."""
     path = score_preference_path(root, voice_id)
     if not path.exists():
         return None
@@ -44,6 +48,7 @@ def save_score_preference(
     method: str,
     selected_by: Optional[str] = None,
 ) -> Dict[str, Any]:
+    """Save score preference."""
     if method not in SCORE_METHODS:
         raise ValueError("Statistical voice score method must be deterministic or ml")
     preference = {
@@ -64,6 +69,7 @@ def save_score_preference(
 def resolve_score_policy(
     root: Path, voice_id: str, workspace_policy: Dict[str, Any]
 ) -> Dict[str, Any]:
+    """Resolve score policy."""
     policy = dict(workspace_policy)
     preference = load_score_preference(root, voice_id)
     if preference is not None:
@@ -80,6 +86,7 @@ def _unavailable(
     reason: str,
     method: str = "deterministic",
 ) -> Dict[str, Any]:
+    """Return the unavailable."""
     return {
         "schema_version": "1.0",
         "type": SCORE_TYPE,
@@ -102,6 +109,8 @@ def _unavailable(
 
 @dataclass(frozen=True)
 class LinguisticAssessmentOptions:
+    """Configure a linguistic voice assessment."""
+
     voice_id: str
     voice_version: Optional[str]
     minimum_sources: int = 20
@@ -150,6 +159,7 @@ def _baseline(
     signature: Dict[str, Any],
     options: LinguisticAssessmentOptions,
 ) -> tuple[dict, dict, int]:
+    """Return the baseline."""
     profiles = signature.get("source_profiles", [])
     written_profiles = [
         item for item in profiles if item.get("context", {}).get("mode") == "written"
@@ -177,6 +187,7 @@ def _short_draft_report(
     baseline_details: dict,
     word_count: int,
 ) -> Dict[str, Any]:
+    """Return the short draft report."""
     report = _unavailable(
         options.voice_id,
         options.voice_version,
@@ -193,6 +204,7 @@ def _outliers(
     baseline: dict,
     multiplier: float,
 ) -> tuple[List[Dict[str, Any]], int, int]:
+    """Return the outliers."""
     outliers: List[Dict[str, Any]] = []
     evaluated = 0
     eligible = 0
@@ -244,6 +256,7 @@ def _no_variation_report(
     baseline_details: dict,
     word_count: int,
 ) -> Dict[str, Any]:
+    """Return the no variation report."""
     report = _unavailable(
         options.voice_id,
         options.voice_version,
@@ -265,6 +278,7 @@ def _assessment_report(
     evaluated: int,
     eligible: int,
 ) -> Dict[str, Any]:
+    """Return the assessment report."""
     outliers.sort(key=lambda item: (-item["distance_beyond_envelope_iqr"], item["feature"]))
     reported = outliers[: options.max_reported_outliers]
     # Only distance beyond the tolerated IQR envelope is penalised. Values

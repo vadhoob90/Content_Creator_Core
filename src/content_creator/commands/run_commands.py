@@ -20,6 +20,7 @@ from .context import CommandContext
 
 
 def _brief_order(context: CommandContext) -> WorkOrder:
+    """Return the brief order."""
     arguments = context.arguments
     brief_fields = yaml.safe_load(Path(arguments.brief).read_text(encoding="utf-8"))
     research = brief_fields.pop("research", {}) or {}
@@ -33,6 +34,7 @@ def _brief_order(context: CommandContext) -> WorkOrder:
 
 
 def _explicit_order(context: CommandContext) -> WorkOrder:
+    """Return the explicit order."""
     arguments = context.arguments
     if not arguments.request:
         raise ValueError("run requires a request or --brief")
@@ -71,6 +73,7 @@ def _explicit_order(context: CommandContext) -> WorkOrder:
 
 
 def _planned_order(context: CommandContext) -> WorkOrder | None:
+    """Return the planned order."""
     arguments = context.arguments
     if not arguments.request:
         raise ValueError("run requires a request or --brief")
@@ -85,6 +88,7 @@ def _planned_order(context: CommandContext) -> WorkOrder | None:
 
 
 def _build_order(context: CommandContext) -> WorkOrder | None:
+    """Build order."""
     arguments = context.arguments
     if arguments.brief:
         return _brief_order(context)
@@ -94,6 +98,7 @@ def _build_order(context: CommandContext) -> WorkOrder | None:
 
 
 def _apply_perspective(order: WorkOrder, context: CommandContext) -> None:
+    """Apply perspective."""
     arguments = context.arguments
     if arguments.no_perspective:
         order.perspective_mode = PerspectiveMode.DISABLED
@@ -121,6 +126,7 @@ def _apply_perspective(order: WorkOrder, context: CommandContext) -> None:
 
 
 def _apply_contribution(order: WorkOrder, context: CommandContext) -> None:
+    """Apply contribution."""
     arguments = context.arguments
     if not any(
         (
@@ -142,6 +148,7 @@ def _apply_contribution(order: WorkOrder, context: CommandContext) -> None:
 
 
 def _apply_lineage(order: WorkOrder, context: CommandContext) -> None:
+    """Apply lineage."""
     arguments = context.arguments
     if arguments.parent_run:
         parent = context.orchestrator.store.load(arguments.parent_run)
@@ -152,6 +159,7 @@ def _apply_lineage(order: WorkOrder, context: CommandContext) -> None:
 
 
 def run(context: CommandContext) -> int:
+    """Run run commands."""
     order = _build_order(context)
     if order is None:
         return 3
