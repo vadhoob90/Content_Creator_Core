@@ -17,7 +17,11 @@ from .storage import RunStore
 
 
 def _passing_critique() -> Dict:
-    """Return the passing critique."""
+    """Return the passing critique.
+
+    Returns:
+        Dict: The structured resulting data for passing critique.
+    """
     return {
         "scores": {
             "hook": 9,
@@ -34,7 +38,14 @@ def _passing_critique() -> Dict:
 
 
 def _draft(order: WorkOrder) -> str:
-    """Return the draft."""
+    """Return the draft.
+
+    Args:
+        order (WorkOrder): The work order that defines the requested content run.
+
+    Returns:
+        str: The resulting text for draft.
+    """
     link = " [Source](https://example.org/source)." if order.research_depth.value != "none" else "."
     if order.format == "article":
         paragraph = (
@@ -61,7 +72,11 @@ def _draft(order: WorkOrder) -> str:
 
 
 def _research() -> Dict:
-    """Return the research."""
+    """Return the research.
+
+    Returns:
+        Dict: The structured resulting data for research.
+    """
     return ResearchBrief(
         summary="A bounded evidence brief",
         evidence=[
@@ -76,7 +91,14 @@ def _research() -> Dict:
 
 
 def load_cases(root: Path) -> List[Dict]:
-    """Load cases."""
+    """Load the cases.
+
+    Args:
+        root (Path): The workspace root directory.
+
+    Returns:
+        List[Dict]: The loaded cases values in their documented order.
+    """
     cases = []
     resources = ResourceResolver(root)
     for path in resources.matching("evals/cases", "*.yaml"):
@@ -89,7 +111,18 @@ def load_cases(root: Path) -> List[Dict]:
 
 
 def run_replay_suite(root: Path, providers: Iterable[str]) -> Dict:
-    """Run replay suite."""
+    """Run the replay suite.
+
+    Execute deterministic offline cases across provider contracts and compare each
+    observed route and outcome with its fixture expectations.
+
+    Args:
+        root (Path): The workspace root directory.
+        providers (Iterable[str]): The providers value passed to run replay suite.
+
+    Returns:
+        Dict: The structured execution data for replay suite.
+    """
     outcomes = []
     for provider_name in providers:
         for case in load_cases(root):
@@ -135,7 +168,18 @@ def run_replay_suite(root: Path, providers: Iterable[str]) -> Dict:
 
 
 def run_live_suite(root: Path, providers: Iterable[str]) -> Dict:
-    """Run two bounded flagship cases against real provider adapters."""
+    """Run two bounded flagship cases against real provider adapters.
+
+    Execute bounded live-provider cases, capture their outcomes, and preserve the same
+    evaluation contract used by replay mode.
+
+    Args:
+        root (Path): The workspace root directory.
+        providers (Iterable[str]): The providers value passed to run live suite.
+
+    Returns:
+        Dict: The structured execution data for live suite.
+    """
     flagship_ids = {"post-none", "human-machine-deep"}
     cases = [case for case in load_cases(root) if case["id"] in flagship_ids]
     outcomes = []

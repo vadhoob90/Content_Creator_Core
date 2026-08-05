@@ -63,12 +63,23 @@ class VoiceRegistry:
     """Manage voice records."""
 
     def __init__(self, root: Path):
-        """Initialize the voice registry."""
+        """Initialize the voice registry with its required state and collaborators.
+
+        Args:
+            root (Path): The workspace root directory.
+
+        Returns:
+            None: The instance is initialized in place and no value is returned.
+        """
         self.root = root.resolve()
         self.path = self.root / "profiles" / "registry.json"
 
     def _read(self) -> Dict:
-        """Read voice registry."""
+        """Read the voice registry workflow.
+
+        Returns:
+            Dict: The structured loaded data for value.
+        """
         if not self.path.exists():
             return {"schema_version": "1.0", "profiles": {}}
         data = json.loads(self.path.read_text(encoding="utf-8"))
@@ -77,11 +88,25 @@ class VoiceRegistry:
         return data
 
     def list(self) -> Dict:
-        """List voice registry."""
+        """List the voice registry workflow.
+
+        Returns:
+            Dict: The structured available data for value.
+        """
         return self._read()["profiles"]
 
     def get(self, voice_id: str) -> Dict:
-        """Return the voice registry."""
+        """Retrieve the voice registry managed by voice registry.
+
+        Args:
+            voice_id (str): The stable identifier for the selected voice.
+
+        Returns:
+            Dict: The structured resulting data for get.
+
+        Raises:
+            VoiceError: If the voice operation cannot complete.
+        """
         item = self.list().get(voice_id)
         if not item:
             raise VoiceError("Unknown voice: {}".format(voice_id))
@@ -93,7 +118,24 @@ class VoiceRegistry:
         version: Optional[str] = None,
         allow_inactive: bool = False,
     ) -> Dict:
-        """Resolve voice registry."""
+        """Resolve the voice registry workflow.
+
+        Resolve an active voice and immutable version, verify its artifact hashes, and
+        reject inactive records unless explicitly allowed.
+
+        Args:
+            voice_id (str): The stable identifier for the selected voice.
+            version (Optional[str]): The immutable artifact or schema version identifier.
+                Defaults to ``None``.
+            allow_inactive (bool): Whether allow inactive behavior is enabled. Defaults to
+                ``False``.
+
+        Returns:
+            Dict: The structured resolved data for value.
+
+        Raises:
+            VoiceError: If the voice operation cannot complete.
+        """
         if voice_id == "default" and voice_id not in self.list():
             workspace_onboarding = sorted((self.root / "profiles").glob("*/onboarding.json"))
             if workspace_onboarding:
@@ -170,7 +212,21 @@ class VoiceRegistry:
         intended_uses: List[str],
         template_id: str = STARTER_TEMPLATE_ID,
     ) -> Dict[str, Any]:
-        """Activate starter."""
+        """Activate the starter.
+
+        Args:
+            voice_id (str): The stable identifier for the selected voice.
+            display_name (str): The human-readable name shown to users.
+            author_name (str): The author's display name.
+            selected_by (str): The selected by text processed when activate starter.
+            intended_uses (List[str]): The intended uses collection consumed while activate
+                starter.
+            template_id (str): The stable identifier for the template. Defaults to
+                ``STARTER_TEMPLATE_ID``.
+
+        Returns:
+            Dict[str, Any]: The structured resulting data for activate starter.
+        """
         from .starter_voice import StarterVoiceRequest, activate_starter
 
         request = StarterVoiceRequest(
@@ -189,13 +245,34 @@ class VoiceRegistry:
         approved_by: str,
         override_reason: Optional[str] = None,
     ) -> VoiceApprovalReceipt:
-        """Activate voice registry."""
+        """Activate the voice registry workflow.
+
+        Args:
+            voice_id (str): The stable identifier for the selected voice.
+            approved_by (str): The reviewer identity recorded with the approval.
+            override_reason (Optional[str]): The override reason text processed when
+                activate. Defaults to ``None``.
+
+        Returns:
+            VoiceApprovalReceipt: The resulting voice approval receipt for activate.
+        """
         from .voice_activation import activate_candidate
 
         return activate_candidate(self, voice_id, approved_by, override_reason)
 
     def deactivate(self, voice_id: str, reason: str) -> Dict:
-        """Deactivate voice registry."""
+        """Deactivate the voice registry workflow.
+
+        Args:
+            voice_id (str): The stable identifier for the selected voice.
+            reason (str): The human-readable reason recorded for the decision.
+
+        Returns:
+            Dict: The structured resulting data for deactivate.
+
+        Raises:
+            VoiceError: If the voice operation cannot complete.
+        """
         registry = self._read()
         item = registry["profiles"].get(voice_id)
         if not item:
@@ -208,5 +285,12 @@ class VoiceRegistry:
 
 
 def voice_id_for(name: str) -> str:
-    """Return the voice id for."""
+    """Return the voice id for.
+
+    Args:
+        name (str): The stable or human-readable name for the domain object.
+
+    Returns:
+        str: The resulting text for voice id for.
+    """
     return slugify(name)

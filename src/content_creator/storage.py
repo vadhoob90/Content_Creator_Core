@@ -29,7 +29,14 @@ class IdempotencyError(ValueError):
 
 
 def slugify(value: str) -> str:
-    """Return the slugify."""
+    """Convert an identifier into a filesystem-safe slug.
+
+    Args:
+        value (str): The value to process.
+
+    Returns:
+        str: The resulting text for slugify.
+    """
     value = re.sub(r"[^a-z0-9]+", "-", value.lower()).strip("-")
     return value[:70] or "untitled"
 
@@ -38,13 +45,27 @@ class RunStore:
     """Manage run records."""
 
     def __init__(self, root: Path):
-        """Initialize the run store."""
+        """Initialize the run store with its required state and collaborators.
+
+        Args:
+            root (Path): The workspace root directory.
+
+        Returns:
+            None: The instance is initialized in place and no value is returned.
+        """
         self.root = root.resolve()
         self.runs_dir = self.root / "runs"
         self.runs_dir.mkdir(parents=True, exist_ok=True)
 
     def create(self, state: RunState) -> RunState:
-        """Create run store."""
+        """Create the run store workflow.
+
+        Args:
+            state (RunState): The persisted lifecycle state to inspect or update.
+
+        Returns:
+            RunState: The created run state for value.
+        """
         run_dir = self.run_dir(state.id)
         run_dir.mkdir(parents=True, exist_ok=False)
         self.save_state(state)
@@ -56,7 +77,22 @@ class RunStore:
         idempotency_key: str,
         fingerprint: str,
     ) -> Tuple[RunState, bool]:
-        """Create idempotent."""
+        """Create the idempotent.
+
+        Create a run exactly once for an idempotency key, returning the existing run only
+        when its submission fingerprint matches.
+
+        Args:
+            state (RunState): The persisted lifecycle state to inspect or update.
+            idempotency_key (str): The stable retry key for an equivalent submission.
+            fingerprint (str): The deterministic fingerprint identifying the input set.
+
+        Returns:
+            Tuple[RunState, bool]: The created idempotent values in their documented order.
+
+        Raises:
+            StorageError: If the storage operation cannot complete.
+        """
         key_hash = self.idempotency_key_hash(idempotency_key)
         database = self._idempotency_database()
         connection = None
@@ -102,7 +138,20 @@ class RunStore:
         idempotency_key: str,
         fingerprint: Optional[str] = None,
     ) -> Optional[RunState]:
-        """Load by idempotency key."""
+        """Load the by idempotency key.
+
+        Args:
+            idempotency_key (str): The stable retry key for an equivalent submission.
+            fingerprint (Optional[str]): The deterministic fingerprint identifying the input
+                set. Defaults to ``None``.
+
+        Returns:
+            Optional[RunState]: The loaded by idempotency key when available; otherwise
+                ``None``.
+
+        Raises:
+            StorageError: If the storage operation cannot complete.
+        """
         key_hash = self.idempotency_key_hash(idempotency_key)
         database = self.root / ".content-creator" / "idempotency.sqlite3"
         if not database.exists():
@@ -127,7 +176,17 @@ class RunStore:
 
     @staticmethod
     def idempotency_key_hash(idempotency_key: str) -> str:
-        """Return the idempotency key hash."""
+        """Return the idempotency key hash.
+
+        Args:
+            idempotency_key (str): The stable retry key for an equivalent submission.
+
+        Returns:
+            str: The resulting text for idempotency key hash.
+
+        Raises:
+            IdempotencyError: If the idempotency operation cannot complete.
+        """
         if not isinstance(idempotency_key, str) or not re.fullmatch(
             r"[A-Za-z0-9][A-Za-z0-9._:-]{0,127}", idempotency_key
         ):
@@ -143,7 +202,20 @@ class RunStore:
         fingerprint: str,
         existing: sqlite3.Row,
     ) -> RunState:
-        """Return the existing submission."""
+        """Return the existing submission.
+
+        Args:
+            key_hash (str): The key hash text processed when existing submission.
+            fingerprint (str): The deterministic fingerprint identifying the input set.
+            existing (sqlite3.Row): The existing value passed to existing submission.
+
+        Returns:
+            RunState: The resulting run state for existing submission.
+
+        Raises:
+            IdempotencyError: If the idempotency operation cannot complete.
+            StorageError: If the storage operation cannot complete.
+        """
         if existing[0] != fingerprint:
             raise IdempotencyError(
                 "Idempotency key is already associated with a different work order"
@@ -155,14 +227,26 @@ class RunStore:
         return state
 
     def _idempotency_database(self) -> Path:
-        """Return the idempotency database."""
+        """Return the idempotency database.
+
+        Returns:
+            Path: The resolved filesystem path for idempotency database.
+        """
         directory = self.root / ".content-creator"
         directory.mkdir(parents=True, exist_ok=True)
         return directory / "idempotency.sqlite3"
 
     @staticmethod
     def _ensure_idempotency_schema(connection: sqlite3.Connection) -> None:
-        """Ensure idempotency schema."""
+        """Return the ensure idempotency schema.
+
+        Args:
+            connection (sqlite3.Connection): The connection value passed to ensure
+                idempotency schema.
+
+        Returns:
+            None: The callable updates ensure idempotency schema state and returns no value.
+        """
         connection.execute(
             "CREATE TABLE IF NOT EXISTS submissions ("
             "key_hash TEXT PRIMARY KEY, "
@@ -174,14 +258,31 @@ class RunStore:
         connection.commit()
 
     def load(self, run_id: str) -> RunState:
-        """Load run store."""
+        """Load the run store workflow.
+
+        Args:
+            run_id (str): The stable identifier for the content run.
+
+        Returns:
+            RunState: The loaded run state for value.
+
+        Raises:
+            StorageError: If the storage operation cannot complete.
+        """
         path = self.run_dir(run_id) / "state.json"
         if not path.exists():
             raise StorageError("Unknown run: {}".format(run_id))
         return RunState.model_validate_json(path.read_text(encoding="utf-8"))
 
     def save_state(self, state: RunState) -> None:
-        """Save state."""
+        """Save the state.
+
+        Args:
+            state (RunState): The persisted lifecycle state to inspect or update.
+
+        Returns:
+            None: The callable updates state state and returns no value.
+        """
         state.updated_at = utc_now()
         self._atomic_text(
             self.run_dir(state.id) / "state.json",
@@ -189,7 +290,16 @@ class RunStore:
         )
 
     def write_artifact(self, run_id: str, name: str, value: Any) -> Path:
-        """Write artifact."""
+        """Write the artifact.
+
+        Args:
+            run_id (str): The stable identifier for the content run.
+            name (str): The stable or human-readable name for the domain object.
+            value (Any): The value to process.
+
+        Returns:
+            Path: The resolved filesystem path for write artifact.
+        """
         path = self.run_dir(run_id) / name
         if isinstance(value, BaseModel):
             content = value.model_dump_json(indent=2)
@@ -201,21 +311,50 @@ class RunStore:
         return path
 
     def read_artifact(self, run_id: str, name: str) -> str:
-        """Read artifact."""
+        """Read the artifact.
+
+        Args:
+            run_id (str): The stable identifier for the content run.
+            name (str): The stable or human-readable name for the domain object.
+
+        Returns:
+            str: The loaded text for artifact.
+
+        Raises:
+            StorageError: If the storage operation cannot complete.
+        """
         path = self.run_dir(run_id) / name
         if not path.exists():
             raise StorageError("Missing artifact: {}".format(path))
         return path.read_text(encoding="utf-8")
 
     def run_dir(self, run_id: str) -> Path:
-        """Run dir."""
+        """Run the dir.
+
+        Args:
+            run_id (str): The stable identifier for the content run.
+
+        Returns:
+            Path: The resolved filesystem path for dir.
+
+        Raises:
+            StorageError: If the storage operation cannot complete.
+        """
         if not re.fullmatch(r"[a-zA-Z0-9_-]+", run_id):
             raise StorageError("Invalid run id")
         return self.runs_dir / run_id
 
     @staticmethod
     def _atomic_text(path: Path, content: str) -> None:
-        """Return the atomic text."""
+        """Return the atomic text.
+
+        Args:
+            path (Path): The filesystem path to inspect or update.
+            content (str): The content to process.
+
+        Returns:
+            None: The callable updates atomic text state and returns no value.
+        """
         path.parent.mkdir(parents=True, exist_ok=True)
         fd, temporary = tempfile.mkstemp(prefix=".tmp-", dir=str(path.parent))
         try:
@@ -229,5 +368,12 @@ class RunStore:
 
 
 def load_json(path: Path) -> Dict[str, Any]:
-    """Load json."""
+    """Load the json.
+
+    Args:
+        path (Path): The filesystem path to inspect or update.
+
+    Returns:
+        Dict[str, Any]: The structured loaded data for json.
+    """
     return json.loads(path.read_text(encoding="utf-8"))

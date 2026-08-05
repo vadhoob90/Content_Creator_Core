@@ -15,7 +15,18 @@ class VoiceProfileRenderer:
         records: List[SourceRecord],
         signature: dict,
     ) -> List[VoicePattern]:
-        """Return the patterns."""
+        """Return the patterns.
+
+        Convert corpus statistics into evidence-linked voice patterns while keeping
+        observations separate from generation targets.
+
+        Args:
+            records (List[SourceRecord]): The ordered persisted records to process.
+            signature (dict): The statistical voice signature used for comparison.
+
+        Returns:
+            List[VoicePattern]: The resulting patterns values in their documented order.
+        """
         if not records:
             return []
         ids = [record.id for record in records]
@@ -58,7 +69,16 @@ class VoiceProfileRenderer:
 
     @staticmethod
     def _profile(order: VoiceWorkOrder, patterns: List[VoicePattern], corpus: dict) -> str:
-        """Return the profile."""
+        """Return the profile.
+
+        Args:
+            order (VoiceWorkOrder): The work order that defines the requested content run.
+            patterns (List[VoicePattern]): The patterns collection consumed while profile.
+            corpus (dict): The source corpus used for analysis or training.
+
+        Returns:
+            str: The resulting text for profile.
+        """
         lines = VoiceProfileRenderer._profile_header(order, patterns, corpus)
         status_counts: Dict[str, int] = {}
         for item in patterns:
@@ -80,7 +100,17 @@ class VoiceProfileRenderer:
         patterns: List[VoicePattern],
         corpus: dict,
     ) -> list[str]:
-        """Return the profile header."""
+        """Return the profile header.
+
+        Args:
+            order (VoiceWorkOrder): The work order that defines the requested content run.
+            patterns (List[VoicePattern]): The patterns collection consumed while profile
+                header.
+            corpus (dict): The source corpus used for analysis or training.
+
+        Returns:
+            list[str]: The resulting profile header values in their documented order.
+        """
         return [
             "# Voice Profile: {}".format(order.display_name),
             "",
@@ -116,7 +146,16 @@ class VoiceProfileRenderer:
 
     @staticmethod
     def _append_patterns(lines: list[str], patterns: List[VoicePattern]) -> None:
-        """Return the append patterns."""
+        """Return the append patterns.
+
+        Args:
+            lines (list[str]): The lines collection consumed while append patterns.
+            patterns (List[VoicePattern]): The patterns collection consumed while append
+                patterns.
+
+        Returns:
+            None: The callable updates append patterns state and returns no value.
+        """
         current_category = None
         for index, item in enumerate(patterns, start=1):
             category = item.category.replace("-", " ").title()
@@ -156,7 +195,14 @@ class VoiceProfileRenderer:
 
     @staticmethod
     def _evidence_limits(corpus: dict) -> list[str]:
-        """Return the evidence limits."""
+        """Return the evidence limits.
+
+        Args:
+            corpus (dict): The source corpus used for analysis or training.
+
+        Returns:
+            list[str]: The resulting evidence limits values in their documented order.
+        """
         return [
             "## Evidence limits",
             "",

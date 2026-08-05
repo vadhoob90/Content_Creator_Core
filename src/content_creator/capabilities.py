@@ -1,4 +1,4 @@
-"""Optional run capabilities kept outside the core orchestration lifecycle."""
+"""Provide capabilities contracts and behavior."""
 
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ from .voice_assessment import assess_voice_draft, resolve_score_policy
 
 
 class RunCapabilities(Protocol):
-    """Narrow seam for add-ons that may enrich, but never own, a run."""
+    """Represent the run capabilities contract."""
 
     visuals: VisualWorkflow
 
@@ -22,19 +22,45 @@ class RunCapabilities(Protocol):
         configured_policy: Dict[str, Any],
         eligible: bool,
     ) -> Optional[Dict[str, Any]]:
-        """Assess voice."""
+        """Assess the voice.
+
+        Args:
+            voice_id (str): The stable identifier for the selected voice.
+            voice_version (Optional[str]): The immutable version of the selected voice
+                profile.
+            draft (str): The draft content to evaluate or transform.
+            configured_policy (Dict[str, Any]): The configured policy collection consumed
+                while assess voice.
+            eligible (bool): Whether eligible behavior is enabled.
+
+        Returns:
+            Optional[Dict[str, Any]]: The assessment voice when available; otherwise
+                ``None``.
+
+        Raises:
+            NotImplementedError: If the not implemented operation cannot complete.
+        """
         raise NotImplementedError
 
 
 class DefaultRunCapabilities:
-    """Built-in adapters for optional visual and statistical voice features."""
+    """Represent the default run capabilities contract."""
 
     def __init__(
         self,
         root: Path,
         visual_adapters: Optional[VisualAdapterRegistry] = None,
     ):
-        """Initialize the default run capabilities."""
+        """Initialize the default run capabilities.
+
+        Args:
+            root (Path): The workspace root directory.
+            visual_adapters (Optional[VisualAdapterRegistry]): The visual adapters value
+                passed to init. Defaults to ``None``.
+
+        Returns:
+            None: The instance is initialized in place and no value is returned.
+        """
         self.root = root.resolve()
         self.visuals = VisualWorkflow(self.root, visual_adapters)
 
@@ -46,7 +72,21 @@ class DefaultRunCapabilities:
         configured_policy: Dict[str, Any],
         eligible: bool,
     ) -> Optional[Dict[str, Any]]:
-        """Assess voice."""
+        """Assess the voice.
+
+        Args:
+            voice_id (str): The stable identifier for the selected voice.
+            voice_version (Optional[str]): The immutable version of the selected voice
+                profile.
+            draft (str): The draft content to evaluate or transform.
+            configured_policy (Dict[str, Any]): The configured policy collection consumed
+                while assess voice.
+            eligible (bool): Whether eligible behavior is enabled.
+
+        Returns:
+            Optional[Dict[str, Any]]: The assessment voice when available; otherwise
+                ``None``.
+        """
         policy = resolve_score_policy(self.root, voice_id, configured_policy)
         if not policy["enabled"] or not eligible:
             return None

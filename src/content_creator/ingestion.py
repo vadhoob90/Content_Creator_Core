@@ -20,7 +20,14 @@ class IngestionError(RuntimeError):
 
 
 def normalize_text(value: str) -> str:
-    """Normalize text."""
+    """Return the normalize text.
+
+    Args:
+        value (str): The value to process.
+
+    Returns:
+        str: The resulting text for normalize text.
+    """
     value = html.unescape(value)
     value = value.replace("\r\n", "\n").replace("\r", "\n")
     lines = [re.sub(r"[^\S\n]+", " ", line).strip() for line in value.splitlines()]
@@ -30,12 +37,26 @@ def normalize_text(value: str) -> str:
 
 
 def content_hash(value: str) -> str:
-    """Return the content hash."""
+    """Return the content hash.
+
+    Args:
+        value (str): The value to process.
+
+    Returns:
+        str: The resulting text for content hash.
+    """
     return "sha256:" + hashlib.sha256(value.encode("utf-8")).hexdigest()
 
 
 def _html_text(raw: str) -> Tuple[str, str]:
-    """Return the html text."""
+    """Return the html text.
+
+    Args:
+        raw (str): The raw text processed when html text.
+
+    Returns:
+        Tuple[str, str]: The resulting html text values in their documented order.
+    """
     title_match = re.search(r"<title[^>]*>(.*?)</title>", raw, re.I | re.S)
     title = normalize_text(re.sub(r"<[^>]+>", " ", title_match.group(1))) if title_match else ""
     raw = re.sub(r"<(script|style|nav|footer|header)[^>]*>.*?</\1>", " ", raw, flags=re.I | re.S)
@@ -49,7 +70,14 @@ def _html_text(raw: str) -> Tuple[str, str]:
 
 
 def _docx_text(path: Path) -> str:
-    """Return the docx text."""
+    """Return the docx text.
+
+    Args:
+        path (Path): The filesystem path to inspect or update.
+
+    Returns:
+        str: The resulting text for docx text.
+    """
     with zipfile.ZipFile(path) as archive:
         root = ElementTree.fromstring(archive.read("word/document.xml"))
     paragraphs = []
@@ -61,7 +89,17 @@ def _docx_text(path: Path) -> str:
 
 
 def _pdf_text(path: Path) -> str:
-    """Return the pdf text."""
+    """Return the pdf text.
+
+    Args:
+        path (Path): The filesystem path to inspect or update.
+
+    Returns:
+        str: The resulting text for pdf text.
+
+    Raises:
+        IngestionError: If the ingestion operation cannot complete.
+    """
     try:
         from pypdf import PdfReader
     except ImportError as exc:
@@ -70,7 +108,17 @@ def _pdf_text(path: Path) -> str:
 
 
 def read_source(locator: str) -> Tuple[str, str, str]:
-    """Read source."""
+    """Read the source.
+
+    Args:
+        locator (str): The source locator used to retrieve the document.
+
+    Returns:
+        Tuple[str, str, str]: The loaded source values in their documented order.
+
+    Raises:
+        IngestionError: If the ingestion operation cannot complete.
+    """
     if locator.startswith(("http://", "https://")):
         with urllib.request.urlopen(locator, timeout=20) as response:
             raw = response.read().decode(
@@ -98,5 +146,15 @@ def read_source(locator: str) -> Tuple[str, str, str]:
 
 
 def is_near_duplicate(text: str, existing: Iterable[str], threshold: float = 0.92) -> bool:
-    """Return whether near duplicate."""
+    """Return whether near duplicate satisfies the required condition.
+
+    Args:
+        text (str): The text to process.
+        existing (Iterable[str]): The existing value passed to is near duplicate.
+        threshold (float): The threshold value that controls is near duplicate. Defaults
+            to ``0.92``.
+
+    Returns:
+        bool: Whether is near duplicate satisfies the documented condition.
+    """
     return any(SequenceMatcher(None, text, prior).ratio() >= threshold for prior in existing)

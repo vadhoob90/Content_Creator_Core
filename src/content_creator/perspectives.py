@@ -69,7 +69,18 @@ class PerspectiveRegistry:
     """Manage perspective records."""
 
     def __init__(self, root: Path, voice_id: str):
-        """Initialize the perspective registry."""
+        """Initialize the perspective registry with its required state and collaborators.
+
+        Args:
+            root (Path): The workspace root directory.
+            voice_id (str): The stable identifier for the selected voice.
+
+        Returns:
+            None: The instance is initialized in place and no value is returned.
+
+        Raises:
+            PerspectiveError: If the perspective operation cannot complete.
+        """
         self.root = root.resolve()
         self.voice_id = slugify(voice_id)
         if self.voice_id != voice_id:
@@ -78,7 +89,11 @@ class PerspectiveRegistry:
         self.registry_path = self.base / "registry.json"
 
     def _read(self) -> Dict:
-        """Read perspective registry."""
+        """Read the perspective registry workflow.
+
+        Returns:
+            Dict: The structured loaded data for value.
+        """
         if not self.registry_path.exists():
             return {"schema_version": "1.0", "contexts": {}}
         data = json.loads(self.registry_path.read_text(encoding="utf-8"))
@@ -87,11 +102,25 @@ class PerspectiveRegistry:
         return data
 
     def list(self) -> Dict:
-        """List perspective registry."""
+        """List the perspective registry workflow.
+
+        Returns:
+            Dict: The structured available data for value.
+        """
         return self._read()["contexts"]
 
     def context_root(self, context_id: str) -> Path:
-        """Return the context root."""
+        """Return the context root.
+
+        Args:
+            context_id (str): The stable identifier for the context.
+
+        Returns:
+            Path: The resolved filesystem path for context root.
+
+        Raises:
+            PerspectiveError: If the perspective operation cannot complete.
+        """
         context = slugify(context_id)
         if context != context_id:
             raise PerspectiveError(
@@ -105,7 +134,17 @@ class PerspectiveRegistry:
         entries: List[PerspectiveEntry],
         display_name: Optional[str] = None,
     ) -> PerspectiveManifest:
-        """Stage perspective registry."""
+        """Stage the perspective registry workflow.
+
+        Args:
+            context_id (str): The stable identifier for the context.
+            entries (List[PerspectiveEntry]): The ordered domain records to process.
+            display_name (Optional[str]): The human-readable name shown to users. Defaults
+                to ``None``.
+
+        Returns:
+            PerspectiveManifest: The resulting perspective manifest for stage.
+        """
         from .perspective_lifecycle import stage_context
 
         return stage_context(self, context_id, entries, display_name)
@@ -116,7 +155,24 @@ class PerspectiveRegistry:
         version: Optional[str] = None,
         allow_inactive: bool = False,
     ) -> Dict:
-        """Resolve perspective registry."""
+        """Resolve the perspective registry workflow.
+
+        Resolve a perspective entry and immutable version, verify its hashes, and enforce
+        active-state requirements.
+
+        Args:
+            context_id (str): The stable identifier for the context.
+            version (Optional[str]): The immutable artifact or schema version identifier.
+                Defaults to ``None``.
+            allow_inactive (bool): Whether allow inactive behavior is enabled. Defaults to
+                ``False``.
+
+        Returns:
+            Dict: The structured resolved data for value.
+
+        Raises:
+            PerspectiveError: If the perspective operation cannot complete.
+        """
         item = self.list().get(context_id)
         if not item:
             raise PerspectiveError(
@@ -163,13 +219,33 @@ class PerspectiveRegistry:
         context_id: str,
         approved_by: str,
     ) -> PerspectiveApprovalReceipt:
-        """Activate perspective registry."""
+        """Activate the perspective registry workflow.
+
+        Args:
+            context_id (str): The stable identifier for the context.
+            approved_by (str): The reviewer identity recorded with the approval.
+
+        Returns:
+            PerspectiveApprovalReceipt: The resulting perspective approval receipt for
+                activate.
+        """
         from .perspective_lifecycle import activate_context
 
         return activate_context(self, context_id, approved_by)
 
     def deactivate(self, context_id: str, reason: str) -> Dict:
-        """Deactivate perspective registry."""
+        """Deactivate the perspective registry workflow.
+
+        Args:
+            context_id (str): The stable identifier for the context.
+            reason (str): The human-readable reason recorded for the decision.
+
+        Returns:
+            Dict: The structured resulting data for deactivate.
+
+        Raises:
+            PerspectiveError: If the perspective operation cannot complete.
+        """
         registry = self._read()
         item = registry["contexts"].get(context_id)
         if not item:
@@ -184,7 +260,15 @@ class PerspectiveRegistry:
         return item
 
     def current_entries(self, context_id: str) -> List[PerspectiveEntry]:
-        """Return the current entries."""
+        """Return the current entries.
+
+        Args:
+            context_id (str): The stable identifier for the context.
+
+        Returns:
+            List[PerspectiveEntry]: The resulting current entries values in their documented
+                order.
+        """
         resolved = self.resolve(context_id)
         path = self.root / resolved["path"] / "entries.json"
         return [
@@ -193,7 +277,18 @@ class PerspectiveRegistry:
         ]
 
     def stage_proposal(self, context_id: str, proposal_id: str) -> PerspectiveManifest:
-        """Stage proposal."""
+        """Stage the proposal.
+
+        Args:
+            context_id (str): The stable identifier for the context.
+            proposal_id (str): The stable identifier for the proposal.
+
+        Returns:
+            PerspectiveManifest: The resulting perspective manifest for stage proposal.
+
+        Raises:
+            PerspectiveError: If the perspective operation cannot complete.
+        """
         proposal_path = self.context_root(context_id) / "proposals" / (proposal_id + ".json")
         if not proposal_path.exists():
             raise PerspectiveError("Unknown perspective proposal: {}".format(proposal_id))
@@ -239,7 +334,19 @@ class PerspectiveRegistry:
         entry_id: str,
         reason: str,
     ) -> PerspectiveManifest:
-        """Retire entry."""
+        """Retire the entry.
+
+        Args:
+            context_id (str): The stable identifier for the context.
+            entry_id (str): The stable identifier for the entry.
+            reason (str): The human-readable reason recorded for the decision.
+
+        Returns:
+            PerspectiveManifest: The resulting perspective manifest for retire entry.
+
+        Raises:
+            PerspectiveError: If the perspective operation cannot complete.
+        """
         entries = self.current_entries(context_id)
         target = next((entry for entry in entries if entry.id == entry_id), None)
         if not target:
@@ -250,7 +357,15 @@ class PerspectiveRegistry:
 
     @staticmethod
     def render_profile(context_id: str, entries: List[PerspectiveEntry]) -> str:
-        """Render profile."""
+        """Render the profile.
+
+        Args:
+            context_id (str): The stable identifier for the context.
+            entries (List[PerspectiveEntry]): The ordered domain records to process.
+
+        Returns:
+            str: The rendered text for profile.
+        """
         lines = [
             "# Perspective Context: {}".format(context_id),
             "",
@@ -287,14 +402,31 @@ class PerspectiveProposalStore:
     """Manage perspective proposal records."""
 
     def __init__(self, root: Path, voice_id: str, context_id: str):
-        """Initialize the perspective proposal store."""
+        """Initialize the perspective proposal store.
+
+        Args:
+            root (Path): The workspace root directory.
+            voice_id (str): The stable identifier for the selected voice.
+            context_id (str): The stable identifier for the context.
+
+        Returns:
+            None: The instance is initialized in place and no value is returned.
+        """
         self.root = root.resolve()
         self.voice_id = voice_id
         self.context_id = context_id
         self.path = self.root / "profiles" / voice_id / "perspectives" / context_id / "proposals"
 
     def apply(self, run_id: str, extraction: PerspectiveExtraction) -> List[Path]:
-        """Apply perspective proposal store."""
+        """Apply the perspective proposal store workflow.
+
+        Args:
+            run_id (str): The stable identifier for the content run.
+            extraction (PerspectiveExtraction): The extraction value passed to apply.
+
+        Returns:
+            List[Path]: The resolved filesystem path for apply.
+        """
         paths = []
         existing_statements = {
             json.loads(path.read_text()).get("statement", "").strip().lower()
@@ -317,7 +449,11 @@ class PerspectiveProposalStore:
         return paths
 
     def list(self) -> List[Dict]:
-        """List perspective proposal store."""
+        """List the perspective proposal store workflow.
+
+        Returns:
+            List[Dict]: The available value values in their documented order.
+        """
         return [
             json.loads(path.read_text(encoding="utf-8"))
             for path in sorted(self.path.glob("*.json"))

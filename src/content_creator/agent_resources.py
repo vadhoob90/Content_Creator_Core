@@ -33,7 +33,14 @@ STANDARD_TEMPLATE = "standard"
 
 
 def _digest(path: Path) -> str:
-    """Compute agent resources."""
+    """Return the digest.
+
+    Args:
+        path (Path): The filesystem path to inspect or update.
+
+    Returns:
+        str: The resulting text for digest.
+    """
     return "sha256:" + hashlib.sha256(path.read_bytes()).hexdigest()
 
 
@@ -41,27 +48,61 @@ class AgentWorkspace:
     """Scaffold and inspect repository-owned agent instructions."""
 
     def __init__(self, root: Path):
-        """Initialize the agent workspace."""
+        """Initialize the agent workspace with its required state and collaborators.
+
+        Args:
+            root (Path): The workspace root directory.
+
+        Returns:
+            None: The instance is initialized in place and no value is returned.
+        """
         self.root = root.resolve()
         self.resources = ResourceResolver(self.root)
         self.agents = self.root / "agents"
         self.learnings = self.root / "learnings" / "memory.json"
 
     def template_root(self, template: str = STANDARD_TEMPLATE) -> Path:
-        """Return the template root."""
+        """Return the template root.
+
+        Args:
+            template (str): The repository-owned template used to generate files. Defaults
+                to ``STANDARD_TEMPLATE``.
+
+        Returns:
+            Path: The resolved filesystem path for template root.
+
+        Raises:
+            ValueError: If an input value violates the supported domain constraints.
+        """
         path = self.resources.core / "agent-templates" / template / "agents"
         if not path.is_dir():
             raise ValueError("Unknown agent template: {}".format(template))
         return path
 
     def template_metadata(self, template: str = STANDARD_TEMPLATE) -> Dict[str, Any]:
-        """Return the template metadata."""
+        """Return the template metadata.
+
+        Args:
+            template (str): The repository-owned template used to generate files. Defaults
+                to ``STANDARD_TEMPLATE``.
+
+        Returns:
+            Dict[str, Any]: The structured resulting data for template metadata.
+        """
         return json.loads(
             (self.template_root(template) / "template.json").read_text(encoding="utf-8")
         )
 
     def scaffold(self, template: str = STANDARD_TEMPLATE) -> Dict[str, Any]:
-        """Scaffold agent workspace."""
+        """Scaffold the agent workspace workflow.
+
+        Args:
+            template (str): The repository-owned template used to generate files. Defaults
+                to ``STANDARD_TEMPLATE``.
+
+        Returns:
+            Dict[str, Any]: The structured resulting data for scaffold.
+        """
         template_root = self.template_root(template)
         self.agents.mkdir(parents=True, exist_ok=True)
         created: List[str] = []
@@ -95,7 +136,15 @@ class AgentWorkspace:
         }
 
     def status(self, template: str = STANDARD_TEMPLATE) -> Dict[str, Any]:
-        """Return the status."""
+        """Return the status.
+
+        Args:
+            template (str): The repository-owned template used to generate files. Defaults
+                to ``STANDARD_TEMPLATE``.
+
+        Returns:
+            Dict[str, Any]: The structured resulting data for status.
+        """
         self.template_root(template)
         expected = sorted(set(ROLE_FILES.values()) | set(LEARNING_FILES.values()))
         missing = [name for name in expected if not (self.agents / name).is_file()]
@@ -108,7 +157,15 @@ class AgentWorkspace:
         }
 
     def diff_template(self, template: str = STANDARD_TEMPLATE) -> Dict[str, Any]:
-        """Return the diff template."""
+        """Return the diff template.
+
+        Args:
+            template (str): The repository-owned template used to generate files. Defaults
+                to ``STANDARD_TEMPLATE``.
+
+        Returns:
+            Dict[str, Any]: The structured resulting data for diff template.
+        """
         template_root = self.template_root(template)
         expected = {path.name: path for path in template_root.iterdir() if path.is_file()}
         workspace = (
@@ -132,7 +189,17 @@ class AgentWorkspace:
         }
 
     def role_path(self, role: str) -> Path:
-        """Return the role path."""
+        """Return the role path.
+
+        Args:
+            role (str): The repository-owned agent role to execute.
+
+        Returns:
+            Path: The resolved filesystem path for role path.
+
+        Raises:
+            FileNotFoundError: If a required filesystem artifact does not exist.
+        """
         path = self.agents / ROLE_FILES[role]
         if not path.is_file():
             raise FileNotFoundError(
@@ -142,7 +209,17 @@ class AgentWorkspace:
         return path
 
     def learning_instructions_path(self, role: str) -> Path:
-        """Return the learning instructions path."""
+        """Return the learning instructions path.
+
+        Args:
+            role (str): The repository-owned agent role to execute.
+
+        Returns:
+            Path: The resolved filesystem path for learning instructions path.
+
+        Raises:
+            FileNotFoundError: If a required filesystem artifact does not exist.
+        """
         path = self.agents / LEARNING_FILES[role]
         if not path.is_file():
             raise FileNotFoundError(
@@ -152,11 +229,25 @@ class AgentWorkspace:
         return path
 
     def harness_path(self) -> Path:
-        """Return the harness path."""
+        """Return the harness path.
+
+        Returns:
+            Path: The resolved filesystem path for harness path.
+        """
         return self.resources.core / "contracts" / "agent-harness.md"
 
     def contract_path(self, role: str) -> Path:
-        """Return the contract path."""
+        """Return the contract path.
+
+        Args:
+            role (str): The repository-owned agent role to execute.
+
+        Returns:
+            Path: The resolved filesystem path for contract path.
+
+        Raises:
+            FileNotFoundError: If a required filesystem artifact does not exist.
+        """
         path = self.resources.core / "contracts" / "roles" / ROLE_FILES[role]
         if not path.is_file():
             raise FileNotFoundError("Core role contract is missing: {}".format(path))

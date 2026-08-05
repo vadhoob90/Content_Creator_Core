@@ -14,7 +14,17 @@ class AnthropicProvider(Provider):
     name = "anthropic"
 
     def __init__(self, client: Any = None):
-        """Initialize the anthropic provider."""
+        """Initialize the Anthropic provider with an injected or default client.
+
+        Args:
+            client (Any): The client value passed to init. Defaults to ``None``.
+
+        Returns:
+            None: The instance is initialized in place and no value is returned.
+
+        Raises:
+            ProviderError: If the provider operation cannot complete.
+        """
         if client is None:
             try:
                 from anthropic import Anthropic
@@ -26,7 +36,18 @@ class AnthropicProvider(Provider):
         self.client = client
 
     def generate(self, request: ModelRequest) -> ModelResponse:
-        """Generate anthropic provider."""
+        """Generate a model response through the Anthropic Messages API.
+
+        Args:
+            request (ModelRequest): The validated request that initiates the operation.
+
+        Returns:
+            ModelResponse: The normalized model response with generated text and usage
+                metadata.
+
+        Raises:
+            ProviderError: If the provider operation cannot complete.
+        """
         kwargs: Dict[str, Any] = {
             "model": request.selection.model,
             "max_tokens": request.max_output_tokens,

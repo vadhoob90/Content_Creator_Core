@@ -1,1 +1,1 @@
-"""Command-family implementations behind the stable CLI façade."""
+"""Implement the init command family."""

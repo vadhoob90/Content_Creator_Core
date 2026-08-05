@@ -26,11 +26,29 @@ class CodexNativeProvider(NativeCliProvider):
         executable: Optional[str] = None,
         command_runner: Optional[CommandRunner] = None,
     ):
-        """Initialize the codex native provider."""
+        """Initialize the codex native provider.
+
+        Args:
+            root (Optional[Path]): The workspace root directory. Defaults to ``None``.
+            executable (Optional[str]): The executable text processed when init. Defaults to
+                ``None``.
+            command_runner (Optional[CommandRunner]): The command runner value passed to
+                init. Defaults to ``None``.
+
+        Returns:
+            None: The instance is initialized in place and no value is returned.
+        """
         super().__init__(root, executable, command_runner)
 
     def _ensure_subscription_auth(self) -> None:
-        """Ensure subscription auth."""
+        """Return the ensure subscription auth.
+
+        Returns:
+            None: The callable updates ensure subscription auth state and returns no value.
+
+        Raises:
+            ProviderError: If the provider operation cannot complete.
+        """
         if self._authenticated:
             return
         result = self._run([self.executable, "login", "status"], timeout=30)
@@ -44,12 +62,30 @@ class CodexNativeProvider(NativeCliProvider):
         self._authenticated = True
 
     def verify(self) -> Dict[str, str]:
-        """Verify codex native provider."""
+        """Verify the codex native provider workflow.
+
+        Returns:
+            Dict[str, str]: The structured verified data for value.
+        """
         self._ensure_subscription_auth()
         return {"authentication": "chatgpt"}
 
     def generate(self, request: ModelRequest) -> ModelResponse:
-        """Generate codex native provider."""
+        """Generate the codex native provider workflow.
+
+        Translate the model request into a bounded Codex CLI invocation, validate structured
+        output, and return normalized usage metadata.
+
+        Args:
+            request (ModelRequest): The validated request that initiates the operation.
+
+        Returns:
+            ModelResponse: The normalized model response with generated text and usage
+                metadata.
+
+        Raises:
+            ProviderError: If the provider operation cannot complete.
+        """
         self._ensure_subscription_auth()
         with tempfile.TemporaryDirectory(prefix="content-creator-codex-") as directory:
             workdir = Path(directory)
@@ -113,7 +149,15 @@ class CodexNativeProvider(NativeCliProvider):
 
     @classmethod
     def _strict_schema(cls, schema: Dict[str, Any]) -> Optional[Dict[str, Any]]:
-        """Return an OpenAI-strict schema, or None for open-ended mappings."""
+        """Return an OpenAI-strict schema, or None for open-ended mappings.
+
+        Args:
+            schema (Dict[str, Any]): The schema collection consumed while strict schema.
+
+        Returns:
+            Optional[Dict[str, Any]]: The resulting strict schema when available; otherwise
+                ``None``.
+        """
         result = deepcopy(schema)
         if not cls._make_objects_strict(result):
             return None
@@ -121,7 +165,14 @@ class CodexNativeProvider(NativeCliProvider):
 
     @classmethod
     def _make_objects_strict(cls, value: Any) -> bool:
-        """Return the make objects strict."""
+        """Return the make objects strict.
+
+        Args:
+            value (Any): The value to process.
+
+        Returns:
+            bool: Whether make objects strict satisfies the documented condition.
+        """
         if isinstance(value, list):
             return all(cls._make_objects_strict(item) for item in value)
         if not isinstance(value, dict):

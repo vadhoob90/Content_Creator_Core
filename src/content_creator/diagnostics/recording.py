@@ -12,7 +12,15 @@ from .models import DiagnosticEvent
 
 
 def invocation_directory(root: Path, invocation_id: Optional[str]) -> Path:
-    """Return the workspace-local directory for a diagnostic invocation."""
+    """Return the workspace-local directory for a diagnostic invocation.
+
+    Args:
+        root (Path): The workspace root directory.
+        invocation_id (Optional[str]): The stable identifier for the invocation.
+
+    Returns:
+        Path: The resolved filesystem path for invocation directory.
+    """
     return root / ".content-creator" / "invocations" / (invocation_id or "unknown")
 
 
@@ -24,7 +32,18 @@ def append_event(
     invocation_dir: Path,
     event: DiagnosticEvent,
 ) -> None:
-    """Append one event without allowing diagnostics to fail a content run."""
+    """Append one event without allowing diagnostics to fail a content run.
+
+    Args:
+        store (RunStore): The persistence service used to load and save state.
+        enabled (bool): Whether enabled behavior is enabled.
+        run_id (Optional[str]): The stable identifier for the content run.
+        invocation_dir (Path): The filesystem path containing the invocation dir.
+        event (DiagnosticEvent): The diagnostic or lifecycle event to record.
+
+    Returns:
+        None: The callable updates append event state and returns no value.
+    """
     if not enabled:
         return
     try:
@@ -50,7 +69,19 @@ def write_invocation_summary(
     classification: Dict[str, Any],
     safe_detail: str,
 ) -> Path:
-    """Write the failure summary used when run creation never completed."""
+    """Write the failure summary used when run creation never completed.
+
+    Args:
+        root (Path): The workspace root directory.
+        invocation_id (Optional[str]): The stable identifier for the invocation.
+        exc (Exception): The exception raised by the failed operation.
+        classification (Dict[str, Any]): The classification collection consumed while
+            write invocation summary.
+        safe_detail (str): The safe detail text processed when write invocation summary.
+
+    Returns:
+        Path: The resolved filesystem path for write invocation summary.
+    """
     summary = invocation_directory(root, invocation_id) / "diagnostic-summary.json"
     try:
         RunStore._atomic_text(

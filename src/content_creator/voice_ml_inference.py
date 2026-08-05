@@ -19,7 +19,22 @@ def assess_with_ml_artifact(
     draft: str,
     minimum_draft_words: int,
 ) -> Dict[str, Any]:
-    """Assess with ml artifact."""
+    """Assess the with ml artifact.
+
+    Args:
+        root (Path): The workspace root directory.
+        voice_id (str): The stable identifier for the selected voice.
+        voice_version (str): The immutable version of the selected voice profile.
+        draft (str): The draft content to evaluate or transform.
+        minimum_draft_words (int): The minimum draft words value that controls assess
+            with ml artifact.
+
+    Returns:
+        Dict[str, Any]: The structured assessment data for with ml artifact.
+
+    Raises:
+        StorageError: If the storage operation cannot complete.
+    """
     path = ml_model_path(root, voice_id, voice_version)
     if not path.exists():
         return _unavailable_score(voice_id, voice_version)
@@ -34,7 +49,15 @@ def assess_with_ml_artifact(
 
 
 def _unavailable_score(voice_id: str, voice_version: str) -> Dict[str, Any]:
-    """Return the unavailable score."""
+    """Return the unavailable score.
+
+    Args:
+        voice_id (str): The stable identifier for the selected voice.
+        voice_version (str): The immutable version of the selected voice profile.
+
+    Returns:
+        Dict[str, Any]: The structured resulting data for unavailable score.
+    """
     return {
         **_score_identity(voice_id, voice_version),
         "status": "ml_model_unavailable",
@@ -51,7 +74,18 @@ def _insufficient_score(
     word_count: int,
     minimum_draft_words: int,
 ) -> Dict[str, Any]:
-    """Return the insufficient score."""
+    """Return the insufficient score.
+
+    Args:
+        voice_id (str): The stable identifier for the selected voice.
+        voice_version (str): The immutable version of the selected voice profile.
+        word_count (int): The word count value that controls insufficient score.
+        minimum_draft_words (int): The minimum draft words value that controls
+            insufficient score.
+
+    Returns:
+        Dict[str, Any]: The structured resulting data for insufficient score.
+    """
     return {
         **_score_identity(voice_id, voice_version),
         "status": "insufficient_draft",
@@ -63,7 +97,15 @@ def _insufficient_score(
 
 
 def _score_identity(voice_id: str, voice_version: str) -> Dict[str, Any]:
-    """Score identity."""
+    """Score the identity.
+
+    Args:
+        voice_id (str): The stable identifier for the selected voice.
+        voice_version (str): The immutable version of the selected voice profile.
+
+    Returns:
+        Dict[str, Any]: The structured scored data for identity.
+    """
     return {
         "schema_version": "1.0",
         "type": "statistical_voice_score",
@@ -82,7 +124,23 @@ def _score_artifact(
     voice_version: str,
     word_count: int,
 ) -> Dict[str, Any]:
-    """Score artifact."""
+    """Score the artifact.
+
+    Load the trained preprocessing and classifier components, derive draft features, and
+    return a calibrated statistical score with evidence.
+
+    Args:
+        artifact (Dict[str, Any]): The artifact collection consumed while score
+            artifact.
+        features (Dict[str, Any]): The features collection consumed while score
+            artifact.
+        voice_id (str): The stable identifier for the selected voice.
+        voice_version (str): The immutable version of the selected voice profile.
+        word_count (int): The word count value that controls score artifact.
+
+    Returns:
+        Dict[str, Any]: The structured scored data for artifact.
+    """
     names = artifact["feature_schema"]["feature_names"]
     row = [float(features[name]) for name in names]
     means = artifact["preprocessing"]["mean"]

@@ -1,4 +1,4 @@
-"""Visual asset command family."""
+"""Implement the visual command family."""
 
 from __future__ import annotations
 
@@ -13,7 +13,14 @@ from ..visuals import VisualBrief, VisualCritique, VisualWorkflow
 
 
 def register(subparsers: Any) -> None:
-    """Register visual."""
+    """Register the visual workflow.
+
+    Args:
+        subparsers (Any): The argparse subparser collection receiving the command.
+
+    Returns:
+        None: The callable updates register state and returns no value.
+    """
     parser = subparsers.add_parser("visual", help="Manage visual assets for a reviewed run")
     commands = parser.add_subparsers(dest="visual_command", required=True)
     brief = commands.add_parser("brief", help="Create a typed visual brief")
@@ -32,7 +39,16 @@ def register(subparsers: Any) -> None:
 
 
 def run(root: Path, args: argparse.Namespace, emit: Callable[[Any], None]) -> int:
-    """Run visual."""
+    """Run the visual workflow.
+
+    Args:
+        root (Path): The workspace root directory.
+        args (argparse.Namespace): The parsed command-line arguments.
+        emit (Callable[[Any], None]): The emit value passed to run.
+
+    Returns:
+        int: The process exit status, where zero indicates successful handling.
+    """
     workflow = VisualWorkflow(root)
     store = RunStore(root)
     state = store.load(args.run_id)

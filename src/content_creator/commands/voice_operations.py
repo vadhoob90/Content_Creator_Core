@@ -1,4 +1,4 @@
-"""Lifecycle, assessment, learning, and inspection handlers for voices."""
+"""Implement the voice operations command family."""
 
 from __future__ import annotations
 
@@ -25,19 +25,44 @@ VoiceHandler = Callable[[VoiceCommandContext], int]
 
 
 def build(context: VoiceCommandContext) -> int:
-    """Build voice operations."""
+    """Build the voice operations workflow.
+
+    Args:
+        context (VoiceCommandContext): The operation context and its resolved
+            dependencies.
+
+    Returns:
+        int: The constructed numeric value for value.
+    """
     print_json(context.builder.build(context.arguments.voice_id))
     return 0
 
 
 def list_voices(context: VoiceCommandContext) -> int:
-    """List voices."""
+    """List the voices.
+
+    Args:
+        context (VoiceCommandContext): The operation context and its resolved
+            dependencies.
+
+    Returns:
+        int: The available numeric value for voices.
+    """
     print_json(context.registry.list())
     return 0
 
 
 def _verify_voice(context: VoiceCommandContext, voice_id: str) -> dict[str, object]:
-    """Verify voice."""
+    """Verify the voice.
+
+    Args:
+        context (VoiceCommandContext): The operation context and its resolved
+            dependencies.
+        voice_id (str): The stable identifier for the selected voice.
+
+    Returns:
+        dict[str, object]: The structured verified data for voice.
+    """
     directory = context.root / "profiles" / voice_id / "candidate"
     manifest_path = directory / "manifest.json"
     if not manifest_path.exists():
@@ -55,7 +80,15 @@ def _verify_voice(context: VoiceCommandContext, voice_id: str) -> dict[str, obje
 
 
 def verify_all(context: VoiceCommandContext) -> int:
-    """Verify all."""
+    """Verify the all.
+
+    Args:
+        context (VoiceCommandContext): The operation context and its resolved
+            dependencies.
+
+    Returns:
+        int: The verified numeric value for all.
+    """
     voice_ids = set(context.registry.list())
     voice_ids.update(
         path.parent.parent.name
@@ -68,7 +101,18 @@ def verify_all(context: VoiceCommandContext) -> int:
 
 
 def approve(context: VoiceCommandContext) -> int:
-    """Approve voice operations."""
+    """Approve the voice operations workflow.
+
+    Args:
+        context (VoiceCommandContext): The operation context and its resolved
+            dependencies.
+
+    Returns:
+        int: The resulting numeric value for approve.
+
+    Raises:
+        ValueError: If an input value violates the supported domain constraints.
+    """
     arguments = context.arguments
     if arguments.override_evaluation and not arguments.reason:
         raise ValueError("--override-evaluation requires --reason")
@@ -80,20 +124,44 @@ def approve(context: VoiceCommandContext) -> int:
 
 
 def deactivate(context: VoiceCommandContext) -> int:
-    """Deactivate voice operations."""
+    """Deactivate the voice operations workflow.
+
+    Args:
+        context (VoiceCommandContext): The operation context and its resolved
+            dependencies.
+
+    Returns:
+        int: The resulting numeric value for deactivate.
+    """
     print_json(context.registry.deactivate(context.arguments.voice_id, context.arguments.reason))
     return 0
 
 
 def reactivate(context: VoiceCommandContext) -> int:
-    """Return the reactivate."""
+    """Return the reactivate.
+
+    Args:
+        context (VoiceCommandContext): The operation context and its resolved
+            dependencies.
+
+    Returns:
+        int: The resulting numeric value for reactivate.
+    """
     arguments = context.arguments
     print_json(context.registry.activate(arguments.voice_id, arguments.approved_by, "reactivation"))
     return 0
 
 
 def add_sources(context: VoiceCommandContext) -> int:
-    """Add sources."""
+    """Add the sources.
+
+    Args:
+        context (VoiceCommandContext): The operation context and its resolved
+            dependencies.
+
+    Returns:
+        int: The resulting numeric value for add sources.
+    """
     arguments = context.arguments
     order = context.builder.load_work_order(arguments.voice_id)
     order.urls.extend(
@@ -108,7 +176,15 @@ def add_sources(context: VoiceCommandContext) -> int:
 
 
 def consolidate_learnings(context: VoiceCommandContext) -> int:
-    """Return the consolidate learnings."""
+    """Return the consolidate learnings.
+
+    Args:
+        context (VoiceCommandContext): The operation context and its resolved
+            dependencies.
+
+    Returns:
+        int: The resulting numeric value for consolidate learnings.
+    """
     path = LearningMemory(context.root, context.arguments.voice_id).consolidate_candidate()
     print_json(
         {
@@ -121,7 +197,18 @@ def consolidate_learnings(context: VoiceCommandContext) -> int:
 
 
 def assess(context: VoiceCommandContext) -> int:
-    """Assess voice operations."""
+    """Assess the voice operations workflow.
+
+    Args:
+        context (VoiceCommandContext): The operation context and its resolved
+            dependencies.
+
+    Returns:
+        int: The assessment numeric value for value.
+
+    Raises:
+        StorageError: If the storage operation cannot complete.
+    """
     arguments = context.arguments
     draft_path = Path(arguments.draft).expanduser()
     if not draft_path.is_absolute():
@@ -143,7 +230,18 @@ def assess(context: VoiceCommandContext) -> int:
 
 
 def configure_score(context: VoiceCommandContext) -> int:
-    """Return the configure score."""
+    """Return the configure score.
+
+    Args:
+        context (VoiceCommandContext): The operation context and its resolved
+            dependencies.
+
+    Returns:
+        int: The resulting numeric value for configure score.
+
+    Raises:
+        StorageError: If the storage operation cannot complete.
+    """
     arguments = context.arguments
     if not (context.root / "profiles" / arguments.voice_id).is_dir():
         raise StorageError(f"Unknown voice: {arguments.voice_id}")
@@ -160,7 +258,15 @@ def configure_score(context: VoiceCommandContext) -> int:
 
 
 def train_model(context: VoiceCommandContext) -> int:
-    """Train model."""
+    """Train the model.
+
+    Args:
+        context (VoiceCommandContext): The operation context and its resolved
+            dependencies.
+
+    Returns:
+        int: The trained numeric value for model.
+    """
     arguments = context.arguments
     training_result = train_voice_ml_model(
         context.root,
@@ -175,7 +281,16 @@ def train_model(context: VoiceCommandContext) -> int:
 
 
 def _profile_lines(context: VoiceCommandContext, version: str) -> list[str]:
-    """Return the profile lines."""
+    """Return the profile lines.
+
+    Args:
+        context (VoiceCommandContext): The operation context and its resolved
+            dependencies.
+        version (str): The immutable artifact or schema version identifier.
+
+    Returns:
+        list[str]: The resulting profile lines values in their documented order.
+    """
     voice_root = context.root / "profiles" / context.arguments.voice_id
     directory = (
         voice_root / "candidate" if version == "candidate" else voice_root / "versions" / version
@@ -184,7 +299,15 @@ def _profile_lines(context: VoiceCommandContext, version: str) -> list[str]:
 
 
 def show_diff(context: VoiceCommandContext) -> int:
-    """Show diff."""
+    """Show the diff.
+
+    Args:
+        context (VoiceCommandContext): The operation context and its resolved
+            dependencies.
+
+    Returns:
+        int: The resulting numeric value for show diff.
+    """
     arguments = context.arguments
     print(
         "\n".join(
@@ -201,7 +324,15 @@ def show_diff(context: VoiceCommandContext) -> int:
 
 
 def show_status(context: VoiceCommandContext) -> int:
-    """Show status."""
+    """Show the status.
+
+    Args:
+        context (VoiceCommandContext): The operation context and its resolved
+            dependencies.
+
+    Returns:
+        int: The resulting numeric value for show status.
+    """
     voice_id = context.arguments.voice_id
     manifest_path = context.root / "profiles" / voice_id / "candidate" / "manifest.json"
     onboarding = load_voice_onboarding(context.root, voice_id)
@@ -223,7 +354,15 @@ def show_status(context: VoiceCommandContext) -> int:
 
 
 def _profile_directory(context: VoiceCommandContext) -> Path:
-    """Return the profile directory."""
+    """Return the profile directory.
+
+    Args:
+        context (VoiceCommandContext): The operation context and its resolved
+            dependencies.
+
+    Returns:
+        Path: The resolved filesystem path for profile directory.
+    """
     candidate = context.root / "profiles" / context.arguments.voice_id / "candidate"
     if candidate.exists():
         return candidate
@@ -232,13 +371,29 @@ def _profile_directory(context: VoiceCommandContext) -> Path:
 
 
 def show_profile(context: VoiceCommandContext) -> int:
-    """Show profile."""
+    """Show the profile.
+
+    Args:
+        context (VoiceCommandContext): The operation context and its resolved
+            dependencies.
+
+    Returns:
+        int: The resulting numeric value for show profile.
+    """
     print((_profile_directory(context) / "profile.md").read_text(encoding="utf-8"))
     return 0
 
 
 def show_signature(context: VoiceCommandContext) -> int:
-    """Show signature."""
+    """Show the signature.
+
+    Args:
+        context (VoiceCommandContext): The operation context and its resolved
+            dependencies.
+
+    Returns:
+        int: The resulting numeric value for show signature.
+    """
     signature = (_profile_directory(context) / "linguistic-signature.json").read_text(
         encoding="utf-8"
     )
@@ -247,7 +402,15 @@ def show_signature(context: VoiceCommandContext) -> int:
 
 
 def verify(context: VoiceCommandContext) -> int:
-    """Verify voice operations."""
+    """Verify the voice operations workflow.
+
+    Args:
+        context (VoiceCommandContext): The operation context and its resolved
+            dependencies.
+
+    Returns:
+        int: The verified numeric value for value.
+    """
     report = _verify_voice(context, context.arguments.voice_id)
     print_json(report)
     return 0 if report["valid"] else 6

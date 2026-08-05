@@ -1,4 +1,4 @@
-"""Cohesive source, analysis, evaluation, and activation phases for voice builds."""
+"""Provide voice build pipeline contracts and behavior."""
 
 from __future__ import annotations
 
@@ -41,13 +41,30 @@ class VoiceBuildPipeline(VoiceProfileRenderer):
     """Represent a voice build pipeline."""
 
     def __init__(self, root: Path, runner: Optional[AgentRunner], provider: Optional[str]):
-        """Initialize the voice build pipeline."""
+        """Initialize the voice build pipeline.
+
+        Args:
+            root (Path): The workspace root directory.
+            runner (Optional[AgentRunner]): The agent or command runner used to execute the
+                operation.
+            provider (Optional[str]): The provider implementation used for generation.
+
+        Returns:
+            None: The instance is initialized in place and no value is returned.
+        """
         self.root = root
         self.runner = runner
         self.provider = provider
 
     def build(self, order: VoiceWorkOrder) -> VoiceManifest:
-        """Build voice build pipeline."""
+        """Build the voice build pipeline workflow.
+
+        Args:
+            order (VoiceWorkOrder): The work order that defines the requested content run.
+
+        Returns:
+            VoiceManifest: The constructed voice manifest for value.
+        """
         state = self._prepare(order)
         self._collect_sources(state)
         self._analyse_corpus(state)
@@ -59,7 +76,17 @@ class VoiceBuildPipeline(VoiceProfileRenderer):
         return manifest
 
     def _prepare(self, order: VoiceWorkOrder) -> BuildState:
-        """Prepare voice build pipeline."""
+        """Prepare the voice build pipeline workflow.
+
+        Args:
+            order (VoiceWorkOrder): The work order that defines the requested content run.
+
+        Returns:
+            BuildState: The prepared build state for value.
+
+        Raises:
+            VoiceBuildError: If the voice build operation cannot complete.
+        """
         if order.strategy != VoiceStrategy.SOURCE_DERIVED:
             raise VoiceBuildError(
                 "Starter voices are activated from their template; select "
@@ -78,7 +105,14 @@ class VoiceBuildPipeline(VoiceProfileRenderer):
         )
 
     def _collect_sources(self, state: BuildState) -> None:
-        """Collect sources."""
+        """Collect the sources.
+
+        Args:
+            state (BuildState): The persisted lifecycle state to inspect or update.
+
+        Returns:
+            None: The callable updates sources state and returns no value.
+        """
         for index, locator in enumerate(state.order.urls + state.order.documents, start=1):
             try:
                 self._collect_source(state, locator, f"source-{index:03d}")
@@ -91,7 +125,16 @@ class VoiceBuildPipeline(VoiceProfileRenderer):
                 )
 
     def _collect_source(self, state: BuildState, locator: str, source_id: str) -> None:
-        """Collect source."""
+        """Collect the source.
+
+        Args:
+            state (BuildState): The persisted lifecycle state to inspect or update.
+            locator (str): The source locator used to retrieve the document.
+            source_id (str): The stable identifier for the source.
+
+        Returns:
+            None: The callable updates source state and returns no value.
+        """
         cache_path = state.cache / f"{source_id}.txt"
         metadata_path = state.cache / f"{source_id}.meta.json"
         kind, title, text = self._read_source(locator, cache_path, metadata_path)
@@ -129,7 +172,16 @@ class VoiceBuildPipeline(VoiceProfileRenderer):
 
     @staticmethod
     def _read_source(locator: str, cache_path: Path, metadata_path: Path) -> tuple[str, str, str]:
-        """Read source."""
+        """Read the source.
+
+        Args:
+            locator (str): The source locator used to retrieve the document.
+            cache_path (Path): The filesystem path for the cache path.
+            metadata_path (Path): The filesystem path for the metadata path.
+
+        Returns:
+            tuple[str, str, str]: The loaded source values in their documented order.
+        """
         if not (locator.startswith(("http://", "https://")) and cache_path.exists()):
             return read_source(locator)
         text = normalize_text(cache_path.read_text(encoding="utf-8"))
@@ -150,7 +202,19 @@ class VoiceBuildPipeline(VoiceProfileRenderer):
         text: str,
         locally_attested: bool,
     ) -> AttributionResult:
-        """Return the attribution."""
+        """Return the attribution.
+
+        Args:
+            order (VoiceWorkOrder): The work order that defines the requested content run.
+            locator (str): The source locator used to retrieve the document.
+            kind (str): The domain category used to classify the value.
+            title (str): The title text processed when attribution.
+            text (str): The text to process.
+            locally_attested (bool): Whether locally attested behavior is enabled.
+
+        Returns:
+            AttributionResult: The resulting attribution result for attribution.
+        """
         if locally_attested:
             return AttributionResult(
                 classification="directly_authored",
@@ -190,7 +254,19 @@ class VoiceBuildPipeline(VoiceProfileRenderer):
         title: str,
         text: str,
     ) -> None:
-        """Return the cache source."""
+        """Return the cache source.
+
+        Args:
+            cache_path (Path): The filesystem path for the cache path.
+            metadata_path (Path): The filesystem path for the metadata path.
+            locator (str): The source locator used to retrieve the document.
+            kind (str): The domain category used to classify the value.
+            title (str): The title text processed when cache source.
+            text (str): The text to process.
+
+        Returns:
+            None: The callable updates cache source state and returns no value.
+        """
         RunStore._atomic_text(cache_path, text)
         metadata = {
             "locator": locator,
@@ -201,7 +277,17 @@ class VoiceBuildPipeline(VoiceProfileRenderer):
         RunStore._atomic_text(metadata_path, json.dumps(metadata, indent=2))
 
     def _analyse_corpus(self, state: BuildState) -> None:
-        """Return the analyse corpus."""
+        """Return the analyse corpus.
+
+        Args:
+            state (BuildState): The persisted lifecycle state to inspect or update.
+
+        Returns:
+            None: The callable updates analyse corpus state and returns no value.
+
+        Raises:
+            VoiceBuildError: If the voice build operation cannot complete.
+        """
         state.corpus = assess_corpus(state.sources, state.order.authorisation.intended_uses)
         if state.final_candidate.exists() and not state.corpus["sufficient"]:
             raise VoiceBuildError(
@@ -233,7 +319,14 @@ class VoiceBuildPipeline(VoiceProfileRenderer):
         state.patterns = self._patterns(state.analysis_records, state.signature)
 
     def _analyse_patterns(self, state: BuildState) -> None:
-        """Return the analyse patterns."""
+        """Return the analyse patterns.
+
+        Args:
+            state (BuildState): The persisted lifecycle state to inspect or update.
+
+        Returns:
+            None: The callable updates analyse patterns state and returns no value.
+        """
         if not (self.runner and state.analysis_records):
             return
         analysis = self.runner.run(
@@ -260,7 +353,14 @@ class VoiceBuildPipeline(VoiceProfileRenderer):
         state.patterns = self._reviewed_patterns(analysis, criticism, approved_ids)
 
     def _analysis_payload(self, state: BuildState) -> dict:
-        """Return the analysis payload."""
+        """Return the analysis payload.
+
+        Args:
+            state (BuildState): The persisted lifecycle state to inspect or update.
+
+        Returns:
+            dict: The resulting dict for analysis payload.
+        """
         return {
             "person": state.order.attribution_name,
             "voice_label": state.order.display_name,
@@ -287,7 +387,18 @@ class VoiceBuildPipeline(VoiceProfileRenderer):
         criticism: ProfileCriticism,
         approved_ids: set[str],
     ) -> List[VoicePattern]:
-        """Return the reviewed patterns."""
+        """Return the reviewed patterns.
+
+        Args:
+            analysis (VoiceAnalysis): The analysis value passed to reviewed patterns.
+            criticism (ProfileCriticism): The criticism value passed to reviewed patterns.
+            approved_ids (set[str]): The approved ids collection consumed while reviewed
+                patterns.
+
+        Returns:
+            List[VoicePattern]: The resulting reviewed patterns values in their documented
+                order.
+        """
         reviewed = []
         for pattern in analysis.patterns:
             pattern.supporting_source_ids = [
@@ -303,7 +414,15 @@ class VoiceBuildPipeline(VoiceProfileRenderer):
         return reviewed
 
     def _write_profile_artifacts(self, state: BuildState) -> tuple[str, dict, dict]:
-        """Write profile artifacts."""
+        """Write the profile artifacts.
+
+        Args:
+            state (BuildState): The persisted lifecycle state to inspect or update.
+
+        Returns:
+            tuple[str, dict, dict]: The resulting write profile artifacts values in their
+                documented order.
+        """
         state.candidate.mkdir(parents=True, exist_ok=True)
         constraints = {
             "never_invent_personal_context": True,
@@ -341,7 +460,14 @@ class VoiceBuildPipeline(VoiceProfileRenderer):
 
     @staticmethod
     def _write_agent_artifacts(state: BuildState) -> None:
-        """Write agent artifacts."""
+        """Write the agent artifacts.
+
+        Args:
+            state (BuildState): The persisted lifecycle state to inspect or update.
+
+        Returns:
+            None: The callable updates write agent artifacts state and returns no value.
+        """
         optional_artifacts = {
             "analyst-report.json": state.analysis_artifact,
             "critic-report.json": state.criticism_artifact,
@@ -353,7 +479,17 @@ class VoiceBuildPipeline(VoiceProfileRenderer):
     def _evaluate(
         self, state: BuildState, profile: str, constraints: dict, voice_rubric: dict
     ) -> dict:
-        """Evaluate voice build pipeline."""
+        """Evaluate the voice build pipeline workflow.
+
+        Args:
+            state (BuildState): The persisted lifecycle state to inspect or update.
+            profile (str): The resolved voice, perspective, or content profile.
+            constraints (dict): The constraints value passed to evaluate.
+            voice_rubric (dict): The voice rubric value passed to evaluate.
+
+        Returns:
+            dict: The evaluation dict for value.
+        """
         evaluation = {
             "schema_version": "1.0",
             "passed": state.corpus["sufficient"] and bool(state.patterns),
@@ -388,7 +524,18 @@ class VoiceBuildPipeline(VoiceProfileRenderer):
         constraints: dict,
         voice_rubric: dict,
     ) -> None:
-        """Apply agent evaluation."""
+        """Apply the agent evaluation.
+
+        Args:
+            state (BuildState): The persisted lifecycle state to inspect or update.
+            evaluation (dict): The evaluation value passed to apply agent evaluation.
+            profile (str): The resolved voice, perspective, or content profile.
+            constraints (dict): The constraints value passed to apply agent evaluation.
+            voice_rubric (dict): The voice rubric value passed to apply agent evaluation.
+
+        Returns:
+            None: The callable updates apply agent evaluation state and returns no value.
+        """
         if self.runner is None:
             return
         judgement = self.runner.run(
@@ -410,7 +557,17 @@ class VoiceBuildPipeline(VoiceProfileRenderer):
     def _evaluation_payload(
         state: BuildState, profile: str, constraints: dict, voice_rubric: dict
     ) -> dict:
-        """Return the evaluation payload."""
+        """Return the evaluation payload.
+
+        Args:
+            state (BuildState): The persisted lifecycle state to inspect or update.
+            profile (str): The resolved voice, perspective, or content profile.
+            constraints (dict): The constraints value passed to evaluation payload.
+            voice_rubric (dict): The voice rubric value passed to evaluation payload.
+
+        Returns:
+            dict: The resulting dict for evaluation payload.
+        """
         return {
             "profile": profile,
             "constraints": constraints,
@@ -436,7 +593,18 @@ class VoiceBuildPipeline(VoiceProfileRenderer):
         }
 
     def _write_manifest(self, state: BuildState, evaluation: dict) -> VoiceManifest:
-        """Write manifest."""
+        """Write the manifest.
+
+        Record source hashes, analysis evidence, generated profile artifacts, and activation
+        metadata in the candidate voice manifest.
+
+        Args:
+            state (BuildState): The persisted lifecycle state to inspect or update.
+            evaluation (dict): The evaluation value passed to write manifest.
+
+        Returns:
+            VoiceManifest: The resulting voice manifest for write manifest.
+        """
         components = {
             "profile": "profile.md",
             "constraints": "constraints.json",
@@ -485,7 +653,14 @@ class VoiceBuildPipeline(VoiceProfileRenderer):
 
     @staticmethod
     def _activate_candidate(state: BuildState) -> None:
-        """Activate candidate."""
+        """Activate the candidate.
+
+        Args:
+            state (BuildState): The persisted lifecycle state to inspect or update.
+
+        Returns:
+            None: The callable updates activate candidate state and returns no value.
+        """
         previous = state.voice_root / ".candidate-previous"
         if previous.exists():
             shutil.rmtree(previous)

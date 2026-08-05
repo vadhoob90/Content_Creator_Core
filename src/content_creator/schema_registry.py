@@ -1,4 +1,4 @@
-"""Versioned schema catalogue and deterministic compatibility migrations."""
+"""Provide schema registry contracts and behavior."""
 
 from __future__ import annotations
 
@@ -35,7 +35,11 @@ SCHEMA_MODELS: Dict[str, Type[BaseModel]] = {
 
 
 def schema_catalogue() -> Dict[str, Dict[str, Any]]:
-    """Return the schema catalogue."""
+    """Return the schema catalogue.
+
+    Returns:
+        Dict[str, Dict[str, Any]]: The structured resulting data for schema catalogue.
+    """
     result: Dict[str, Dict[str, Any]] = {}
     for name, model in SCHEMA_MODELS.items():
         schema = model.model_json_schema()
@@ -51,7 +55,14 @@ def schema_catalogue() -> Dict[str, Dict[str, Any]]:
 
 
 def write_schema_bundle(destination: Path) -> Dict[str, Any]:
-    """Write schema bundle."""
+    """Write the schema bundle.
+
+    Args:
+        destination (Path): The destination filesystem path.
+
+    Returns:
+        Dict[str, Any]: The structured resulting data for write schema bundle.
+    """
     destination.mkdir(parents=True, exist_ok=True)
     entries = []
     for name, item in schema_catalogue().items():
@@ -71,7 +82,18 @@ def write_schema_bundle(destination: Path) -> Dict[str, Any]:
 
 
 def migrate_artifact(kind: str, payload: Dict[str, Any]) -> Dict[str, Any]:
-    """Return the migrate artifact."""
+    """Return the migrate artifact.
+
+    Args:
+        kind (str): The domain category used to classify the value.
+        payload (Dict[str, Any]): The structured payload to validate or persist.
+
+    Returns:
+        Dict[str, Any]: The structured resulting data for migrate artifact.
+
+    Raises:
+        SchemaCompatibilityError: If the schema compatibility operation cannot complete.
+    """
     if kind not in SCHEMA_MODELS:
         raise SchemaCompatibilityError("Unknown artifact schema: {}".format(kind))
     migrated = deepcopy(payload)

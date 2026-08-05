@@ -17,7 +17,7 @@ from .storage import slugify
 
 
 class PerspectiveRunner(Protocol):
-    """Narrow application seam needed for automatic perspective resolution."""
+    """Represent the perspective runner contract."""
 
     def run(
         self,
@@ -27,7 +27,22 @@ class PerspectiveRunner(Protocol):
         payload: Dict[str, Any],
         options: AgentRunOptions | None = None,
     ) -> Any:
-        """Run perspective runner."""
+        """Run the perspective runner workflow.
+
+        Args:
+            role (str): The repository-owned agent role to execute.
+            role_key (str): The role key text processed when run.
+            instruction (str): The instruction text processed when run.
+            payload (Dict[str, Any]): The structured payload to validate or persist.
+            options (AgentRunOptions | None): The options controlling this operation.
+                Defaults to ``None``.
+
+        Returns:
+            Any: The execution value for value.
+
+        Raises:
+            NotImplementedError: If the not implemented operation cannot complete.
+        """
         raise NotImplementedError
 
 
@@ -165,7 +180,18 @@ class PerspectiveCatalogueStore:
     """Manage perspective catalogue records."""
 
     def __init__(self, root: Path, voice_id: str):
-        """Initialize the perspective catalogue store."""
+        """Initialize the perspective catalogue store.
+
+        Args:
+            root (Path): The workspace root directory.
+            voice_id (str): The stable identifier for the selected voice.
+
+        Returns:
+            None: The instance is initialized in place and no value is returned.
+
+        Raises:
+            PerspectiveError: If the perspective operation cannot complete.
+        """
         self.root = root.resolve()
         self.voice_id = slugify(voice_id)
         if self.voice_id != voice_id:
@@ -173,7 +199,14 @@ class PerspectiveCatalogueStore:
         self.path = self.root / "profiles" / self.voice_id / "perspectives" / "catalogue.json"
 
     def load(self) -> PerspectiveCatalogue:
-        """Load perspective catalogue store."""
+        """Load the perspective catalogue store workflow.
+
+        Returns:
+            PerspectiveCatalogue: The loaded perspective catalogue for value.
+
+        Raises:
+            PerspectiveError: If the perspective operation cannot complete.
+        """
         if not self.path.exists():
             return PerspectiveCatalogue()
         catalogue = PerspectiveCatalogue.model_validate_json(self.path.read_text(encoding="utf-8"))
@@ -190,7 +223,11 @@ class PerspectiveCatalogueStore:
         return catalogue
 
     def _registry_contexts(self) -> Dict[str, Any]:
-        """Return the registry contexts."""
+        """Return the registry contexts.
+
+        Returns:
+            Dict[str, Any]: The structured resulting data for registry contexts.
+        """
         registry_path = self.path.parent / "registry.json"
         if not registry_path.exists():
             return {}
@@ -198,7 +235,11 @@ class PerspectiveCatalogueStore:
         return registry.get("contexts", {})
 
     def routing_payload(self) -> Dict[str, Any]:
-        """Return the routing payload."""
+        """Return the routing payload.
+
+        Returns:
+            Dict[str, Any]: The structured resulting data for routing payload.
+        """
         catalogue = self.load()
         active = self._registry_contexts()
         contexts = [
@@ -213,7 +254,11 @@ class PerspectiveCatalogueStore:
         }
 
     def verify(self) -> Dict[str, Any]:
-        """Verify perspective catalogue store."""
+        """Verify the perspective catalogue store workflow.
+
+        Returns:
+            Dict[str, Any]: The structured verified data for value.
+        """
         catalogue = self.load()
         registry = self._registry_contexts()
         unknown = sorted(
@@ -238,7 +283,16 @@ class PerspectiveResolver:
     """Represent a perspective resolver."""
 
     def __init__(self, root: Path, runner: PerspectiveRunner):
-        """Initialize the perspective resolver."""
+        """Initialize the perspective resolver with its required state and collaborators.
+
+        Args:
+            root (Path): The workspace root directory.
+            runner (PerspectiveRunner): The agent or command runner used to execute the
+                operation.
+
+        Returns:
+            None: The instance is initialized in place and no value is returned.
+        """
         self.root = root.resolve()
         self.runner = runner
 
@@ -247,7 +301,21 @@ class PerspectiveResolver:
         order: WorkOrder,
         policy: Dict[str, Any],
     ) -> PerspectiveResolution:
-        """Resolve perspective resolver."""
+        """Resolve the perspective resolver workflow.
+
+        Resolve explicit or automatic perspective selections, validate active versions, and
+        return the context records pinned to the run.
+
+        Args:
+            order (WorkOrder): The work order that defines the requested content run.
+            policy (Dict[str, Any]): The policy collection consumed while resolve.
+
+        Returns:
+            PerspectiveResolution: The resolved perspective resolution for value.
+
+        Raises:
+            PerspectiveError: If the perspective operation cannot complete.
+        """
         forced_disabled_reason = policy.get("force_disabled_reason")
         mode = (
             PerspectiveMode.DISABLED

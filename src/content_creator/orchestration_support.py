@@ -52,7 +52,24 @@ class OrchestrationSupport:
         capabilities: Optional[RunCapabilities] = None,
         stages: Optional[LifecycleStages] = None,
     ):
-        """Initialize the orchestration support."""
+        """Initialize the orchestration support with its required state and collaborators.
+
+        Args:
+            root (Path): The workspace root directory.
+            registry (Optional[ProviderRegistry]): The registry used to resolve and persist
+                domain entries. Defaults to ``None``.
+            visual_adapters (Any): The visual adapters value passed to init. Defaults to
+                ``None``.
+            max_revisions (int): The max revisions value that controls init. Defaults to
+                ``3``.
+            capabilities (Optional[RunCapabilities]): The capabilities value passed to init.
+                Defaults to ``None``.
+            stages (Optional[LifecycleStages]): The stages value passed to init. Defaults to
+                ``None``.
+
+        Returns:
+            None: The instance is initialized in place and no value is returned.
+        """
         self.root = root.resolve()
         self.configuration = Configuration(self.root)
         self.registry = registry or ProviderRegistry(root=self.root)
@@ -79,7 +96,14 @@ class OrchestrationSupport:
         )
 
     def diagnostic_preflight(self, run_id: str) -> Dict:
-        """Return the diagnostic preflight."""
+        """Return the diagnostic preflight.
+
+        Args:
+            run_id (str): The stable identifier for the content run.
+
+        Returns:
+            Dict: The structured resulting data for diagnostic preflight.
+        """
         state = self.store.load(run_id)
         self.diagnostics.begin_invocation(state.work_order.content_session_id)
         self.diagnostics.bind_run(run_id, state.work_order.content_session_id)
@@ -89,7 +113,15 @@ class OrchestrationSupport:
         return result
 
     def link_diagnostic_issue(self, run_id: str, issue_url: str) -> Dict:
-        """Link diagnostic issue."""
+        """Link the diagnostic issue.
+
+        Args:
+            run_id (str): The stable identifier for the content run.
+            issue_url (str): The issue url text processed when link diagnostic issue.
+
+        Returns:
+            Dict: The structured resulting data for link diagnostic issue.
+        """
         result = self.diagnostics.link_issue(run_id, issue_url)
         state = self.store.load(run_id)
         preflight = self.diagnostics.preflight(run_id)
@@ -98,7 +130,18 @@ class OrchestrationSupport:
         return result
 
     def _preflight_supplied_research(self, order: WorkOrder) -> Optional[ResearchBrief]:
-        """Return the preflight supplied research."""
+        """Return the preflight supplied research.
+
+        Args:
+            order (WorkOrder): The work order that defines the requested content run.
+
+        Returns:
+            Optional[ResearchBrief]: The resulting preflight supplied research when
+                available; otherwise ``None``.
+
+        Raises:
+            OrchestrationError: If the orchestration operation cannot complete.
+        """
         if order.research_source != ResearchSource.SUPPLIED:
             return None
         path = Path(order.supplied_research_path or "")
@@ -124,7 +167,16 @@ class OrchestrationSupport:
         order: WorkOrder,
         supplied_brief: Optional[ResearchBrief],
     ) -> str:
-        """Return the submission fingerprint."""
+        """Return the submission fingerprint.
+
+        Args:
+            order (WorkOrder): The work order that defines the requested content run.
+            supplied_brief (Optional[ResearchBrief]): The supplied brief value passed to
+                submission fingerprint.
+
+        Returns:
+            str: The resulting text for submission fingerprint.
+        """
         payload = order.model_dump(mode="json")
         for transient in (
             "content_session_id",
@@ -149,7 +201,20 @@ class OrchestrationSupport:
         state: RunState,
         supplied_brief: Optional[ResearchBrief] = None,
     ) -> Optional[ResearchBrief]:
-        """Return the research."""
+        """Return the research.
+
+        Args:
+            state (RunState): The persisted lifecycle state to inspect or update.
+            supplied_brief (Optional[ResearchBrief]): The supplied brief value passed to
+                research. Defaults to ``None``.
+
+        Returns:
+            Optional[ResearchBrief]: The resulting research when available; otherwise
+                ``None``.
+
+        Raises:
+            OrchestrationError: If the orchestration operation cannot complete.
+        """
         order = state.work_order
         if order.research_depth == ResearchDepth.NONE:
             state.events.append(RunEvent(name="research_skipped"))
@@ -186,7 +251,16 @@ class OrchestrationSupport:
         return brief
 
     def _draft_and_review(self, state: RunState, brief: Optional[ResearchBrief]) -> RunState:
-        """Return the draft and review."""
+        """Return the draft and review.
+
+        Args:
+            state (RunState): The persisted lifecycle state to inspect or update.
+            brief (Optional[ResearchBrief]): The research or content brief that defines the
+                requested work.
+
+        Returns:
+            RunState: The resulting run state for draft and review.
+        """
         pack = self.packs.resolve(state.work_order.content_pack, state.work_order.pack_options)
         revision_context = self._revision_context(state.work_order)
         previous_critique: Optional[Critique] = None
@@ -219,7 +293,26 @@ class OrchestrationSupport:
         previous_critique: Optional[Critique],
         revision: int,
     ) -> tuple[str, Critique, Any]:
-        """Return the draft revision."""
+        """Return the draft revision.
+
+        Generate a revision from the prior draft, critique, and explicit author feedback
+        while preserving run lineage.
+
+        Args:
+            state (RunState): The persisted lifecycle state to inspect or update.
+            brief (Optional[ResearchBrief]): The research or content brief that defines the
+                requested work.
+            pack (Any): The resolved content-pack contract.
+            revision_context (Optional[Dict]): The revision context value passed to draft
+                revision.
+            previous_critique (Optional[Critique]): The previous critique value passed to
+                draft revision.
+            revision (int): The revision value that controls draft revision.
+
+        Returns:
+            tuple[str, Critique, Any]: The resulting draft revision values in their
+                documented order.
+        """
         state.revision = revision
         state.status = RunStatus.DRAFTING
         self.store.save_state(state)
@@ -261,7 +354,18 @@ class OrchestrationSupport:
     def _validate_revision(
         self, state: RunState, pack: Any, draft: str, revision: int
     ) -> tuple[List[str], Optional[Dict[str, Any]]]:
-        """Validate revision."""
+        """Validate the revision.
+
+        Args:
+            state (RunState): The persisted lifecycle state to inspect or update.
+            pack (Any): The resolved content-pack contract.
+            draft (str): The draft content to evaluate or transform.
+            revision (int): The revision value that controls validate revision.
+
+        Returns:
+            tuple[List[str], Optional[Dict[str, Any]]]: The validated revision values in
+                their documented order.
+        """
         errors = validate_draft(draft, state.work_order, pack.validators)
         voice_evaluation = evaluate_voice_output(self.root, state.work_order, draft)
         errors.extend(voice_evaluation["errors"])
@@ -296,7 +400,26 @@ class OrchestrationSupport:
         statistical_score: Optional[Dict[str, Any]],
         previous_critique: Optional[Critique],
     ) -> Critique:
-        """Return the critique revision."""
+        """Return the critique revision.
+
+        Re-run critique for a revised draft and retain the prior issue disposition needed
+        for publication decisions.
+
+        Args:
+            state (RunState): The persisted lifecycle state to inspect or update.
+            brief (Optional[ResearchBrief]): The research or content brief that defines the
+                requested work.
+            draft (str): The draft content to evaluate or transform.
+            validation_errors (List[str]): The validation errors collection consumed while
+                critique revision.
+            statistical_score (Optional[Dict[str, Any]]): The statistical score value passed
+                to critique revision.
+            previous_critique (Optional[Critique]): The previous critique value passed to
+                critique revision.
+
+        Returns:
+            Critique: The resulting critique for critique revision.
+        """
         state.status = RunStatus.REVIEWING
         self.store.save_state(state)
         payload = {
@@ -336,7 +459,15 @@ class OrchestrationSupport:
         )
 
     def _accept_draft(self, state: RunState, draft: str) -> RunState:
-        """Return the accept draft."""
+        """Return the accept draft.
+
+        Args:
+            state (RunState): The persisted lifecycle state to inspect or update.
+            draft (str): The draft content to evaluate or transform.
+
+        Returns:
+            RunState: The resulting run state for accept draft.
+        """
         self.store.write_artifact(state.id, "final.md", draft)
         state.final_draft_path = f"runs/{state.id}/final.md"
         state.status = RunStatus.READY
@@ -346,7 +477,14 @@ class OrchestrationSupport:
         return state
 
     def _defer_to_author(self, state: RunState) -> RunState:
-        """Return the defer to author."""
+        """Return the defer to author.
+
+        Args:
+            state (RunState): The persisted lifecycle state to inspect or update.
+
+        Returns:
+            RunState: The resulting run state for defer to author.
+        """
         latest = self.store.read_artifact(state.id, f"draft-{state.revision:02d}.md")
         self.store.write_artifact(state.id, "final.md", latest)
         state.final_draft_path = f"runs/{state.id}/final.md"
@@ -357,7 +495,18 @@ class OrchestrationSupport:
         return state
 
     def _revision_context(self, order: WorkOrder) -> Optional[Dict]:
-        """Return the revision context."""
+        """Return the revision context.
+
+        Args:
+            order (WorkOrder): The work order that defines the requested content run.
+
+        Returns:
+            Optional[Dict]: The resulting revision context when available; otherwise
+                ``None``.
+
+        Raises:
+            OrchestrationError: If the orchestration operation cannot complete.
+        """
         if not order.parent_run_id:
             return None
         parent = self.store.load(order.parent_run_id)
@@ -392,7 +541,19 @@ class OrchestrationSupport:
         critique: Optional[Critique],
         revision_context: Optional[Dict] = None,
     ) -> Dict:
-        """Return the draft payload."""
+        """Return the draft payload.
+
+        Args:
+            order (WorkOrder): The work order that defines the requested content run.
+            brief (Optional[ResearchBrief]): The research or content brief that defines the
+                requested work.
+            critique (Optional[Critique]): The critique value passed to draft payload.
+            revision_context (Optional[Dict]): The revision context value passed to draft
+                payload. Defaults to ``None``.
+
+        Returns:
+            Dict: The structured resulting data for draft payload.
+        """
         return {
             "work_order": order.model_dump(mode="json"),
             "research": brief.model_dump(mode="json") if brief else None,
@@ -401,14 +562,29 @@ class OrchestrationSupport:
         }
 
     def _available_critiques(self, run_id: str) -> List[Dict[str, Any]]:
-        """Return the available critiques."""
+        """Return the available critiques.
+
+        Args:
+            run_id (str): The stable identifier for the content run.
+
+        Returns:
+            List[Dict[str, Any]]: The resulting available critiques values in their
+                documented order.
+        """
         result: List[Dict[str, Any]] = []
         for path in sorted(self.store.run_dir(run_id).glob("critique-*.json")):
             result.append(json.loads(path.read_text(encoding="utf-8")))
         return result
 
     def _persist_model_history(self, run_id: str) -> None:
-        """Persist model history."""
+        """Persist the model history.
+
+        Args:
+            run_id (str): The stable identifier for the content run.
+
+        Returns:
+            None: The callable updates persist model history state and returns no value.
+        """
         responses = self.runner.responses
         self.store.write_artifact(
             run_id,
@@ -437,7 +613,15 @@ class OrchestrationSupport:
         )
 
     def _fail(self, state: RunState, exc: Exception) -> None:
-        """Return the fail."""
+        """Return the fail.
+
+        Args:
+            state (RunState): The persisted lifecycle state to inspect or update.
+            exc (Exception): The exception raised by the failed operation.
+
+        Returns:
+            None: The callable updates fail state and returns no value.
+        """
         state.status = RunStatus.FAILED
         state.last_error = str(exc)
         state.events.append(RunEvent(name="failed", detail=str(exc)))
@@ -449,7 +633,15 @@ class OrchestrationSupport:
 
     @staticmethod
     def _apply_diagnostic_state(state: RunState, preflight: Dict) -> None:
-        """Apply diagnostic state."""
+        """Apply the diagnostic state.
+
+        Args:
+            state (RunState): The persisted lifecycle state to inspect or update.
+            preflight (Dict): The preflight value passed to apply diagnostic state.
+
+        Returns:
+            None: The callable updates apply diagnostic state state and returns no value.
+        """
         state.diagnostic_summary_path = preflight.get("diagnostic_summary")
         state.support_candidate_path = preflight.get("support_candidate")
         state.pending_support_count = sum(

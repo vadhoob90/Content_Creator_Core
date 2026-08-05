@@ -1,7 +1,8 @@
-"""Stable command runtime façade.
+"""Implement the runtime command family.
 
-Parser composition, dispatch, and specialist command families live in focused modules.
-This module owns only public compatibility exports and error-to-exit-code handling.
+Parser composition, dispatch, and specialist command families live in focused
+modules. This module owns only public compatibility exports and error-to-exit-code
+handling.
 """
 
 from __future__ import annotations
@@ -23,7 +24,15 @@ from .shared import print_json
 
 
 def main(argv: Optional[List[str]] = None) -> int:
-    """Run the command-line interface and return its exit status."""
+    """Run the command-line interface and return its exit status.
+
+    Args:
+        argv (Optional[List[str]]): The command-line argument sequence. Defaults to
+            ``None``.
+
+    Returns:
+        int: The process exit status, where zero indicates successful handling.
+    """
     try:
         setattr(dispatch, "Orchestrator", Orchestrator)  # noqa: B010
         return dispatch.run(argv)
@@ -53,7 +62,15 @@ def main(argv: Optional[List[str]] = None) -> int:
 
 
 def _main(argv: Optional[List[str]] = None) -> int:
-    """Compatibility hook retained for callers that bypass error rendering."""
+    """Run the runtime command-line entry point.
+
+    Args:
+        argv (Optional[List[str]]): The command-line argument sequence. Defaults to
+            ``None``.
+
+    Returns:
+        int: The resulting numeric value for main.
+    """
     setattr(dispatch, "Orchestrator", Orchestrator)  # noqa: B010
     return dispatch.run(argv)
 

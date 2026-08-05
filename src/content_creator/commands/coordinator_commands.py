@@ -1,4 +1,4 @@
-"""Coordinator inspection command handlers."""
+"""Implement the coordinator commands command family."""
 
 from __future__ import annotations
 
@@ -7,7 +7,14 @@ from .context import CommandContext
 
 
 def inspect_coordinator(context: CommandContext) -> int:
-    """Inspect coordinator."""
+    """Inspect the coordinator.
+
+    Args:
+        context (CommandContext): The operation context and its resolved dependencies.
+
+    Returns:
+        int: The inspection numeric value for coordinator.
+    """
     coordinator = ContentCoordinator(context.root)
     arguments = context.arguments
     operations = {

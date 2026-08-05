@@ -10,8 +10,11 @@ release tag.
 
 ### Added
 
-- Concise docstrings for every production module, class, function, and method,
-  with a dependency-free AST coverage report enforced in CI.
+- Comprehensive Google Style contracts for every production module, class,
+  function, and method, including typed arguments, literal defaults, returns,
+  explicit exceptions, and contextual descriptions for complex callables.
+- Dependency-free structural documentation validation, compatible Ruff
+  pydocstyle enforcement, and ADR 0013.
 
 ### Changed
 

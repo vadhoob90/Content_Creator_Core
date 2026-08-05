@@ -20,7 +20,14 @@ from .context import CommandContext
 
 
 def _brief_order(context: CommandContext) -> WorkOrder:
-    """Return the brief order."""
+    """Return the brief order.
+
+    Args:
+        context (CommandContext): The operation context and its resolved dependencies.
+
+    Returns:
+        WorkOrder: The resulting work order for brief order.
+    """
     arguments = context.arguments
     brief_fields = yaml.safe_load(Path(arguments.brief).read_text(encoding="utf-8"))
     research = brief_fields.pop("research", {}) or {}
@@ -34,7 +41,17 @@ def _brief_order(context: CommandContext) -> WorkOrder:
 
 
 def _explicit_order(context: CommandContext) -> WorkOrder:
-    """Return the explicit order."""
+    """Return the explicit order.
+
+    Args:
+        context (CommandContext): The operation context and its resolved dependencies.
+
+    Returns:
+        WorkOrder: The resulting work order for explicit order.
+
+    Raises:
+        ValueError: If an input value violates the supported domain constraints.
+    """
     arguments = context.arguments
     if not arguments.request:
         raise ValueError("run requires a request or --brief")
@@ -73,7 +90,18 @@ def _explicit_order(context: CommandContext) -> WorkOrder:
 
 
 def _planned_order(context: CommandContext) -> WorkOrder | None:
-    """Return the planned order."""
+    """Return the planned order.
+
+    Args:
+        context (CommandContext): The operation context and its resolved dependencies.
+
+    Returns:
+        WorkOrder | None: The resulting planned order when available; otherwise
+            ``None``.
+
+    Raises:
+        ValueError: If an input value violates the supported domain constraints.
+    """
     arguments = context.arguments
     if not arguments.request:
         raise ValueError("run requires a request or --brief")
@@ -88,7 +116,14 @@ def _planned_order(context: CommandContext) -> WorkOrder | None:
 
 
 def _build_order(context: CommandContext) -> WorkOrder | None:
-    """Build order."""
+    """Build the order.
+
+    Args:
+        context (CommandContext): The operation context and its resolved dependencies.
+
+    Returns:
+        WorkOrder | None: The constructed order when available; otherwise ``None``.
+    """
     arguments = context.arguments
     if arguments.brief:
         return _brief_order(context)
@@ -98,7 +133,18 @@ def _build_order(context: CommandContext) -> WorkOrder | None:
 
 
 def _apply_perspective(order: WorkOrder, context: CommandContext) -> None:
-    """Apply perspective."""
+    """Apply the perspective.
+
+    Args:
+        order (WorkOrder): The work order that defines the requested content run.
+        context (CommandContext): The operation context and its resolved dependencies.
+
+    Returns:
+        None: The callable updates apply perspective state and returns no value.
+
+    Raises:
+        ValueError: If an input value violates the supported domain constraints.
+    """
     arguments = context.arguments
     if arguments.no_perspective:
         order.perspective_mode = PerspectiveMode.DISABLED
@@ -126,7 +172,15 @@ def _apply_perspective(order: WorkOrder, context: CommandContext) -> None:
 
 
 def _apply_contribution(order: WorkOrder, context: CommandContext) -> None:
-    """Apply contribution."""
+    """Apply the contribution.
+
+    Args:
+        order (WorkOrder): The work order that defines the requested content run.
+        context (CommandContext): The operation context and its resolved dependencies.
+
+    Returns:
+        None: The callable updates apply contribution state and returns no value.
+    """
     arguments = context.arguments
     if not any(
         (
@@ -148,7 +202,15 @@ def _apply_contribution(order: WorkOrder, context: CommandContext) -> None:
 
 
 def _apply_lineage(order: WorkOrder, context: CommandContext) -> None:
-    """Apply lineage."""
+    """Apply the lineage.
+
+    Args:
+        order (WorkOrder): The work order that defines the requested content run.
+        context (CommandContext): The operation context and its resolved dependencies.
+
+    Returns:
+        None: The callable updates apply lineage state and returns no value.
+    """
     arguments = context.arguments
     if arguments.parent_run:
         parent = context.orchestrator.store.load(arguments.parent_run)
@@ -159,7 +221,14 @@ def _apply_lineage(order: WorkOrder, context: CommandContext) -> None:
 
 
 def run(context: CommandContext) -> int:
-    """Run run commands."""
+    """Run the run commands workflow.
+
+    Args:
+        context (CommandContext): The operation context and its resolved dependencies.
+
+    Returns:
+        int: The process exit status, where zero indicates successful handling.
+    """
     order = _build_order(context)
     if order is None:
         return 3

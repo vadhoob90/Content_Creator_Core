@@ -1,4 +1,4 @@
-"""Runtime evidence, sanitisation, and support-candidate workflow."""
+"""Provide init contracts and behavior."""
 
 from .models import DiagnosticDecisionRequired as DiagnosticDecisionRequired
 from .models import DiagnosticEvent as DiagnosticEvent

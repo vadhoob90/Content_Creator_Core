@@ -65,7 +65,14 @@ class BoundingBox(BaseModel):
 
     @model_validator(mode="after")
     def remains_on_canvas(self) -> Self:
-        """Return the remains on canvas."""
+        """Return the remains on canvas.
+
+        Returns:
+            Self: The resulting self for remains on canvas.
+
+        Raises:
+            ValueError: If an input value violates the supported domain constraints.
+        """
         if self.x + self.width > 1 or self.y + self.height > 1:
             raise ValueError("Bounding boxes must remain within the normalised canvas")
         return self
@@ -108,7 +115,17 @@ class VisualPackProfile(BaseModel):
     @field_validator("aspect_ratios")
     @classmethod
     def validate_ratios(cls, values: List[str]) -> List[str]:
-        """Validate ratios."""
+        """Validate the ratios.
+
+        Args:
+            values (List[str]): The values collection consumed while validate ratios.
+
+        Returns:
+            List[str]: The validated ratios values in their documented order.
+
+        Raises:
+            ValueError: If an input value violates the supported domain constraints.
+        """
         for value in values:
             if not re.fullmatch(r"[1-9]\d*:[1-9]\d*", value):
                 raise ValueError("Aspect ratios must use positive WIDTH:HEIGHT values")
@@ -116,7 +133,14 @@ class VisualPackProfile(BaseModel):
 
     @model_validator(mode="after")
     def validate_support(self) -> Self:
-        """Validate support."""
+        """Validate the support.
+
+        Returns:
+            Self: The validated self for support.
+
+        Raises:
+            ValueError: If an input value violates the supported domain constraints.
+        """
         if self.required and not self.supported:
             raise ValueError("A required visual profile must also be supported")
         if self.supported and not self.execution_classes:
@@ -164,7 +188,17 @@ class VisualBrief(BaseModel):
     @field_validator("run_id")
     @classmethod
     def validate_run_id(cls, value: str) -> str:
-        """Validate run id."""
+        """Validate the run id.
+
+        Args:
+            value (str): The value to process.
+
+        Returns:
+            str: The validated text for run id.
+
+        Raises:
+            ValueError: If an input value violates the supported domain constraints.
+        """
         if not re.fullmatch(r"[A-Za-z0-9_-]+", value):
             raise ValueError("Invalid run id")
         return value
@@ -259,31 +293,76 @@ class VisualAdapter(ABC):
 
     @abstractmethod
     def render(self, brief: VisualBrief, parent: Optional[VisualAsset] = None) -> VisualOutput:
-        """Produce one visual without assuming a particular provider."""
+        """Produce one visual without assuming a particular provider.
+
+        Args:
+            brief (VisualBrief): The research or content brief that defines the requested
+                work.
+            parent (Optional[VisualAsset]): The parent value passed to render. Defaults to
+                ``None``.
+
+        Returns:
+            VisualOutput: The rendered visual output for value.
+        """
 
 
 class VisualAdapterRegistry:
     """Manage visual adapter records."""
 
     def __init__(self) -> None:
-        """Initialize the visual adapter registry."""
+        """Initialize the visual adapter registry.
+
+        Returns:
+            None: The instance is initialized in place and no value is returned.
+        """
         self._adapters: Dict[str, VisualAdapter] = {}
 
     def register(self, adapter: VisualAdapter) -> None:
-        """Register visual adapter registry."""
+        """Register the visual adapter registry workflow.
+
+        Args:
+            adapter (VisualAdapter): The adapter value passed to register.
+
+        Returns:
+            None: The callable updates register state and returns no value.
+
+        Raises:
+            VisualError: If the visual operation cannot complete.
+        """
         if not adapter.name:
             raise VisualError("Visual adapters need a stable name")
         self._adapters[adapter.name] = adapter
 
     def get(self, name: str) -> VisualAdapter:
-        """Return the visual adapter registry."""
+        """Return the visual adapter registry.
+
+        Args:
+            name (str): The stable or human-readable name for the domain object.
+
+        Returns:
+            VisualAdapter: The resulting visual adapter for get.
+
+        Raises:
+            VisualError: If the visual operation cannot complete.
+        """
         try:
             return self._adapters[name]
         except KeyError as exc:
             raise VisualError("Unknown visual adapter: {}".format(name)) from exc
 
     def route(self, brief: VisualBrief) -> VisualAdapter:
-        """Return the route."""
+        """Return the route.
+
+        Args:
+            brief (VisualBrief): The research or content brief that defines the requested
+                work.
+
+        Returns:
+            VisualAdapter: The resulting visual adapter for route.
+
+        Raises:
+            VisualError: If the visual operation cannot complete.
+        """
         if brief.preferred_adapter:
             return self.get(brief.preferred_adapter)
         candidates = list(self._adapters.values())

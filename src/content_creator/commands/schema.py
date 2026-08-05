@@ -1,4 +1,4 @@
-"""Schema catalogue command family."""
+"""Implement the schema command family."""
 
 from __future__ import annotations
 
@@ -9,7 +9,14 @@ from ..schema_registry import schema_catalogue, write_schema_bundle
 
 
 def register(subparsers: Any) -> None:
-    """Register schema."""
+    """Register the schema workflow.
+
+    Args:
+        subparsers (Any): The argparse subparser collection receiving the command.
+
+    Returns:
+        None: The callable updates register state and returns no value.
+    """
     parser = subparsers.add_parser("schema", help="Inspect versioned persisted contracts")
     commands = parser.add_subparsers(dest="schema_command", required=True)
     commands.add_parser("list")
@@ -18,7 +25,16 @@ def register(subparsers: Any) -> None:
 
 
 def run(root: Path, args: Any, print_value: Callable[[Any], None]) -> int:
-    """Run schema."""
+    """Run the schema workflow.
+
+    Args:
+        root (Path): The workspace root directory.
+        args (Any): The parsed command-line arguments.
+        print_value (Callable[[Any], None]): The print value value passed to run.
+
+    Returns:
+        int: The process exit status, where zero indicates successful handling.
+    """
     if args.schema_command == "list":
         print_value(schema_catalogue())
         return 0

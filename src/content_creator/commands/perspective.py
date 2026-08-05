@@ -1,4 +1,4 @@
-"""Compatibility façade and typed router for perspective commands."""
+"""Implement the perspective command family."""
 
 from __future__ import annotations
 
@@ -48,7 +48,19 @@ ROUTES: dict[str, PerspectiveHandler] = {
 
 
 def _context(root: Path, arguments: argparse.Namespace) -> PerspectiveCommandContext:
-    """Return the context."""
+    """Return the context.
+
+    Args:
+        root (Path): The workspace root directory.
+        arguments (argparse.Namespace): The arguments value passed to context.
+
+    Returns:
+        PerspectiveCommandContext: The resulting perspective command context for
+            context.
+
+    Raises:
+        PerspectiveError: If the perspective operation cannot complete.
+    """
     resolved_voice = VoiceRegistry(root).resolve(arguments.voice)
     if not resolved_voice.get("perspectives_allowed", True):
         raise PerspectiveError(
@@ -63,7 +75,15 @@ def _context(root: Path, arguments: argparse.Namespace) -> PerspectiveCommandCon
 
 
 def run(root: Path, arguments: argparse.Namespace) -> int:
-    """Run perspective."""
+    """Run the perspective workflow.
+
+    Args:
+        root (Path): The workspace root directory.
+        arguments (argparse.Namespace): The arguments value passed to run.
+
+    Returns:
+        int: The process exit status, where zero indicates successful handling.
+    """
     comparison_handler = COMPARISON_ROUTES.get(arguments.perspective_command)
     if comparison_handler:
         return comparison_handler(PerspectiveCommandContext(root, arguments))

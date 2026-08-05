@@ -9,7 +9,14 @@ from .domain import WorkOrder
 
 
 def render_overview(snapshot: WorkspaceSnapshot) -> str:
-    """Render overview."""
+    """Render the overview.
+
+    Args:
+        snapshot (WorkspaceSnapshot): The snapshot value passed to render overview.
+
+    Returns:
+        str: The rendered text for overview.
+    """
     active = [
         "{} ({})".format(voice.display_name, voice.active_version or "unversioned")
         for voice in snapshot.voices
@@ -54,7 +61,18 @@ def render_start(
     order: Optional[WorkOrder] = None,
     questions: Optional[Iterable[str]] = None,
 ) -> str:
-    """Render start."""
+    """Render the start.
+
+    Args:
+        snapshot (WorkspaceSnapshot): The snapshot value passed to render start.
+        order (Optional[WorkOrder]): The work order that defines the requested content
+            run. Defaults to ``None``.
+        questions (Optional[Iterable[str]]): The questions value passed to render start.
+            Defaults to ``None``.
+
+    Returns:
+        str: The rendered text for start.
+    """
     if questions:
         return "\n".join(
             ["More information is needed:"] + ["  - {}".format(question) for question in questions]
@@ -85,7 +103,14 @@ def render_start(
 
 
 def _render_action_command(action: CoordinatorAction) -> str:
-    """Render action command."""
+    """Render the action command.
+
+    Args:
+        action (CoordinatorAction): The action value passed to render action command.
+
+    Returns:
+        str: The rendered text for action command.
+    """
     if not action.command:
         return ""
     return "Command: content-creator {}".format(" ".join(action.command))

@@ -33,7 +33,18 @@ def stage_context(
     entries: list[PerspectiveEntry],
     display_name: str | None,
 ) -> PerspectiveManifest:
-    """Stage context."""
+    """Stage the context.
+
+    Args:
+        registry_service (Any): The registry service used for domain lifecycle
+            operations.
+        context_id (str): The stable identifier for the context.
+        entries (list[PerspectiveEntry]): The ordered domain records to process.
+        display_name (str | None): The human-readable name shown to users.
+
+    Returns:
+        PerspectiveManifest: The resulting perspective manifest for stage context.
+    """
     VoiceRegistry(registry_service.root).resolve(registry_service.voice_id)
     context_root = registry_service.context_root(context_id)
     staging = context_root / ".candidate-staging"
@@ -61,7 +72,17 @@ def stage_context(
 
 
 def _validate_entries(entries: list[PerspectiveEntry]) -> None:
-    """Validate entries."""
+    """Validate the entries.
+
+    Args:
+        entries (list[PerspectiveEntry]): The ordered domain records to process.
+
+    Returns:
+        None: The callable updates entries state and returns no value.
+
+    Raises:
+        PerspectiveError: If the perspective operation cannot complete.
+    """
     entry_ids = [entry.id for entry in entries]
     if len(entry_ids) != len(set(entry_ids)):
         raise PerspectiveError("Perspective entry ids must be unique")
@@ -76,7 +97,18 @@ def _validate_entries(entries: list[PerspectiveEntry]) -> None:
 def _write_candidate_files(
     registry_service: Any, staging: Any, context_id: str, entries: list[PerspectiveEntry]
 ) -> dict[str, str]:
-    """Write candidate files."""
+    """Write the candidate files.
+
+    Args:
+        registry_service (Any): The registry service used for domain lifecycle
+            operations.
+        staging (Any): The staging value passed to write candidate files.
+        context_id (str): The stable identifier for the context.
+        entries (list[PerspectiveEntry]): The ordered domain records to process.
+
+    Returns:
+        dict[str, str]: The structured resulting data for write candidate files.
+    """
     RunStore._atomic_text(
         staging / "entries.json",
         json.dumps([entry.model_dump(mode="json") for entry in entries], indent=2),
@@ -115,7 +147,16 @@ def _write_candidate_files(
 
 
 def _replace_candidate(context_root: Any, staging: Any, candidate: Any) -> None:
-    """Return the replace candidate."""
+    """Return the replace candidate.
+
+    Args:
+        context_root (Any): The context root value passed to replace candidate.
+        staging (Any): The staging value passed to replace candidate.
+        candidate (Any): The candidate artifact under evaluation.
+
+    Returns:
+        None: The callable updates replace candidate state and returns no value.
+    """
     previous = context_root / ".candidate-previous"
     if previous.exists():
         shutil.rmtree(previous)
@@ -134,7 +175,18 @@ def _replace_candidate(context_root: Any, staging: Any, candidate: Any) -> None:
 def activate_context(
     registry_service: Any, context_id: str, approved_by: str
 ) -> PerspectiveApprovalReceipt:
-    """Activate context."""
+    """Activate the context.
+
+    Args:
+        registry_service (Any): The registry service used for domain lifecycle
+            operations.
+        context_id (str): The stable identifier for the context.
+        approved_by (str): The reviewer identity recorded with the approval.
+
+    Returns:
+        PerspectiveApprovalReceipt: The resulting perspective approval receipt for
+            activate context.
+    """
     VoiceRegistry(registry_service.root).resolve(registry_service.voice_id)
     context_root = registry_service.context_root(context_id)
     candidate = context_root / "candidate"
@@ -152,7 +204,17 @@ def activate_context(
 
 
 def _validated_candidate(candidate: Any) -> PerspectiveManifest:
-    """Return the validated candidate."""
+    """Return the validated candidate.
+
+    Args:
+        candidate (Any): The candidate artifact under evaluation.
+
+    Returns:
+        PerspectiveManifest: The resulting perspective manifest for validated candidate.
+
+    Raises:
+        PerspectiveError: If the perspective operation cannot complete.
+    """
     manifest_path = candidate / "manifest.json"
     if not manifest_path.exists():
         raise PerspectiveError("Perspective candidate has not been created")
@@ -169,7 +231,18 @@ def _validated_candidate(candidate: Any) -> PerspectiveManifest:
 def _existing_receipt(
     context_root: Any, registry: dict, context_id: str, manifest: PerspectiveManifest
 ) -> PerspectiveApprovalReceipt | None:
-    """Return the existing receipt."""
+    """Return the existing receipt.
+
+    Args:
+        context_root (Any): The context root value passed to existing receipt.
+        registry (dict): The registry used to resolve and persist domain entries.
+        context_id (str): The stable identifier for the context.
+        manifest (PerspectiveManifest): The manifest that records the artifact contract.
+
+    Returns:
+        PerspectiveApprovalReceipt | None: The resulting existing receipt when
+            available; otherwise ``None``.
+    """
     existing = registry["contexts"].get(context_id, {})
     if existing.get("candidate_hash") != manifest.candidate_hash:
         return None
@@ -186,7 +259,20 @@ def _promote(
     manifest: PerspectiveManifest,
     approved_by: str,
 ) -> PerspectiveApprovalReceipt:
-    """Return the promote."""
+    """Return the promote.
+
+    Args:
+        registry_service (Any): The registry service used for domain lifecycle
+            operations.
+        registry (dict): The registry used to resolve and persist domain entries.
+        candidate (Any): The candidate artifact under evaluation.
+        manifest (PerspectiveManifest): The manifest that records the artifact contract.
+        approved_by (str): The reviewer identity recorded with the approval.
+
+    Returns:
+        PerspectiveApprovalReceipt: The resulting perspective approval receipt for
+            promote.
+    """
     context_root = registry_service.context_root(manifest.context_id)
     version = next_major_version(context_root / "versions")
     destination = context_root / "versions" / version

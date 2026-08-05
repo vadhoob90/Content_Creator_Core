@@ -18,7 +18,11 @@ from .workspace_parser import register_agents, register_experience, register_wor
 
 
 def build_parser() -> argparse.ArgumentParser:
-    """Build parser."""
+    """Build the parser workflow.
+
+    Returns:
+        argparse.ArgumentParser: The constructed argument parser for parser.
+    """
     parser = argparse.ArgumentParser(prog="content-creator", formatter_class=AuthorHelpFormatter)
     parser.add_argument("--root", "--workspace", dest="root")
     subparsers = parser.add_subparsers(

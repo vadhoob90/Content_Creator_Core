@@ -25,12 +25,30 @@ class ClaudeNativeProvider(NativeCliProvider):
         executable: Optional[str] = None,
         command_runner: Optional[CommandRunner] = None,
     ):
-        """Initialize the claude native provider."""
+        """Initialize the claude native provider.
+
+        Args:
+            root (Optional[Path]): The workspace root directory. Defaults to ``None``.
+            executable (Optional[str]): The executable text processed when init. Defaults to
+                ``None``.
+            command_runner (Optional[CommandRunner]): The command runner value passed to
+                init. Defaults to ``None``.
+
+        Returns:
+            None: The instance is initialized in place and no value is returned.
+        """
         super().__init__(root, executable, command_runner)
         self._subscription_type: Optional[str] = None
 
     def _ensure_subscription_auth(self) -> None:
-        """Ensure subscription auth."""
+        """Return the ensure subscription auth.
+
+        Returns:
+            None: The callable updates ensure subscription auth state and returns no value.
+
+        Raises:
+            ProviderError: If the provider operation cannot complete.
+        """
         if self._authenticated:
             return
         result = self._run([self.executable, "auth", "status"], timeout=30)
@@ -56,7 +74,11 @@ class ClaudeNativeProvider(NativeCliProvider):
         self._authenticated = True
 
     def verify(self) -> Dict[str, str]:
-        """Verify claude native provider."""
+        """Verify the claude native provider workflow.
+
+        Returns:
+            Dict[str, str]: The structured verified data for value.
+        """
         self._ensure_subscription_auth()
         return {
             "authentication": "claude.ai",
@@ -64,7 +86,21 @@ class ClaudeNativeProvider(NativeCliProvider):
         }
 
     def generate(self, request: ModelRequest) -> ModelResponse:
-        """Generate claude native provider."""
+        """Generate the claude native provider workflow.
+
+        Translate the model request into a bounded Claude CLI invocation, validate
+        structured output, and return normalized usage metadata.
+
+        Args:
+            request (ModelRequest): The validated request that initiates the operation.
+
+        Returns:
+            ModelResponse: The normalized model response with generated text and usage
+                metadata.
+
+        Raises:
+            ProviderError: If the provider operation cannot complete.
+        """
         self._ensure_subscription_auth()
         with tempfile.TemporaryDirectory(prefix="content-creator-claude-") as directory:
             workdir = Path(directory)

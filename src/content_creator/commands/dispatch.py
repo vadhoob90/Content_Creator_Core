@@ -67,7 +67,15 @@ ROUTES: dict[str, Handler] = {
 
 
 def run(argv: Optional[List[str]] = None) -> int:
-    """Run dispatch."""
+    """Run the dispatch workflow.
+
+    Args:
+        argv (Optional[List[str]]): The command-line argument sequence. Defaults to
+            ``None``.
+
+    Returns:
+        int: The process exit status, where zero indicates successful handling.
+    """
     arguments = build_parser().parse_args(argv)
     handler = ROUTES.get(arguments.command)
     if handler is None:

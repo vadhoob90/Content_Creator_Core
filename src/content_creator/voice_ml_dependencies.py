@@ -12,7 +12,14 @@ class MLDependencyError(RuntimeError):
 
 
 def require_sklearn() -> Dict[str, Any]:
-    """Require sklearn."""
+    """Require the sklearn.
+
+    Returns:
+        Dict[str, Any]: The structured resulting data for require sklearn.
+
+    Raises:
+        MLDependencyError: If the mldependency operation cannot complete.
+    """
     try:
         import sklearn
         from sklearn.linear_model import LogisticRegression

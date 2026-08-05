@@ -1,4 +1,4 @@
-"""Content-pack creation and inspection command handlers."""
+"""Implement the pack commands command family."""
 
 from __future__ import annotations
 
@@ -10,7 +10,18 @@ from .context import CommandContext
 
 
 def _create_pack(context: CommandContext, packs: PackRegistry) -> int:
-    """Create pack."""
+    """Create the pack.
+
+    Args:
+        context (CommandContext): The operation context and its resolved dependencies.
+        packs (PackRegistry): The packs value passed to create pack.
+
+    Returns:
+        int: The created numeric value for pack.
+
+    Raises:
+        ValueError: If an input value violates the supported domain constraints.
+    """
     arguments = context.arguments
     destination = context.root / "packs" / arguments.pack_id
     if destination.exists():
@@ -38,7 +49,14 @@ def _create_pack(context: CommandContext, packs: PackRegistry) -> int:
 
 
 def manage_pack(context: CommandContext) -> int:
-    """Manage pack."""
+    """Manage the pack.
+
+    Args:
+        context (CommandContext): The operation context and its resolved dependencies.
+
+    Returns:
+        int: The resulting numeric value for manage pack.
+    """
     packs = PackRegistry(context.root)
     arguments = context.arguments
     if arguments.pack_command == "create":

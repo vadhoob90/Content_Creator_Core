@@ -28,7 +28,14 @@ class VoiceRegistryAccess(Protocol):
     path: Path
 
     def _read(self) -> dict:
-        """Read voice registry access."""
+        """Read the voice registry access workflow.
+
+        Returns:
+            dict: The loaded dict for value.
+
+        Raises:
+            NotImplementedError: If the not implemented operation cannot complete.
+        """
         raise NotImplementedError
 
 
@@ -38,7 +45,20 @@ def activate_candidate(
     approved_by: str,
     override_reason: str | None,
 ) -> VoiceApprovalReceipt:
-    """Activate candidate."""
+    """Activate the candidate.
+
+    Args:
+        registry_service (VoiceRegistryAccess): The registry service used for domain
+            lifecycle operations.
+        voice_id (str): The stable identifier for the selected voice.
+        approved_by (str): The reviewer identity recorded with the approval.
+        override_reason (str | None): The override reason text processed when activate
+            candidate.
+
+    Returns:
+        VoiceApprovalReceipt: The resulting voice approval receipt for activate
+            candidate.
+    """
     voice_root = registry_service.root / "profiles" / voice_id
     candidate = voice_root / "candidate"
     manifest, evaluation_path = _validated_candidate(candidate, override_reason)
@@ -63,7 +83,20 @@ def activate_candidate(
 def _validated_candidate(
     candidate: Path, override_reason: str | None
 ) -> tuple[VoiceManifest, Path]:
-    """Return the validated candidate."""
+    """Return the validated candidate.
+
+    Args:
+        candidate (Path): The candidate artifact under evaluation.
+        override_reason (str | None): The override reason text processed when validated
+            candidate.
+
+    Returns:
+        tuple[VoiceManifest, Path]: The resolved filesystem path for validated
+            candidate.
+
+    Raises:
+        VoiceError: If the voice operation cannot complete.
+    """
     manifest_path = candidate / "manifest.json"
     evaluation_path = candidate / "evaluation-report.json"
     if not manifest_path.exists():
@@ -88,7 +121,18 @@ def _validated_candidate(
 def _existing_receipt(
     voice_root: Path, registry: dict, voice_id: str, manifest: VoiceManifest
 ) -> VoiceApprovalReceipt | None:
-    """Return the existing receipt."""
+    """Return the existing receipt.
+
+    Args:
+        voice_root (Path): The filesystem path containing the voice root.
+        registry (dict): The registry used to resolve and persist domain entries.
+        voice_id (str): The stable identifier for the selected voice.
+        manifest (VoiceManifest): The manifest that records the artifact contract.
+
+    Returns:
+        VoiceApprovalReceipt | None: The resulting existing receipt when available;
+            otherwise ``None``.
+    """
     existing = registry["profiles"].get(voice_id, {})
     if existing.get("candidate_hash") != manifest.candidate_hash:
         return None
@@ -101,7 +145,16 @@ def _existing_receipt(
 def _promote_candidate(
     voice_root: Path, candidate: Path, manifest: VoiceManifest
 ) -> tuple[str, Path]:
-    """Return the promote candidate."""
+    """Return the promote candidate.
+
+    Args:
+        voice_root (Path): The filesystem path containing the voice root.
+        candidate (Path): The candidate artifact under evaluation.
+        manifest (VoiceManifest): The manifest that records the artifact contract.
+
+    Returns:
+        tuple[str, Path]: The resolved filesystem path for promote candidate.
+    """
     version = next_major_version(voice_root / "versions")
     destination = voice_root / "versions" / version
     shutil.copytree(candidate, destination)
@@ -119,7 +172,20 @@ def _write_receipt(
     override_reason: str | None,
     version: str,
 ) -> VoiceApprovalReceipt:
-    """Write receipt."""
+    """Write the receipt.
+
+    Args:
+        destination (Path): The destination filesystem path.
+        evaluation_path (Path): The filesystem path for the evaluation path.
+        manifest (VoiceManifest): The manifest that records the artifact contract.
+        approved_by (str): The reviewer identity recorded with the approval.
+        override_reason (str | None): The override reason text processed when write
+            receipt.
+        version (str): The immutable artifact or schema version identifier.
+
+    Returns:
+        VoiceApprovalReceipt: The resulting voice approval receipt for write receipt.
+    """
     receipt = VoiceApprovalReceipt(
         voice_id=manifest.id,
         candidate_version="candidate",
@@ -144,7 +210,18 @@ def _write_receipt(
 def _activate_registry(
     registry_service: VoiceRegistryAccess, registry: dict, manifest: VoiceManifest, version: str
 ) -> None:
-    """Activate registry."""
+    """Activate the registry.
+
+    Args:
+        registry_service (VoiceRegistryAccess): The registry service used for domain
+            lifecycle operations.
+        registry (dict): The registry used to resolve and persist domain entries.
+        manifest (VoiceManifest): The manifest that records the artifact contract.
+        version (str): The immutable artifact or schema version identifier.
+
+    Returns:
+        None: The callable updates activate registry state and returns no value.
+    """
     registry["profiles"][manifest.id] = {
         "display_name": manifest.display_name,
         "status": VoiceStatus.ACTIVE.value,
@@ -159,7 +236,15 @@ def _activate_registry(
 
 
 def _complete_onboarding(root: Path, voice_id: str) -> None:
-    """Return the complete onboarding."""
+    """Return the complete onboarding.
+
+    Args:
+        root (Path): The workspace root directory.
+        voice_id (str): The stable identifier for the selected voice.
+
+    Returns:
+        None: The callable updates complete onboarding state and returns no value.
+    """
     onboarding = load_voice_onboarding(root, voice_id)
     if not onboarding:
         return

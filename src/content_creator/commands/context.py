@@ -1,4 +1,4 @@
-"""Typed dependencies shared by focused command handlers."""
+"""Implement the context command family."""
 
 from __future__ import annotations
 
@@ -12,7 +12,7 @@ from ..orchestrator import Orchestrator
 
 @dataclass
 class CommandContext:
-    """Resolved command inputs and lazily constructed application dependencies."""
+    """Represent the command context contract."""
 
     root: Path
     arguments: argparse.Namespace
@@ -22,7 +22,11 @@ class CommandContext:
 
     @property
     def orchestrator(self) -> Orchestrator:
-        """Return one orchestrator instance for commands that require it."""
+        """Return one orchestrator instance for commands that require it.
+
+        Returns:
+            Orchestrator: The resulting orchestrator for orchestrator.
+        """
         if self._orchestrator is None:
             self._orchestrator = self.orchestrator_type(self.root)
         return self._orchestrator

@@ -1,4 +1,4 @@
-"""Models and deterministic sampling helpers for the voice-build pipeline."""
+"""Provide voice build models contracts and behavior."""
 
 from __future__ import annotations
 
@@ -41,7 +41,16 @@ class VoiceEvaluationJudgement(BaseModel):
 
 
 def analysis_excerpt(text: str, limit: int = 6000) -> str:
-    """Return the analysis excerpt."""
+    """Return the analysis excerpt.
+
+    Args:
+        text (str): The text to process.
+        limit (int): The maximum number of records to return or process. Defaults to
+            ``6000``.
+
+    Returns:
+        str: The resulting text for analysis excerpt.
+    """
     if len(text) <= limit:
         return text
     section = limit // 3
@@ -53,7 +62,15 @@ def analysis_excerpt(text: str, limit: int = 6000) -> str:
 
 
 def even_sample(records: List[SourceRecord], limit: int) -> List[SourceRecord]:
-    """Return the even sample."""
+    """Return the even sample.
+
+    Args:
+        records (List[SourceRecord]): The ordered persisted records to process.
+        limit (int): The maximum number of records to return or process.
+
+    Returns:
+        List[SourceRecord]: The resulting even sample values in their documented order.
+    """
     if limit <= 0:
         return []
     if limit == 1:
@@ -64,7 +81,14 @@ def even_sample(records: List[SourceRecord], limit: int) -> List[SourceRecord]:
 
 
 def public_locator(locator: str) -> str:
-    """Return the public locator."""
+    """Return the public locator.
+
+    Args:
+        locator (str): The source locator used to retrieve the document.
+
+    Returns:
+        str: The resulting text for public locator.
+    """
     return (
         locator
         if locator.startswith(("http://", "https://"))

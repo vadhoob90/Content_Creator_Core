@@ -1,4 +1,4 @@
-"""Operational recovery command family."""
+"""Implement the operations command family."""
 
 from __future__ import annotations
 
@@ -9,7 +9,14 @@ from ..operations import build_support_bundle, recovery_report
 
 
 def register(subparsers: Any) -> None:
-    """Register operations."""
+    """Register the operations workflow.
+
+    Args:
+        subparsers (Any): The argparse subparser collection receiving the command.
+
+    Returns:
+        None: The callable updates register state and returns no value.
+    """
     parser = subparsers.add_parser("operations", help="Inspect and recover local runtime state")
     commands = parser.add_subparsers(dest="operations_command", required=True)
     support = commands.add_parser("support-bundle")
@@ -18,7 +25,16 @@ def register(subparsers: Any) -> None:
 
 
 def run(root: Path, args: Any, print_value: Callable[[Any], None]) -> int:
-    """Run operations."""
+    """Run the operations workflow.
+
+    Args:
+        root (Path): The workspace root directory.
+        args (Any): The parsed command-line arguments.
+        print_value (Callable[[Any], None]): The print value value passed to run.
+
+    Returns:
+        int: The process exit status, where zero indicates successful handling.
+    """
     if args.operations_command == "support-bundle":
         print_value(build_support_bundle(root, args.run_id))
     else:

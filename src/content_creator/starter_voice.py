@@ -39,7 +39,23 @@ def activate_starter(
     registry_service: Any,
     request: StarterVoiceRequest,
 ) -> dict[str, Any]:
-    """Activate starter."""
+    """Activate the starter.
+
+    Create and activate a neutral starter voice with explicit provenance, immutable
+    artifacts, and a registry receipt.
+
+    Args:
+        registry_service (Any): The registry service used for domain lifecycle
+            operations.
+        request (StarterVoiceRequest): The validated request that initiates the
+            operation.
+
+    Returns:
+        dict[str, Any]: The structured resulting data for activate starter.
+
+    Raises:
+        VoiceError: If the voice operation cannot complete.
+    """
     if request.template_id != STARTER_TEMPLATE_ID:
         raise VoiceError(f"Unknown starter voice template: {request.template_id}")
     registry = registry_service._read()
@@ -93,7 +109,20 @@ def _existing_starter(
     registry_service: Any,
     request: StarterVoiceRequest,
 ) -> dict[str, Any]:
-    """Return the existing starter."""
+    """Return the existing starter.
+
+    Args:
+        registry_service (Any): The registry service used for domain lifecycle
+            operations.
+        request (StarterVoiceRequest): The validated request that initiates the
+            operation.
+
+    Returns:
+        dict[str, Any]: The structured resulting data for existing starter.
+
+    Raises:
+        VoiceError: If the voice operation cannot complete.
+    """
     resolved = registry_service.resolve(request.voice_id)
     if resolved["strategy"] != VoiceStrategy.STARTER.value:
         raise VoiceError(f"Voice {request.voice_id} already has an active source-derived version")
@@ -110,7 +139,19 @@ def _existing_starter(
 
 
 def _write_artifacts(destination: Path, author_name: str) -> tuple[dict, dict, str]:
-    """Write artifacts."""
+    """Write the artifacts.
+
+    Write the starter profile, signature, manifest, and supporting metadata into an
+    immutable candidate version.
+
+    Args:
+        destination (Path): The destination filesystem path.
+        author_name (str): The author's display name.
+
+    Returns:
+        tuple[dict, dict, str]: The resulting write artifacts values in their documented
+            order.
+    """
     template = (
         Path(__file__).with_name("resources") / "profiles" / "starter" / "clear-professional.md"
     )
@@ -173,7 +214,20 @@ def _write_manifest(
     component_hashes: dict,
     candidate_hash: str,
 ) -> VoiceManifest:
-    """Write manifest."""
+    """Write the manifest.
+
+    Args:
+        destination (Path): The destination filesystem path.
+        request (StarterVoiceRequest): The validated request that initiates the
+            operation.
+        version (str): The immutable artifact or schema version identifier.
+        components (dict): The components value passed to write manifest.
+        component_hashes (dict): The component hashes value passed to write manifest.
+        candidate_hash (str): The candidate hash text processed when write manifest.
+
+    Returns:
+        VoiceManifest: The resulting voice manifest for write manifest.
+    """
     manifest = VoiceManifest(
         id=request.voice_id,
         display_name=request.display_name,
@@ -205,7 +259,18 @@ def _write_receipt(
     version: str,
     candidate_hash: str,
 ) -> str:
-    """Write receipt."""
+    """Write the receipt.
+
+    Args:
+        destination (Path): The destination filesystem path.
+        voice_id (str): The stable identifier for the selected voice.
+        selected_by (str): The selected by text processed when write receipt.
+        version (str): The immutable artifact or schema version identifier.
+        candidate_hash (str): The candidate hash text processed when write receipt.
+
+    Returns:
+        str: The resulting text for write receipt.
+    """
     activated_at = datetime.now(UTC).isoformat()
     receipt = VoiceApprovalReceipt(
         voice_id=voice_id,
@@ -240,7 +305,21 @@ def _update_registry(
     candidate_hash: str,
     template_id: str,
 ) -> None:
-    """Update registry."""
+    """Update the registry.
+
+    Args:
+        registry_service (Any): The registry service used for domain lifecycle
+            operations.
+        registry (dict): The registry used to resolve and persist domain entries.
+        voice_id (str): The stable identifier for the selected voice.
+        display_name (str): The human-readable name shown to users.
+        version (str): The immutable artifact or schema version identifier.
+        candidate_hash (str): The candidate hash text processed when update registry.
+        template_id (str): The stable identifier for the template.
+
+    Returns:
+        None: The callable updates update registry state and returns no value.
+    """
     registry["profiles"][voice_id] = {
         "display_name": display_name,
         "status": VoiceStatus.ACTIVE.value,
@@ -263,7 +342,20 @@ def _record_onboarding(
     template_id: str,
     activated_at: str,
 ) -> None:
-    """Record onboarding."""
+    """Record the onboarding.
+
+    Args:
+        root (Path): The workspace root directory.
+        voice_id (str): The stable identifier for the selected voice.
+        display_name (str): The human-readable name shown to users.
+        author_name (str): The author's display name.
+        selected_by (str): The selected by text processed when record onboarding.
+        template_id (str): The stable identifier for the template.
+        activated_at (str): The activated at text processed when record onboarding.
+
+    Returns:
+        None: The callable updates record onboarding state and returns no value.
+    """
     save_voice_onboarding(
         root,
         VoiceOnboardingRecord(

@@ -212,6 +212,7 @@ def test_maintainability_documents_are_linked_from_the_core_guide():
         "../adr/0009-schema-governance-and-operational-recovery.md",
         "../adr/0010-module-responsibility-and-size-guardrails.md",
         "../adr/0012-concept-cohesion-and-package-promotion.md",
+        "../adr/0013-google-style-code-contracts.md",
     ):
         assert target in core_guide
 

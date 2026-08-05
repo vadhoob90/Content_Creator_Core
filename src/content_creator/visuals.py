@@ -73,13 +73,35 @@ class VisualWorkflow:
     """Represent a visual workflow."""
 
     def __init__(self, root: Path, adapter_registry: Optional[VisualAdapterRegistry] = None):
-        """Initialize the visual workflow."""
+        """Initialize the visual workflow with its required state and collaborators.
+
+        Args:
+            root (Path): The workspace root directory.
+            adapter_registry (Optional[VisualAdapterRegistry]): The adapter registry value
+                passed to init. Defaults to ``None``.
+
+        Returns:
+            None: The instance is initialized in place and no value is returned.
+        """
         self.root = root.resolve()
         self.store = RunStore(self.root)
         self.adapters = adapter_registry or VisualAdapterRegistry()
 
     def create_brief(self, brief: VisualBrief, profile: VisualPackProfile) -> VisualBrief:
-        """Create brief."""
+        """Create the brief.
+
+        Args:
+            brief (VisualBrief): The research or content brief that defines the requested
+                work.
+            profile (VisualPackProfile): The resolved voice, perspective, or content
+                profile.
+
+        Returns:
+            VisualBrief: The created visual brief for brief.
+
+        Raises:
+            VisualError: If the visual operation cannot complete.
+        """
         state = self.store.load(brief.run_id)
         if state.status not in {RunStatus.READY, RunStatus.NEEDS_AUTHOR, RunStatus.PUBLISHED}:
             raise VisualError("Visual briefs require reviewed content")
@@ -110,7 +132,21 @@ class VisualWorkflow:
         adapter_name: Optional[str] = None,
         parent_asset_id: Optional[str] = None,
     ) -> VisualAsset:
-        """Execute visual workflow."""
+        """Execute the visual workflow workflow.
+
+        Resolve the selected visual adapter, render the asset, validate pack constraints,
+        and persist diagnostics and manifest state.
+
+        Args:
+            run_id (str): The stable identifier for the content run.
+            adapter_name (Optional[str]): The adapter name text processed when execute.
+                Defaults to ``None``.
+            parent_asset_id (Optional[str]): The stable identifier for the parent asset.
+                Defaults to ``None``.
+
+        Returns:
+            VisualAsset: The resulting visual asset for execute.
+        """
         brief = self._load_brief(run_id)
         manifest = self._load_manifest(run_id)
         adapter = self.adapters.get(adapter_name) if adapter_name else self.adapters.route(brief)
@@ -156,7 +192,17 @@ class VisualWorkflow:
         asset_id: str,
         profile: VisualPackProfile,
     ) -> VisualValidation:
-        """Validate visual workflow."""
+        """Validate the visual workflow workflow.
+
+        Args:
+            run_id (str): The stable identifier for the content run.
+            asset_id (str): The stable identifier for the asset.
+            profile (VisualPackProfile): The resolved voice, perspective, or content
+                profile.
+
+        Returns:
+            VisualValidation: The validated visual validation for value.
+        """
         brief = self._load_brief(run_id)
         manifest = self._load_manifest(run_id)
         asset = self._asset(manifest, asset_id)
@@ -181,7 +227,20 @@ class VisualWorkflow:
         profile: VisualPackProfile,
         diagnostics: List[VisualDiagnostic],
     ) -> None:
-        """Validate asset basics."""
+        """Validate the asset basics.
+
+        Args:
+            asset (VisualAsset): The asset value passed to validate asset basics.
+            brief (VisualBrief): The research or content brief that defines the requested
+                work.
+            profile (VisualPackProfile): The resolved voice, perspective, or content
+                profile.
+            diagnostics (List[VisualDiagnostic]): The runtime diagnostics service used to
+                record safe evidence.
+
+        Returns:
+            None: The callable updates asset basics state and returns no value.
+        """
         ratio = self._ratio(asset.width, asset.height)
         if ratio not in profile.aspect_ratios:
             diagnostics.append(self._error("unsupported-aspect-ratio", ratio))
@@ -210,7 +269,18 @@ class VisualWorkflow:
         brief: VisualBrief,
         diagnostics: List[VisualDiagnostic],
     ) -> None:
-        """Validate copy."""
+        """Validate the copy.
+
+        Args:
+            asset (VisualAsset): The asset value passed to validate copy.
+            brief (VisualBrief): The research or content brief that defines the requested
+                work.
+            diagnostics (List[VisualDiagnostic]): The runtime diagnostics service used to
+                record safe evidence.
+
+        Returns:
+            None: The callable updates copy state and returns no value.
+        """
         if brief.exact_copy:
             if asset.extracted_copy is None:
                 diagnostics.append(
@@ -233,7 +303,20 @@ class VisualWorkflow:
         profile: VisualPackProfile,
         diagnostics: List[VisualDiagnostic],
     ) -> None:
-        """Validate safe areas."""
+        """Validate the safe areas.
+
+        Args:
+            asset (VisualAsset): The asset value passed to validate safe areas.
+            brief (VisualBrief): The research or content brief that defines the requested
+                work.
+            profile (VisualPackProfile): The resolved voice, perspective, or content
+                profile.
+            diagnostics (List[VisualDiagnostic]): The runtime diagnostics service used to
+                record safe evidence.
+
+        Returns:
+            None: The callable updates safe areas state and returns no value.
+        """
         safe_areas = {item.id: item for item in profile.safe_areas}
         for profile_id in brief.safe_area_profiles:
             safe = safe_areas.get(profile_id)
@@ -253,7 +336,20 @@ class VisualWorkflow:
         profile: VisualPackProfile,
         diagnostics: List[VisualDiagnostic],
     ) -> None:
-        """Validate crops."""
+        """Validate the crops.
+
+        Args:
+            asset (VisualAsset): The asset value passed to validate crops.
+            brief (VisualBrief): The research or content brief that defines the requested
+                work.
+            profile (VisualPackProfile): The resolved voice, perspective, or content
+                profile.
+            diagnostics (List[VisualDiagnostic]): The runtime diagnostics service used to
+                record safe evidence.
+
+        Returns:
+            None: The callable updates crops state and returns no value.
+        """
         crops = {item.id: item for item in profile.crop_profiles}
         for profile_id in brief.crop_profiles:
             crop = crops.get(profile_id)
@@ -265,7 +361,16 @@ class VisualWorkflow:
                     diagnostics.append(self._error("crop-risk", box.role, profile=profile_id))
 
     def record_critique(self, run_id: str, asset_id: str, critique: VisualCritique) -> VisualAsset:
-        """Record critique."""
+        """Record the critique.
+
+        Args:
+            run_id (str): The stable identifier for the content run.
+            asset_id (str): The stable identifier for the asset.
+            critique (VisualCritique): The critique value passed to record critique.
+
+        Returns:
+            VisualAsset: The resulting visual asset for record critique.
+        """
         manifest = self._load_manifest(run_id)
         asset = self._asset(manifest, asset_id)
         asset.critique = critique
@@ -275,7 +380,18 @@ class VisualWorkflow:
         return asset
 
     def select(self, run_id: str, asset_id: str) -> VisualAsset:
-        """Select visual workflow."""
+        """Select the visual workflow workflow.
+
+        Args:
+            run_id (str): The stable identifier for the content run.
+            asset_id (str): The stable identifier for the asset.
+
+        Returns:
+            VisualAsset: The selected visual asset for value.
+
+        Raises:
+            VisualError: If the visual operation cannot complete.
+        """
         manifest = self._load_manifest(run_id)
         asset = self._asset(manifest, asset_id)
         if not asset.validation or not asset.validation.passed:
@@ -291,7 +407,18 @@ class VisualWorkflow:
         return asset
 
     def approve(self, run_id: str, asset_id: str) -> VisualAsset:
-        """Approve visual workflow."""
+        """Approve the visual workflow workflow.
+
+        Args:
+            run_id (str): The stable identifier for the content run.
+            asset_id (str): The stable identifier for the asset.
+
+        Returns:
+            VisualAsset: The resulting visual asset for approve.
+
+        Raises:
+            VisualError: If the visual operation cannot complete.
+        """
         manifest = self._load_manifest(run_id)
         asset = self._asset(manifest, asset_id)
         if manifest.selected_asset_id != asset.asset_id:
@@ -308,7 +435,20 @@ class VisualWorkflow:
     def ensure_publication_ready(
         self, run_id: str, profile: VisualPackProfile
     ) -> Optional[VisualAsset]:
-        """Ensure publication ready."""
+        """Return the ensure publication ready.
+
+        Args:
+            run_id (str): The stable identifier for the content run.
+            profile (VisualPackProfile): The resolved voice, perspective, or content
+                profile.
+
+        Returns:
+            Optional[VisualAsset]: The resulting ensure publication ready when available;
+                otherwise ``None``.
+
+        Raises:
+            VisualError: If the visual operation cannot complete.
+        """
         manifest_path = self.store.run_dir(run_id) / "visuals" / "manifest.json"
         if not manifest_path.exists():
             if profile.required:
@@ -330,7 +470,20 @@ class VisualWorkflow:
         return asset
 
     def publish(self, run_id: str, profile: VisualPackProfile) -> Optional[Path]:
-        """Publish visual workflow."""
+        """Publish the visual workflow workflow.
+
+        Args:
+            run_id (str): The stable identifier for the content run.
+            profile (VisualPackProfile): The resolved voice, perspective, or content
+                profile.
+
+        Returns:
+            Optional[Path]: The resolved filesystem path for publish.
+
+        Raises:
+            StorageError: If the storage operation cannot complete.
+            VisualError: If the visual operation cannot complete.
+        """
         asset = self.ensure_publication_ready(run_id, profile)
         if asset is None:
             return None
@@ -355,7 +508,17 @@ class VisualWorkflow:
         return target
 
     def _load_brief(self, run_id: str) -> VisualBrief:
-        """Load brief."""
+        """Load the brief.
+
+        Args:
+            run_id (str): The stable identifier for the content run.
+
+        Returns:
+            VisualBrief: The loaded visual brief for brief.
+
+        Raises:
+            VisualError: If the visual operation cannot complete.
+        """
         try:
             return VisualBrief.model_validate_json(
                 self.store.read_artifact(run_id, "visual_brief.json")
@@ -364,20 +527,48 @@ class VisualWorkflow:
             raise VisualError("Run has no visual brief") from exc
 
     def _load_manifest(self, run_id: str) -> VisualManifest:
-        """Load manifest."""
+        """Load the manifest.
+
+        Args:
+            run_id (str): The stable identifier for the content run.
+
+        Returns:
+            VisualManifest: The loaded visual manifest for manifest.
+
+        Raises:
+            VisualError: If the visual operation cannot complete.
+        """
         path = self.store.run_dir(run_id) / "visuals" / "manifest.json"
         if not path.exists():
             raise VisualError("Run has no visual manifest")
         return VisualManifest.model_validate_json(path.read_text(encoding="utf-8"))
 
     def _save_manifest(self, manifest: VisualManifest) -> None:
-        """Save manifest."""
+        """Save the manifest.
+
+        Args:
+            manifest (VisualManifest): The manifest that records the artifact contract.
+
+        Returns:
+            None: The callable updates manifest state and returns no value.
+        """
         manifest.updated_at = utc_now().isoformat()
         self.store.write_artifact(manifest.run_id, "visuals/manifest.json", manifest)
 
     @staticmethod
     def _asset(manifest: VisualManifest, asset_id: Optional[str]) -> VisualAsset:
-        """Return the asset."""
+        """Return the asset.
+
+        Args:
+            manifest (VisualManifest): The manifest that records the artifact contract.
+            asset_id (Optional[str]): The stable identifier for the asset.
+
+        Returns:
+            VisualAsset: The resulting visual asset for asset.
+
+        Raises:
+            VisualError: If the visual operation cannot complete.
+        """
         for asset in manifest.assets:
             if asset.asset_id == asset_id:
                 return asset
@@ -385,7 +576,15 @@ class VisualWorkflow:
 
     @staticmethod
     def _ratio(width: int, height: int) -> str:
-        """Return the ratio."""
+        """Return the ratio.
+
+        Args:
+            width (int): The width value that controls ratio.
+            height (int): The height value that controls ratio.
+
+        Returns:
+            str: The resulting text for ratio.
+        """
         from math import gcd
 
         divisor = gcd(width, height)
@@ -393,12 +592,27 @@ class VisualWorkflow:
 
     @staticmethod
     def _normalise_copy(lines: List[str]) -> List[str]:
-        """Return the normalise copy."""
+        """Return the normalise copy.
+
+        Args:
+            lines (List[str]): The lines collection consumed while normalise copy.
+
+        Returns:
+            List[str]: The resulting normalise copy values in their documented order.
+        """
         return [re.sub(r"\s+", " ", line).strip() for line in lines]
 
     @staticmethod
     def _inside(inner: BoundingBox, outer: BoundingBox) -> bool:
-        """Return the inside."""
+        """Return the inside.
+
+        Args:
+            inner (BoundingBox): The inner value passed to inside.
+            outer (BoundingBox): The outer value passed to inside.
+
+        Returns:
+            bool: Whether inside satisfies the documented condition.
+        """
         epsilon = 1e-9
         return (
             inner.x + epsilon >= outer.x
@@ -409,7 +623,15 @@ class VisualWorkflow:
 
     @classmethod
     def _inside_safe_area(cls, box: BoundingBox, safe: SafeAreaProfile) -> bool:
-        """Return the inside safe area."""
+        """Return the inside safe area.
+
+        Args:
+            box (BoundingBox): The box value passed to inside safe area.
+            safe (SafeAreaProfile): The safe value passed to inside safe area.
+
+        Returns:
+            bool: Whether inside safe area satisfies the documented condition.
+        """
         return cls._inside(
             box,
             BoundingBox(
@@ -422,7 +644,17 @@ class VisualWorkflow:
 
     @staticmethod
     def _error(code: str, message: str, profile: Optional[str] = None) -> VisualDiagnostic:
-        """Return the error."""
+        """Return the error.
+
+        Args:
+            code (str): The code text processed when error.
+            message (str): The human-readable message associated with the operation.
+            profile (Optional[str]): The resolved voice, perspective, or content profile.
+                Defaults to ``None``.
+
+        Returns:
+            VisualDiagnostic: The resulting visual diagnostic for error.
+        """
         return VisualDiagnostic(
             code=code,
             severity=DiagnosticSeverity.ERROR,

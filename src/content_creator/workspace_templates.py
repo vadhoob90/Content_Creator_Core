@@ -12,7 +12,15 @@ README_CORE_END = "<!-- content-creator-core-dependency:end -->"
 
 
 def readme_core_dependency(core_ref: str, dependency: str) -> str:
-    """Return the readme core dependency."""
+    """Return the readme core dependency.
+
+    Args:
+        core_ref (str): The core ref text processed when readme core dependency.
+        dependency (str): The pinned Core dependency declaration.
+
+    Returns:
+        str: The resulting text for readme core dependency.
+    """
     return """{start}
 ## Core dependency
 
@@ -236,7 +244,20 @@ class WorkspaceTemplates:
         author_name: str,
         dependency: str,
     ) -> str:
-        """Return the pyproject."""
+        """Return the pyproject.
+
+        Render the generated workspace package metadata, dependency pin, development extras,
+        and command entry points.
+
+        Args:
+            package_name (str): The package name text processed when pyproject.
+            display_name (str): The human-readable name shown to users.
+            author_name (str): The author's display name.
+            dependency (str): The pinned Core dependency declaration.
+
+        Returns:
+            str: The resulting text for pyproject.
+        """
         return """[project]
 name = {package_name}
 version = "0.1.0"
@@ -275,7 +296,11 @@ ignore = ["UP006", "UP032", "UP035", "UP045"]
 
     @staticmethod
     def _gitignore() -> str:
-        """Return the gitignore."""
+        """Return the gitignore.
+
+        Returns:
+            str: The resulting text for gitignore.
+        """
         return """__pycache__/
 *.py[cod]
 *.egg-info/
@@ -300,7 +325,11 @@ content/*/drafting/
 
     @staticmethod
     def _environment() -> str:
-        """Return the environment."""
+        """Return the environment.
+
+        Returns:
+            str: The resulting text for environment.
+        """
         return """# Choose a native subscription-backed provider where available:
 CONTENT_CREATOR_PROVIDER=codex-native
 
@@ -317,7 +346,19 @@ CONTENT_CREATOR_PROVIDER=codex-native
         author_name: str,
         voice_id: str,
     ) -> str:
-        """Return the agents guidance."""
+        """Return the agents guidance.
+
+        Render repository guidance that constrains content agents, approval behavior,
+        learning scope, and publication safety.
+
+        Args:
+            display_name (str): The human-readable name shown to users.
+            author_name (str): The author's display name.
+            voice_id (str): The stable identifier for the selected voice.
+
+        Returns:
+            str: The resulting text for agents guidance.
+        """
         return """# {display_name} repository guidance
 
 This is a thin downstream Content Creator workspace for {author_name}.
@@ -375,7 +416,11 @@ requested.
 
     @staticmethod
     def _claude_guidance() -> str:
-        """Return the claude guidance."""
+        """Return the claude guidance.
+
+        Returns:
+            str: The resulting text for claude guidance.
+        """
         return """# Claude repository guidance
 
 Read and follow `AGENTS.md`. It contains the canonical repository workflow,
@@ -384,7 +429,15 @@ ownership boundaries, approval trigger, and content-integrity rules.
 
     @staticmethod
     def _readme(context: WorkspaceReadmeContext) -> str:
-        """Return the readme."""
+        """Return the readme.
+
+        Args:
+            context (WorkspaceReadmeContext): The operation context and its resolved
+                dependencies.
+
+        Returns:
+            str: The resulting text for readme.
+        """
         pack_list = "\n".join("- `{}`".format(pack) for pack in context.packs)
         return WORKSPACE_README_TEMPLATE.format(
             display_name=context.display_name,
@@ -399,7 +452,15 @@ ownership boundaries, approval trigger, and content-integrity rules.
 
     @staticmethod
     def _smoke_test(voice_id: str, packs: List[str]) -> str:
-        """Return the smoke test."""
+        """Return the smoke test.
+
+        Args:
+            voice_id (str): The stable identifier for the selected voice.
+            packs (List[str]): The packs collection consumed while smoke test.
+
+        Returns:
+            str: The resulting text for smoke test.
+        """
         return """import json
 from pathlib import Path
 

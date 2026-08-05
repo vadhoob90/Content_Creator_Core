@@ -1,4 +1,4 @@
-"""Perspective CLI parser registration."""
+"""Implement the perspective parser command family."""
 
 from __future__ import annotations
 
@@ -6,7 +6,17 @@ import argparse
 
 
 def register(sub: argparse._SubParsersAction) -> None:
-    """Register perspective parser."""
+    """Register the perspective parser workflow.
+
+    Register the perspective catalogue, lifecycle, comparison, and proposal subcommands
+    with their complete argument contracts.
+
+    Args:
+        sub (argparse._SubParsersAction): The sub value passed to register.
+
+    Returns:
+        None: The callable updates register state and returns no value.
+    """
     perspective = sub.add_parser(
         "perspective",
         help=argparse.SUPPRESS,

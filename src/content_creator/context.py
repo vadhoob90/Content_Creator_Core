@@ -22,7 +22,22 @@ def resolved_context(
     voice: dict,
     perspectives: Optional[List[dict]] = None,
 ) -> Dict[str, Any]:
-    """Return the resolved context."""
+    """Return the resolved context.
+
+    Assemble the content pack, voice profile, and selected perspective records into the
+    immutable context used for generation.
+
+    Args:
+        root (Path): The workspace root directory.
+        order (WorkOrder): The work order that defines the requested content run.
+        pack (ContentPack): The resolved content-pack contract.
+        voice (dict): The voice value passed to resolved context.
+        perspectives (Optional[List[dict]]): The perspectives value passed to resolved
+            context. Defaults to ``None``.
+
+    Returns:
+        Dict[str, Any]: The structured resulting data for resolved context.
+    """
     resources = ResourceResolver(root)
     hashes = {
         "core_rubric": hash_file(resources.path("rubrics/core.yaml")),

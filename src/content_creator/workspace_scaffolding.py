@@ -1,4 +1,4 @@
-"""Single-responsibility phases for generating a thin workspace."""
+"""Provide workspace scaffolding contracts and behavior."""
 
 from __future__ import annotations
 
@@ -57,7 +57,17 @@ class WorkspaceServices:
 def create_workspace(
     scaffolder: Any, request: WorkspaceCreateRequest, services: WorkspaceServices
 ) -> dict:
-    """Create workspace."""
+    """Create the workspace.
+
+    Args:
+        scaffolder (Any): The scaffolder value passed to create workspace.
+        request (WorkspaceCreateRequest): The validated request that initiates the
+            operation.
+        services (WorkspaceServices): The services value passed to create workspace.
+
+    Returns:
+        dict: The created dict for workspace.
+    """
     if not request.core_ref:
         request = WorkspaceCreateRequest(
             **{**request.__dict__, "core_ref": services.default_core_ref}
@@ -71,7 +81,17 @@ def create_workspace(
 
 
 def _prepare_destination(root: Path) -> None:
-    """Prepare destination."""
+    """Prepare the destination.
+
+    Args:
+        root (Path): The workspace root directory.
+
+    Returns:
+        None: The callable updates destination state and returns no value.
+
+    Raises:
+        ValueError: If an input value violates the supported domain constraints.
+    """
     if root.exists() and not root.is_dir():
         raise ValueError(f"Workspace destination is not a directory: {root}")
     root.mkdir(parents=True, exist_ok=True)
@@ -80,7 +100,20 @@ def _prepare_destination(root: Path) -> None:
 def _validated_identity(
     root: Path, request: WorkspaceCreateRequest, services: WorkspaceServices
 ) -> WorkspaceIdentity:
-    """Return the validated identity."""
+    """Return the validated identity.
+
+    Args:
+        root (Path): The workspace root directory.
+        request (WorkspaceCreateRequest): The validated request that initiates the
+            operation.
+        services (WorkspaceServices): The services value passed to validated identity.
+
+    Returns:
+        WorkspaceIdentity: The resulting workspace identity for validated identity.
+
+    Raises:
+        ValueError: If an input value violates the supported domain constraints.
+    """
     display_name = request.name.strip()
     author_name = request.author_name.strip()
     if not display_name or not author_name:
@@ -111,7 +144,19 @@ def _initialise_base(
     identity: WorkspaceIdentity,
     services: WorkspaceServices,
 ) -> tuple[list[str], list[str]]:
-    """Initialise base."""
+    """Initialise the base.
+
+    Args:
+        root (Path): The workspace root directory.
+        request (WorkspaceCreateRequest): The validated request that initiates the
+            operation.
+        identity (WorkspaceIdentity): The identity value passed to initialise base.
+        services (WorkspaceServices): The services value passed to initialise base.
+
+    Returns:
+        tuple[list[str], list[str]]: The resulting initialise base values in their
+            documented order.
+    """
     base_paths = (root / "profiles" / "registry.json", root / "content-creator.yaml")
     existed = {path: path.exists() for path in base_paths}
     base = services.initialise(root, request.agent_template, request.perspective_mode)
@@ -144,7 +189,27 @@ def _write_workspace_files(
     preserved: list[str],
     services: WorkspaceServices,
 ) -> None:
-    """Write workspace files."""
+    """Write the workspace files.
+
+    Render the thin workspace files, preserve existing author-owned content, and report
+    every created or retained path.
+
+    Args:
+        scaffolder (Any): The scaffolder value passed to write workspace files.
+        request (WorkspaceCreateRequest): The validated request that initiates the
+            operation.
+        identity (WorkspaceIdentity): The identity value passed to write workspace
+            files.
+        created (list[str]): The created collection consumed while write workspace
+            files.
+        preserved (list[str]): The preserved collection consumed while write workspace
+            files.
+        services (WorkspaceServices): The services value passed to write workspace
+            files.
+
+    Returns:
+        None: The callable updates write workspace files state and returns no value.
+    """
     root = scaffolder.root
     intended_uses = "\n".join(f"  --use {pack} \\" for pack in identity.packs).rstrip(" \\")
     readme_context = WorkspaceReadmeContext(
@@ -187,7 +252,14 @@ def _write_workspace_files(
 
 
 def _onboarding(identity: WorkspaceIdentity) -> str:
-    """Return the onboarding."""
+    """Return the onboarding.
+
+    Args:
+        identity (WorkspaceIdentity): The identity value passed to onboarding.
+
+    Returns:
+        str: The resulting text for onboarding.
+    """
     record = {
         "schema_version": "1.0",
         "voice_id": identity.voice_id,
@@ -205,7 +277,11 @@ def _onboarding(identity: WorkspaceIdentity) -> str:
 
 
 def _source_instructions() -> str:
-    """Return the source instructions."""
+    """Return the source instructions.
+
+    Returns:
+        str: The resulting text for source instructions.
+    """
     return (
         "# Add one authorised public source URL per line.\n"
         "# Local Markdown, text, DOCX, PDF, and HTML files may be placed\n"
@@ -220,7 +296,19 @@ def _result(
     created: list[str],
     preserved: list[str],
 ) -> dict:
-    """Return the result."""
+    """Return the result.
+
+    Args:
+        root (Path): The workspace root directory.
+        request (WorkspaceCreateRequest): The validated request that initiates the
+            operation.
+        identity (WorkspaceIdentity): The identity value passed to result.
+        created (list[str]): The created collection consumed while result.
+        preserved (list[str]): The preserved collection consumed while result.
+
+    Returns:
+        dict: The resulting dict for result.
+    """
     return {
         "status": "ok",
         "workspace": str(root),

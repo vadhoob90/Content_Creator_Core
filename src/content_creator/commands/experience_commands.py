@@ -1,4 +1,4 @@
-"""Author-facing workspace overview, start, and planning commands."""
+"""Implement the experience commands command family."""
 
 from __future__ import annotations
 
@@ -10,7 +10,14 @@ from .context import CommandContext
 
 
 def show_overview(context: CommandContext) -> int:
-    """Show overview."""
+    """Show the overview.
+
+    Args:
+        context (CommandContext): The operation context and its resolved dependencies.
+
+    Returns:
+        int: The resulting numeric value for show overview.
+    """
     snapshot = ContentCoordinator(context.root).snapshot(context.arguments.run_limit)
     context.emit(snapshot) if context.arguments.json else print(render_overview(snapshot))
     return 0
@@ -21,7 +28,16 @@ def _clarification(
     snapshot: WorkspaceSnapshot,
     error: ClarificationRequired,
 ) -> int:
-    """Return the clarification."""
+    """Return the clarification.
+
+    Args:
+        context (CommandContext): The operation context and its resolved dependencies.
+        snapshot (WorkspaceSnapshot): The snapshot value passed to clarification.
+        error (ClarificationRequired): The error value passed to clarification.
+
+    Returns:
+        int: The resulting numeric value for clarification.
+    """
     if context.arguments.json:
         context.emit(
             {
@@ -36,7 +52,14 @@ def _clarification(
 
 
 def start(context: CommandContext) -> int:
-    """Start experience commands."""
+    """Start the experience commands workflow.
+
+    Args:
+        context (CommandContext): The operation context and its resolved dependencies.
+
+    Returns:
+        int: The resulting numeric value for start.
+    """
     coordinator = ContentCoordinator(context.root)
     snapshot = coordinator.snapshot()
     if not context.arguments.request or not snapshot.is_workspace:
@@ -68,7 +91,14 @@ def start(context: CommandContext) -> int:
 
 
 def plan(context: CommandContext) -> int:
-    """Plan experience commands."""
+    """Plan the experience commands workflow.
+
+    Args:
+        context (CommandContext): The operation context and its resolved dependencies.
+
+    Returns:
+        int: The planned numeric value for value.
+    """
     try:
         context.emit(
             context.orchestrator.plan_request(

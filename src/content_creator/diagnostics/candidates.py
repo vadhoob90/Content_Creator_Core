@@ -12,7 +12,15 @@ from .models import DiagnosticEvent, SupportCandidate
 
 
 def preflight(store: RunStore, run_id: str) -> Dict[str, Any]:
-    """Create the publication-boundary diagnostic summary for a run."""
+    """Create the publication-boundary diagnostic summary for a run.
+
+    Args:
+        store (RunStore): The persistence service used to load and save state.
+        run_id (str): The stable identifier for the content run.
+
+    Returns:
+        Dict[str, Any]: The structured resulting data for preflight.
+    """
     state = store.load(run_id)
     events = list(_session_events(store, state.work_order.content_session_id))
     candidates = _candidates(store, state, events)
@@ -34,7 +42,19 @@ def preflight(store: RunStore, run_id: str) -> Dict[str, Any]:
 
 
 def decide(store: RunStore, run_id: str, decision: str) -> Dict[str, Any]:
-    """Record the author's publication-boundary diagnostic decision."""
+    """Record the author's publication-boundary diagnostic decision.
+
+    Args:
+        store (RunStore): The persistence service used to load and save state.
+        run_id (str): The stable identifier for the content run.
+        decision (str): The decision text processed when decide.
+
+    Returns:
+        Dict[str, Any]: The structured resulting data for decide.
+
+    Raises:
+        ValueError: If an input value violates the supported domain constraints.
+    """
     if decision not in {"publish-only", "prepare-issue"}:
         raise ValueError("Unknown diagnostic decision: {}".format(decision))
     result = preflight(store, run_id)
@@ -57,7 +77,19 @@ def decide(store: RunStore, run_id: str, decision: str) -> Dict[str, Any]:
 
 
 def link_issue(store: RunStore, run_id: str, issue_url: str) -> Dict[str, Any]:
-    """Attach a created GitHub issue to an issue-requested candidate."""
+    """Attach a created GitHub issue to an issue-requested candidate.
+
+    Args:
+        store (RunStore): The persistence service used to load and save state.
+        run_id (str): The stable identifier for the content run.
+        issue_url (str): The issue url text processed when link issue.
+
+    Returns:
+        Dict[str, Any]: The structured resulting data for link issue.
+
+    Raises:
+        ValueError: If an input value violates the supported domain constraints.
+    """
     if not re.fullmatch(r"https://(?:www\.)?github\.com/[^/\s]+/[^/\s]+/issues/\d+", issue_url):
         raise ValueError("issue_url must identify a GitHub issue")
     path = store.run_dir(run_id) / "support-candidate.json"
@@ -85,7 +117,17 @@ def _summary(
     events: List[DiagnosticEvent],
     candidates: List[SupportCandidate],
 ) -> Dict[str, Any]:
-    """Return the summary."""
+    """Return the summary.
+
+    Args:
+        state (RunState): The persisted lifecycle state to inspect or update.
+        events (List[DiagnosticEvent]): The events collection consumed while summary.
+        candidates (List[SupportCandidate]): The candidates collection consumed while
+            summary.
+
+    Returns:
+        Dict[str, Any]: The structured resulting data for summary.
+    """
     failures = [item for item in events if item.event.endswith("failed")]
     recovered_roles = {item.role for item in events if item.event == "agent_attempt_recovered"}
     return {
@@ -108,7 +150,17 @@ def _candidates(
     state: RunState,
     events: List[DiagnosticEvent],
 ) -> List[SupportCandidate]:
-    """Return the candidates."""
+    """Return the candidates.
+
+    Args:
+        store (RunStore): The persistence service used to load and save state.
+        state (RunState): The persisted lifecycle state to inspect or update.
+        events (List[DiagnosticEvent]): The events collection consumed while candidates.
+
+    Returns:
+        List[SupportCandidate]: The resulting candidates values in their documented
+            order.
+    """
     grouped: Dict[str, List[DiagnosticEvent]] = {}
     support_events = [item for item in events if item.support_worthy]
     if any(item.event == "agent_attempt_failed" for item in support_events):
@@ -133,7 +185,19 @@ def _candidate(
     prior: SupportCandidate | None,
     recovered_pairs: set[tuple[str | None, str | None]],
 ) -> SupportCandidate:
-    """Return the candidate."""
+    """Return the candidate.
+
+    Args:
+        state (RunState): The persisted lifecycle state to inspect or update.
+        fingerprint (str): The deterministic fingerprint identifying the input set.
+        items (List[DiagnosticEvent]): The items collection consumed while candidate.
+        prior (SupportCandidate | None): The prior value passed to candidate.
+        recovered_pairs (set[tuple[str | None, str | None]]): The recovered pairs
+            collection consumed while candidate.
+
+    Returns:
+        SupportCandidate: The resulting support candidate for candidate.
+    """
     latest = items[-1]
     recovered = all(
         item.outcome == "retrying" or (item.run_id, item.role) in recovered_pairs for item in items
@@ -162,7 +226,16 @@ def _candidate(
 
 
 def _existing_candidates(store: RunStore, content_session_id: str) -> Dict[str, SupportCandidate]:
-    """Return the existing candidates."""
+    """Return the existing candidates.
+
+    Args:
+        store (RunStore): The persistence service used to load and save state.
+        content_session_id (str): The stable identifier for the content session.
+
+    Returns:
+        Dict[str, SupportCandidate]: The structured resulting data for existing
+            candidates.
+    """
     result: Dict[str, SupportCandidate] = {}
     for state in _session_states(store, content_session_id):
         path = store.run_dir(state.id) / "support-candidate.json"
@@ -180,7 +253,15 @@ def _existing_candidates(store: RunStore, content_session_id: str) -> Dict[str, 
 
 
 def _session_states(store: RunStore, content_session_id: str) -> Iterable[RunState]:
-    """Return the session states."""
+    """Return the session states.
+
+    Args:
+        store (RunStore): The persistence service used to load and save state.
+        content_session_id (str): The stable identifier for the content session.
+
+    Returns:
+        Iterable[RunState]: The resulting iterable[run state for session states.
+    """
     for path in store.runs_dir.glob("*/state.json"):
         try:
             state = RunState.model_validate_json(path.read_text(encoding="utf-8"))
@@ -191,7 +272,16 @@ def _session_states(store: RunStore, content_session_id: str) -> Iterable[RunSta
 
 
 def _session_events(store: RunStore, content_session_id: str) -> Iterable[DiagnosticEvent]:
-    """Return the session events."""
+    """Return the session events.
+
+    Args:
+        store (RunStore): The persistence service used to load and save state.
+        content_session_id (str): The stable identifier for the content session.
+
+    Returns:
+        Iterable[DiagnosticEvent]: The resulting iterable[diagnostic event for session
+            events.
+    """
     for state in _session_states(store, content_session_id):
         path = store.run_dir(state.id) / "diagnostics.jsonl"
         if not path.exists():
@@ -204,7 +294,17 @@ def _session_events(store: RunStore, content_session_id: str) -> Iterable[Diagno
 
 
 def _write_candidates(store: RunStore, run_id: str, candidates: List[SupportCandidate]) -> None:
-    """Write candidates."""
+    """Write the candidates workflow.
+
+    Args:
+        store (RunStore): The persistence service used to load and save state.
+        run_id (str): The stable identifier for the content run.
+        candidates (List[SupportCandidate]): The candidates collection consumed while
+            write candidates.
+
+    Returns:
+        None: The callable updates write candidates state and returns no value.
+    """
     if not candidates:
         return
     store.write_artifact(
@@ -236,7 +336,14 @@ def _write_candidates(store: RunStore, run_id: str, candidates: List[SupportCand
 
 
 def _title(event: DiagnosticEvent) -> str:
-    """Return the title."""
+    """Return the title.
+
+    Args:
+        event (DiagnosticEvent): The diagnostic or lifecycle event to record.
+
+    Returns:
+        str: The resulting text for title.
+    """
     labels = {
         "invalid_structured_output": "Structured agent output failed validation",
         "orchestration_failure": "Core orchestration failed",
@@ -246,7 +353,15 @@ def _title(event: DiagnosticEvent) -> str:
 
 
 def _candidate_summary(event: DiagnosticEvent, recovered: bool) -> str:
-    """Return the candidate summary."""
+    """Return the candidate summary.
+
+    Args:
+        event (DiagnosticEvent): The diagnostic or lifecycle event to record.
+        recovered (bool): Whether recovered behavior is enabled.
+
+    Returns:
+        str: The resulting text for candidate summary.
+    """
     outcome = (
         "The run recovered and continued."
         if recovered

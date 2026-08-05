@@ -7,7 +7,14 @@ from typing import List, Optional
 
 
 def source_lines(path: Optional[str]) -> List[str]:
-    """Return the source lines."""
+    """Return the source lines.
+
+    Args:
+        path (Optional[str]): The filesystem path to inspect or update.
+
+    Returns:
+        List[str]: The resulting source lines values in their documented order.
+    """
     if not path:
         return []
     return [
@@ -18,7 +25,14 @@ def source_lines(path: Optional[str]) -> List[str]:
 
 
 def documents(values: List[str]) -> List[str]:
-    """Return the documents."""
+    """Return the documents.
+
+    Args:
+        values (List[str]): The values collection consumed while documents.
+
+    Returns:
+        List[str]: The resulting documents values in their documented order.
+    """
     resolved_documents: List[str] = []
     for value in values:
         path = Path(value).expanduser().resolve()

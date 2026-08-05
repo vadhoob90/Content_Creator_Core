@@ -8,7 +8,15 @@ from .shared import PROVIDERS
 
 
 def _register_onboard(commands: argparse._SubParsersAction) -> None:
-    """Register onboard."""
+    """Register the onboard.
+
+    Args:
+        commands (argparse._SubParsersAction): The commands value passed to register
+            onboard.
+
+    Returns:
+        None: The callable updates register onboard state and returns no value.
+    """
     onboard = commands.add_parser("onboard", help="Choose a starter or source-derived voice route")
     onboard.add_argument("voice_id")
     onboard.add_argument("--strategy", choices=["starter", "source-derived"], required=True)
@@ -24,7 +32,15 @@ def _register_onboard(commands: argparse._SubParsersAction) -> None:
 
 
 def _register_create(commands: argparse._SubParsersAction) -> None:
-    """Register create."""
+    """Register the create.
+
+    Args:
+        commands (argparse._SubParsersAction): The commands value passed to register
+            create.
+
+    Returns:
+        None: The callable updates register create state and returns no value.
+    """
     create = commands.add_parser("create")
     create.add_argument("--name", help="Legacy shorthand for author, label, and id")
     create.add_argument("--voice-id")
@@ -46,7 +62,16 @@ def _register_create(commands: argparse._SubParsersAction) -> None:
 
 
 def _register_build_and_assessment(commands: argparse._SubParsersAction) -> None:
-    """Register build and assessment."""
+    """Register the build and assessment.
+
+    Args:
+        commands (argparse._SubParsersAction): The commands value passed to register
+            build and assessment.
+
+    Returns:
+        None: The callable updates register build and assessment state and returns no
+            value.
+    """
     for command_name in ("build", "rebuild", "status", "show", "signature", "verify"):
         command = commands.add_parser(command_name)
         command.add_argument("voice_id")
@@ -72,7 +97,15 @@ def _register_build_and_assessment(commands: argparse._SubParsersAction) -> None
 
 
 def _register_training(commands: argparse._SubParsersAction) -> None:
-    """Register training."""
+    """Register the training.
+
+    Args:
+        commands (argparse._SubParsersAction): The commands value passed to register
+            training.
+
+    Returns:
+        None: The callable updates register training state and returns no value.
+    """
     train = commands.add_parser("train-ml")
     train.add_argument("voice_id")
     train.add_argument("--voice-version")
@@ -82,7 +115,15 @@ def _register_training(commands: argparse._SubParsersAction) -> None:
 
 
 def _register_lifecycle(commands: argparse._SubParsersAction) -> None:
-    """Register lifecycle."""
+    """Register the lifecycle.
+
+    Args:
+        commands (argparse._SubParsersAction): The commands value passed to register
+            lifecycle.
+
+    Returns:
+        None: The callable updates register lifecycle state and returns no value.
+    """
     commands.add_parser("list")
     commands.add_parser("verify-all")
     approve = commands.add_parser("approve")
@@ -109,7 +150,15 @@ def _register_lifecycle(commands: argparse._SubParsersAction) -> None:
 
 
 def register(subparsers: argparse._SubParsersAction) -> None:
-    """Register voice parser."""
+    """Register the voice parser workflow.
+
+    Args:
+        subparsers (argparse._SubParsersAction): The argparse subparser collection
+            receiving the command.
+
+    Returns:
+        None: The callable updates register state and returns no value.
+    """
     voice = subparsers.add_parser("voice", help=argparse.SUPPRESS)
     commands = voice.add_subparsers(dest="voice_command", required=True)
     _register_onboard(commands)

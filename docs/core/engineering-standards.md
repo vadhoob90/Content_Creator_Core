@@ -42,11 +42,19 @@ life.
 - Exact generic module and class names (`data`, `item`, `manager`, `utils`) are
   blocked. Review local names for the same ambiguity; names should reveal the
   domain concept without requiring a comment.
-- Every production module, class, function, and method needs a concise, accurate
-  docstring, including private, nested, asynchronous, and special methods.
-  `python scripts/documentation_report.py --check` enforces full coverage in CI
-  without adding a runtime dependency. Tests and maintenance scripts are excluded
-  from this blocking check; reviewers assess prose quality and reject placeholders.
+- Every production module, class, function, and method uses Google Style,
+  including private, nested, asynchronous, constructor, and special methods.
+  Summaries are single active-imperative sentences. Callable `Args`, `Returns`,
+  and `Raises` sections must agree with the signature, literal defaults, annotated
+  return, and statically named explicit exceptions. `None` returns are documented.
+- CI combines Ruff's Google pydocstyle rules with
+  `python scripts/documentation_report.py --check`. The dependency-free report
+  enforces repository requirements Ruff does not cover: explicit argument types,
+  literal defaults, all returns, exception agreement, imperative summaries, and
+  context for callables above 40 implementation lines.
+- Tests and maintenance scripts are excluded from the blocking docstring scope.
+  Reviewers still own prose accuracy and reject placeholders, name restatements,
+  unsupported guarantees, and descriptions that disagree with side effects.
   Comments should explain constraints or intent rather than restating code.
 
 ## Tests and evaluation

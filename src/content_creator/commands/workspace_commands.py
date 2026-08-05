@@ -11,7 +11,14 @@ from .context import CommandContext
 
 
 def _destination(context: CommandContext) -> Path:
-    """Return the destination."""
+    """Return the destination.
+
+    Args:
+        context (CommandContext): The operation context and its resolved dependencies.
+
+    Returns:
+        Path: The resolved filesystem path for destination.
+    """
     destination = Path(context.arguments.directory).expanduser()
     if not destination.is_absolute():
         base = context.root if context.arguments.root else Path.cwd()
@@ -20,7 +27,14 @@ def _destination(context: CommandContext) -> Path:
 
 
 def manage_workspace(context: CommandContext) -> int:
-    """Preview/apply an upgrade or scaffold a new author workspace."""
+    """Manage the workspace.
+
+    Args:
+        context (CommandContext): The operation context and its resolved dependencies.
+
+    Returns:
+        int: The resulting numeric value for manage workspace.
+    """
     arguments = context.arguments
     if arguments.workspace_command == "upgrade":
         upgrader = WorkspaceUpgrader(context.root)

@@ -29,7 +29,19 @@ README_CORE_END = "<!-- content-creator-core-dependency:end -->"
 
 
 def core_dependency(source: str, core_url: str, core_ref: str) -> str:
-    """Return the core dependency."""
+    """Return the core dependency.
+
+    Args:
+        source (str): The source value or artifact to process.
+        core_url (str): The core url text processed when core dependency.
+        core_ref (str): The core ref text processed when core dependency.
+
+    Returns:
+        str: The resulting text for core dependency.
+
+    Raises:
+        ValueError: If an input value violates the supported domain constraints.
+    """
     if source == "registry":
         match = VERSION_TAG.fullmatch(core_ref)
         if not match:
@@ -44,8 +56,15 @@ def core_dependency(source: str, core_url: str, core_ref: str) -> str:
 
 
 def readme_core_dependency(core_ref: str, dependency: str) -> str:
-    """Render the small README section that Core upgrades may safely replace."""
+    """Render the small README section that Core upgrades may safely replace.
 
+    Args:
+        core_ref (str): The core ref text processed when readme core dependency.
+        dependency (str): The pinned Core dependency declaration.
+
+    Returns:
+        str: The resulting text for readme core dependency.
+    """
     return """{start}
 ## Core dependency
 
@@ -63,8 +82,17 @@ resolution in `uv.lock` are authoritative.
 
 
 def update_readme_core_dependency(text: str, core_ref: str, dependency: str) -> tuple[str, bool]:
-    """Update only the generator-owned Core dependency block, when present."""
+    """Update only the generator-owned Core dependency block, when present.
 
+    Args:
+        text (str): The text to process.
+        core_ref (str): The core ref text processed when update readme core dependency.
+        dependency (str): The pinned Core dependency declaration.
+
+    Returns:
+        tuple[str, bool]: The resulting update readme core dependency values in their
+            documented order.
+    """
     start = text.find(README_CORE_START)
     end = text.find(README_CORE_END)
     if start < 0 or end < start:
@@ -81,7 +109,18 @@ def _write_if_missing(
     created: List[str],
     preserved: List[str],
 ) -> None:
-    """Write if missing."""
+    """Write the if missing.
+
+    Args:
+        root (Path): The workspace root directory.
+        path (Path): The filesystem path to inspect or update.
+        content (str): The content to process.
+        created (List[str]): The created collection consumed while write if missing.
+        preserved (List[str]): The preserved collection consumed while write if missing.
+
+    Returns:
+        None: The callable updates write if missing state and returns no value.
+    """
     relative = str(path.relative_to(root))
     if path.exists():
         preserved.append(relative)
@@ -91,7 +130,14 @@ def _write_if_missing(
 
 
 def scaffold_skills(root: Path) -> Dict[str, List[str]]:
-    """Scaffold skills."""
+    """Return the scaffold skills.
+
+    Args:
+        root (Path): The workspace root directory.
+
+    Returns:
+        Dict[str, List[str]]: The structured resulting data for scaffold skills.
+    """
     created: List[str] = []
     preserved: List[str] = []
     skills_root = Path(__file__).with_name("resources") / "skills"
@@ -113,8 +159,21 @@ def initialise_workspace(
     agent_template: str = STANDARD_TEMPLATE,
     perspective_mode: Optional[str] = None,
 ) -> Dict[str, Any]:
-    """Create the runtime-owned portion of a thin content workspace."""
+    """Create the runtime-owned portion of a thin content workspace.
 
+    Create runtime-owned workspace directories and baseline configuration without
+    replacing repository-owned author files.
+
+    Args:
+        root (Path): The workspace root directory.
+        agent_template (str): The agent template text processed when initialise
+            workspace. Defaults to ``STANDARD_TEMPLATE``.
+        perspective_mode (Optional[str]): The perspective mode text processed when
+            initialise workspace. Defaults to ``None``.
+
+    Returns:
+        Dict[str, Any]: The structured resulting data for initialise workspace.
+    """
     root = root.resolve()
     for path in (
         root / "profiles",
@@ -189,11 +248,26 @@ class WorkspaceScaffolder(WorkspaceTemplates):
     """Generate a complete thin repository that consumes Content Creator Core."""
 
     def __init__(self, destination: Path):
-        """Initialize the workspace scaffolder."""
+        """Initialize the workspace scaffolder with its required state and collaborators.
+
+        Args:
+            destination (Path): The destination filesystem path.
+
+        Returns:
+            None: The instance is initialized in place and no value is returned.
+        """
         self.root = destination.resolve()
 
     def create(self, request: WorkspaceCreateRequest) -> Dict[str, Any]:
-        """Create workspace scaffolder."""
+        """Create the workspace scaffolder workflow.
+
+        Args:
+            request (WorkspaceCreateRequest): The validated request that initiates the
+                operation.
+
+        Returns:
+            Dict[str, Any]: The structured created data for value.
+        """
         services = WorkspaceServices(
             default_core_ref=DEFAULT_CORE_REF,
             default_packs=DEFAULT_PACKS,
