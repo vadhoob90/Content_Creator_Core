@@ -78,17 +78,41 @@ _CONCLUSION_MARKERS = {
 
 
 def _round(value: float) -> float:
-    """Return the round."""
+    """Round a numeric value to the stable reporting precision.
+
+    Args:
+        value (float): The value to process.
+
+    Returns:
+        float: The resulting numeric value for round.
+    """
     return round(float(value), 4)
 
 
 def _rate(count: int, total: int, scale: int) -> float:
-    """Return the rate."""
+    """Calculate a normalized rate from a count and total.
+
+    Args:
+        count (int): The count value that controls rate.
+        total (int): The total value that controls rate.
+        scale (int): The scale value that controls rate.
+
+    Returns:
+        float: The resulting numeric value for rate.
+    """
     return _round((count / total) * scale) if total else 0.0
 
 
 def _percentile(values: Sequence[float], fraction: float) -> float:
-    """Return the percentile."""
+    """Calculate a percentile from an ordered numeric sample.
+
+    Args:
+        values (Sequence[float]): The values value passed to percentile.
+        fraction (float): The fraction value that controls percentile.
+
+    Returns:
+        float: The resulting numeric value for percentile.
+    """
     if not values:
         return 0.0
     ordered = sorted(values)
@@ -102,7 +126,15 @@ def _percentile(values: Sequence[float], fraction: float) -> float:
 
 
 def _mattr(tokens: List[str], window: int = 50) -> float:
-    """Return the mattr."""
+    """Calculate the moving-average type-token ratio for a token sequence.
+
+    Args:
+        tokens (List[str]): The tokens collection consumed while mattr.
+        window (int): The window value that controls mattr. Defaults to ``50``.
+
+    Returns:
+        float: The resulting numeric value for mattr.
+    """
     if not tokens:
         return 0.0
     if len(tokens) <= window:
@@ -115,13 +147,29 @@ def _mattr(tokens: List[str], window: int = 50) -> float:
 
 
 def _sentences(text: str) -> List[str]:
-    """Return the sentences."""
+    """Split normalized text into sentence-like segments.
+
+    Args:
+        text (str): The text to process.
+
+    Returns:
+        List[str]: The resulting sentences values in their documented order.
+    """
     return [item.strip() for item in _SENTENCE_RE.split(text.strip()) if _WORD_RE.search(item)]
 
 
 def extract_linguistic_features(text: str) -> Dict[str, float]:
-    """Return transparent descriptive features, not an authorship judgement."""
+    """Return transparent descriptive features, not an authorship judgement.
 
+    Calculate transparent lexical, sentence, punctuation, and readability measures
+    without making an authorship claim.
+
+    Args:
+        text (str): The text to process.
+
+    Returns:
+        Dict[str, float]: The structured extracted data for linguistic features.
+    """
     words = [item.lower().replace("’", "'") for item in _WORD_RE.findall(text)]
     sentences = _sentences(text)
     sentence_lengths = [len(_WORD_RE.findall(item)) for item in sentences]
@@ -180,13 +228,27 @@ def extract_linguistic_features(text: str) -> Dict[str, float]:
 
 
 def linguistic_context(kind: str) -> Dict[str, str]:
-    """Return the linguistic context."""
+    """Return the linguistic context.
+
+    Args:
+        kind (str): The domain category used to classify the value.
+
+    Returns:
+        Dict[str, str]: The structured resulting data for linguistic context.
+    """
     mode = "spoken" if kind == "transcript" else "written"
     return {"mode": mode, "source_kind": kind}
 
 
 def _aggregate(items: Iterable[Dict]) -> Dict[str, Dict[str, float]]:
-    """Return the aggregate."""
+    """Return the aggregate.
+
+    Args:
+        items (Iterable[Dict]): The items value passed to aggregate.
+
+    Returns:
+        Dict[str, Dict[str, float]]: The structured resulting data for aggregate.
+    """
     profiles = list(items)
     if not profiles:
         return {}
@@ -213,7 +275,18 @@ def _aggregate(items: Iterable[Dict]) -> Dict[str, Dict[str, float]]:
 
 
 def build_linguistic_signature(sources: Iterable[Dict]) -> Dict:
-    """Build linguistic signature."""
+    """Build the linguistic signature.
+
+    Aggregate per-source linguistic features into robust distribution statistics and
+    retain the evidence needed for later comparison.
+
+    Args:
+        sources (Iterable[Dict]): The sources value passed to build linguistic
+            signature.
+
+    Returns:
+        Dict: The structured constructed data for linguistic signature.
+    """
     source_profiles = []
     for source in sources:
         context = linguistic_context(source["kind"])

@@ -11,7 +11,17 @@ from .domain import ResearchBrief, ResearchDepth, WorkOrder
 def validate_draft(
     draft: str, order: WorkOrder, validators: Optional[List[str]] = None
 ) -> List[str]:
-    """Validate draft."""
+    """Validate the draft.
+
+    Args:
+        draft (str): The draft content to evaluate or transform.
+        order (WorkOrder): The work order that defines the requested content run.
+        validators (Optional[List[str]]): The validators value passed to validate draft.
+            Defaults to ``None``.
+
+    Returns:
+        List[str]: The validated draft values in their documented order.
+    """
     errors = []
     enabled = set(
         validators
@@ -52,7 +62,15 @@ def validate_draft(
 
 
 def validate_research_brief(brief: ResearchBrief) -> List[str]:
-    """Validate research brief."""
+    """Validate the research brief.
+
+    Args:
+        brief (ResearchBrief): The research or content brief that defines the requested
+            work.
+
+    Returns:
+        List[str]: The validated research brief values in their documented order.
+    """
     errors = []
     known_urls = {source.url for source in brief.sources}
     for source in brief.sources:

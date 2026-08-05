@@ -1,4 +1,4 @@
-"""Persisted contracts for runtime diagnostics and support candidates."""
+"""Provide models contracts and behavior."""
 
 from __future__ import annotations
 
@@ -60,6 +60,13 @@ class DiagnosticDecisionRequired(RuntimeError):
     """Represent a diagnostic decision required."""
 
     def __init__(self, preflight: Dict[str, Any]):
-        """Initialize the diagnostic decision required."""
+        """Initialize the diagnostic decision required.
+
+        Args:
+            preflight (Dict[str, Any]): The preflight collection consumed while init.
+
+        Returns:
+            None: The instance is initialized in place and no value is returned.
+        """
         super().__init__("Recovered Core issues require a publication decision")
         self.preflight = preflight

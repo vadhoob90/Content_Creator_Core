@@ -22,7 +22,16 @@ class Configuration:
     """Represent a configuration."""
 
     def __init__(self, root: Path, model_config: Optional[Path] = None):
-        """Initialize the configuration."""
+        """Initialize the configuration with its required state and collaborators.
+
+        Args:
+            root (Path): The workspace root directory.
+            model_config (Optional[Path]): The filesystem path containing the model config.
+                Defaults to ``None``.
+
+        Returns:
+            None: The instance is initialized in place and no value is returned.
+        """
         self.root = root.resolve()
         self.resources = ResourceResolver(self.root)
         path = model_config or self.resources.path("config/models.yaml")
@@ -30,7 +39,17 @@ class Configuration:
 
     @staticmethod
     def _read_yaml(path: Path) -> Dict[str, Any]:
-        """Read yaml."""
+        """Read the yaml.
+
+        Args:
+            path (Path): The filesystem path to inspect or update.
+
+        Returns:
+            Dict[str, Any]: The structured loaded data for yaml.
+
+        Raises:
+            ConfigurationError: If the configuration operation cannot complete.
+        """
         if not path.exists():
             raise ConfigurationError("Missing configuration: {}".format(path))
         data = yaml.safe_load(path.read_text(encoding="utf-8"))
@@ -40,7 +59,14 @@ class Configuration:
 
     @property
     def default_provider(self) -> str:
-        """Return the default provider."""
+        """Return the default provider.
+
+        Returns:
+            str: The resulting text for default provider.
+
+        Raises:
+            ConfigurationError: If the configuration operation cannot complete.
+        """
         provider = os.getenv("CONTENT_CREATOR_PROVIDER")
         if not provider:
             workspace_config = self.root / "content-creator.yaml"
@@ -62,7 +88,11 @@ class Configuration:
 
     @property
     def max_output_tokens(self) -> int:
-        """Return the max output tokens."""
+        """Return the max output tokens.
+
+        Returns:
+            int: The resulting numeric value for max output tokens.
+        """
         return int(self.models["defaults"].get("max_output_tokens", 6000))
 
     def selection(
@@ -72,7 +102,23 @@ class Configuration:
         profile: Optional[str] = None,
         required_capabilities: Optional[Collection[str]] = None,
     ) -> ModelSelection:
-        """Return the selection."""
+        """Return the selection.
+
+        Args:
+            role_key (str): The role key text processed when selection.
+            provider (Optional[str]): The provider implementation used for generation.
+                Defaults to ``None``.
+            profile (Optional[str]): The resolved voice, perspective, or content profile.
+                Defaults to ``None``.
+            required_capabilities (Optional[Collection[str]]): The required capabilities
+                value passed to selection. Defaults to ``None``.
+
+        Returns:
+            ModelSelection: The resulting model selection for selection.
+
+        Raises:
+            ConfigurationError: If the configuration operation cannot complete.
+        """
         provider_name = provider or self.default_provider
         profile_name = profile or self.models["roles"].get(role_key)
         if not profile_name:
@@ -102,12 +148,26 @@ class Configuration:
         )
 
     def rubric(self, name: str) -> Dict[str, Any]:
-        """Return the rubric."""
+        """Return the rubric.
+
+        Args:
+            name (str): The stable or human-readable name for the domain object.
+
+        Returns:
+            Dict[str, Any]: The structured resulting data for rubric.
+        """
         return self._read_yaml(self.resources.path("rubrics/{}.yaml".format(name)))
 
     @property
     def perspective_policy(self) -> Dict[str, Any]:
-        """Return the perspective policy."""
+        """Return the perspective policy.
+
+        Returns:
+            Dict[str, Any]: The structured resulting data for perspective policy.
+
+        Raises:
+            ConfigurationError: If the configuration operation cannot complete.
+        """
         path = self.root / "content-creator.yaml"
         data = self._read_yaml(path) if path.exists() else {}
         configured = data.get("perspective", {}) or {}
@@ -127,7 +187,14 @@ class Configuration:
 
     @property
     def coordinator_policy(self) -> Dict[str, Any]:
-        """Return the coordinator policy."""
+        """Return the coordinator policy.
+
+        Returns:
+            Dict[str, Any]: The structured resulting data for coordinator policy.
+
+        Raises:
+            ConfigurationError: If the configuration operation cannot complete.
+        """
         path = self.root / "content-creator.yaml"
         data = self._read_yaml(path) if path.exists() else {}
         configured = data.get("coordinator", {}) or {}
@@ -153,7 +220,14 @@ class Configuration:
 
     @property
     def diagnostic_policy(self) -> Dict[str, Any]:
-        """Return the diagnostic policy."""
+        """Return the diagnostic policy.
+
+        Returns:
+            Dict[str, Any]: The structured resulting data for diagnostic policy.
+
+        Raises:
+            ConfigurationError: If the configuration operation cannot complete.
+        """
         path = self.root / "content-creator.yaml"
         data = self._read_yaml(path) if path.exists() else {}
         configured = data.get("diagnostics", {}) or {}
@@ -175,7 +249,18 @@ class Configuration:
 
     @property
     def statistical_voice_score_policy(self) -> Dict[str, Any]:
-        """Return the statistical voice score policy."""
+        """Return the statistical voice score policy.
+
+        Merge configured statistical-scoring thresholds with safe defaults while preserving
+        compatibility with the earlier policy key.
+
+        Returns:
+            Dict[str, Any]: The structured resulting data for statistical voice score
+                policy.
+
+        Raises:
+            ConfigurationError: If the configuration operation cannot complete.
+        """
         path = self.root / "content-creator.yaml"
         data = self._read_yaml(path) if path.exists() else {}
         configured = data.get("statistical_voice_score")
@@ -229,6 +314,9 @@ class Configuration:
 
     @property
     def voice_assessment_policy(self) -> Dict[str, Any]:
-        """Compatibility alias for callers using the pre-release name."""
+        """Return the voice assessment policy.
 
+        Returns:
+            Dict[str, Any]: The structured resulting data for voice assessment policy.
+        """
         return self.statistical_voice_score_policy

@@ -1,7 +1,7 @@
-"""Statistical voice scoring public façade.
+"""Provide voice ML contracts and behavior.
 
-Training/preflight and inference are separated so callers can depend on the
-smallest responsibility while legacy imports remain stable.
+Training/preflight and inference are separated so callers can depend on the smallest
+responsibility while legacy imports remain stable.
 """
 
 from .voice_ml_dependencies import MLDependencyError as MLDependencyError

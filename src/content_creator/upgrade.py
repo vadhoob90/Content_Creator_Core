@@ -37,12 +37,34 @@ class WorkspaceUpgrader:
         root: Path,
         runner: Optional[Callable[[List[str]], subprocess.CompletedProcess]] = None,
     ):
-        """Initialize the workspace upgrader."""
+        """Initialize the workspace upgrader with its required state and collaborators.
+
+        Args:
+            root (Path): The workspace root directory.
+            runner (Optional[Callable[[List[str]], subprocess.CompletedProcess]]): The agent
+                or command runner used to execute the operation. Defaults to ``None``.
+
+        Returns:
+            None: The instance is initialized in place and no value is returned.
+        """
         self.root = root.resolve()
         self.runner = runner or self._run
 
     def preview(self, target: str) -> Dict[str, Any]:
-        """Return the preview."""
+        """Return the preview.
+
+        Compare the pinned Core version and generator-owned files with the requested target
+        before any workspace mutation occurs.
+
+        Args:
+            target (str): The target text processed when preview.
+
+        Returns:
+            Dict[str, Any]: The structured resulting data for preview.
+
+        Raises:
+            WorkspaceUpgradeError: If the workspace upgrade operation cannot complete.
+        """
         self._validate_target(target)
         pyproject = self.root / "pyproject.toml"
         if not pyproject.is_file():
@@ -114,7 +136,17 @@ class WorkspaceUpgrader:
         }
 
     def apply(self, target: str) -> Dict[str, Any]:
-        """Apply workspace upgrader."""
+        """Apply the workspace upgrader workflow.
+
+        Validate the preview, update only generator-owned dependency blocks transactionally,
+        and restore originals if validation fails.
+
+        Args:
+            target (str): The target text processed when apply.
+
+        Returns:
+            Dict[str, Any]: The structured resulting data for apply.
+        """
         report = self.preview(target)
         pyproject = self.root / "pyproject.toml"
         lockfile = self.root / "uv.lock"
@@ -163,7 +195,12 @@ class WorkspaceUpgrader:
         return report
 
     def _validation_commands(self) -> List[List[str]]:
-        """Return the validation commands."""
+        """Return the validation commands.
+
+        Returns:
+            List[List[str]]: The resulting validation commands values in their documented
+                order.
+        """
         return [
             ["uv", "lock", "--upgrade-package", "content-creator"],
             [
@@ -196,7 +233,26 @@ class WorkspaceUpgrader:
         original_readme: Optional[str],
         readme_updated: bool,
     ) -> List[Dict[str, Any]]:
-        """Validate upgrade."""
+        """Validate the upgrade.
+
+        Args:
+            pyproject (Path): The filesystem path containing the pyproject.
+            lockfile (Path): The filesystem path containing the lockfile.
+            readme (Path): The filesystem path containing the readme.
+            original_project (str): The original project text processed when validate
+                upgrade.
+            original_lock (Optional[str]): The original lock text processed when validate
+                upgrade.
+            original_readme (Optional[str]): The original readme text processed when
+                validate upgrade.
+            readme_updated (bool): Whether readme updated behavior is enabled.
+
+        Returns:
+            List[Dict[str, Any]]: The validated upgrade values in their documented order.
+
+        Raises:
+            WorkspaceUpgradeError: If the workspace upgrade operation cannot complete.
+        """
         completed = []
         try:
             for command in self._validation_commands():
@@ -226,7 +282,11 @@ class WorkspaceUpgrader:
         return completed
 
     def _readme_is_managed(self) -> bool:
-        """Return the readme is managed."""
+        """Return the readme is managed.
+
+        Returns:
+            bool: Whether readme is managed satisfies the documented condition.
+        """
         readme = self.root / "README.md"
         if not readme.is_file():
             return False
@@ -239,14 +299,28 @@ class WorkspaceUpgrader:
 
     @staticmethod
     def _validate_target(target: str) -> None:
-        """Validate target."""
+        """Validate the target.
+
+        Args:
+            target (str): The target text processed when validate target.
+
+        Returns:
+            None: The callable updates target state and returns no value.
+
+        Raises:
+            WorkspaceUpgradeError: If the workspace upgrade operation cannot complete.
+        """
         if not IMMUTABLE_REF.fullmatch(target):
             raise WorkspaceUpgradeError(
                 "--to must be an immutable semantic version tag or full 40-character commit"
             )
 
     def _skill_changes(self) -> Dict[str, List[str]]:
-        """Return the skill changes."""
+        """Return the skill changes.
+
+        Returns:
+            Dict[str, List[str]]: The structured resulting data for skill changes.
+        """
         source_root = Path(__file__).with_name("resources") / "skills"
         destination_root = self.root / ".agents" / "skills"
         missing: List[str] = []
@@ -270,11 +344,26 @@ class WorkspaceUpgrader:
 
     @staticmethod
     def _digest(path: Path) -> str:
-        """Compute workspace upgrader."""
+        """Return the digest.
+
+        Args:
+            path (Path): The filesystem path to inspect or update.
+
+        Returns:
+            str: The resulting text for digest.
+        """
         return hashlib.sha256(path.read_bytes()).hexdigest()
 
     def _run(self, command: List[str]) -> subprocess.CompletedProcess:
-        """Run workspace upgrader."""
+        """Run the workspace upgrader workflow.
+
+        Args:
+            command (List[str]): The command name or invocation to execute.
+
+        Returns:
+            subprocess.CompletedProcess: The completed subprocess result with exit status
+                and captured output.
+        """
         return subprocess.run(
             command,
             cwd=self.root,

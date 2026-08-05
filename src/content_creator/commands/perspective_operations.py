@@ -1,4 +1,4 @@
-"""Focused comparison, catalogue, lifecycle, and proposal operations."""
+"""Implement the perspective operations command family."""
 
 from __future__ import annotations
 
@@ -33,7 +33,15 @@ PerspectiveHandler = Callable[[PerspectiveCommandContext], int]
 
 
 def create_comparison(context: PerspectiveCommandContext) -> int:
-    """Create comparison."""
+    """Create the comparison.
+
+    Args:
+        context (PerspectiveCommandContext): The operation context and its resolved
+            dependencies.
+
+    Returns:
+        int: The created numeric value for comparison.
+    """
     baseline = Path(context.arguments.baseline)
     if not baseline.is_absolute():
         baseline = context.root / baseline
@@ -42,7 +50,15 @@ def create_comparison(context: PerspectiveCommandContext) -> int:
 
 
 def record_comparison(context: PerspectiveCommandContext) -> int:
-    """Record comparison."""
+    """Record the comparison.
+
+    Args:
+        context (PerspectiveCommandContext): The operation context and its resolved
+            dependencies.
+
+    Returns:
+        int: The resulting numeric value for record comparison.
+    """
     assessment = Path(context.arguments.assessment)
     if not assessment.is_absolute():
         assessment = context.root / assessment
@@ -51,28 +67,66 @@ def record_comparison(context: PerspectiveCommandContext) -> int:
 
 
 def _registry(context: PerspectiveCommandContext) -> PerspectiveRegistry:
-    """Return the registry."""
+    """Return the registry.
+
+    Args:
+        context (PerspectiveCommandContext): The operation context and its resolved
+            dependencies.
+
+    Returns:
+        PerspectiveRegistry: The resulting perspective registry for registry.
+
+    Raises:
+        RuntimeError: If the operation cannot complete in the current runtime state.
+    """
     if context.registry is None:
         raise RuntimeError("Perspective registry is required for this command")
     return context.registry
 
 
 def show_catalogue(context: PerspectiveCommandContext) -> int:
-    """Show catalogue."""
+    """Show the catalogue.
+
+    Args:
+        context (PerspectiveCommandContext): The operation context and its resolved
+            dependencies.
+
+    Returns:
+        int: The resulting numeric value for show catalogue.
+    """
     catalogue = PerspectiveCatalogueStore(context.root, context.arguments.voice).load()
     print_json(catalogue.model_dump(mode="json"))
     return 0
 
 
 def verify_catalogue(context: PerspectiveCommandContext) -> int:
-    """Verify catalogue."""
+    """Verify the catalogue.
+
+    Args:
+        context (PerspectiveCommandContext): The operation context and its resolved
+            dependencies.
+
+    Returns:
+        int: The verified numeric value for catalogue.
+    """
     result = PerspectiveCatalogueStore(context.root, context.arguments.voice).verify()
     print_json(result)
     return 0 if result["valid"] else 6
 
 
 def create(context: PerspectiveCommandContext) -> int:
-    """Create perspective operations."""
+    """Create the perspective operations workflow.
+
+    Args:
+        context (PerspectiveCommandContext): The operation context and its resolved
+            dependencies.
+
+    Returns:
+        int: The created numeric value for value.
+
+    Raises:
+        ValueError: If an input value violates the supported domain constraints.
+    """
     arguments = context.arguments
     entries = []
     if arguments.statement:
@@ -104,18 +158,42 @@ def create(context: PerspectiveCommandContext) -> int:
 
 
 def list_perspectives(context: PerspectiveCommandContext) -> int:
-    """List perspectives."""
+    """List the perspectives.
+
+    Args:
+        context (PerspectiveCommandContext): The operation context and its resolved
+            dependencies.
+
+    Returns:
+        int: The available numeric value for perspectives.
+    """
     print_json(_registry(context).list())
     return 0
 
 
 def _candidate(context: PerspectiveCommandContext) -> Path:
-    """Return the candidate."""
+    """Return the candidate.
+
+    Args:
+        context (PerspectiveCommandContext): The operation context and its resolved
+            dependencies.
+
+    Returns:
+        Path: The resolved filesystem path for candidate.
+    """
     return _registry(context).context_root(context.arguments.context) / "candidate"
 
 
 def show_status(context: PerspectiveCommandContext) -> int:
-    """Show status."""
+    """Show the status.
+
+    Args:
+        context (PerspectiveCommandContext): The operation context and its resolved
+            dependencies.
+
+    Returns:
+        int: The resulting numeric value for show status.
+    """
     manifest_path = _candidate(context) / "manifest.json"
     manifest = (
         PerspectiveManifest.model_validate_json(manifest_path.read_text())
@@ -134,7 +212,15 @@ def show_status(context: PerspectiveCommandContext) -> int:
 
 
 def show(context: PerspectiveCommandContext) -> int:
-    """Show perspective operations."""
+    """Show the perspective operations workflow.
+
+    Args:
+        context (PerspectiveCommandContext): The operation context and its resolved
+            dependencies.
+
+    Returns:
+        int: The resulting numeric value for show.
+    """
     directory = _candidate(context)
     if not directory.exists():
         resolved = _registry(context).resolve(context.arguments.context)
@@ -144,7 +230,15 @@ def show(context: PerspectiveCommandContext) -> int:
 
 
 def verify(context: PerspectiveCommandContext) -> int:
-    """Verify perspective operations."""
+    """Verify the perspective operations workflow.
+
+    Args:
+        context (PerspectiveCommandContext): The operation context and its resolved
+            dependencies.
+
+    Returns:
+        int: The verified numeric value for value.
+    """
     candidate = _candidate(context)
     manifest = PerspectiveManifest.model_validate_json(
         (candidate / "manifest.json").read_text(encoding="utf-8")
@@ -166,35 +260,75 @@ def verify(context: PerspectiveCommandContext) -> int:
 
 
 def approve(context: PerspectiveCommandContext) -> int:
-    """Approve perspective operations."""
+    """Approve the perspective operations workflow.
+
+    Args:
+        context (PerspectiveCommandContext): The operation context and its resolved
+            dependencies.
+
+    Returns:
+        int: The resulting numeric value for approve.
+    """
     arguments = context.arguments
     print_json(_registry(context).activate(arguments.context, arguments.approved_by))
     return 0
 
 
 def deactivate(context: PerspectiveCommandContext) -> int:
-    """Deactivate perspective operations."""
+    """Deactivate the perspective operations workflow.
+
+    Args:
+        context (PerspectiveCommandContext): The operation context and its resolved
+            dependencies.
+
+    Returns:
+        int: The resulting numeric value for deactivate.
+    """
     arguments = context.arguments
     print_json(_registry(context).deactivate(arguments.context, arguments.reason))
     return 0
 
 
 def show_proposals(context: PerspectiveCommandContext) -> int:
-    """Show proposals."""
+    """Show the proposals.
+
+    Args:
+        context (PerspectiveCommandContext): The operation context and its resolved
+            dependencies.
+
+    Returns:
+        int: The resulting numeric value for show proposals.
+    """
     arguments = context.arguments
     print_json(PerspectiveProposalStore(context.root, arguments.voice, arguments.context).list())
     return 0
 
 
 def stage_proposal(context: PerspectiveCommandContext) -> int:
-    """Stage proposal."""
+    """Stage the proposal.
+
+    Args:
+        context (PerspectiveCommandContext): The operation context and its resolved
+            dependencies.
+
+    Returns:
+        int: The resulting numeric value for stage proposal.
+    """
     arguments = context.arguments
     print_json(_registry(context).stage_proposal(arguments.context, arguments.proposal))
     return 0
 
 
 def retire(context: PerspectiveCommandContext) -> int:
-    """Retire perspective operations."""
+    """Retire the perspective operations workflow.
+
+    Args:
+        context (PerspectiveCommandContext): The operation context and its resolved
+            dependencies.
+
+    Returns:
+        int: The resulting numeric value for retire.
+    """
     arguments = context.arguments
     print_json(
         _registry(context).retire_entry(arguments.context, arguments.entry, arguments.reason)

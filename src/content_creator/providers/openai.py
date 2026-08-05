@@ -14,7 +14,17 @@ class OpenAIProvider(Provider):
     name = "openai"
 
     def __init__(self, client: Any = None):
-        """Initialize the open aiprovider."""
+        """Initialize the OpenAI provider with an injected or default client.
+
+        Args:
+            client (Any): The client value passed to init. Defaults to ``None``.
+
+        Returns:
+            None: The instance is initialized in place and no value is returned.
+
+        Raises:
+            ProviderError: If the provider operation cannot complete.
+        """
         if client is None:
             try:
                 from openai import OpenAI
@@ -26,7 +36,18 @@ class OpenAIProvider(Provider):
         self.client = client
 
     def generate(self, request: ModelRequest) -> ModelResponse:
-        """Generate open aiprovider."""
+        """Generate a model response through the OpenAI Responses API.
+
+        Args:
+            request (ModelRequest): The validated request that initiates the operation.
+
+        Returns:
+            ModelResponse: The normalized model response with generated text and usage
+                metadata.
+
+        Raises:
+            ProviderError: If the provider operation cannot complete.
+        """
         kwargs: Dict[str, Any] = {
             "model": request.selection.model,
             "instructions": request.system,

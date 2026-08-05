@@ -8,7 +8,16 @@ from .voices import SourceRecord
 
 
 def assess_corpus(records: list[SourceRecord], intended_packs: list[str]) -> dict:
-    """Assess corpus."""
+    """Assess the corpus workflow.
+
+    Args:
+        records (list[SourceRecord]): The ordered persisted records to process.
+        intended_packs (list[str]): The intended packs collection consumed while assess
+            corpus.
+
+    Returns:
+        dict: The assessment dict for corpus.
+    """
     usable = [record for record in records if record.approved_for_analysis]
     words = sum(record.analysis_word_count or record.word_count for record in usable)
     weighted_words = round(

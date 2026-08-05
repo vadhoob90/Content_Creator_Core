@@ -10,7 +10,15 @@ from .shared import PROVIDERS
 
 
 def register_workspace(subparsers: argparse._SubParsersAction) -> None:
-    """Register workspace."""
+    """Register the workspace.
+
+    Args:
+        subparsers (argparse._SubParsersAction): The argparse subparser collection
+            receiving the command.
+
+    Returns:
+        None: The callable updates register workspace state and returns no value.
+    """
     initialise = subparsers.add_parser("init", help=argparse.SUPPRESS)
     initialise.add_argument("--agent-template", default=STANDARD_TEMPLATE)
     workspace = subparsers.add_parser(
@@ -40,7 +48,15 @@ def register_workspace(subparsers: argparse._SubParsersAction) -> None:
 
 
 def register_agents(subparsers: argparse._SubParsersAction) -> None:
-    """Register agents."""
+    """Register the agents.
+
+    Args:
+        subparsers (argparse._SubParsersAction): The argparse subparser collection
+            receiving the command.
+
+    Returns:
+        None: The callable updates register agents state and returns no value.
+    """
     agents = subparsers.add_parser("agents", help=argparse.SUPPRESS)
     commands = agents.add_subparsers(dest="agent_command", required=True)
     for command_name in ("scaffold", "status", "diff-template"):
@@ -49,7 +65,15 @@ def register_agents(subparsers: argparse._SubParsersAction) -> None:
 
 
 def register_experience(subparsers: argparse._SubParsersAction) -> None:
-    """Register experience."""
+    """Register the experience.
+
+    Args:
+        subparsers (argparse._SubParsersAction): The argparse subparser collection
+            receiving the command.
+
+    Returns:
+        None: The callable updates register experience state and returns no value.
+    """
     plan = subparsers.add_parser("plan", help=argparse.SUPPRESS)
     plan.add_argument("request")
     plan.add_argument("--provider", choices=PROVIDERS)

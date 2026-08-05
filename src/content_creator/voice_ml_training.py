@@ -63,7 +63,16 @@ RELIABLE_MINIMUM_WORDS_PER_CLASS = 20000
 
 
 def _signature_path(root: Path, resolved: Dict[str, Any]) -> Path:
-    """Return the signature path."""
+    """Return the signature path.
+
+    Args:
+        root (Path): The workspace root directory.
+        resolved (Dict[str, Any]): The resolved collection consumed while signature
+            path.
+
+    Returns:
+        Path: The resolved filesystem path for signature path.
+    """
     version_root = root.resolve() / resolved["path"]
     signature_path = version_root / "linguistic-signature.json"
     manifest_path = version_root / "manifest.json"
@@ -78,7 +87,21 @@ def _signature_path(root: Path, resolved: Dict[str, Any]) -> Path:
 def load_voice_signature(
     root: Path, voice_id: str, voice_version: Optional[str]
 ) -> Tuple[Dict[str, Any], Dict[str, Any]]:
-    """Load voice signature."""
+    """Load the voice signature.
+
+    Args:
+        root (Path): The workspace root directory.
+        voice_id (str): The stable identifier for the selected voice.
+        voice_version (Optional[str]): The immutable version of the selected voice
+            profile.
+
+    Returns:
+        Tuple[Dict[str, Any], Dict[str, Any]]: The loaded voice signature values in
+            their documented order.
+
+    Raises:
+        StorageError: If the storage operation cannot complete.
+    """
     resolved = VoiceRegistry(root).resolve(voice_id, voice_version)
     path = _signature_path(root, resolved)
     if not path.exists():
@@ -91,7 +114,16 @@ def load_voice_signature(
 
 
 def ml_model_path(root: Path, voice_id: str, voice_version: str) -> Path:
-    """Return the ml model path."""
+    """Return the ml model path.
+
+    Args:
+        root (Path): The workspace root directory.
+        voice_id (str): The stable identifier for the selected voice.
+        voice_version (str): The immutable version of the selected voice profile.
+
+    Returns:
+        Path: The resolved filesystem path for ml model path.
+    """
     return (
         root.resolve()
         / "profiles"
@@ -103,7 +135,17 @@ def ml_model_path(root: Path, voice_id: str, voice_version: str) -> Path:
 
 
 def _feature_row(features: Dict[str, Any]) -> List[float]:
-    """Return the feature row."""
+    """Return the feature row.
+
+    Args:
+        features (Dict[str, Any]): The features collection consumed while feature row.
+
+    Returns:
+        List[float]: The resulting feature row values in their documented order.
+
+    Raises:
+        StorageError: If the storage operation cannot complete.
+    """
     missing = [name for name in MODEL_FEATURE_NAMES if name not in features]
     if missing:
         raise StorageError(
@@ -113,13 +155,28 @@ def _feature_row(features: Dict[str, Any]) -> List[float]:
 
 
 def _fingerprint(rows: Iterable[List[float]]) -> str:
-    """Return the fingerprint."""
+    """Return the fingerprint.
+
+    Args:
+        rows (Iterable[List[float]]): The rows value passed to fingerprint.
+
+    Returns:
+        str: The resulting text for fingerprint.
+    """
     encoded = json.dumps(list(rows), sort_keys=True, separators=(",", ":")).encode("utf-8")
     return "sha256:" + hashlib.sha256(encoded).hexdigest()
 
 
 def _author_rows(signature: Dict[str, Any]) -> Tuple[List[List[float]], int]:
-    """Return the author rows."""
+    """Return the author rows.
+
+    Args:
+        signature (Dict[str, Any]): The statistical voice signature used for comparison.
+
+    Returns:
+        Tuple[List[List[float]], int]: The resulting author rows values in their
+            documented order.
+    """
     written = [
         item
         for item in signature.get("source_profiles", [])
@@ -138,7 +195,21 @@ def _author_rows(signature: Dict[str, Any]) -> Tuple[List[List[float]], int]:
 def _comparison_rows(
     paths: Iterable[Path], minimum_document_words: int = 100
 ) -> Tuple[List[List[float]], int, Dict[str, Any]]:
-    """Return the comparison rows."""
+    """Return the comparison rows.
+
+    Build labelled comparison rows from eligible documents, rejecting samples that do
+    not meet the minimum word threshold and retaining audit metadata for
+    reproducibility.
+
+    Args:
+        paths (Iterable[Path]): The filesystem path for the paths.
+        minimum_document_words (int): The minimum document words value that controls
+            comparison rows. Defaults to ``100``.
+
+    Returns:
+        Tuple[List[List[float]], int, Dict[str, Any]]: The resulting comparison rows
+            values in their documented order.
+    """
     rows: List[List[float]] = []
     shingle_profiles: List[Set[tuple[str, ...]]] = []
     hashes: List[str] = []
@@ -187,7 +258,23 @@ def training_reliability(
     comparison_documents: int,
     comparison_words: int,
 ) -> Dict[str, Any]:
-    """Return the training reliability."""
+    """Return the training reliability.
+
+    Assess corpus balance, sample volume, and class representation to determine whether
+    model training is statistically credible.
+
+    Args:
+        author_documents (int): The author documents value that controls training
+            reliability.
+        author_words (int): The author words value that controls training reliability.
+        comparison_documents (int): The comparison documents value that controls
+            training reliability.
+        comparison_words (int): The comparison words value that controls training
+            reliability.
+
+    Returns:
+        Dict[str, Any]: The structured resulting data for training reliability.
+    """
     hard_failures = []
     warnings = []
     for label, documents, words in (
@@ -254,7 +341,27 @@ def train_voice_ml_model(
     accept_low_confidence: bool = False,
     replace: bool = False,
 ) -> Dict[str, Any]:
-    """Train voice ml model."""
+    """Train the voice ml model.
+
+    Validate the training corpus, derive deterministic features, train the classifier,
+    and persist its versioned artifact with reliability evidence.
+
+    Args:
+        root (Path): The workspace root directory.
+        voice_id (str): The stable identifier for the selected voice.
+        voice_version (Optional[str]): The immutable version of the selected voice
+            profile.
+        comparison_paths (Iterable[Path]): The filesystem path for the comparison paths.
+        accept_low_confidence (bool): Whether accept low confidence behavior is enabled.
+            Defaults to ``False``.
+        replace (bool): Whether replace behavior is enabled. Defaults to ``False``.
+
+    Returns:
+        Dict[str, Any]: The structured trained data for voice ml model.
+
+    Raises:
+        StorageError: If the storage operation cannot complete.
+    """
     resolved, signature = load_voice_signature(root, voice_id, voice_version)
     author_rows, author_words = _author_rows(signature)
     comparison_rows, comparison_words, comparison_audit = _comparison_rows(comparison_paths)
@@ -323,7 +430,24 @@ def _training_preflight(
     comparison_audit: Dict[str, Any],
     reliability: Dict[str, Any],
 ) -> Dict[str, Any]:
-    """Return the training preflight."""
+    """Return the training preflight.
+
+    Args:
+        author_rows (List[List[float]]): The author rows collection consumed while
+            training preflight.
+        author_words (int): The author words value that controls training preflight.
+        comparison_rows (List[List[float]]): The comparison rows collection consumed
+            while training preflight.
+        comparison_words (int): The comparison words value that controls training
+            preflight.
+        comparison_audit (Dict[str, Any]): The comparison audit collection consumed
+            while training preflight.
+        reliability (Dict[str, Any]): The reliability collection consumed while training
+            preflight.
+
+    Returns:
+        Dict[str, Any]: The structured resulting data for training preflight.
+    """
     return {
         "author": {"documents": len(author_rows), "weighted_words": author_words},
         "comparison": {
@@ -342,7 +466,21 @@ def _blocked_training_result(
     reliability: Dict[str, Any],
     accept_low_confidence: bool,
 ) -> Optional[Dict[str, Any]]:
-    """Return the blocked training result."""
+    """Return the blocked training result.
+
+    Args:
+        voice_id (str): The stable identifier for the selected voice.
+        voice_version (str): The immutable version of the selected voice profile.
+        preflight (Dict[str, Any]): The preflight collection consumed while blocked
+            training result.
+        reliability (Dict[str, Any]): The reliability collection consumed while blocked
+            training result.
+        accept_low_confidence (bool): Whether accept low confidence behavior is enabled.
+
+    Returns:
+        Optional[Dict[str, Any]]: The resulting blocked training result when available;
+            otherwise ``None``.
+    """
     if not reliability["can_train"]:
         return {
             "status": "insufficient_data",
@@ -370,7 +508,20 @@ def _train_classifier(
     author_rows: List[List[float]],
     comparison_rows: List[List[float]],
 ) -> Dict[str, Any]:
-    """Train classifier."""
+    """Train the classifier.
+
+    Fit and evaluate the classifier with deterministic preprocessing, then return the
+    model components and held-out performance metrics.
+
+    Args:
+        author_rows (List[List[float]]): The author rows collection consumed while train
+            classifier.
+        comparison_rows (List[List[float]]): The comparison rows collection consumed
+            while train classifier.
+
+    Returns:
+        Dict[str, Any]: The structured trained data for classifier.
+    """
     ml = require_sklearn()
     X = author_rows + comparison_rows
     y = [1] * len(author_rows) + [0] * len(comparison_rows)
@@ -421,7 +572,18 @@ def _training_artifact(
     corpus: TrainingCorpus,
     trained: Dict[str, Any],
 ) -> Dict[str, Any]:
-    """Return the training artifact."""
+    """Return the training artifact.
+
+    Args:
+        voice_id (str): The stable identifier for the selected voice.
+        voice_version (str): The immutable version of the selected voice profile.
+        corpus (TrainingCorpus): The source corpus used for analysis or training.
+        trained (Dict[str, Any]): The trained collection consumed while training
+            artifact.
+
+    Returns:
+        Dict[str, Any]: The structured resulting data for training artifact.
+    """
     ml = trained["ml"]
     pipeline = trained["pipeline"]
     scaler = pipeline.named_steps["scaler"]
@@ -457,7 +619,14 @@ def _training_artifact(
 
 
 def _preprocessing(scaler: Any) -> Dict[str, Any]:
-    """Return the preprocessing."""
+    """Return the preprocessing.
+
+    Args:
+        scaler (Any): The scaler value passed to preprocessing.
+
+    Returns:
+        Dict[str, Any]: The structured resulting data for preprocessing.
+    """
     return {
         "type": "standard-scaler",
         "mean": [round(float(value), 12) for value in scaler.mean_],
@@ -466,7 +635,14 @@ def _preprocessing(scaler: Any) -> Dict[str, Any]:
 
 
 def _training_data(corpus: TrainingCorpus) -> Dict[str, Any]:
-    """Return the training data."""
+    """Return the training data.
+
+    Args:
+        corpus (TrainingCorpus): The source corpus used for analysis or training.
+
+    Returns:
+        Dict[str, Any]: The structured resulting data for training data.
+    """
     comparison_digest = hashlib.sha256(
         "\n".join(corpus.comparison_audit["content_hashes"]).encode("utf-8")
     ).hexdigest()
@@ -482,7 +658,15 @@ def _training_data(corpus: TrainingCorpus) -> Dict[str, Any]:
 
 
 def _evaluation(ml: Dict[str, Any], trained: Dict[str, Any]) -> Dict[str, Any]:
-    """Return the evaluation."""
+    """Return the evaluation.
+
+    Args:
+        ml (Dict[str, Any]): The ml collection consumed while evaluation.
+        trained (Dict[str, Any]): The trained collection consumed while evaluation.
+
+    Returns:
+        Dict[str, Any]: The structured resulting data for evaluation.
+    """
     cross_validation = trained["cross_validation"]
     return {
         "holdout_fraction": 0.2,

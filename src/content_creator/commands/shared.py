@@ -1,4 +1,4 @@
-"""Shared, side-effect-free command helpers."""
+"""Implement the shared command family."""
 
 from __future__ import annotations
 
@@ -14,7 +14,14 @@ class AuthorHelpFormatter(argparse.HelpFormatter):
     """Hide suppressed subcommands without changing argparse behaviour."""
 
     def _format_action(self, action: argparse.Action) -> str:
-        """Format action."""
+        """Format the action.
+
+        Args:
+            action (argparse.Action): The action value passed to format action.
+
+        Returns:
+            str: The formatted text for action.
+        """
         if isinstance(action, argparse._SubParsersAction):
             choices = action._choices_actions
             action._choices_actions = [item for item in choices if item.help != argparse.SUPPRESS]
@@ -26,12 +33,26 @@ class AuthorHelpFormatter(argparse.HelpFormatter):
 
 
 def resolve_root(value: Optional[str]) -> Path:
-    """Resolve root."""
+    """Resolve the root.
+
+    Args:
+        value (Optional[str]): The value to process.
+
+    Returns:
+        Path: The resolved filesystem path for root.
+    """
     return Path(value or ".").resolve()
 
 
 def print_json(value: Any) -> None:
-    """Return the print json."""
+    """Return the print json.
+
+    Args:
+        value (Any): The value to process.
+
+    Returns:
+        None: The callable updates print json state and returns no value.
+    """
     if hasattr(value, "model_dump"):
         value = value.model_dump(mode="json")
     print(json.dumps(value, indent=2, default=str))

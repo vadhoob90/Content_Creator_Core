@@ -24,7 +24,14 @@ SENSITIVE_PATTERNS = (
 
 
 def is_retryable(exc: Exception) -> bool:
-    """Return whether the diagnostics retry policy permits another attempt."""
+    """Return whether the diagnostics retry policy permits another attempt.
+
+    Args:
+        exc (Exception): The exception raised by the failed operation.
+
+    Returns:
+        bool: Whether is retryable satisfies the documented condition.
+    """
     if exc.__class__.__name__ == "AgentOutputError":
         return True
     if exc.__class__.__name__ != "ProviderError":
@@ -34,7 +41,14 @@ def is_retryable(exc: Exception) -> bool:
 
 
 def classify(exc: Exception) -> Dict[str, Any]:
-    """Return the privacy-safe operational classification for an exception."""
+    """Return the privacy-safe operational classification for an exception.
+
+    Args:
+        exc (Exception): The exception raised by the failed operation.
+
+    Returns:
+        Dict[str, Any]: The structured classified data for value.
+    """
     name = exc.__class__.__name__
     detail = str(exc).lower()
     if name == "AgentOutputError":
@@ -66,7 +80,17 @@ def _classification(
     issue_type: str,
     support_worthy: bool,
 ) -> Dict[str, Any]:
-    """Return the classification."""
+    """Return the classification.
+
+    Args:
+        classification (str): The classification text processed when classification.
+        severity (str): The severity text processed when classification.
+        issue_type (str): The issue type text processed when classification.
+        support_worthy (bool): Whether support worthy behavior is enabled.
+
+    Returns:
+        Dict[str, Any]: The structured resulting data for classification.
+    """
     return {
         "classification": classification,
         "severity": severity,
@@ -76,7 +100,15 @@ def _classification(
 
 
 def sanitise(root: Path, detail: str) -> str:
-    """Remove workspace paths, home paths, and common secret assignments."""
+    """Remove workspace paths, home paths, and common secret assignments.
+
+    Args:
+        root (Path): The workspace root directory.
+        detail (str): The detail text processed when sanitise.
+
+    Returns:
+        str: The resulting text for sanitise.
+    """
     value = detail.replace(str(root), "<workspace>")
     value = SENSITIVE_PATTERNS[0].sub(r"\1=<redacted>", value)
     for pattern in SENSITIVE_PATTERNS[1:]:
@@ -85,7 +117,17 @@ def sanitise(root: Path, detail: str) -> str:
 
 
 def safe_error_detail(root: Path, exc: Exception, classification: Dict[str, Any]) -> str:
-    """Return a bounded safe detail suitable for diagnostic persistence."""
+    """Return a bounded safe detail suitable for diagnostic persistence.
+
+    Args:
+        root (Path): The workspace root directory.
+        exc (Exception): The exception raised by the failed operation.
+        classification (Dict[str, Any]): The classification collection consumed while
+            safe error detail.
+
+    Returns:
+        str: The resulting text for safe error detail.
+    """
     if classification["issue_type"] == "invalid_structured_output":
         return "Structured response did not match the required schema."
     if classification["issue_type"] == "provider_failure":
@@ -94,14 +136,30 @@ def safe_error_detail(root: Path, exc: Exception, classification: Dict[str, Any]
 
 
 def fingerprint(component: str, issue_type: str, error_type: str) -> str:
-    """Create a stable privacy-safe failure fingerprint."""
+    """Create a stable privacy-safe failure fingerprint.
+
+    Args:
+        component (str): The component text processed when fingerprint.
+        issue_type (str): The issue type text processed when fingerprint.
+        error_type (str): The error type text processed when fingerprint.
+
+    Returns:
+        str: The resulting text for fingerprint.
+    """
     source = "{}|{}|{}".format(component, issue_type, error_type)
     digest = hashlib.sha256(source.encode("utf-8")).hexdigest()[:12]
     return "{}.{}.{}".format(component, issue_type, digest)
 
 
 def phase(role: str) -> str:
-    """Map an agent role to its user-facing lifecycle phase."""
+    """Map an agent role to its user-facing lifecycle phase.
+
+    Args:
+        role (str): The repository-owned agent role to execute.
+
+    Returns:
+        str: The resulting text for phase.
+    """
     return {
         "researcher": "researching",
         "writer": "drafting",

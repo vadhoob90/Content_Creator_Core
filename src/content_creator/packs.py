@@ -67,17 +67,43 @@ class PackRegistry:
     """Manage pack records."""
 
     def __init__(self, root: Path):
-        """Initialize the pack registry."""
+        """Initialize the pack registry with its required state and collaborators.
+
+        Args:
+            root (Path): The workspace root directory.
+
+        Returns:
+            None: The instance is initialized in place and no value is returned.
+        """
         self.root = root.resolve()
         self.resources = ResourceResolver(self.root)
         self._packs: Dict[str, ContentPack] = {}
 
     def path(self, pack_id: str, filename: str = "pack.json") -> Path:
-        """Return the path."""
+        """Resolve the filesystem path managed by pack registry.
+
+        Args:
+            pack_id (str): The stable identifier for the pack.
+            filename (str): The filename text processed when path. Defaults to
+                ``'pack.json'``.
+
+        Returns:
+            Path: The resolved filesystem path for path.
+        """
         return self.resources.path(Path("packs") / pack_id / filename)
 
     def get(self, pack_id: str) -> ContentPack:
-        """Return the pack registry."""
+        """Retrieve the pack registry managed by pack registry.
+
+        Args:
+            pack_id (str): The stable identifier for the pack.
+
+        Returns:
+            ContentPack: The resulting content pack for get.
+
+        Raises:
+            PackError: If the pack operation cannot complete.
+        """
         if pack_id in self._packs:
             return self._packs[pack_id]
         path = self.path(pack_id)
@@ -90,14 +116,33 @@ class PackRegistry:
         return pack
 
     def resolve(self, pack_id: str, overrides: Optional[Dict[str, Any]] = None) -> ContentPack:
-        """Resolve pack registry."""
+        """Resolve the pack registry workflow.
+
+        Args:
+            pack_id (str): The stable identifier for the pack.
+            overrides (Optional[Dict[str, Any]]): The overrides value passed to resolve.
+                Defaults to ``None``.
+
+        Returns:
+            ContentPack: The resolved content pack for value.
+        """
         data = self._merged_pack(pack_id)
         self._apply_overrides(data, overrides)
         self._validate_destinations(data)
         return ContentPack.model_validate(data)
 
     def _merged_pack(self, pack_id: str) -> Dict[str, Any]:
-        """Return the merged pack."""
+        """Return the merged pack.
+
+        Args:
+            pack_id (str): The stable identifier for the pack.
+
+        Returns:
+            Dict[str, Any]: The structured resulting data for merged pack.
+
+        Raises:
+            PackError: If the pack operation cannot complete.
+        """
         chain: List[ContentPack] = []
         seen = set()
         current: Optional[ContentPack] = self.get(pack_id)
@@ -132,7 +177,19 @@ class PackRegistry:
 
     @staticmethod
     def _apply_overrides(data: Dict[str, Any], overrides: Optional[Dict[str, Any]]) -> None:
-        """Apply overrides."""
+        """Apply the overrides.
+
+        Args:
+            data (Dict[str, Any]): The structured data to process.
+            overrides (Optional[Dict[str, Any]]): The overrides value passed to apply
+                overrides.
+
+        Returns:
+            None: The callable updates apply overrides state and returns no value.
+
+        Raises:
+            PackError: If the pack operation cannot complete.
+        """
         requested = deepcopy(overrides or {})
         forbidden = sorted(set(requested) - set(data["allowed_run_overrides"]))
         if forbidden:
@@ -151,7 +208,17 @@ class PackRegistry:
         data["defaults"] = {**data.get("defaults", {}), **requested}
 
     def _validate_destinations(self, data: Dict[str, Any]) -> None:
-        """Validate destinations."""
+        """Validate the destinations.
+
+        Args:
+            data (Dict[str, Any]): The structured data to process.
+
+        Returns:
+            None: The callable updates destinations state and returns no value.
+
+        Raises:
+            PackError: If the pack operation cannot complete.
+        """
         destination = (self.root / data["destination"]).resolve()
         try:
             destination.relative_to(self.root)
@@ -166,7 +233,11 @@ class PackRegistry:
                 raise PackError("Visual destination leaves repository root") from exc
 
     def list(self) -> List[ContentPack]:
-        """List pack registry."""
+        """List the pack registry workflow.
+
+        Returns:
+            List[ContentPack]: The available value values in their documented order.
+        """
         return [
             self.get(path.parent.name) for path in self.resources.matching("packs", "*/pack.json")
         ]

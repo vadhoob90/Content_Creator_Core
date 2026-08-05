@@ -13,19 +13,38 @@ from .base import Provider, ProviderError
 
 
 class FakeProvider(Provider):
-    """Deterministic provider for unit tests and replay evaluations."""
+    """Represent the fake provider contract."""
 
     name = "fake"
 
     def __init__(self, responses: Dict[str, Iterable[Any]]):
-        """Initialize the fake provider."""
+        """Initialize the fake provider with its required state and collaborators.
+
+        Args:
+            responses (Dict[str, Iterable[Any]]): The responses collection consumed while
+                init.
+
+        Returns:
+            None: The instance is initialized in place and no value is returned.
+        """
         self.responses: Dict[str, Deque[Any]] = defaultdict(deque)
         for role, values in responses.items():
             self.responses[role].extend(values)
         self.requests: list[ModelRequest] = []
 
     def generate(self, request: ModelRequest) -> ModelResponse:
-        """Generate fake provider."""
+        """Generate the fake provider workflow.
+
+        Args:
+            request (ModelRequest): The validated request that initiates the operation.
+
+        Returns:
+            ModelResponse: The normalized model response with generated text and usage
+                metadata.
+
+        Raises:
+            ProviderError: If the provider operation cannot complete.
+        """
         self.requests.append(request)
         if not self.responses[request.role]:
             raise ProviderError("No scripted response for role {}".format(request.role))

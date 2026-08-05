@@ -21,12 +21,32 @@ _NON_STYLE_FEATURES = {"word_count", "sentence_count", "paragraph_count"}
 
 
 def score_preference_path(root: Path, voice_id: str) -> Path:
-    """Score preference path."""
+    """Score the preference path.
+
+    Args:
+        root (Path): The workspace root directory.
+        voice_id (str): The stable identifier for the selected voice.
+
+    Returns:
+        Path: The resolved filesystem path for preference path.
+    """
     return root.resolve() / "profiles" / voice_id / "statistical-voice-score.json"
 
 
 def load_score_preference(root: Path, voice_id: str) -> Optional[Dict[str, Any]]:
-    """Load score preference."""
+    """Load the score preference.
+
+    Args:
+        root (Path): The workspace root directory.
+        voice_id (str): The stable identifier for the selected voice.
+
+    Returns:
+        Optional[Dict[str, Any]]: The loaded score preference when available; otherwise
+            ``None``.
+
+    Raises:
+        ValueError: If an input value violates the supported domain constraints.
+    """
     path = score_preference_path(root, voice_id)
     if not path.exists():
         return None
@@ -48,7 +68,22 @@ def save_score_preference(
     method: str,
     selected_by: Optional[str] = None,
 ) -> Dict[str, Any]:
-    """Save score preference."""
+    """Save the score preference.
+
+    Args:
+        root (Path): The workspace root directory.
+        voice_id (str): The stable identifier for the selected voice.
+        enabled (bool): Whether enabled behavior is enabled.
+        method (str): The method text processed when save score preference.
+        selected_by (Optional[str]): The selected by text processed when save score
+            preference. Defaults to ``None``.
+
+    Returns:
+        Dict[str, Any]: The structured persisted data for score preference.
+
+    Raises:
+        ValueError: If an input value violates the supported domain constraints.
+    """
     if method not in SCORE_METHODS:
         raise ValueError("Statistical voice score method must be deterministic or ml")
     preference = {
@@ -69,7 +104,17 @@ def save_score_preference(
 def resolve_score_policy(
     root: Path, voice_id: str, workspace_policy: Dict[str, Any]
 ) -> Dict[str, Any]:
-    """Resolve score policy."""
+    """Resolve the score policy.
+
+    Args:
+        root (Path): The workspace root directory.
+        voice_id (str): The stable identifier for the selected voice.
+        workspace_policy (Dict[str, Any]): The workspace policy collection consumed
+            while resolve score policy.
+
+    Returns:
+        Dict[str, Any]: The structured resolved data for score policy.
+    """
     policy = dict(workspace_policy)
     preference = load_score_preference(root, voice_id)
     if preference is not None:
@@ -86,7 +131,20 @@ def _unavailable(
     reason: str,
     method: str = "deterministic",
 ) -> Dict[str, Any]:
-    """Return the unavailable."""
+    """Return the unavailable.
+
+    Args:
+        voice_id (str): The stable identifier for the selected voice.
+        voice_version (Optional[str]): The immutable version of the selected voice
+            profile.
+        status (str): The status text processed when unavailable.
+        reason (str): The human-readable reason recorded for the decision.
+        method (str): The method text processed when unavailable. Defaults to
+            ``'deterministic'``.
+
+    Returns:
+        Dict[str, Any]: The structured resulting data for unavailable.
+    """
     return {
         "schema_version": "1.0",
         "type": SCORE_TYPE,
@@ -124,8 +182,16 @@ def assess_linguistic_signature(
     draft: str,
     options: LinguisticAssessmentOptions,
 ) -> Dict[str, Any]:
-    """Compare a draft with a voice distribution without judging authorship."""
+    """Compare a draft with a voice distribution without judging authorship.
 
+    Args:
+        signature (Dict[str, Any]): The statistical voice signature used for comparison.
+        draft (str): The draft content to evaluate or transform.
+        options (LinguisticAssessmentOptions): The options controlling this operation.
+
+    Returns:
+        Dict[str, Any]: The structured assessment data for linguistic signature.
+    """
     baseline, baseline_details, source_count = _baseline(signature, options)
     if source_count < options.minimum_sources:
         report = _unavailable(
@@ -159,7 +225,15 @@ def _baseline(
     signature: Dict[str, Any],
     options: LinguisticAssessmentOptions,
 ) -> tuple[dict, dict, int]:
-    """Return the baseline."""
+    """Return the baseline.
+
+    Args:
+        signature (Dict[str, Any]): The statistical voice signature used for comparison.
+        options (LinguisticAssessmentOptions): The options controlling this operation.
+
+    Returns:
+        tuple[dict, dict, int]: The resulting baseline values in their documented order.
+    """
     profiles = signature.get("source_profiles", [])
     written_profiles = [
         item for item in profiles if item.get("context", {}).get("mode") == "written"
@@ -187,7 +261,17 @@ def _short_draft_report(
     baseline_details: dict,
     word_count: int,
 ) -> Dict[str, Any]:
-    """Return the short draft report."""
+    """Return the short draft report.
+
+    Args:
+        options (LinguisticAssessmentOptions): The options controlling this operation.
+        baseline_details (dict): The baseline details value passed to short draft
+            report.
+        word_count (int): The word count value that controls short draft report.
+
+    Returns:
+        Dict[str, Any]: The structured resulting data for short draft report.
+    """
     report = _unavailable(
         options.voice_id,
         options.voice_version,
@@ -204,7 +288,20 @@ def _outliers(
     baseline: dict,
     multiplier: float,
 ) -> tuple[List[Dict[str, Any]], int, int]:
-    """Return the outliers."""
+    """Return the outliers.
+
+    Compare each draft feature with the voice distribution and return only deviations
+    that exceed the configured tolerance.
+
+    Args:
+        features (Dict[str, Any]): The features collection consumed while outliers.
+        baseline (dict): The baseline value passed to outliers.
+        multiplier (float): The multiplier value that controls outliers.
+
+    Returns:
+        tuple[List[Dict[str, Any]], int, int]: The resulting outliers values in their
+            documented order.
+    """
     outliers: List[Dict[str, Any]] = []
     evaluated = 0
     eligible = 0
@@ -256,7 +353,17 @@ def _no_variation_report(
     baseline_details: dict,
     word_count: int,
 ) -> Dict[str, Any]:
-    """Return the no variation report."""
+    """Return the no variation report.
+
+    Args:
+        options (LinguisticAssessmentOptions): The options controlling this operation.
+        baseline_details (dict): The baseline details value passed to no variation
+            report.
+        word_count (int): The word count value that controls no variation report.
+
+    Returns:
+        Dict[str, Any]: The structured resulting data for no variation report.
+    """
     report = _unavailable(
         options.voice_id,
         options.voice_version,
@@ -278,7 +385,24 @@ def _assessment_report(
     evaluated: int,
     eligible: int,
 ) -> Dict[str, Any]:
-    """Return the assessment report."""
+    """Return the assessment report.
+
+    Combine deterministic and optional statistical evidence into one policy-aware voice
+    assessment report.
+
+    Args:
+        options (LinguisticAssessmentOptions): The options controlling this operation.
+        baseline_details (dict): The baseline details value passed to assessment report.
+        word_count (int): The word count value that controls assessment report.
+        source_count (int): The source count value that controls assessment report.
+        outliers (List[Dict[str, Any]]): The outliers collection consumed while
+            assessment report.
+        evaluated (int): The evaluated value that controls assessment report.
+        eligible (int): The eligible value that controls assessment report.
+
+    Returns:
+        Dict[str, Any]: The structured resulting data for assessment report.
+    """
     outliers.sort(key=lambda item: (-item["distance_beyond_envelope_iqr"], item["feature"]))
     reported = outliers[: options.max_reported_outliers]
     # Only distance beyond the tolerated IQR envelope is penalised. Values
@@ -334,8 +458,26 @@ def assess_voice_draft(
     draft: str,
     policy: Dict[str, Any],
 ) -> Dict[str, Any]:
-    """Resolve an active voice signature and assess one draft against it."""
+    """Resolve an active voice signature and assess one draft against it.
 
+    Resolve the active voice signature, select the configured assessment method, and
+    score the draft without asserting authorship.
+
+    Args:
+        root (Path): The workspace root directory.
+        voice_id (str): The stable identifier for the selected voice.
+        voice_version (Optional[str]): The immutable version of the selected voice
+            profile.
+        draft (str): The draft content to evaluate or transform.
+        policy (Dict[str, Any]): The policy collection consumed while assess voice
+            draft.
+
+    Returns:
+        Dict[str, Any]: The structured assessment data for voice draft.
+
+    Raises:
+        ValueError: If an input value violates the supported domain constraints.
+    """
     method = policy.get("method", policy.get("mode", "deterministic"))
     if method == "statistical":
         method = "deterministic"

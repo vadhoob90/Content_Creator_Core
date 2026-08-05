@@ -12,7 +12,16 @@ from .voices import VoiceRegistry
 
 
 def evaluate_voice_output(root: Path, order: WorkOrder, draft: str) -> dict:
-    """Evaluate voice output."""
+    """Evaluate the voice output.
+
+    Args:
+        root (Path): The workspace root directory.
+        order (WorkOrder): The work order that defines the requested content run.
+        draft (str): The draft content to evaluate or transform.
+
+    Returns:
+        dict: The evaluation dict for voice output.
+    """
     if order.voice_id == "default":
         return {"passed": True, "errors": [], "overlap": {"passed": True, "matches": []}}
     resolved = VoiceRegistry(root).resolve(

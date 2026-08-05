@@ -8,7 +8,15 @@ from .shared import PROVIDERS
 
 
 def register_coordinator(subparsers: argparse._SubParsersAction) -> None:
-    """Register coordinator."""
+    """Register the coordinator.
+
+    Args:
+        subparsers (argparse._SubParsersAction): The argparse subparser collection
+            receiving the command.
+
+    Returns:
+        None: The callable updates register coordinator state and returns no value.
+    """
     coordinator = subparsers.add_parser("coordinator", help=argparse.SUPPRESS)
     commands = coordinator.add_subparsers(dest="coordinator_command", required=True)
     commands.add_parser("capabilities")
@@ -21,7 +29,15 @@ def register_coordinator(subparsers: argparse._SubParsersAction) -> None:
 
 
 def register_diagnostics(subparsers: argparse._SubParsersAction) -> None:
-    """Register diagnostics."""
+    """Register the diagnostics.
+
+    Args:
+        subparsers (argparse._SubParsersAction): The argparse subparser collection
+            receiving the command.
+
+    Returns:
+        None: The callable updates register diagnostics state and returns no value.
+    """
     diagnostics = subparsers.add_parser("diagnostics", help="Inspect deferred diagnostics")
     commands = diagnostics.add_subparsers(dest="diagnostics_command", required=True)
     for command_name in ("show", "preflight"):
@@ -33,7 +49,15 @@ def register_diagnostics(subparsers: argparse._SubParsersAction) -> None:
 
 
 def register_packs(subparsers: argparse._SubParsersAction) -> None:
-    """Register packs."""
+    """Register the packs.
+
+    Args:
+        subparsers (argparse._SubParsersAction): The argparse subparser collection
+            receiving the command.
+
+    Returns:
+        None: The callable updates register packs state and returns no value.
+    """
     subparsers.add_parser("packs", help=argparse.SUPPRESS)
     pack = subparsers.add_parser("pack", help=argparse.SUPPRESS)
     commands = pack.add_subparsers(dest="pack_command", required=True)
@@ -49,7 +73,15 @@ def register_packs(subparsers: argparse._SubParsersAction) -> None:
 
 
 def register_run(subparsers: argparse._SubParsersAction) -> None:
-    """Register run."""
+    """Register the run.
+
+    Args:
+        subparsers (argparse._SubParsersAction): The argparse subparser collection
+            receiving the command.
+
+    Returns:
+        None: The callable updates register run state and returns no value.
+    """
     run = subparsers.add_parser("run", help="Create a run and execute its route")
     _add_run_arguments(run)
     status = subparsers.add_parser("status", help="Show persisted run state")
@@ -61,7 +93,14 @@ def register_run(subparsers: argparse._SubParsersAction) -> None:
 
 
 def _add_run_arguments(parser: argparse.ArgumentParser) -> None:
-    """Add run arguments."""
+    """Add the run arguments.
+
+    Args:
+        parser (argparse.ArgumentParser): The parser value passed to add run arguments.
+
+    Returns:
+        None: The callable updates add run arguments state and returns no value.
+    """
     parser.add_argument("request", nargs="?")
     parser.add_argument("--brief", help="JSON or YAML content brief")
     parser.add_argument("--topic")
@@ -93,7 +132,15 @@ def _add_run_arguments(parser: argparse.ArgumentParser) -> None:
 
 
 def register_publication(subparsers: argparse._SubParsersAction) -> None:
-    """Register publication."""
+    """Register the publication.
+
+    Args:
+        subparsers (argparse._SubParsersAction): The argparse subparser collection
+            receiving the command.
+
+    Returns:
+        None: The callable updates register publication state and returns no value.
+    """
     for command_name in ("approve-research", "reject-research"):
         command = subparsers.add_parser(command_name, help=argparse.SUPPRESS)
         command.add_argument("run_id")
@@ -106,7 +153,15 @@ def register_publication(subparsers: argparse._SubParsersAction) -> None:
 
 
 def register_evaluation(subparsers: argparse._SubParsersAction) -> None:
-    """Register evaluation."""
+    """Register the evaluation.
+
+    Args:
+        subparsers (argparse._SubParsersAction): The argparse subparser collection
+            receiving the command.
+
+    Returns:
+        None: The callable updates register evaluation state and returns no value.
+    """
     evaluate = subparsers.add_parser("eval", help=argparse.SUPPRESS)
     evaluate.add_argument("--mode", choices=["replay", "live"], default="replay")
     evaluate.add_argument("--providers", nargs="+", default=["anthropic", "openai"])

@@ -1,4 +1,4 @@
-"""Value objects shared across the agent-runner boundary."""
+"""Provide runner models contracts and behavior."""
 
 from __future__ import annotations
 
@@ -12,7 +12,7 @@ from .domain import WorkOrder
 
 @dataclass(frozen=True)
 class AgentRunOptions:
-    """Optional model, provider, and tool requirements for one agent call."""
+    """Represent the agent run options contract."""
 
     order: Optional[WorkOrder] = None
     output_model: Optional[Type[BaseModel]] = None

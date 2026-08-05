@@ -1,4 +1,4 @@
-"""Dependencies shared by focused voice command handlers."""
+"""Implement the voice context command family."""
 
 from __future__ import annotations
 

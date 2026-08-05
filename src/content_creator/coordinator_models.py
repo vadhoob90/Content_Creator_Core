@@ -77,7 +77,17 @@ def operation(
     mutates: bool = False,
     approval: bool = False,
 ) -> Dict[str, Any]:
-    """Return the operation."""
+    """Return the operation name represented by coordinator models.
+
+    Args:
+        operation_id (str): The stable identifier for the operation.
+        command (List[str]): The command name or invocation to execute.
+        mutates (bool): Whether mutates behavior is enabled. Defaults to ``False``.
+        approval (bool): Whether approval behavior is enabled. Defaults to ``False``.
+
+    Returns:
+        Dict[str, Any]: The structured resulting data for operation.
+    """
     return {
         "id": operation_id,
         "command": command,
@@ -94,7 +104,22 @@ def action(
     mutates: bool = False,
     confirmation: bool = False,
 ) -> CoordinatorAction:
-    """Return the action."""
+    """Return the remediation action represented by coordinator models.
+
+    Args:
+        action_id (str): The stable identifier for the action.
+        label (str): The label text processed when action.
+        command (Optional[List[str]]): The command name or invocation to execute.
+            Defaults to ``None``.
+        artifact (Optional[str]): The artifact text processed when action. Defaults to
+            ``None``.
+        mutates (bool): Whether mutates behavior is enabled. Defaults to ``False``.
+        confirmation (bool): Whether confirmation behavior is enabled. Defaults to
+            ``False``.
+
+    Returns:
+        CoordinatorAction: The resulting coordinator action for action.
+    """
     return CoordinatorAction(
         id=action_id,
         label=label,

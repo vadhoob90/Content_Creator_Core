@@ -1,4 +1,4 @@
-"""Provider-neutral content creation workflow."""
+"""Provide init contracts and behavior."""
 
 from .domain import WorkOrder
 from .orchestrator import Orchestrator

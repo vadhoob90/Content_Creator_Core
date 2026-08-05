@@ -12,14 +12,25 @@ from .resource_paths import ResourceResolver
 
 
 class WorkspaceHealth:
-    """Offline workspace validation shared by doctor and the coordinator."""
+    """Represent the workspace health contract."""
 
     def __init__(self, root: Path):
-        """Initialize the workspace health."""
+        """Initialize the workspace health with its required state and collaborators.
+
+        Args:
+            root (Path): The workspace root directory.
+
+        Returns:
+            None: The instance is initialized in place and no value is returned.
+        """
         self.root = root.resolve()
 
     def report(self) -> Dict[str, Any]:
-        """Return the report."""
+        """Return the report.
+
+        Returns:
+            Dict[str, Any]: The structured resulting data for report.
+        """
         configuration = Configuration(self.root)
         packs = PackRegistry(self.root).list()
         resources = ResourceResolver(self.root)

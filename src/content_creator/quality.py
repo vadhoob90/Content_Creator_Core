@@ -15,7 +15,21 @@ from .domain import (
 def evaluate_quality(
     critique: Critique, core_rubric: Dict[str, Any], validation_errors: List[str]
 ) -> QualityDecision:
-    """Evaluate quality."""
+    """Evaluate the quality workflow.
+
+    Evaluate rubric criteria, factual-integrity blockers, and explicit validation issues
+    to produce a deterministic quality decision.
+
+    Args:
+        critique (Critique): The critique value passed to evaluate quality.
+        core_rubric (Dict[str, Any]): The core rubric collection consumed while evaluate
+            quality.
+        validation_errors (List[str]): The validation errors collection consumed while
+            evaluate quality.
+
+    Returns:
+        QualityDecision: The evaluation quality decision for quality.
+    """
     dimensions = core_rubric["dimensions"]
     gate = core_rubric["quality_gate"]
     reasons = []

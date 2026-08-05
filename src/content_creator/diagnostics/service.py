@@ -1,4 +1,4 @@
-"""Public stateful façade for runtime diagnostics."""
+"""Provide service contracts and behavior."""
 
 from __future__ import annotations
 
@@ -25,7 +25,15 @@ class RuntimeDiagnostics:
     """Collect runtime evidence and prepare sanitised support candidates."""
 
     def __init__(self, root: Path, enabled: bool = True):
-        """Initialize the runtime diagnostics."""
+        """Initialize the runtime diagnostics with its required state and collaborators.
+
+        Args:
+            root (Path): The workspace root directory.
+            enabled (bool): Whether enabled behavior is enabled. Defaults to ``True``.
+
+        Returns:
+            None: The instance is initialized in place and no value is returned.
+        """
         self.root = root.resolve()
         self.store = RunStore(self.root)
         self.enabled = enabled
@@ -34,20 +42,40 @@ class RuntimeDiagnostics:
         self.content_session_id: Optional[str] = None
 
     def begin_invocation(self, content_session_id: Optional[str] = None) -> str:
-        """Begin invocation."""
+        """Begin a diagnostic invocation for a content session.
+
+        Args:
+            content_session_id (Optional[str]): The stable identifier for the content
+                session. Defaults to ``None``.
+
+        Returns:
+            str: The resulting text for begin invocation.
+        """
         self.run_id = None
         self.invocation_id = uuid4().hex[:12]
         self.content_session_id = content_session_id
         return self.invocation_id
 
     def bind_run(self, run_id: str, content_session_id: str) -> None:
-        """Return the bind run."""
+        """Bind a content run to the current diagnostic invocation.
+
+        Args:
+            run_id (str): The stable identifier for the content run.
+            content_session_id (str): The stable identifier for the content session.
+
+        Returns:
+            None: The callable updates bind run state and returns no value.
+        """
         self.run_id = run_id
         self.content_session_id = content_session_id
 
     @staticmethod
     def timer() -> float:
-        """Return the timer."""
+        """Return a monotonic timestamp for duration measurements.
+
+        Returns:
+            float: The resulting numeric value for timer.
+        """
         return monotonic()
 
     def attempt_started(
@@ -58,7 +86,17 @@ class RuntimeDiagnostics:
         provider: str,
         model: str,
     ) -> None:
-        """Return the attempt started."""
+        """Record the start of an agent execution attempt.
+
+        Args:
+            role (str): The repository-owned agent role to execute.
+            attempt (int): The one-based execution attempt number.
+            provider (str): The provider implementation used for generation.
+            model (str): The provider model identifier to use.
+
+        Returns:
+            None: The callable updates attempt started state and returns no value.
+        """
         self._record(
             DiagnosticEvent(
                 run_id=self.run_id,
@@ -83,7 +121,18 @@ class RuntimeDiagnostics:
         model: str,
         started_at: float,
     ) -> None:
-        """Return the attempt completed."""
+        """Record successful completion of an agent execution attempt.
+
+        Args:
+            role (str): The repository-owned agent role to execute.
+            attempt (int): The one-based execution attempt number.
+            provider (str): The provider implementation used for generation.
+            model (str): The provider model identifier to use.
+            started_at (float): The started at value that controls attempt completed.
+
+        Returns:
+            None: The callable updates attempt completed state and returns no value.
+        """
         self._record(
             DiagnosticEvent(
                 run_id=self.run_id,
@@ -111,7 +160,20 @@ class RuntimeDiagnostics:
         started_at: float,
         retrying: bool,
     ) -> Dict[str, Any]:
-        """Return the attempt failed."""
+        """Record and classify a failed agent execution attempt.
+
+        Args:
+            exc (Exception): The exception raised by the failed operation.
+            role (str): The repository-owned agent role to execute.
+            attempt (int): The one-based execution attempt number.
+            provider (str): The provider implementation used for generation.
+            model (str): The provider model identifier to use.
+            started_at (float): The started at value that controls attempt failed.
+            retrying (bool): Whether retrying behavior is enabled.
+
+        Returns:
+            Dict[str, Any]: The structured resulting data for attempt failed.
+        """
         classification = classify_exception(exc)
         event = DiagnosticEvent(
             run_id=self.run_id,
@@ -136,7 +198,16 @@ class RuntimeDiagnostics:
         return event.model_dump(mode="json")
 
     def record_terminal_failure(self, exc: Exception, *, phase: str = "orchestration") -> None:
-        """Record terminal failure."""
+        """Record the terminal failure.
+
+        Args:
+            exc (Exception): The exception raised by the failed operation.
+            phase (str): The phase text processed when record terminal failure. Defaults to
+                ``'orchestration'``.
+
+        Returns:
+            None: The callable updates record terminal failure state and returns no value.
+        """
         classification = classify_exception(exc)
         self._record(
             DiagnosticEvent(
@@ -156,7 +227,14 @@ class RuntimeDiagnostics:
         )
 
     def record_invocation_failure(self, exc: Exception) -> Path:
-        """Record invocation failure."""
+        """Record the invocation failure.
+
+        Args:
+            exc (Exception): The exception raised by the failed operation.
+
+        Returns:
+            Path: The resolved filesystem path for record invocation failure.
+        """
         self.record_terminal_failure(exc, phase="initialisation")
         classification = classify_exception(exc)
         return write_invocation_summary(
@@ -168,31 +246,82 @@ class RuntimeDiagnostics:
         )
 
     def is_retryable(self, exc: Exception) -> bool:
-        """Return whether retryable."""
+        """Return whether retryable satisfies the required condition.
+
+        Args:
+            exc (Exception): The exception raised by the failed operation.
+
+        Returns:
+            bool: Whether is retryable satisfies the documented condition.
+        """
         return is_retryable_exception(exc)
 
     def classify(self, exc: Exception) -> Dict[str, Any]:
-        """Classify runtime diagnostics."""
+        """Classify the runtime diagnostics workflow.
+
+        Args:
+            exc (Exception): The exception raised by the failed operation.
+
+        Returns:
+            Dict[str, Any]: The structured classified data for value.
+        """
         return classify_exception(exc)
 
     def sanitise(self, detail: str) -> str:
-        """Return the sanitise."""
+        """Sanitise the runtime diagnostics workflow.
+
+        Args:
+            detail (str): The detail text processed when sanitise.
+
+        Returns:
+            str: The resulting text for sanitise.
+        """
         return sanitise_detail(self.root, detail)
 
     def preflight(self, run_id: str) -> Dict[str, Any]:
-        """Return the preflight."""
+        """Return the preflight.
+
+        Args:
+            run_id (str): The stable identifier for the content run.
+
+        Returns:
+            Dict[str, Any]: The structured resulting data for preflight.
+        """
         return candidate_preflight(self.store, run_id)
 
     def decide(self, run_id: str, decision: str) -> Dict[str, Any]:
-        """Return the decide."""
+        """Return the decide.
+
+        Args:
+            run_id (str): The stable identifier for the content run.
+            decision (str): The decision text processed when decide.
+
+        Returns:
+            Dict[str, Any]: The structured resulting data for decide.
+        """
         return decide_candidates(self.store, run_id, decision)
 
     def link_issue(self, run_id: str, issue_url: str) -> Dict[str, Any]:
-        """Link issue."""
+        """Link the issue.
+
+        Args:
+            run_id (str): The stable identifier for the content run.
+            issue_url (str): The issue url text processed when link issue.
+
+        Returns:
+            Dict[str, Any]: The structured resulting data for link issue.
+        """
         return link_candidate_issue(self.store, run_id, issue_url)
 
     def _record(self, event: DiagnosticEvent) -> None:
-        """Record runtime diagnostics."""
+        """Record the runtime diagnostics workflow.
+
+        Args:
+            event (DiagnosticEvent): The diagnostic or lifecycle event to record.
+
+        Returns:
+            None: The callable updates record state and returns no value.
+        """
         append_event(
             self.store,
             enabled=self.enabled,

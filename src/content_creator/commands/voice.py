@@ -1,4 +1,4 @@
-"""Compatibility façade and typed router for voice commands."""
+"""Implement the voice command family."""
 
 from __future__ import annotations
 
@@ -56,14 +56,30 @@ ROUTES: dict[str, VoiceHandler] = {
 
 
 def command_needs_model(arguments: argparse.Namespace) -> bool:
-    """Return the command needs model."""
+    """Return the command needs model.
+
+    Args:
+        arguments (argparse.Namespace): The arguments value passed to command needs
+            model.
+
+    Returns:
+        bool: Whether command needs model satisfies the documented condition.
+    """
     return arguments.voice_command in {"build", "rebuild"} or (
         arguments.voice_command == "create" and not arguments.no_build
     )
 
 
 def run(root: Path, arguments: argparse.Namespace) -> int:
-    """Run voice."""
+    """Run the voice workflow.
+
+    Args:
+        root (Path): The workspace root directory.
+        arguments (argparse.Namespace): The arguments value passed to run.
+
+    Returns:
+        int: The process exit status, where zero indicates successful handling.
+    """
     runner = None
     if not getattr(arguments, "offline_analysis", False) and command_needs_model(arguments):
         runner = Orchestrator(root).runner

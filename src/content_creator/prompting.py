@@ -19,13 +19,29 @@ class PromptAssembler:
     """Represent a prompt assembler."""
 
     def __init__(self, root: Path):
-        """Initialize the prompt assembler."""
+        """Initialize the prompt assembler with its required state and collaborators.
+
+        Args:
+            root (Path): The workspace root directory.
+
+        Returns:
+            None: The instance is initialized in place and no value is returned.
+        """
         self.root = root.resolve()
         self.resources = ResourceResolver(self.root)
         self.agent_workspace = AgentWorkspace(self.root)
 
     def system_prompt(self, role: str, order: Optional[WorkOrder] = None) -> str:
-        """Return the system prompt."""
+        """Return the system prompt.
+
+        Args:
+            role (str): The repository-owned agent role to execute.
+            order (Optional[WorkOrder]): The work order that defines the requested content
+                run. Defaults to ``None``.
+
+        Returns:
+            str: The resulting text for system prompt.
+        """
         parts = self._base_prompt_parts(role)
         self._append_voice_profile(parts, role, order)
         self._append_perspectives(parts, role, order)
@@ -34,7 +50,14 @@ class PromptAssembler:
         return "\n\n---\n\n".join(parts)
 
     def _base_prompt_parts(self, role: str) -> list[str]:
-        """Return the base prompt parts."""
+        """Return the base prompt parts.
+
+        Args:
+            role (str): The repository-owned agent role to execute.
+
+        Returns:
+            list[str]: The resulting base prompt parts values in their documented order.
+        """
         parts = [
             self._read(self.agent_workspace.harness_path()),
             self._read(self.agent_workspace.contract_path(role)),
@@ -53,7 +76,17 @@ class PromptAssembler:
         role: str,
         order: Optional[WorkOrder],
     ) -> None:
-        """Return the append voice profile."""
+        """Return the append voice profile.
+
+        Args:
+            parts (list[str]): The parts collection consumed while append voice profile.
+            role (str): The repository-owned agent role to execute.
+            order (Optional[WorkOrder]): The work order that defines the requested content
+                run.
+
+        Returns:
+            None: The callable updates append voice profile state and returns no value.
+        """
         if role in {"writer", "critic", "learning-extractor"}:
             voice_id = order.voice_id if order else "default"
             resolved = VoiceRegistry(self.root).resolve(
@@ -75,7 +108,20 @@ class PromptAssembler:
         role: str,
         order: Optional[WorkOrder],
     ) -> None:
-        """Return the append perspectives."""
+        """Return the append perspectives.
+
+        Append only the selected perspective profiles and their provenance to the prompt,
+        preserving strict context isolation.
+
+        Args:
+            parts (list[str]): The parts collection consumed while append perspectives.
+            role (str): The repository-owned agent role to execute.
+            order (Optional[WorkOrder]): The work order that defines the requested content
+                run.
+
+        Returns:
+            None: The callable updates append perspectives state and returns no value.
+        """
         if (
             order
             and order.perspective_selections
@@ -129,7 +175,17 @@ class PromptAssembler:
         role: str,
         order: Optional[WorkOrder],
     ) -> None:
-        """Return the append learnings."""
+        """Return the append learnings.
+
+        Args:
+            parts (list[str]): The parts collection consumed while append learnings.
+            role (str): The repository-owned agent role to execute.
+            order (Optional[WorkOrder]): The work order that defines the requested content
+                run.
+
+        Returns:
+            None: The callable updates append learnings state and returns no value.
+        """
         repository_learnings = self._active_learnings(
             self.root / "learnings" / "memory.json",
             role,
@@ -150,7 +206,17 @@ class PromptAssembler:
         role: str,
         order: Optional[WorkOrder],
     ) -> None:
-        """Return the append rubrics."""
+        """Return the append rubrics.
+
+        Args:
+            parts (list[str]): The parts collection consumed while append rubrics.
+            role (str): The repository-owned agent role to execute.
+            order (Optional[WorkOrder]): The work order that defines the requested content
+                run.
+
+        Returns:
+            None: The callable updates append rubrics state and returns no value.
+        """
         if order and role in {"writer", "critic"}:
             packs = PackRegistry(self.root)
             pack = packs.resolve(order.content_pack, order.pack_options)
@@ -172,7 +238,16 @@ class PromptAssembler:
 
     @staticmethod
     def _resolved_voice_profile(resolved: Dict[str, Any], profile: str) -> str:
-        """Return the resolved voice profile."""
+        """Return the resolved voice profile.
+
+        Args:
+            resolved (Dict[str, Any]): The resolved collection consumed while resolved voice
+                profile.
+            profile (str): The resolved voice, perspective, or content profile.
+
+        Returns:
+            str: The resulting text for resolved voice profile.
+        """
         if resolved.get("version_status") != "active":
             return profile
         candidate_only = (
@@ -210,14 +285,29 @@ class PromptAssembler:
 
     @staticmethod
     def user_prompt(instruction: str, payload: Dict[str, Any]) -> str:
-        """Return the user prompt."""
+        """Return the user prompt.
+
+        Args:
+            instruction (str): The instruction text processed when user prompt.
+            payload (Dict[str, Any]): The structured payload to validate or persist.
+
+        Returns:
+            str: The resulting text for user prompt.
+        """
         return "{}\n\nINPUT\n{}".format(
             instruction, json.dumps(payload, indent=2, default=str, ensure_ascii=False)
         )
 
     @staticmethod
     def merge_payload(items: Iterable[Dict[str, Any]]) -> Dict[str, Any]:
-        """Return the merge payload."""
+        """Return the merge payload.
+
+        Args:
+            items (Iterable[Dict[str, Any]]): The items value passed to merge payload.
+
+        Returns:
+            Dict[str, Any]: The structured resulting data for merge payload.
+        """
         result: Dict[str, Any] = {}
         for item in items:
             result.update(item)
@@ -225,7 +315,18 @@ class PromptAssembler:
 
     @staticmethod
     def _active_learnings(path: Path, role: str) -> list[str]:
-        """Return the active learnings."""
+        """Return the active learnings.
+
+        Args:
+            path (Path): The filesystem path to inspect or update.
+            role (str): The repository-owned agent role to execute.
+
+        Returns:
+            list[str]: The resulting active learnings values in their documented order.
+
+        Raises:
+            ValueError: If an input value violates the supported domain constraints.
+        """
         if not path.exists():
             return []
         data = json.loads(path.read_text(encoding="utf-8"))
@@ -253,5 +354,12 @@ class PromptAssembler:
 
     @staticmethod
     def _read(path: Path) -> str:
-        """Read prompt assembler."""
+        """Read the prompt assembler workflow.
+
+        Args:
+            path (Path): The filesystem path to inspect or update.
+
+        Returns:
+            str: The loaded text for value.
+        """
         return path.read_text(encoding="utf-8").strip()

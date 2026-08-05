@@ -63,7 +63,11 @@ class VoiceWorkOrder(BaseModel):
 
     @property
     def attribution_name(self) -> str:
-        """Return the attribution name."""
+        """Return the attribution name.
+
+        Returns:
+            str: The resulting text for attribution name.
+        """
         return self.author_name or self.display_name
 
 
@@ -165,12 +169,29 @@ class VoiceApprovalReceipt(BaseModel):
 
 
 def onboarding_path(root: Path, voice_id: str) -> Path:
-    """Return the onboarding path."""
+    """Return the onboarding path.
+
+    Args:
+        root (Path): The workspace root directory.
+        voice_id (str): The stable identifier for the selected voice.
+
+    Returns:
+        Path: The resolved filesystem path for onboarding path.
+    """
     return root.resolve() / "profiles" / voice_id / "onboarding.json"
 
 
 def load_voice_onboarding(root: Path, voice_id: str) -> Optional[VoiceOnboardingRecord]:
-    """Load voice onboarding."""
+    """Load the voice onboarding.
+
+    Args:
+        root (Path): The workspace root directory.
+        voice_id (str): The stable identifier for the selected voice.
+
+    Returns:
+        Optional[VoiceOnboardingRecord]: The loaded voice onboarding when available;
+            otherwise ``None``.
+    """
     path = onboarding_path(root, voice_id)
     if not path.exists():
         return None
@@ -178,7 +199,16 @@ def load_voice_onboarding(root: Path, voice_id: str) -> Optional[VoiceOnboarding
 
 
 def save_voice_onboarding(root: Path, record: VoiceOnboardingRecord) -> Path:
-    """Save voice onboarding."""
+    """Save the voice onboarding.
+
+    Args:
+        root (Path): The workspace root directory.
+        record (VoiceOnboardingRecord): The record value passed to save voice
+            onboarding.
+
+    Returns:
+        Path: The resolved filesystem path for voice onboarding.
+    """
     path = onboarding_path(root, record.voice_id)
     RunStore._atomic_text(path, record.model_dump_json(indent=2))
     return path

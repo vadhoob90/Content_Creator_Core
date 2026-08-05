@@ -12,7 +12,17 @@ class RoutingError(ValueError):
 
 
 def validate_work_order(order: WorkOrder) -> None:
-    """Validate work order."""
+    """Validate the work order.
+
+    Args:
+        order (WorkOrder): The work order that defines the requested content run.
+
+    Returns:
+        None: The callable updates work order state and returns no value.
+
+    Raises:
+        RoutingError: If the routing operation cannot complete.
+    """
     if order.research_depth == ResearchDepth.NONE and order.research_source != ResearchSource.NONE:
         raise RoutingError("No-research work cannot specify a research source")
     if order.research_depth != ResearchDepth.NONE and order.research_source == ResearchSource.NONE:
@@ -22,7 +32,14 @@ def validate_work_order(order: WorkOrder) -> None:
 
 
 def build_route(order: WorkOrder) -> RoutePlan:
-    """Build route."""
+    """Build the route.
+
+    Args:
+        order (WorkOrder): The work order that defines the requested content run.
+
+    Returns:
+        RoutePlan: The constructed route plan for route.
+    """
     validate_work_order(order)
     stages = []
     profiles = {}

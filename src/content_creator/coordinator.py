@@ -23,20 +23,34 @@ from .voices import VoiceManifest, VoiceRegistry, load_voice_onboarding
 
 
 class ContentCoordinator:
-    """Read-only, deterministic interface for people and conversational hosts."""
+    """Represent the content coordinator contract."""
 
     _action = staticmethod(coordinator_action)
     _operation = staticmethod(coordinator_operation)
 
     def __init__(self, root: Path):
-        """Initialize the content coordinator."""
+        """Initialize the content coordinator with its required state and collaborators.
+
+        Args:
+            root (Path): The workspace root directory.
+
+        Returns:
+            None: The instance is initialized in place and no value is returned.
+        """
         self.root = root.resolve()
         self.store = RunStore(self.root)
         self.configuration = Configuration(self.root)
         self.voice_registry = VoiceRegistry(self.root)
 
     def capabilities(self) -> Dict[str, Any]:
-        """Return the capabilities."""
+        """Return the capabilities.
+
+        Inspect repository configuration and optional dependencies to report which author-
+        facing workflows are currently available.
+
+        Returns:
+            Dict[str, Any]: The structured resulting data for capabilities.
+        """
         return {
             "schema_version": "1.1",
             "interface": "content-creator-coordinator",
@@ -102,7 +116,17 @@ class ContentCoordinator:
         }
 
     def snapshot(self, run_limit: int = 10) -> WorkspaceSnapshot:
-        """Return the snapshot."""
+        """Return the snapshot.
+
+        Combine workspace health, run state, voice state, and recommended actions into one
+        deterministic coordinator view.
+
+        Args:
+            run_limit (int): The run limit value that controls snapshot. Defaults to ``10``.
+
+        Returns:
+            WorkspaceSnapshot: The resulting workspace snapshot for snapshot.
+        """
         policy = self.configuration.coordinator_policy
         packs = [item.id for item in PackRegistry(self.root).list()]
         voices = self._voices()
@@ -147,18 +171,40 @@ class ContentCoordinator:
         return snapshot
 
     def context(self, run_limit: int = 10) -> Dict[str, Any]:
-        """Return the context."""
+        """Return the context.
+
+        Args:
+            run_limit (int): The run limit value that controls context. Defaults to ``10``.
+
+        Returns:
+            Dict[str, Any]: The structured resulting data for context.
+        """
         return self.snapshot(run_limit).model_dump(mode="json")
 
     def runs(self, limit: int = 20) -> Dict[str, Any]:
-        """Return the runs."""
+        """Return the runs.
+
+        Args:
+            limit (int): The maximum number of records to return or process. Defaults to
+                ``20``.
+
+        Returns:
+            Dict[str, Any]: The structured resulting data for runs.
+        """
         return {
             "schema_version": "1.0",
             "runs": [item.model_dump(mode="json") for item in self._run_summaries(limit)],
         }
 
     def next_actions(self, run_id: str) -> Dict[str, Any]:
-        """Return the next actions."""
+        """Return the next actions.
+
+        Args:
+            run_id (str): The stable identifier for the content run.
+
+        Returns:
+            Dict[str, Any]: The structured resulting data for next actions.
+        """
         state = self.store.load(run_id)
         artifacts = self._artifacts(run_id)
         actions = self._actions_for_state(state, run_id)
@@ -184,7 +230,16 @@ class ContentCoordinator:
         }
 
     def _actions_for_state(self, state: RunState, run_id: str) -> List[CoordinatorAction]:
-        """Return the actions for state."""
+        """Return the actions for state.
+
+        Args:
+            state (RunState): The persisted lifecycle state to inspect or update.
+            run_id (str): The stable identifier for the content run.
+
+        Returns:
+            List[CoordinatorAction]: The resulting actions for state values in their
+                documented order.
+        """
         routes = {
             RunStatus.AWAITING_RESEARCH_APPROVAL: self._research_actions,
             RunStatus.READY: self._reviewed_actions,
@@ -196,7 +251,16 @@ class ContentCoordinator:
         return handler(state, run_id)
 
     def _research_actions(self, state: RunState, run_id: str) -> List[CoordinatorAction]:
-        """Return the research actions."""
+        """Return the research actions.
+
+        Args:
+            state (RunState): The persisted lifecycle state to inspect or update.
+            run_id (str): The stable identifier for the content run.
+
+        Returns:
+            List[CoordinatorAction]: The resulting research actions values in their
+                documented order.
+        """
         del state
         return [
             self._action("review-research", "Review the research brief", artifact="research.json"),
@@ -217,7 +281,16 @@ class ContentCoordinator:
         ]
 
     def _reviewed_actions(self, state: RunState, run_id: str) -> List[CoordinatorAction]:
-        """Return the reviewed actions."""
+        """Return the reviewed actions.
+
+        Args:
+            state (RunState): The persisted lifecycle state to inspect or update.
+            run_id (str): The stable identifier for the content run.
+
+        Returns:
+            List[CoordinatorAction]: The resulting reviewed actions values in their
+                documented order.
+        """
         actions = []
         if state.final_draft_path:
             actions.append(
@@ -246,7 +319,16 @@ class ContentCoordinator:
         return actions
 
     def _diagnostic_publish_actions(self, state: RunState, run_id: str) -> List[CoordinatorAction]:
-        """Return the diagnostic publish actions."""
+        """Return the diagnostic publish actions.
+
+        Args:
+            state (RunState): The persisted lifecycle state to inspect or update.
+            run_id (str): The stable identifier for the content run.
+
+        Returns:
+            List[CoordinatorAction]: The resulting diagnostic publish actions values in
+                their documented order.
+        """
         return [
             self._action(
                 "review-support-candidate",
@@ -270,7 +352,16 @@ class ContentCoordinator:
         ]
 
     def _published_actions(self, state: RunState, run_id: str) -> List[CoordinatorAction]:
-        """Return the published actions."""
+        """Return the published actions.
+
+        Args:
+            state (RunState): The persisted lifecycle state to inspect or update.
+            run_id (str): The stable identifier for the content run.
+
+        Returns:
+            List[CoordinatorAction]: The resulting published actions values in their
+                documented order.
+        """
         del run_id
         actions = [
             self._action(
@@ -290,7 +381,16 @@ class ContentCoordinator:
         return actions
 
     def _failed_actions(self, state: RunState, run_id: str) -> List[CoordinatorAction]:
-        """Return the failed actions."""
+        """Return the failed actions.
+
+        Args:
+            state (RunState): The persisted lifecycle state to inspect or update.
+            run_id (str): The stable identifier for the content run.
+
+        Returns:
+            List[CoordinatorAction]: The resulting failed actions values in their documented
+                order.
+        """
         del run_id
         actions = [
             self._action(
@@ -308,14 +408,30 @@ class ContentCoordinator:
         return actions
 
     def _fallback_actions(self, state: RunState, run_id: str) -> List[CoordinatorAction]:
-        """Return the fallback actions."""
+        """Return the fallback actions.
+
+        Args:
+            state (RunState): The persisted lifecycle state to inspect or update.
+            run_id (str): The stable identifier for the content run.
+
+        Returns:
+            List[CoordinatorAction]: The resulting fallback actions values in their
+                documented order.
+        """
         del state
         return [
             self._action("inspect-status", "Inspect the persisted run state", ["status", run_id])
         ]
 
     def _run_summaries(self, limit: int) -> List[RunSummary]:
-        """Run summaries."""
+        """Run the summaries.
+
+        Args:
+            limit (int): The maximum number of records to return or process.
+
+        Returns:
+            List[RunSummary]: The execution summaries values in their documented order.
+        """
         states: List[RunState] = []
         for path in self.store.runs_dir.glob("*/state.json"):
             try:
@@ -343,7 +459,14 @@ class ContentCoordinator:
         ]
 
     def _voices(self) -> List[VoiceStatus]:
-        """Return the voices."""
+        """Return the voices.
+
+        Read the voice registry and summarize active, candidate, and source-derived voice
+        state without mutating the workspace.
+
+        Returns:
+            List[VoiceStatus]: The resulting voices values in their documented order.
+        """
         registry = self.voice_registry.list()
         voice_ids = set(registry)
         voice_ids.update(
@@ -392,7 +515,11 @@ class ContentCoordinator:
         return result
 
     def _provider_status(self) -> ProviderStatus:
-        """Return the provider status."""
+        """Return the provider status.
+
+        Returns:
+            ProviderStatus: The resulting provider status for provider status.
+        """
         try:
             provider = self.configuration.default_provider
         except ValueError:
@@ -414,7 +541,17 @@ class ContentCoordinator:
 
     @staticmethod
     def _recommend(snapshot: WorkspaceSnapshot) -> CoordinatorAction:
-        """Return the recommend."""
+        """Return the recommend.
+
+        Derive the next safe author action from workspace health, lifecycle status, pending
+        approvals, and available capabilities.
+
+        Args:
+            snapshot (WorkspaceSnapshot): The snapshot value passed to recommend.
+
+        Returns:
+            CoordinatorAction: The resulting coordinator action for recommend.
+        """
         if not snapshot.is_workspace:
             return CoordinatorAction(
                 id="create-workspace",
@@ -488,7 +625,14 @@ class ContentCoordinator:
         )
 
     def _artifacts(self, run_id: str) -> List[str]:
-        """Return the artifacts."""
+        """Return the artifacts.
+
+        Args:
+            run_id (str): The stable identifier for the content run.
+
+        Returns:
+            List[str]: The resulting artifacts values in their documented order.
+        """
         directory = self.store.run_dir(run_id)
         return sorted(
             str(path.relative_to(self.root)) for path in directory.iterdir() if path.is_file()

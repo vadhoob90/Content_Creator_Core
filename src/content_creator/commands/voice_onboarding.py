@@ -19,12 +19,32 @@ from .voice_sources import documents, source_lines
 
 
 def _score_method(selected_method: str) -> str:
-    """Score method."""
+    """Score the method.
+
+    Args:
+        selected_method (str): The selected method text processed when score method.
+
+    Returns:
+        str: The scored text for method.
+    """
     return "deterministic" if selected_method == "disabled" else selected_method
 
 
 def _activate_starter(context: VoiceCommandContext, voice_id: str, display_name: str) -> int:
-    """Activate starter."""
+    """Activate the starter.
+
+    Args:
+        context (VoiceCommandContext): The operation context and its resolved
+            dependencies.
+        voice_id (str): The stable identifier for the selected voice.
+        display_name (str): The human-readable name shown to users.
+
+    Returns:
+        int: The resulting numeric value for activate starter.
+
+    Raises:
+        ValueError: If an input value violates the supported domain constraints.
+    """
     arguments = context.arguments
     if arguments.statistical_voice_score != "disabled":
         raise ValueError(
@@ -67,7 +87,20 @@ def _stage_source_derived(
     voice_id: str,
     display_name: str,
 ) -> int:
-    """Stage source derived."""
+    """Stage the source derived.
+
+    Validate confirmed author sources, build a candidate voice, and stage the resulting
+    artifacts for approval.
+
+    Args:
+        context (VoiceCommandContext): The operation context and its resolved
+            dependencies.
+        voice_id (str): The stable identifier for the selected voice.
+        display_name (str): The human-readable name shown to users.
+
+    Returns:
+        int: The resulting numeric value for stage source derived.
+    """
     arguments = context.arguments
     intended_uses = arguments.use or ["general-text"]
     order = VoiceWorkOrder(
@@ -117,7 +150,18 @@ def _stage_source_derived(
 
 
 def onboard(context: VoiceCommandContext) -> int:
-    """Return the onboard."""
+    """Return the onboard.
+
+    Args:
+        context (VoiceCommandContext): The operation context and its resolved
+            dependencies.
+
+    Returns:
+        int: The resulting numeric value for onboard.
+
+    Raises:
+        ValueError: If an input value violates the supported domain constraints.
+    """
     arguments = context.arguments
     voice_id = voice_id_for(arguments.voice_id)
     if voice_id != arguments.voice_id:
@@ -129,7 +173,18 @@ def onboard(context: VoiceCommandContext) -> int:
 
 
 def create(context: VoiceCommandContext) -> int:
-    """Create voice onboarding."""
+    """Create the voice onboarding workflow.
+
+    Args:
+        context (VoiceCommandContext): The operation context and its resolved
+            dependencies.
+
+    Returns:
+        int: The created numeric value for value.
+
+    Raises:
+        ValueError: If an input value violates the supported domain constraints.
+    """
     arguments = context.arguments
     author_name = arguments.author_name or arguments.name
     if not author_name:
@@ -159,7 +214,16 @@ def create(context: VoiceCommandContext) -> int:
 
 
 def _record_created_voice(context: VoiceCommandContext, order: VoiceWorkOrder) -> None:
-    """Record created voice."""
+    """Record the created voice.
+
+    Args:
+        context (VoiceCommandContext): The operation context and its resolved
+            dependencies.
+        order (VoiceWorkOrder): The work order that defines the requested content run.
+
+    Returns:
+        None: The callable updates record created voice state and returns no value.
+    """
     arguments = context.arguments
     save_voice_onboarding(
         context.root,

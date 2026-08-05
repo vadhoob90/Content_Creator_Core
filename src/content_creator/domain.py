@@ -12,7 +12,11 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 def utc_now() -> datetime:
-    """Return the utc now."""
+    """Return the current timezone-aware UTC timestamp.
+
+    Returns:
+        datetime: The resulting datetime for utc now.
+    """
     return datetime.now(UTC)
 
 
@@ -108,7 +112,17 @@ class PerspectiveSelection(BaseModel):
     @field_validator("context_id")
     @classmethod
     def validate_context_id(cls, value: str) -> str:
-        """Validate context id."""
+        """Validate the context id.
+
+        Args:
+            value (str): The value to process.
+
+        Returns:
+            str: The validated text for context id.
+
+        Raises:
+            ValueError: If an input value violates the supported domain constraints.
+        """
         if not re.fullmatch(r"[a-z0-9][a-z0-9-]{0,62}", value):
             raise ValueError(
                 "Perspective context ids must use lowercase letters, digits, and hyphens"
@@ -148,7 +162,17 @@ class WorkOrder(BaseModel):
     @field_validator("content_pack", "voice_id", "perspective_context")
     @classmethod
     def validate_repository_id(cls, value: Optional[str]) -> Optional[str]:
-        """Validate repository id."""
+        """Validate the repository id.
+
+        Args:
+            value (Optional[str]): The value to process.
+
+        Returns:
+            Optional[str]: The validated repository id when available; otherwise ``None``.
+
+        Raises:
+            ValueError: If an input value violates the supported domain constraints.
+        """
         if value is not None and not re.fullmatch(r"[a-z0-9][a-z0-9-]{0,62}", value):
             raise ValueError("Repository ids must use lowercase letters, digits, and hyphens")
         return value
@@ -156,7 +180,17 @@ class WorkOrder(BaseModel):
     @field_validator("content_session_id", "parent_run_id")
     @classmethod
     def validate_run_reference(cls, value: Optional[str]) -> Optional[str]:
-        """Validate run reference."""
+        """Validate the run reference.
+
+        Args:
+            value (Optional[str]): The value to process.
+
+        Returns:
+            Optional[str]: The validated run reference when available; otherwise ``None``.
+
+        Raises:
+            ValueError: If an input value violates the supported domain constraints.
+        """
         if value is not None and not re.fullmatch(r"[a-zA-Z0-9_-]{1,64}", value):
             raise ValueError(
                 "Run and content session ids must use letters, digits, underscores, and hyphens"
@@ -165,7 +199,14 @@ class WorkOrder(BaseModel):
 
     @model_validator(mode="after")
     def validate_perspective_selection(self) -> Self:
-        """Validate perspective selection."""
+        """Validate the perspective selection.
+
+        Returns:
+            Self: The validated self for perspective selection.
+
+        Raises:
+            ValueError: If an input value violates the supported domain constraints.
+        """
         if self.perspective_context and not self.perspective_selections:
             self.perspective_selections = [
                 PerspectiveSelection(
@@ -269,7 +310,14 @@ class Critique(BaseModel):
     @field_validator("prior_issue_status", mode="before")
     @classmethod
     def normalise_legacy_prior_issue_status(cls, value: Any) -> Any:
-        """Return the normalise legacy prior issue status."""
+        """Return the normalise legacy prior issue status.
+
+        Args:
+            value (Any): The value to process.
+
+        Returns:
+            Any: The resulting value for normalise legacy prior issue status.
+        """
         if value is None:
             return {}
         if not isinstance(value, dict):
@@ -278,7 +326,14 @@ class Critique(BaseModel):
 
     @staticmethod
     def _normalise_legacy_disposition(value: Any) -> Any:
-        """Return the normalise legacy disposition."""
+        """Return the normalise legacy disposition.
+
+        Args:
+            value (Any): The value to process.
+
+        Returns:
+            Any: The resulting value for normalise legacy disposition.
+        """
         if not isinstance(value, str):
             return value
         note = value.strip()
@@ -321,7 +376,17 @@ class LearningCandidate(BaseModel):
     @field_validator("role", mode="before")
     @classmethod
     def validate_learning_role(cls, value: Any) -> Any:
-        """Validate learning role."""
+        """Validate the learning role.
+
+        Args:
+            value (Any): The value to process.
+
+        Returns:
+            Any: The validated value for learning role.
+
+        Raises:
+            ValueError: If an input value violates the supported domain constraints.
+        """
         supported = ", ".join(role.value for role in LearningRole)
         if value not in {role.value for role in LearningRole}:
             raise ValueError(
@@ -414,7 +479,14 @@ class RunState(BaseModel):
     @model_validator(mode="before")
     @classmethod
     def preserve_legacy_content_session(cls, value: Any) -> Any:
-        """Return the preserve legacy content session."""
+        """Return the preserve legacy content session.
+
+        Args:
+            value (Any): The value to process.
+
+        Returns:
+            Any: The resulting value for preserve legacy content session.
+        """
         if not isinstance(value, dict):
             return value
         work_order = value.get("work_order")

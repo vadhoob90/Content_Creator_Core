@@ -1,4 +1,4 @@
-"""Privacy-safe operational failure classification and recovery evidence."""
+"""Provide operations contracts and behavior."""
 
 from __future__ import annotations
 
@@ -25,7 +25,15 @@ class FailureCode(str, Enum):
 
 
 def classify_failure(message: Optional[str]) -> FailureCode:
-    """Classify failure."""
+    """Classify the failure.
+
+    Args:
+        message (Optional[str]): The human-readable message associated with the
+            operation.
+
+    Returns:
+        FailureCode: The classified failure code for failure.
+    """
     normalized = (message or "").lower()
     if any(term in normalized for term in ("provider", "unavailable", "api")):
         return FailureCode.PROVIDER_FAILURE
@@ -39,7 +47,18 @@ def classify_failure(message: Optional[str]) -> FailureCode:
 
 
 def build_support_bundle(root: Path, run_id: str) -> Dict[str, Any]:
-    """Build support bundle."""
+    """Build the support bundle.
+
+    Args:
+        root (Path): The workspace root directory.
+        run_id (str): The stable identifier for the content run.
+
+    Returns:
+        Dict[str, Any]: The structured constructed data for support bundle.
+
+    Raises:
+        ValueError: If an input value violates the supported domain constraints.
+    """
     if not re.fullmatch(r"[A-Za-z0-9_-]+", run_id):
         raise ValueError("run_id must use letters, digits, underscores, and hyphens")
     root = root.resolve()
@@ -82,7 +101,14 @@ def build_support_bundle(root: Path, run_id: str) -> Dict[str, Any]:
 
 
 def recovery_report(root: Path) -> Dict[str, Any]:
-    """Return the recovery report."""
+    """Return the recovery report.
+
+    Args:
+        root (Path): The workspace root directory.
+
+    Returns:
+        Dict[str, Any]: The structured resulting data for recovery report.
+    """
     root = root.resolve()
     locks = []
     active_locks = []

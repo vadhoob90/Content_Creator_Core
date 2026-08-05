@@ -1,4 +1,4 @@
-"""Provider command family."""
+"""Implement the provider command family."""
 
 from __future__ import annotations
 
@@ -15,7 +15,15 @@ from ..storage import RunStore
 
 
 def register(subparsers: Any, providers: Sequence[str]) -> None:
-    """Register provider."""
+    """Register the provider workflow.
+
+    Args:
+        subparsers (Any): The argparse subparser collection receiving the command.
+        providers (Sequence[str]): The providers value passed to register.
+
+    Returns:
+        None: The callable updates register state and returns no value.
+    """
     parser = subparsers.add_parser("provider", help=argparse.SUPPRESS)
     commands = parser.add_subparsers(dest="provider_command", required=True)
     select = commands.add_parser("select", help="Persist the workspace default provider")
@@ -25,7 +33,19 @@ def register(subparsers: Any, providers: Sequence[str]) -> None:
 
 
 def run(root: Path, args: argparse.Namespace, emit: Callable[[Any], None]) -> int:
-    """Run provider."""
+    """Run the provider workflow.
+
+    Args:
+        root (Path): The workspace root directory.
+        args (argparse.Namespace): The parsed command-line arguments.
+        emit (Callable[[Any], None]): The emit value passed to run.
+
+    Returns:
+        int: The process exit status, where zero indicates successful handling.
+
+    Raises:
+        ConfigurationError: If the configuration operation cannot complete.
+    """
     provider_name = args.provider_name
     if args.provider_command == "select":
         path = root / "content-creator.yaml"

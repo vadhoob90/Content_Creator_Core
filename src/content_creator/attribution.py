@@ -9,7 +9,15 @@ from .voices import AttributionResult
 
 
 def _names(author_name: str, aliases: Optional[Iterable[str]]) -> List[str]:
-    """Return the names."""
+    """Return the names.
+
+    Args:
+        author_name (str): The author's display name.
+        aliases (Optional[Iterable[str]]): The aliases value passed to names.
+
+    Returns:
+        List[str]: The resulting names values in their documented order.
+    """
     return list(
         dict.fromkeys(
             name.strip() for name in [author_name, *(aliases or [])] if name and name.strip()
@@ -23,7 +31,21 @@ def classify_attribution(
     kind: str,
     aliases: Optional[Iterable[str]] = None,
 ) -> AttributionResult:
-    """Classify attribution."""
+    """Classify the attribution workflow.
+
+    Compare declared authorship with source metadata and return a conservative
+    attribution classification with supporting reasons.
+
+    Args:
+        text (str): The text to process.
+        author_name (str): The author's display name.
+        kind (str): The domain category used to classify the value.
+        aliases (Optional[Iterable[str]]): The aliases value passed to classify
+            attribution. Defaults to ``None``.
+
+    Returns:
+        AttributionResult: The classified attribution result for attribution.
+    """
     names = _names(author_name, aliases)
     for name in names:
         escaped = re.escape(name)
@@ -78,8 +100,24 @@ def isolate_attributed_text(
     kind: str,
     aliases: Optional[Iterable[str]] = None,
 ) -> tuple[str, str]:
-    """Conservatively isolate analysable language without claiming authorship."""
+    """Return the isolate attributed text.
 
+    Remove quoted or third-party material from analysis input while retaining only text
+    that can conservatively be attributed to the author.
+
+    Args:
+        text (str): The text to process.
+        author_name (str): The author's display name.
+        attribution (AttributionResult): The attribution value passed to isolate
+            attributed text.
+        kind (str): The domain category used to classify the value.
+        aliases (Optional[Iterable[str]]): The aliases value passed to isolate
+            attributed text. Defaults to ``None``.
+
+    Returns:
+        tuple[str, str]: The resulting isolate attributed text values in their
+            documented order.
+    """
     cleaned = text.strip()
     names = _names(author_name, aliases)
     if attribution.classification == "directly_authored":

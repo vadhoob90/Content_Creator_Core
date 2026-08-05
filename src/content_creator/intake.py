@@ -17,7 +17,14 @@ class ClarificationRequired(ValueError):
     """Represent a clarification required."""
 
     def __init__(self, questions: List[str]) -> None:
-        """Initialize the clarification required."""
+        """Initialize the clarification required with its required state and collaborators.
+
+        Args:
+            questions (List[str]): The questions collection consumed while init.
+
+        Returns:
+            None: The instance is initialized in place and no value is returned.
+        """
         self.questions = questions
         super().__init__("Clarification required: {}".format("; ".join(questions)))
 
@@ -26,11 +33,34 @@ class BriefingAgent:
     """Represent a briefing agent."""
 
     def __init__(self, runner: Optional[AgentRunner] = None):
-        """Initialize the briefing agent."""
+        """Initialize the briefing agent with its required state and collaborators.
+
+        Args:
+            runner (Optional[AgentRunner]): The agent or command runner used to execute the
+                operation. Defaults to ``None``.
+
+        Returns:
+            None: The instance is initialized in place and no value is returned.
+        """
         self.runner = runner
 
     def plan(self, request: str, provider: Optional[str] = None) -> WorkOrder:
-        """Plan briefing agent."""
+        """Plan the briefing agent workflow.
+
+        Resolve the requested route and convert the author's request into a validated work
+        order without initiating generation.
+
+        Args:
+            request (str): The validated request that initiates the operation.
+            provider (Optional[str]): The provider implementation used for generation.
+                Defaults to ``None``.
+
+        Returns:
+            WorkOrder: The planned work order for value.
+
+        Raises:
+            ClarificationRequired: If the clarification required operation cannot complete.
+        """
         lowered = request.lower()
         content_format = "article" if "article" in lowered else "post"
 

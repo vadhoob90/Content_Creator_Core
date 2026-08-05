@@ -17,7 +17,22 @@ DIMENSIONS = [
 
 
 def create_blind_comparison(root: Path, run_id: str, baseline: Path) -> dict:
-    """Create blind comparison."""
+    """Create the blind comparison.
+
+    Randomize two candidate passages behind stable labels so a reviewer can compare them
+    without knowing which perspective produced each one.
+
+    Args:
+        root (Path): The workspace root directory.
+        run_id (str): The stable identifier for the content run.
+        baseline (Path): The filesystem path containing the baseline.
+
+    Returns:
+        dict: The created dict for blind comparison.
+
+    Raises:
+        StorageError: If the storage operation cannot complete.
+    """
     run_dir = RunStore(root).run_dir(run_id)
     candidate = run_dir / "final.md"
     if not candidate.exists():
@@ -69,7 +84,20 @@ def create_blind_comparison(root: Path, run_id: str, baseline: Path) -> dict:
 
 
 def record_blind_comparison(root: Path, run_id: str, assessment: Path) -> dict:
-    """Record blind comparison."""
+    """Record the blind comparison.
+
+    Args:
+        root (Path): The workspace root directory.
+        run_id (str): The stable identifier for the content run.
+        assessment (Path): The structured assessment to inspect or persist.
+
+    Returns:
+        dict: The resulting dict for record blind comparison.
+
+    Raises:
+        StorageError: If the storage operation cannot complete.
+        ValueError: If an input value violates the supported domain constraints.
+    """
     run_dir = RunStore(root).run_dir(run_id)
     directory = run_dir / "blind-comparison"
     mapping_path = directory / ".mapping.json"

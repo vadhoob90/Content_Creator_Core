@@ -16,7 +16,19 @@ _POSITION_MARKER = re.compile(
 
 
 def evaluate_perspective_output(root: Path, order: WorkOrder, draft: str) -> dict:
-    """Evaluate perspective output."""
+    """Evaluate the perspective output.
+
+    Compare output with the selected perspective contract and return evidence-based
+    adherence findings without treating style as fact.
+
+    Args:
+        root (Path): The workspace root directory.
+        order (WorkOrder): The work order that defines the requested content run.
+        draft (str): The draft content to evaluate or transform.
+
+    Returns:
+        dict: The evaluation dict for perspective output.
+    """
     errors = []
     markers = _POSITION_MARKER.findall(draft)
     resolved = None

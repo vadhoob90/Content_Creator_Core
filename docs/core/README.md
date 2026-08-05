@@ -119,7 +119,10 @@ and CI runs the same check.
 Use `python scripts/readability_report.py --check` for the corresponding
 module, function, and signature limits across source, scripts, and tests.
 Use `python scripts/documentation_report.py --check` to require docstrings on
-every production module, class, function, and method.
+every production module, class, function, and method and validate their Google
+Style arguments, types, defaults, returns, explicit exceptions, summaries, and
+required context. [ADR 0013](../adr/0013-google-style-code-contracts.md) records
+the code-contract policy and review boundary.
 
 ## Core versus a thin workspace
 

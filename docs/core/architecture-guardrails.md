@@ -69,11 +69,21 @@ without forcing meaningless fragments.
   record why a surprising business or safety constraint exists, never narrate
   what plainly written code does.
 - Every production module, class, function, and method—including private,
-  nested, asynchronous, and special methods—has a concise, useful docstring.
-  `python scripts/documentation_report.py --check` enforces presence and
-  placement; review remains responsible for accuracy and clarity. Tests and
-  maintenance scripts are outside this blocking scope because descriptive test
-  names and short task-oriented scripts are often clearer than compulsory prose.
+  nested, asynchronous, and special methods—uses Google Style documentation.
+  Summaries begin with an active imperative verb. Every callable documents all
+  explicit parameters with types and literal defaults, its return type and
+  meaning (including `None`), and every statically named explicit exception.
+- Callables above the 40 implementation-line review threshold include a context
+  paragraph explaining policy, side effects, lifecycle, or orchestration. Short
+  callables add context when the contract is otherwise non-obvious.
+- `python scripts/documentation_report.py --check` validates presence, section
+  order, signature agreement, defaults, returns, explicit raises, and required
+  context. Ruff enforces compatible Google pydocstyle rules. Human review remains
+  responsible for technical accuracy and must reject restated names, placeholders,
+  and unsupported guarantees.
+- Tests and maintenance scripts remain outside the blocking scope because
+  descriptive test names and short task-oriented scripts are often clearer than
+  compulsory prose.
 
 ## Structural-change review
 
@@ -127,6 +137,7 @@ the guardrail.
 | Module responsibility and size | [ADR 0010](../adr/0010-module-responsibility-and-size-guardrails.md) |
 | Function readability, complexity, and naming | [ADR 0011](../adr/0011-readable-components-and-control-flow.md) |
 | Concept cohesion and package promotion | [ADR 0012](../adr/0012-concept-cohesion-and-package-promotion.md) |
+| Google Style code contracts | [ADR 0013](../adr/0013-google-style-code-contracts.md) |
 
 ## Full local gate
 

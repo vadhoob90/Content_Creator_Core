@@ -31,7 +31,19 @@ class AgentRunner:
         prompts: PromptAssembler,
         diagnostics: Optional[RuntimeDiagnostics] = None,
     ):
-        """Initialize the agent runner."""
+        """Initialize the agent runner with its required state and collaborators.
+
+        Args:
+            configuration (Configuration): The active repository configuration.
+            registry (ProviderRegistry): The registry used to resolve and persist domain
+                entries.
+            prompts (PromptAssembler): The prompts value passed to init.
+            diagnostics (Optional[RuntimeDiagnostics]): The runtime diagnostics service used
+                to record safe evidence. Defaults to ``None``.
+
+        Returns:
+            None: The instance is initialized in place and no value is returned.
+        """
         self.configuration = configuration
         self.registry = registry
         self.prompts = prompts
@@ -47,7 +59,22 @@ class AgentRunner:
         payload: Dict[str, Any],
         options: Optional[AgentRunOptions] = None,
     ) -> Any:
-        """Run agent runner."""
+        """Run the agent runner workflow.
+
+        Args:
+            role (str): The repository-owned agent role to execute.
+            role_key (str): The role key text processed when run.
+            instruction (str): The instruction text processed when run.
+            payload (Dict[str, Any]): The structured payload to validate or persist.
+            options (Optional[AgentRunOptions]): The options controlling this operation.
+                Defaults to ``None``.
+
+        Returns:
+            Any: The execution value for value.
+
+        Raises:
+            AgentOutputError: If the agent output operation cannot complete.
+        """
         resolved_options = options or AgentRunOptions()
         request = self._request(role, role_key, instruction, payload, resolved_options)
         policy = self.configuration.diagnostic_policy
@@ -66,7 +93,18 @@ class AgentRunner:
         payload: Dict[str, Any],
         options: AgentRunOptions,
     ) -> ModelRequest:
-        """Return the request."""
+        """Return the request.
+
+        Args:
+            role (str): The repository-owned agent role to execute.
+            role_key (str): The role key text processed when request.
+            instruction (str): The instruction text processed when request.
+            payload (Dict[str, Any]): The structured payload to validate or persist.
+            options (AgentRunOptions): The options controlling this operation.
+
+        Returns:
+            ModelRequest: The resulting model request for request.
+        """
         required = set(options.tools)
         if options.output_model:
             required.add("structured_output")
@@ -96,7 +134,18 @@ class AgentRunner:
         max_attempts: int,
         options: AgentRunOptions,
     ) -> Any:
-        """Return the attempt."""
+        """Return the attempt.
+
+        Args:
+            request (ModelRequest): The validated request that initiates the operation.
+            role (str): The repository-owned agent role to execute.
+            attempt (int): The one-based execution attempt number.
+            max_attempts (int): The max attempts value that controls attempt.
+            options (AgentRunOptions): The options controlling this operation.
+
+        Returns:
+            Any: The resulting value for attempt.
+        """
         self.history.append(request)
         response_index = len(self.responses)
         self.responses.append(None)
@@ -128,7 +177,19 @@ class AgentRunner:
 
     @staticmethod
     def _parse_response(response_text: str, role: str, options: AgentRunOptions) -> Any:
-        """Parse response."""
+        """Parse the response.
+
+        Args:
+            response_text (str): The response text text processed when parse response.
+            role (str): The repository-owned agent role to execute.
+            options (AgentRunOptions): The options controlling this operation.
+
+        Returns:
+            Any: The parsed value for response.
+
+        Raises:
+            AgentOutputError: If the agent output operation cannot complete.
+        """
         if not options.output_model:
             return response_text.strip()
         try:
@@ -145,7 +206,19 @@ class AgentRunner:
         max_attempts: int,
         started_at: float,
     ) -> bool:
-        """Record failure."""
+        """Record the failure.
+
+        Args:
+            error (Exception): The error value passed to record failure.
+            request (ModelRequest): The validated request that initiates the operation.
+            role (str): The repository-owned agent role to execute.
+            attempt (int): The one-based execution attempt number.
+            max_attempts (int): The max attempts value that controls record failure.
+            started_at (float): The started at value that controls record failure.
+
+        Returns:
+            bool: Whether record failure satisfies the documented condition.
+        """
         retrying = bool(
             self.diagnostics and attempt < max_attempts and self.diagnostics.is_retryable(error)
         )
