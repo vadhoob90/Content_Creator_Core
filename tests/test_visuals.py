@@ -29,7 +29,7 @@ class FixtureRenderer(VisualAdapter):
         self.copy = copy
         self.box = box or BoundingBox(x=0.1, y=0.1, width=0.7, height=0.2, role="headline")
 
-    def render(self, brief, parent=None):
+    def render(self, brief, parent=None):  # noqa: ARG002 - implements adapter contract
         return VisualOutput(
             content=b"fixture-image-bytes",
             width=1200,

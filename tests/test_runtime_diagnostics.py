@@ -1,13 +1,15 @@
 import json
+import logging
 
 import pytest
 from conftest import passing_critique, valid_draft
 
 from content_creator.diagnostics import DiagnosticDecisionRequired, RuntimeDiagnostics
-from content_creator.domain import RunStatus, WorkOrder
+from content_creator.domain import RunState, RunStatus, WorkOrder
 from content_creator.orchestrator import Orchestrator
 from content_creator.providers import FakeProvider, ProviderRegistry
 from content_creator.runner import AgentOutputError
+from content_creator.storage import RunStore
 
 
 def orchestrator_for(project, responses):
@@ -202,6 +204,57 @@ def test_failure_before_run_creation_preserves_invocation_summary(project):
     assert summary["status"] == "failed_before_run"
     assert summary["classification"] == "workspace_configuration"
     assert latest["diagnostic_summary"] == raised.value.diagnostic_path
+
+
+def test_failed_invocation_summary_is_not_advertised(project, monkeypatch, caplog):
+    orchestrator = orchestrator_for(project, {})
+
+    def fail_write(_path, _text):
+        raise OSError("disk unavailable")
+
+    monkeypatch.setattr(RunStore, "_atomic_text", staticmethod(fail_write))
+
+    with caplog.at_level(logging.WARNING), pytest.raises(ValueError) as raised:
+        orchestrator.start(
+            WorkOrder(
+                request="write",
+                topic="Missing pack",
+                content_pack="missing-pack",
+                format="post",
+            )
+        )
+
+    assert not hasattr(raised.value, "diagnostic_path")
+    assert "Unable to persist invocation diagnostic summary (OSError)" in caplog.text
+
+
+def test_corrupt_diagnostic_records_are_skipped_with_warnings(project, caplog):
+    store = RunStore(project)
+    state = RunState(
+        id="warning-run",
+        status=RunStatus.READY,
+        work_order=WorkOrder(
+            request="Draft",
+            topic="Warning visibility",
+            content_session_id="warning-session",
+        ),
+        route_plan={"route": "text-none-none", "stages": ["writer"]},
+    )
+    store.create(state)
+    run_directory = store.run_dir(state.id)
+    (run_directory / "diagnostics.jsonl").write_text("not-json\n", encoding="utf-8")
+    (run_directory / "support-candidate.json").write_text("not-json", encoding="utf-8")
+    corrupt_directory = store.run_dir("corrupt-run")
+    corrupt_directory.mkdir(parents=True)
+    (corrupt_directory / "state.json").write_text("not-json", encoding="utf-8")
+
+    with caplog.at_level(logging.WARNING):
+        result = RuntimeDiagnostics(project).preflight(state.id)
+
+    assert result["candidates"] == []
+    assert "Skipping 1 invalid diagnostic event(s)" in caplog.text
+    assert "Skipping unreadable support candidates" in caplog.text
+    assert "Skipping unreadable run state" in caplog.text
 
 
 def test_legacy_run_uses_run_id_as_stable_content_session(project):

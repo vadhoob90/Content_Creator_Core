@@ -3,12 +3,15 @@
 from __future__ import annotations
 
 import json
+import logging
 import re
 from typing import Any, Dict, Iterable, List
 
 from ..domain import RunState, utc_now
 from ..storage import RunStore
 from .models import DiagnosticEvent, SupportCandidate
+
+logger = logging.getLogger(__name__)
 
 
 def preflight(store: RunStore, run_id: str) -> Dict[str, Any]:
@@ -247,7 +250,12 @@ def _existing_candidates(store: RunStore, content_session_id: str) -> Dict[str, 
                 current = result.get(candidate.fingerprint)
                 if current is None or candidate.updated_at > current.updated_at:
                     result[candidate.fingerprint] = candidate
-        except (OSError, ValueError):
+        except (OSError, ValueError) as exc:
+            logger.warning(
+                "Skipping unreadable support candidates at %s (%s)",
+                path.relative_to(store.root),
+                exc.__class__.__name__,
+            )
             continue
     return result
 
@@ -265,7 +273,12 @@ def _session_states(store: RunStore, content_session_id: str) -> Iterable[RunSta
     for path in store.runs_dir.glob("*/state.json"):
         try:
             state = RunState.model_validate_json(path.read_text(encoding="utf-8"))
-        except (OSError, ValueError):
+        except (OSError, ValueError) as exc:
+            logger.warning(
+                "Skipping unreadable run state at %s (%s)",
+                path.relative_to(store.root),
+                exc.__class__.__name__,
+            )
             continue
         if state.work_order.content_session_id == content_session_id:
             yield state
@@ -286,11 +299,29 @@ def _session_events(store: RunStore, content_session_id: str) -> Iterable[Diagno
         path = store.run_dir(state.id) / "diagnostics.jsonl"
         if not path.exists():
             continue
-        for line in path.read_text(encoding="utf-8").splitlines():
+        try:
+            lines = path.read_text(encoding="utf-8").splitlines()
+        except OSError as exc:
+            logger.warning(
+                "Skipping unreadable diagnostic events at %s (%s)",
+                path.relative_to(store.root),
+                exc.__class__.__name__,
+            )
+            continue
+        invalid_count = 0
+        for line in lines:
             try:
-                yield DiagnosticEvent.model_validate_json(line)
+                event = DiagnosticEvent.model_validate_json(line)
             except ValueError:
-                continue
+                invalid_count += 1
+            else:
+                yield event
+        if invalid_count:
+            logger.warning(
+                "Skipping %d invalid diagnostic event(s) at %s",
+                invalid_count,
+                path.relative_to(store.root),
+            )
 
 
 def _write_candidates(store: RunStore, run_id: str, candidates: List[SupportCandidate]) -> None:

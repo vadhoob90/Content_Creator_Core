@@ -3,12 +3,15 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 from pathlib import Path
 from typing import Any, Dict, Optional
 
 from ..storage import RunStore
 from .models import DiagnosticEvent
+
+logger = logging.getLogger(__name__)
 
 
 def invocation_directory(root: Path, invocation_id: Optional[str]) -> Path:
@@ -58,8 +61,8 @@ def append_event(
             os.write(descriptor, (event.model_dump_json() + "\n").encode("utf-8"))
         finally:
             os.close(descriptor)
-    except OSError:
-        return
+    except OSError as exc:
+        logger.warning("Unable to persist diagnostic event (%s)", exc.__class__.__name__)
 
 
 def write_invocation_summary(
@@ -68,8 +71,12 @@ def write_invocation_summary(
     exc: Exception,
     classification: Dict[str, Any],
     safe_detail: str,
-) -> Path:
+) -> Optional[Path]:
     """Write the failure summary used when run creation never completed.
+
+    Persist the summary before updating the latest-invocation pointer so callers only
+    receive a path to an artifact that was actually written. Pointer failures remain
+    observable without replacing the original application exception.
 
     Args:
         root (Path): The workspace root directory.
@@ -80,7 +87,8 @@ def write_invocation_summary(
         safe_detail (str): The safe detail text processed when write invocation summary.
 
     Returns:
-        Path: The resolved filesystem path for write invocation summary.
+        Optional[Path]: The persisted diagnostic summary path, or ``None`` when the
+            summary could not be written.
     """
     summary = invocation_directory(root, invocation_id) / "diagnostic-summary.json"
     try:
@@ -98,6 +106,13 @@ def write_invocation_summary(
                 indent=2,
             ),
         )
+    except OSError as exc:
+        logger.warning(
+            "Unable to persist invocation diagnostic summary (%s)",
+            exc.__class__.__name__,
+        )
+        return None
+    try:
         RunStore._atomic_text(
             root / ".content-creator" / "latest-invocation.json",
             json.dumps(
@@ -108,7 +123,9 @@ def write_invocation_summary(
                 indent=2,
             ),
         )
-    except OSError:
-        # Diagnostic persistence must not replace the failure being reported.
-        pass
+    except OSError as exc:
+        logger.warning(
+            "Persisted the invocation summary but not its latest pointer (%s)",
+            exc.__class__.__name__,
+        )
     return summary

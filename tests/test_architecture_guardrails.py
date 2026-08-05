@@ -1,4 +1,6 @@
+import ast
 import json
+import runpy
 import subprocess
 import sys
 from pathlib import Path
@@ -163,6 +165,7 @@ def test_architecture_report_describes_modules_and_dependencies():
         if module["implementation_line_count"] > 500
     }
     assert oversized == {}
+    assert all(module["deleted_parameters"] == [] for module in modules.values())
     assert "content_creator.diagnostic_recording" not in modules
     assert "content_creator.diagnostic_support" not in modules
     diagnostic_service_imports = modules["content_creator.diagnostics.service"]["imports"]
@@ -185,6 +188,17 @@ def test_architecture_rules_are_enforced():
     )
 
     assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_deleted_function_parameters_are_detected():
+    report_module = runpy.run_path(str(ROOT / "scripts" / "architecture_report.py"))
+    find_deleted_parameters = report_module["deleted_parameters"]
+
+    tree = ast.parse("def callback(unused):\n    del unused\n")
+
+    assert find_deleted_parameters(tree) == [
+        {"function": "callback", "parameter": "unused", "line": 2}
+    ]
 
 
 def test_python_readability_limits_are_enforced():

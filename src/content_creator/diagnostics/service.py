@@ -226,14 +226,15 @@ class RuntimeDiagnostics:
             )
         )
 
-    def record_invocation_failure(self, exc: Exception) -> Path:
+    def record_invocation_failure(self, exc: Exception) -> Optional[Path]:
         """Record the invocation failure.
 
         Args:
             exc (Exception): The exception raised by the failed operation.
 
         Returns:
-            Path: The resolved filesystem path for record invocation failure.
+            Optional[Path]: The persisted diagnostic summary path, or ``None`` when the
+                summary could not be written.
         """
         self.record_terminal_failure(exc, phase="initialisation")
         classification = classify_exception(exc)

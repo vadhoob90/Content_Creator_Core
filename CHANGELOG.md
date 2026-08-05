@@ -15,12 +15,16 @@ release tag.
   explicit exceptions, and contextual descriptions for complex callables.
 - Dependency-free structural documentation validation, compatible Ruff
   pydocstyle enforcement, and ADR 0013.
+- Blocking Ruff checks for unused arguments and silent `pass` or `continue`
+  exception handlers, plus an architecture rule rejecting deleted parameters.
 
 ### Changed
 
 - Architecture and readability limits now measure implementation lines while
   continuing to report physical size, so documentation does not consume the
   executable-code budget.
+- Recoverable corrupt-record and diagnostic-persistence failures now emit
+  bounded warnings, and failed summary writes no longer expose nonexistent paths.
 
 ## [0.16.0] - 2026-08-02
 

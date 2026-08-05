@@ -51,6 +51,13 @@ remediation.
   coordinates; it does not contain the work performed by every route.
 - Extract by reason to change—validation, persistence, rendering, policy, or
   adapter interaction—not merely to satisfy a counter.
+- Prefix intentionally unused parameters with an underscore. Deleting parameters
+  inside the function is prohibited because it hides the unused contract from
+  static analysis; `scripts/architecture_report.py --check` enforces this rule.
+- Recoverable exception paths remain observable through a bounded warning,
+  domain event, counter, or explicit fallback result. Rollback-and-reraise and
+  best-effort boundaries preserve the original error rather than silently
+  discarding it.
 
 `scripts/readability_report.py --check` enforces implementation module/function
 and signature limits across production code, maintenance scripts, and tests. Ruff

@@ -21,7 +21,8 @@ jobs:
           python-version: "3.14"
           cache: pip
       - run: python -m pip install -e ".[dev]"
-      - run: ruff check .
+      - name: Enforce lint, exception, and argument rules
+        run: ruff check .
       - run: ruff format --check .
       - run: mypy
       - name: Enforce Google Style documentation contracts

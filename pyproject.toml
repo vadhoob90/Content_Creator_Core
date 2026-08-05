@@ -94,7 +94,23 @@ line-length = 100
 target-version = "py311"
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "UP", "B", "D", "C901", "PLR0912", "PLR0913", "PLR0915", "PLR1702"]
+select = [
+  "E",
+  "F",
+  "I",
+  "UP",
+  "B",
+  "D",
+  "ARG001",
+  "ARG002",
+  "S110",
+  "S112",
+  "C901",
+  "PLR0912",
+  "PLR0913",
+  "PLR0915",
+  "PLR1702",
+]
 preview = true
 ignore = [
   "UP006",
@@ -114,6 +130,9 @@ convention = "google"
 [tool.ruff.lint.per-file-ignores]
 "scripts/**/*.py" = ["D"]
 "tests/**/*.py" = ["D"]
+
+[tool.ruff.lint.flake8-bandit]
+check-typed-exception = true
 
 [tool.ruff.lint.mccabe]
 max-complexity = 15

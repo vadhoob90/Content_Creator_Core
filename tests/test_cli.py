@@ -141,7 +141,7 @@ def test_configuration_errors_are_reported_without_a_traceback(project, capsys, 
         def __init__(self, root):
             self.root = root
 
-        def plan_request(self, request, provider=None):
+        def plan_request(self, request, provider=None):  # noqa: ARG002 - mirrors public API
             raise ConfigurationError("No provider selected")
 
     monkeypatch.setattr(cli, "Orchestrator", FailingOrchestrator)
