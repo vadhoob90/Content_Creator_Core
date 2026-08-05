@@ -1,3 +1,5 @@
+"""Persisted contracts for runtime diagnostics and support candidates."""
+
 from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
@@ -5,7 +7,7 @@ from uuid import uuid4
 
 from pydantic import BaseModel, Field
 
-from .domain import utc_now
+from ..domain import utc_now
 
 
 class DiagnosticEvent(BaseModel):

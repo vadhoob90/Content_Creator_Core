@@ -62,8 +62,7 @@ src/content_creator/
 ├── voice_ml_inference.py dependency-free ML artifact inference
 ├── perspectives.py       perspective registry compatibility façade
 ├── perspective_support.py perspective contracts, catalogue, and resolution
-├── diagnostics.py        runtime diagnostics compatibility façade
-├── diagnostic_*.py       diagnostic contracts, recording, and support workflow
+├── diagnostics/          runtime evidence, sanitisation, and support candidates
 ├── providers/            normalized provider adapters
 ├── workspace.py          thin-repository generator and dependency management
 ├── workspace_templates.py generated thin-workspace templates
@@ -105,6 +104,9 @@ schema evolution, operational recovery, and the strengthened typing boundary.
 command-family ownership and enforced module-size limits.
 [ADR 0011](../adr/0011-readable-components-and-control-flow.md) records the
 function, complexity, naming, and dispatch guardrails.
+[ADR 0012](../adr/0012-concept-cohesion-and-package-promotion.md) distinguishes
+cohesive package boundaries from incidental file splits and defines façade and
+shim policy.
 See [schema compatibility](schema-compatibility.md) and
 [operations and recovery](operations-and-recovery.md) for the maintainer
 procedures.

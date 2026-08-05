@@ -22,6 +22,27 @@ The supported root exports are declared by `content_creator.__all__`. Internal
 module paths are not public merely because Python can import them. A new public
 Python API must be intentionally exported and documented.
 
+Core also maintains these documented subsystem façades while their
+implementations may move:
+
+| Import path | Stable surface |
+| --- | --- |
+| `content_creator.orchestrator` | `Orchestrator`, `OrchestrationError`, lifecycle stage and capability re-exports |
+| `content_creator.diagnostics` | `RuntimeDiagnostics`, diagnostic contracts, and `DiagnosticDecisionRequired` |
+| `content_creator.voice_builder` | `VoiceBuilder` and `VoiceBuildError` |
+| `content_creator.voice_ml` | Names declared by `voice_ml.__all__` |
+
+Sibling implementation paths such as `orchestration_support`,
+`diagnostic_support`, `diagnostic_recording`, `voice_build_pipeline`, and the
+`voice_ml_*` modules are internal unless a future release documents them as
+supported. Repository tests may import an internal module to test its focused
+behavior; that does not convert the path into a public contract.
+
+When a documented façade changes from a module to a package, its import path
+and characterized exports remain stable. A temporary compatibility shim for an
+internal path is added only when a demonstrated downstream consumer needs a
+migration window.
+
 ### Schemas and persisted state
 
 - Work orders and run states

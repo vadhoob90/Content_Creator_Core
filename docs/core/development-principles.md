@@ -41,12 +41,23 @@ Build the smallest seam required by current consumers. Prefer two proven uses
 before generalising an internal abstraction. Delete speculative extension
 points and compatibility paths when their supported purpose has ended.
 
+The same rule applies during structural refactoring: replacing an inheritance
+chain does not justify a dependency container, factory, registry, or protocol
+with one implementation. A refactor should remove or justify old structure,
+not only add forwarding layers around it.
+
 ## Keep modules cohesive and dependencies directed
 
 Organise by capabilities that change together. Domain rules must not depend on
 entry points or concrete external providers. Application services coordinate
 through narrow contracts, and the CLI composes them. A small change should
 normally require understanding one module and its neighbours.
+
+Do not use inheritance merely to split one implementation across files.
+Inheritance should express substitutability; use direct functions or
+composition when responsibilities are assembled. Promote a cluster to a
+subpackage only when it forms a named subsystem whose internal modules have
+independent responsibilities.
 
 ## Use dependency inversion selectively
 
@@ -139,3 +150,7 @@ clear remediation path.
 - Are public and persisted contracts preserved or migrated?
 - Can the change be understood, reviewed, and reversed independently?
 - Do documentation and examples still describe the implementation accurately?
+- Does every new module own an independent responsibility?
+- Is inheritance expressing substitutability rather than file splitting?
+- Is each compatibility shim permanent or governed by a removal decision?
+- Is the representative workflow easier to trace after the change?
