@@ -1,3 +1,5 @@
+"""Implement openai provider integration."""
+
 from __future__ import annotations
 
 from typing import Any, Dict
@@ -7,9 +9,12 @@ from .base import Provider, ProviderError
 
 
 class OpenAIProvider(Provider):
+    """Generate content through the OpenAI API."""
+
     name = "openai"
 
     def __init__(self, client: Any = None):
+        """Initialize the open aiprovider."""
         if client is None:
             try:
                 from openai import OpenAI
@@ -21,6 +26,7 @@ class OpenAIProvider(Provider):
         self.client = client
 
     def generate(self, request: ModelRequest) -> ModelResponse:
+        """Generate open aiprovider."""
         kwargs: Dict[str, Any] = {
             "model": request.selection.model,
             "instructions": request.system,

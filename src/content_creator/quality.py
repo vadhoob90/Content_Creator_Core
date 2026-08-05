@@ -1,3 +1,5 @@
+"""Provide quality capabilities."""
+
 from __future__ import annotations
 
 from typing import Any, Dict, List
@@ -13,6 +15,7 @@ from .domain import (
 def evaluate_quality(
     critique: Critique, core_rubric: Dict[str, Any], validation_errors: List[str]
 ) -> QualityDecision:
+    """Evaluate quality."""
     dimensions = core_rubric["dimensions"]
     gate = core_rubric["quality_gate"]
     reasons = []

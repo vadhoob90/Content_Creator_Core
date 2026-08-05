@@ -25,6 +25,8 @@ from .voice_models import (
 
 @dataclass(frozen=True)
 class StarterVoiceRequest:
+    """Represent a starter voice request."""
+
     voice_id: str
     display_name: str
     author_name: str
@@ -37,6 +39,7 @@ def activate_starter(
     registry_service: Any,
     request: StarterVoiceRequest,
 ) -> dict[str, Any]:
+    """Activate starter."""
     if request.template_id != STARTER_TEMPLATE_ID:
         raise VoiceError(f"Unknown starter voice template: {request.template_id}")
     registry = registry_service._read()
@@ -90,6 +93,7 @@ def _existing_starter(
     registry_service: Any,
     request: StarterVoiceRequest,
 ) -> dict[str, Any]:
+    """Return the existing starter."""
     resolved = registry_service.resolve(request.voice_id)
     if resolved["strategy"] != VoiceStrategy.STARTER.value:
         raise VoiceError(f"Voice {request.voice_id} already has an active source-derived version")
@@ -106,6 +110,7 @@ def _existing_starter(
 
 
 def _write_artifacts(destination: Path, author_name: str) -> tuple[dict, dict, str]:
+    """Write artifacts."""
     template = (
         Path(__file__).with_name("resources") / "profiles" / "starter" / "clear-professional.md"
     )
@@ -168,6 +173,7 @@ def _write_manifest(
     component_hashes: dict,
     candidate_hash: str,
 ) -> VoiceManifest:
+    """Write manifest."""
     manifest = VoiceManifest(
         id=request.voice_id,
         display_name=request.display_name,
@@ -199,6 +205,7 @@ def _write_receipt(
     version: str,
     candidate_hash: str,
 ) -> str:
+    """Write receipt."""
     activated_at = datetime.now(UTC).isoformat()
     receipt = VoiceApprovalReceipt(
         voice_id=voice_id,
@@ -233,6 +240,7 @@ def _update_registry(
     candidate_hash: str,
     template_id: str,
 ) -> None:
+    """Update registry."""
     registry["profiles"][voice_id] = {
         "display_name": display_name,
         "status": VoiceStatus.ACTIVE.value,
@@ -255,6 +263,7 @@ def _record_onboarding(
     template_id: str,
     activated_at: str,
 ) -> None:
+    """Record onboarding."""
     save_voice_onboarding(
         root,
         VoiceOnboardingRecord(

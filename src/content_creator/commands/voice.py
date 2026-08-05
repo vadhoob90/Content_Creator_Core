@@ -56,12 +56,14 @@ ROUTES: dict[str, VoiceHandler] = {
 
 
 def command_needs_model(arguments: argparse.Namespace) -> bool:
+    """Return the command needs model."""
     return arguments.voice_command in {"build", "rebuild"} or (
         arguments.voice_command == "create" and not arguments.no_build
     )
 
 
 def run(root: Path, arguments: argparse.Namespace) -> int:
+    """Run voice."""
     runner = None
     if not getattr(arguments, "offline_analysis", False) and command_needs_model(arguments):
         runner = Orchestrator(root).runner

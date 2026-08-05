@@ -1,3 +1,5 @@
+"""Provide orchestrator capabilities."""
+
 from __future__ import annotations
 
 import json
@@ -38,7 +40,10 @@ from .voices import VoiceRegistry
 
 
 class Orchestrator(OrchestrationSupport):
+    """Coordinate the content creation lifecycle."""
+
     def plan_request(self, request: str, provider: Optional[str] = None) -> WorkOrder:
+        """Plan request."""
         return self.intake.plan(request, provider=provider)
 
     def start(
@@ -46,6 +51,7 @@ class Orchestrator(OrchestrationSupport):
         order: WorkOrder,
         idempotency_key: Optional[str] = None,
     ) -> RunState:
+        """Start orchestrator."""
         if order.parent_run_id:
             parent = self.store.load(order.parent_run_id)
             order.content_session_id = parent.work_order.content_session_id
@@ -70,6 +76,7 @@ class Orchestrator(OrchestrationSupport):
         idempotency_key: Optional[str] = None,
         submitted_order: Optional[WorkOrder] = None,
     ) -> RunState:
+        """Start orchestrator."""
         pack = self._validated_pack(order)
         supplied_brief = self._preflight_supplied_research(order)
         fingerprint = self._submission_fingerprint(submitted_order or order, supplied_brief)
@@ -86,6 +93,7 @@ class Orchestrator(OrchestrationSupport):
         return self._execute_start(state, supplied_brief)
 
     def _validated_pack(self, order: WorkOrder) -> Any:
+        """Return the validated pack."""
         pack = self.packs.resolve(order.content_pack, order.pack_options)
         order.pack_options = {**pack.defaults, "destination": pack.destination}
         if pack.format != order.format:
@@ -101,6 +109,7 @@ class Orchestrator(OrchestrationSupport):
     def _existing_submission(
         self, idempotency_key: Optional[str], fingerprint: str
     ) -> Optional[RunState]:
+        """Return the existing submission."""
         if idempotency_key is None:
             return None
         existing = self.store.load_by_idempotency_key(idempotency_key, fingerprint)
@@ -109,6 +118,7 @@ class Orchestrator(OrchestrationSupport):
         return existing
 
     def _resolve_start_context(self, order: WorkOrder) -> Dict[str, Any]:
+        """Resolve start context."""
         order.resolved_voice = False
         voice = VoiceRegistry(self.root).resolve(order.voice_id, order.voice_version)
         order.voice_version = voice["version"]
@@ -143,6 +153,7 @@ class Orchestrator(OrchestrationSupport):
         }
 
     def _resolved_perspective(self, order: WorkOrder, selection: Any) -> Dict[str, Any]:
+        """Return the resolved perspective."""
         record = PerspectiveRegistry(self.root, order.voice_id).resolve(
             selection.context_id, selection.version
         )
@@ -169,6 +180,7 @@ class Orchestrator(OrchestrationSupport):
         idempotency_key: Optional[str],
         fingerprint: str,
     ) -> tuple[RunState, bool]:
+        """Create run."""
         state = RunState(work_order=order, route_plan=route_plan)
         state.events.append(RunEvent(name="planned", detail=route_plan.route))
         if idempotency_key is None:
@@ -181,6 +193,7 @@ class Orchestrator(OrchestrationSupport):
         return state, created
 
     def _write_start_artifacts(self, state: RunState, pack: Any, context: Dict[str, Any]) -> None:
+        """Write start artifacts."""
         order = state.work_order
         perspectives = context["perspectives"]
         self.store.write_artifact(state.id, "work-order.json", order)
@@ -216,6 +229,7 @@ class Orchestrator(OrchestrationSupport):
     def _perspective_resolution_artifact(
         self, order: WorkOrder, context: Dict[str, Any]
     ) -> Dict[str, Any]:
+        """Return the perspective resolution artifact."""
         catalogue = PerspectiveCatalogueStore(self.root, order.voice_id).path
         return {
             **context["resolution"].model_dump(mode="json"),
@@ -231,6 +245,7 @@ class Orchestrator(OrchestrationSupport):
         }
 
     def _execute_start(self, state: RunState, supplied_brief: Optional[ResearchBrief]) -> RunState:
+        """Execute start."""
         try:
             brief = self.stages.research.execute(state, supplied_brief)
             if brief:
@@ -247,6 +262,7 @@ class Orchestrator(OrchestrationSupport):
             raise
 
     def _record_research(self, state: RunState, brief: ResearchBrief) -> None:
+        """Record research."""
         self.store.write_artifact(state.id, "research.json", brief)
         provenance = json.loads(self.store.read_artifact(state.id, "claim-provenance.json"))
         provenance["research_record"] = {
@@ -258,6 +274,7 @@ class Orchestrator(OrchestrationSupport):
         self.store.write_artifact(state.id, "claim-provenance.json", provenance)
 
     def resume_research(self, run_id: str, approved: bool, notes: Optional[str] = None) -> RunState:
+        """Return the resume research."""
         state = self.store.load(run_id)
         self.diagnostics.begin_invocation(state.work_order.content_session_id)
         self.diagnostics.bind_run(run_id, state.work_order.content_session_id)
@@ -283,6 +300,7 @@ class Orchestrator(OrchestrationSupport):
         feedback: Optional[str] = None,
         diagnostic_decision: Optional[str] = None,
     ) -> RunState:
+        """Publish orchestrator."""
         state, draft, pack, visual_asset, target = self._prepare_publication(
             run_id, filename, diagnostic_decision
         )
@@ -298,6 +316,7 @@ class Orchestrator(OrchestrationSupport):
         filename: Optional[str],
         diagnostic_decision: Optional[str],
     ) -> tuple[RunState, str, Any, Any, Path]:
+        """Prepare publication."""
         state = self.store.load(run_id)
         self.diagnostics.begin_invocation(state.work_order.content_session_id)
         self.diagnostics.bind_run(run_id, state.work_order.content_session_id)
@@ -330,6 +349,7 @@ class Orchestrator(OrchestrationSupport):
         target: Path,
         feedback: Optional[str],
     ) -> Dict[str, Any]:
+        """Return the publication assessment."""
         order = state.work_order
         return {
             "run_id": run_id,
@@ -365,6 +385,7 @@ class Orchestrator(OrchestrationSupport):
         assessment: Dict[str, Any],
         feedback: Optional[str],
     ) -> None:
+        """Extract learnings."""
         try:
             extraction = self.runner.run(
                 role="learning-extractor",
@@ -401,6 +422,7 @@ class Orchestrator(OrchestrationSupport):
     def _extract_perspectives(
         self, state: RunState, draft: str, assessment: Dict[str, Any]
     ) -> None:
+        """Extract perspectives."""
         for selection in state.work_order.perspective_selections:
             try:
                 self._extract_perspective(state, selection, draft, assessment)
@@ -414,6 +436,7 @@ class Orchestrator(OrchestrationSupport):
         draft: str,
         assessment: Dict[str, Any],
     ) -> None:
+        """Extract perspective."""
         order = state.work_order
         extraction_order = order.model_copy(deep=True)
         extraction_order.perspective_context = selection.context_id
@@ -463,6 +486,7 @@ class Orchestrator(OrchestrationSupport):
     def _finish_publication(
         self, state: RunState, target: Path, pack: Any, visual_asset: Any
     ) -> RunState:
+        """Finish publication."""
         state.published_path = str(target.relative_to(self.root))
         if visual_asset is not None:
             visual_target = self.visuals.publish(state.id, pack.visuals)

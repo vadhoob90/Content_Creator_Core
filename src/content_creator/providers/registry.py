@@ -1,3 +1,5 @@
+"""Implement registry provider integration."""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -7,18 +9,23 @@ from .base import Provider, ProviderError
 
 
 class ProviderRegistry:
+    """Manage provider records."""
+
     def __init__(
         self,
         providers: Optional[Dict[str, Provider]] = None,
         root: Optional[Path] = None,
     ):
+        """Initialize the provider registry."""
         self.providers = providers or {}
         self.root = root
 
     def register(self, name: str, provider: Provider) -> None:
+        """Register provider registry."""
         self.providers[name] = provider
 
     def get(self, name: str) -> Provider:
+        """Return the provider registry."""
         if name in self.providers:
             return self.providers[name]
         if name == "openai":

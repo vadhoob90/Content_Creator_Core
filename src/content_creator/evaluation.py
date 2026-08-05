@@ -1,3 +1,5 @@
+"""Provide evaluation capabilities."""
+
 from __future__ import annotations
 
 import json
@@ -15,6 +17,7 @@ from .storage import RunStore
 
 
 def _passing_critique() -> Dict:
+    """Return the passing critique."""
     return {
         "scores": {
             "hook": 9,
@@ -31,6 +34,7 @@ def _passing_critique() -> Dict:
 
 
 def _draft(order: WorkOrder) -> str:
+    """Return the draft."""
     link = " [Source](https://example.org/source)." if order.research_depth.value != "none" else "."
     if order.format == "article":
         paragraph = (
@@ -57,6 +61,7 @@ def _draft(order: WorkOrder) -> str:
 
 
 def _research() -> Dict:
+    """Return the research."""
     return ResearchBrief(
         summary="A bounded evidence brief",
         evidence=[
@@ -71,6 +76,7 @@ def _research() -> Dict:
 
 
 def load_cases(root: Path) -> List[Dict]:
+    """Load cases."""
     cases = []
     resources = ResourceResolver(root)
     for path in resources.matching("evals/cases", "*.yaml"):
@@ -83,6 +89,7 @@ def load_cases(root: Path) -> List[Dict]:
 
 
 def run_replay_suite(root: Path, providers: Iterable[str]) -> Dict:
+    """Run replay suite."""
     outcomes = []
     for provider_name in providers:
         for case in load_cases(root):

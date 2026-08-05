@@ -9,6 +9,7 @@ from ..schema_registry import schema_catalogue, write_schema_bundle
 
 
 def register(subparsers: Any) -> None:
+    """Register schema."""
     parser = subparsers.add_parser("schema", help="Inspect versioned persisted contracts")
     commands = parser.add_subparsers(dest="schema_command", required=True)
     commands.add_parser("list")
@@ -17,6 +18,7 @@ def register(subparsers: Any) -> None:
 
 
 def run(root: Path, args: Any, print_value: Callable[[Any], None]) -> int:
+    """Run schema."""
     if args.schema_command == "list":
         print_value(schema_catalogue())
         return 0

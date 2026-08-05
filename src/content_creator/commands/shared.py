@@ -14,6 +14,7 @@ class AuthorHelpFormatter(argparse.HelpFormatter):
     """Hide suppressed subcommands without changing argparse behaviour."""
 
     def _format_action(self, action: argparse.Action) -> str:
+        """Format action."""
         if isinstance(action, argparse._SubParsersAction):
             choices = action._choices_actions
             action._choices_actions = [item for item in choices if item.help != argparse.SUPPRESS]
@@ -25,10 +26,12 @@ class AuthorHelpFormatter(argparse.HelpFormatter):
 
 
 def resolve_root(value: Optional[str]) -> Path:
+    """Resolve root."""
     return Path(value or ".").resolve()
 
 
 def print_json(value: Any) -> None:
+    """Return the print json."""
     if hasattr(value, "model_dump"):
         value = value.model_dump(mode="json")
     print(json.dumps(value, indent=2, default=str))

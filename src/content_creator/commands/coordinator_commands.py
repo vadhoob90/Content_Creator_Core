@@ -7,6 +7,7 @@ from .context import CommandContext
 
 
 def inspect_coordinator(context: CommandContext) -> int:
+    """Inspect coordinator."""
     coordinator = ContentCoordinator(context.root)
     arguments = context.arguments
     operations = {

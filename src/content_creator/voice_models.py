@@ -1,3 +1,5 @@
+"""Provide voice models capabilities."""
+
 from __future__ import annotations
 
 from enum import Enum
@@ -12,15 +14,21 @@ STARTER_TEMPLATE_ID = "clear-professional"
 
 
 class VoiceError(RuntimeError):
+    """Report voice failures."""
+
     pass
 
 
 class VoiceStrategy(str, Enum):
+    """Enumerate supported voice strategy values."""
+
     SOURCE_DERIVED = "source-derived"
     STARTER = "starter"
 
 
 class VoiceStatus(str, Enum):
+    """Enumerate supported voice status values."""
+
     DRAFT = "draft"
     BUILT = "built"
     AWAITING_APPROVAL = "awaiting_approval"
@@ -30,6 +38,8 @@ class VoiceStatus(str, Enum):
 
 
 class Authorisation(BaseModel):
+    """Record authorisation to use a voice source."""
+
     confirmed: bool = False
     attested_by: Optional[str] = None
     intended_uses: List[str] = Field(default_factory=list)
@@ -38,6 +48,8 @@ class Authorisation(BaseModel):
 
 
 class VoiceWorkOrder(BaseModel):
+    """Represent a voice work order."""
+
     display_name: str
     voice_id: str
     author_name: Optional[str] = None
@@ -51,10 +63,13 @@ class VoiceWorkOrder(BaseModel):
 
     @property
     def attribution_name(self) -> str:
+        """Return the attribution name."""
         return self.author_name or self.display_name
 
 
 class AttributionResult(BaseModel):
+    """Record the result of source attribution."""
+
     classification: str
     confidence: float
     voice_weight: float
@@ -63,6 +78,8 @@ class AttributionResult(BaseModel):
 
 
 class SourceRecord(BaseModel):
+    """Represent a source record."""
+
     id: str
     kind: str
     locator: str
@@ -78,6 +95,8 @@ class SourceRecord(BaseModel):
 
 
 class VoicePattern(BaseModel):
+    """Represent a voice pattern."""
+
     id: str
     name: str
     description: str
@@ -96,6 +115,8 @@ class VoicePattern(BaseModel):
 
 
 class VoiceManifest(BaseModel):
+    """Represent a voice manifest."""
+
     schema_version: str = "1.0"
     id: str
     display_name: str
@@ -115,6 +136,8 @@ class VoiceManifest(BaseModel):
 
 
 class VoiceOnboardingRecord(BaseModel):
+    """Represent a voice onboarding record."""
+
     schema_version: str = "1.0"
     voice_id: str
     display_name: str
@@ -129,6 +152,8 @@ class VoiceOnboardingRecord(BaseModel):
 
 
 class VoiceApprovalReceipt(BaseModel):
+    """Represent a voice approval receipt."""
+
     voice_id: str
     candidate_version: str
     activated_version: str
@@ -140,10 +165,12 @@ class VoiceApprovalReceipt(BaseModel):
 
 
 def onboarding_path(root: Path, voice_id: str) -> Path:
+    """Return the onboarding path."""
     return root.resolve() / "profiles" / voice_id / "onboarding.json"
 
 
 def load_voice_onboarding(root: Path, voice_id: str) -> Optional[VoiceOnboardingRecord]:
+    """Load voice onboarding."""
     path = onboarding_path(root, voice_id)
     if not path.exists():
         return None
@@ -151,6 +178,7 @@ def load_voice_onboarding(root: Path, voice_id: str) -> Optional[VoiceOnboarding
 
 
 def save_voice_onboarding(root: Path, record: VoiceOnboardingRecord) -> Path:
+    """Save voice onboarding."""
     path = onboarding_path(root, record.voice_id)
     RunStore._atomic_text(path, record.model_dump_json(indent=2))
     return path

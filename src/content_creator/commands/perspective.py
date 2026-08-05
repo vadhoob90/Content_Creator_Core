@@ -48,6 +48,7 @@ ROUTES: dict[str, PerspectiveHandler] = {
 
 
 def _context(root: Path, arguments: argparse.Namespace) -> PerspectiveCommandContext:
+    """Return the context."""
     resolved_voice = VoiceRegistry(root).resolve(arguments.voice)
     if not resolved_voice.get("perspectives_allowed", True):
         raise PerspectiveError(
@@ -62,6 +63,7 @@ def _context(root: Path, arguments: argparse.Namespace) -> PerspectiveCommandCon
 
 
 def run(root: Path, arguments: argparse.Namespace) -> int:
+    """Run perspective."""
     comparison_handler = COMPARISON_ROUTES.get(arguments.perspective_command)
     if comparison_handler:
         return comparison_handler(PerspectiveCommandContext(root, arguments))

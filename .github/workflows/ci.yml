@@ -24,6 +24,7 @@ jobs:
       - run: ruff check .
       - run: ruff format --check .
       - run: mypy
+      - run: python scripts/documentation_report.py --check
       - run: python scripts/architecture_report.py --check
 
   test:

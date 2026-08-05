@@ -1,3 +1,5 @@
+"""Provide intake capabilities."""
+
 from __future__ import annotations
 
 from typing import List, Optional
@@ -12,16 +14,23 @@ from .runner import AgentRunner, AgentRunOptions
 
 
 class ClarificationRequired(ValueError):
+    """Represent a clarification required."""
+
     def __init__(self, questions: List[str]) -> None:
+        """Initialize the clarification required."""
         self.questions = questions
         super().__init__("Clarification required: {}".format("; ".join(questions)))
 
 
 class BriefingAgent:
+    """Represent a briefing agent."""
+
     def __init__(self, runner: Optional[AgentRunner] = None):
+        """Initialize the briefing agent."""
         self.runner = runner
 
     def plan(self, request: str, provider: Optional[str] = None) -> WorkOrder:
+        """Plan briefing agent."""
         lowered = request.lower()
         content_format = "article" if "article" in lowered else "post"
 

@@ -1,3 +1,5 @@
+"""Provide ingestion capabilities."""
+
 from __future__ import annotations
 
 import hashlib
@@ -12,10 +14,13 @@ from xml.etree import ElementTree
 
 
 class IngestionError(RuntimeError):
+    """Report ingestion failures."""
+
     pass
 
 
 def normalize_text(value: str) -> str:
+    """Normalize text."""
     value = html.unescape(value)
     value = value.replace("\r\n", "\n").replace("\r", "\n")
     lines = [re.sub(r"[^\S\n]+", " ", line).strip() for line in value.splitlines()]
@@ -25,10 +30,12 @@ def normalize_text(value: str) -> str:
 
 
 def content_hash(value: str) -> str:
+    """Return the content hash."""
     return "sha256:" + hashlib.sha256(value.encode("utf-8")).hexdigest()
 
 
 def _html_text(raw: str) -> Tuple[str, str]:
+    """Return the html text."""
     title_match = re.search(r"<title[^>]*>(.*?)</title>", raw, re.I | re.S)
     title = normalize_text(re.sub(r"<[^>]+>", " ", title_match.group(1))) if title_match else ""
     raw = re.sub(r"<(script|style|nav|footer|header)[^>]*>.*?</\1>", " ", raw, flags=re.I | re.S)
@@ -42,6 +49,7 @@ def _html_text(raw: str) -> Tuple[str, str]:
 
 
 def _docx_text(path: Path) -> str:
+    """Return the docx text."""
     with zipfile.ZipFile(path) as archive:
         root = ElementTree.fromstring(archive.read("word/document.xml"))
     paragraphs = []
@@ -53,6 +61,7 @@ def _docx_text(path: Path) -> str:
 
 
 def _pdf_text(path: Path) -> str:
+    """Return the pdf text."""
     try:
         from pypdf import PdfReader
     except ImportError as exc:
@@ -61,6 +70,7 @@ def _pdf_text(path: Path) -> str:
 
 
 def read_source(locator: str) -> Tuple[str, str, str]:
+    """Read source."""
     if locator.startswith(("http://", "https://")):
         with urllib.request.urlopen(locator, timeout=20) as response:
             raw = response.read().decode(
@@ -88,4 +98,5 @@ def read_source(locator: str) -> Tuple[str, str, str]:
 
 
 def is_near_duplicate(text: str, existing: Iterable[str], threshold: float = 0.92) -> bool:
+    """Return whether near duplicate."""
     return any(SequenceMatcher(None, text, prior).ratio() >= threshold for prior in existing)

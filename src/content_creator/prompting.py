@@ -1,3 +1,5 @@
+"""Provide prompting capabilities."""
+
 from __future__ import annotations
 
 import json
@@ -14,12 +16,16 @@ from .voices import VoiceRegistry
 
 
 class PromptAssembler:
+    """Represent a prompt assembler."""
+
     def __init__(self, root: Path):
+        """Initialize the prompt assembler."""
         self.root = root.resolve()
         self.resources = ResourceResolver(self.root)
         self.agent_workspace = AgentWorkspace(self.root)
 
     def system_prompt(self, role: str, order: Optional[WorkOrder] = None) -> str:
+        """Return the system prompt."""
         parts = self._base_prompt_parts(role)
         self._append_voice_profile(parts, role, order)
         self._append_perspectives(parts, role, order)
@@ -28,6 +34,7 @@ class PromptAssembler:
         return "\n\n---\n\n".join(parts)
 
     def _base_prompt_parts(self, role: str) -> list[str]:
+        """Return the base prompt parts."""
         parts = [
             self._read(self.agent_workspace.harness_path()),
             self._read(self.agent_workspace.contract_path(role)),
@@ -46,6 +53,7 @@ class PromptAssembler:
         role: str,
         order: Optional[WorkOrder],
     ) -> None:
+        """Return the append voice profile."""
         if role in {"writer", "critic", "learning-extractor"}:
             voice_id = order.voice_id if order else "default"
             resolved = VoiceRegistry(self.root).resolve(
@@ -67,6 +75,7 @@ class PromptAssembler:
         role: str,
         order: Optional[WorkOrder],
     ) -> None:
+        """Return the append perspectives."""
         if (
             order
             and order.perspective_selections
@@ -120,6 +129,7 @@ class PromptAssembler:
         role: str,
         order: Optional[WorkOrder],
     ) -> None:
+        """Return the append learnings."""
         repository_learnings = self._active_learnings(
             self.root / "learnings" / "memory.json",
             role,
@@ -140,6 +150,7 @@ class PromptAssembler:
         role: str,
         order: Optional[WorkOrder],
     ) -> None:
+        """Return the append rubrics."""
         if order and role in {"writer", "critic"}:
             packs = PackRegistry(self.root)
             pack = packs.resolve(order.content_pack, order.pack_options)
@@ -161,6 +172,7 @@ class PromptAssembler:
 
     @staticmethod
     def _resolved_voice_profile(resolved: Dict[str, Any], profile: str) -> str:
+        """Return the resolved voice profile."""
         if resolved.get("version_status") != "active":
             return profile
         candidate_only = (
@@ -198,12 +210,14 @@ class PromptAssembler:
 
     @staticmethod
     def user_prompt(instruction: str, payload: Dict[str, Any]) -> str:
+        """Return the user prompt."""
         return "{}\n\nINPUT\n{}".format(
             instruction, json.dumps(payload, indent=2, default=str, ensure_ascii=False)
         )
 
     @staticmethod
     def merge_payload(items: Iterable[Dict[str, Any]]) -> Dict[str, Any]:
+        """Return the merge payload."""
         result: Dict[str, Any] = {}
         for item in items:
             result.update(item)
@@ -211,6 +225,7 @@ class PromptAssembler:
 
     @staticmethod
     def _active_learnings(path: Path, role: str) -> list[str]:
+        """Return the active learnings."""
         if not path.exists():
             return []
         data = json.loads(path.read_text(encoding="utf-8"))
@@ -238,4 +253,5 @@ class PromptAssembler:
 
     @staticmethod
     def _read(path: Path) -> str:
+        """Read prompt assembler."""
         return path.read_text(encoding="utf-8").strip()

@@ -1,3 +1,5 @@
+"""Provide domain capabilities."""
+
 from __future__ import annotations
 
 import re
@@ -10,28 +12,37 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 def utc_now() -> datetime:
+    """Return the utc now."""
     return datetime.now(UTC)
 
 
 class ResearchDepth(str, Enum):
+    """Represent a research depth."""
+
     NONE = "none"
     LIGHT = "light"
     DEEP = "deep"
 
 
 class ResearchSource(str, Enum):
+    """Enumerate supported research source values."""
+
     NONE = "none"
     SUPPLIED = "supplied"
     AGENT = "agent"
 
 
 class PerspectiveMode(str, Enum):
+    """Enumerate supported perspective mode values."""
+
     EXPLICIT = "explicit"
     AUTOMATIC = "automatic"
     DISABLED = "disabled"
 
 
 class RunStatus(str, Enum):
+    """Enumerate supported run status values."""
+
     PLANNED = "planned"
     RESEARCHING = "researching"
     AWAITING_RESEARCH_APPROVAL = "awaiting_research_approval"
@@ -44,30 +55,40 @@ class RunStatus(str, Enum):
 
 
 class IssueSeverity(str, Enum):
+    """Enumerate supported issue severity levels."""
+
     BLOCKING = "blocking"
     SUBSTANTIVE = "substantive"
     MINOR = "minor"
 
 
 class PriorIssueDisposition(str, Enum):
+    """Represent a prior issue disposition."""
+
     RESOLVED = "resolved"
     UNRESOLVED = "unresolved"
     AUTHOR_REJECTED = "author_rejected"
 
 
 class LearningStatus(str, Enum):
+    """Enumerate supported learning status values."""
+
     ACTIVE = "active"
     PROVISIONAL = "provisional"
     REJECTED = "rejected"
 
 
 class LearningRole(str, Enum):
+    """Represent a learning role."""
+
     RESEARCHER = "researcher"
     WRITER = "writer"
     CRITIC = "critic"
 
 
 class AuthorContribution(BaseModel):
+    """Describe an author's contribution to a content item."""
+
     thesis: Optional[str] = None
     intended_challenge: Optional[str] = None
     personal_basis: Optional[str] = None
@@ -77,6 +98,8 @@ class AuthorContribution(BaseModel):
 
 
 class PerspectiveSelection(BaseModel):
+    """Represent a perspective selection."""
+
     context_id: str
     version: Optional[str] = None
     reason: str = "explicitly selected"
@@ -85,6 +108,7 @@ class PerspectiveSelection(BaseModel):
     @field_validator("context_id")
     @classmethod
     def validate_context_id(cls, value: str) -> str:
+        """Validate context id."""
         if not re.fullmatch(r"[a-z0-9][a-z0-9-]{0,62}", value):
             raise ValueError(
                 "Perspective context ids must use lowercase letters, digits, and hyphens"
@@ -93,6 +117,8 @@ class PerspectiveSelection(BaseModel):
 
 
 class WorkOrder(BaseModel):
+    """Represent a work order."""
+
     schema_version: str = "1.0"
     request: str
     topic: str
@@ -122,6 +148,7 @@ class WorkOrder(BaseModel):
     @field_validator("content_pack", "voice_id", "perspective_context")
     @classmethod
     def validate_repository_id(cls, value: Optional[str]) -> Optional[str]:
+        """Validate repository id."""
         if value is not None and not re.fullmatch(r"[a-z0-9][a-z0-9-]{0,62}", value):
             raise ValueError("Repository ids must use lowercase letters, digits, and hyphens")
         return value
@@ -129,6 +156,7 @@ class WorkOrder(BaseModel):
     @field_validator("content_session_id", "parent_run_id")
     @classmethod
     def validate_run_reference(cls, value: Optional[str]) -> Optional[str]:
+        """Validate run reference."""
         if value is not None and not re.fullmatch(r"[a-zA-Z0-9_-]{1,64}", value):
             raise ValueError(
                 "Run and content session ids must use letters, digits, underscores, and hyphens"
@@ -137,6 +165,7 @@ class WorkOrder(BaseModel):
 
     @model_validator(mode="after")
     def validate_perspective_selection(self) -> Self:
+        """Validate perspective selection."""
         if self.perspective_context and not self.perspective_selections:
             self.perspective_selections = [
                 PerspectiveSelection(
@@ -165,6 +194,8 @@ class WorkOrder(BaseModel):
 
 
 class PlanningDecision(BaseModel):
+    """Represent a planning decision."""
+
     needs_clarification: bool = False
     clarification_questions: List[str] = Field(default_factory=list)
     work_order: Optional[WorkOrder] = None
@@ -172,6 +203,8 @@ class PlanningDecision(BaseModel):
 
 
 class RoutePlan(BaseModel):
+    """Represent a route plan."""
+
     route: str
     stages: List[str]
     requires_research_checkpoint: bool = False
@@ -179,6 +212,8 @@ class RoutePlan(BaseModel):
 
 
 class Source(BaseModel):
+    """Enumerate supported source values."""
+
     title: str
     url: str
     publisher: Optional[str] = None
@@ -186,6 +221,8 @@ class Source(BaseModel):
 
 
 class EvidenceItem(BaseModel):
+    """Describe evidence supporting generated content."""
+
     claim: str
     source_urls: List[str] = Field(default_factory=list)
     confidence: str = "medium"
@@ -193,6 +230,8 @@ class EvidenceItem(BaseModel):
 
 
 class ResearchBrief(BaseModel):
+    """Represent a research brief."""
+
     summary: str
     evidence: List[EvidenceItem] = Field(default_factory=list)
     sources: List[Source] = Field(default_factory=list)
@@ -201,6 +240,8 @@ class ResearchBrief(BaseModel):
 
 
 class CritiqueIssue(BaseModel):
+    """Represent a critique issue."""
+
     dimension: str
     severity: IssueSeverity
     description: str
@@ -209,11 +250,15 @@ class CritiqueIssue(BaseModel):
 
 
 class PriorIssueStatus(BaseModel):
+    """Enumerate supported prior issue status values."""
+
     status: PriorIssueDisposition
     note: Optional[str] = None
 
 
 class Critique(BaseModel):
+    """Represent a critique."""
+
     scores: Dict[str, float]
     weighted_score: float = 0.0
     issues: List[CritiqueIssue] = Field(default_factory=list)
@@ -224,6 +269,7 @@ class Critique(BaseModel):
     @field_validator("prior_issue_status", mode="before")
     @classmethod
     def normalise_legacy_prior_issue_status(cls, value: Any) -> Any:
+        """Return the normalise legacy prior issue status."""
         if value is None:
             return {}
         if not isinstance(value, dict):
@@ -232,6 +278,7 @@ class Critique(BaseModel):
 
     @staticmethod
     def _normalise_legacy_disposition(value: Any) -> Any:
+        """Return the normalise legacy disposition."""
         if not isinstance(value, str):
             return value
         note = value.strip()
@@ -249,6 +296,8 @@ class Critique(BaseModel):
 
 
 class QualityDecision(BaseModel):
+    """Represent a quality decision."""
+
     passed: bool
     weighted_score: float
     minimum_score: float
@@ -257,6 +306,8 @@ class QualityDecision(BaseModel):
 
 
 class LearningCandidate(BaseModel):
+    """Represent a learning candidate."""
+
     role: LearningRole
     scope: str = "general"
     principle: str
@@ -270,6 +321,7 @@ class LearningCandidate(BaseModel):
     @field_validator("role", mode="before")
     @classmethod
     def validate_learning_role(cls, value: Any) -> Any:
+        """Validate learning role."""
         supported = ", ".join(role.value for role in LearningRole)
         if value not in {role.value for role in LearningRole}:
             raise ValueError(
@@ -279,11 +331,15 @@ class LearningCandidate(BaseModel):
 
 
 class LearningExtraction(BaseModel):
+    """Represent a learning extraction."""
+
     candidates: List[LearningCandidate] = Field(default_factory=list)
     author_signal: str = "implicit_publication_approval"
 
 
 class LearningRecord(LearningCandidate):
+    """Represent a learning record."""
+
     id: str = Field(default_factory=lambda: uuid4().hex)
     run_id: str
     voice_id: str = "default"
@@ -293,6 +349,8 @@ class LearningRecord(LearningCandidate):
 
 
 class ModelSelection(BaseModel):
+    """Represent a model selection."""
+
     provider: str
     profile: str
     model: str
@@ -301,6 +359,8 @@ class ModelSelection(BaseModel):
 
 
 class ModelRequest(BaseModel):
+    """Represent a model request."""
+
     role: str
     system: str
     user: str
@@ -311,6 +371,8 @@ class ModelRequest(BaseModel):
 
 
 class ModelResponse(BaseModel):
+    """Represent a model response."""
+
     text: str
     provider: str
     model: str
@@ -320,12 +382,16 @@ class ModelResponse(BaseModel):
 
 
 class RunEvent(BaseModel):
+    """Represent a run event."""
+
     at: datetime = Field(default_factory=utc_now)
     name: str
     detail: str = ""
 
 
 class RunState(BaseModel):
+    """Represent a run state."""
+
     schema_version: str = "1.0"
     id: str = Field(default_factory=lambda: uuid4().hex[:12])
     status: RunStatus = RunStatus.PLANNED
@@ -348,6 +414,7 @@ class RunState(BaseModel):
     @model_validator(mode="before")
     @classmethod
     def preserve_legacy_content_session(cls, value: Any) -> Any:
+        """Return the preserve legacy content session."""
         if not isinstance(value, dict):
             return value
         work_order = value.get("work_order")

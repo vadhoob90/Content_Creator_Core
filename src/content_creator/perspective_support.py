@@ -1,3 +1,5 @@
+"""Provide perspective support capabilities."""
+
 from __future__ import annotations
 
 import json
@@ -25,14 +27,19 @@ class PerspectiveRunner(Protocol):
         payload: Dict[str, Any],
         options: AgentRunOptions | None = None,
     ) -> Any:
+        """Run perspective runner."""
         raise NotImplementedError
 
 
 class PerspectiveError(RuntimeError):
+    """Report perspective failures."""
+
     pass
 
 
 class PerspectiveStatus(str, Enum):
+    """Enumerate supported perspective status values."""
+
     CANDIDATE = "candidate"
     AWAITING_APPROVAL = "awaiting_approval"
     ACTIVE = "active"
@@ -40,12 +47,16 @@ class PerspectiveStatus(str, Enum):
 
 
 class PerspectiveEntryStatus(str, Enum):
+    """Enumerate supported perspective entry status values."""
+
     APPROVED = "approved"
     SUPERSEDED = "superseded"
     RETIRED = "retired"
 
 
 class PerspectiveChangeType(str, Enum):
+    """Enumerate supported perspective change type values."""
+
     NEW = "new"
     QUALIFY = "qualify"
     REPLACE = "replace"
@@ -53,12 +64,16 @@ class PerspectiveChangeType(str, Enum):
 
 
 class PerspectiveProvenance(BaseModel):
+    """Represent a perspective provenance."""
+
     kind: str
     reference: str
     excerpt: Optional[str] = None
 
 
 class PerspectiveEntry(BaseModel):
+    """Represent a perspective entry."""
+
     id: str = Field(default_factory=lambda: "perspective-" + uuid4().hex[:12])
     type: str = "position"
     statement: str
@@ -72,6 +87,8 @@ class PerspectiveEntry(BaseModel):
 
 
 class PerspectiveManifest(BaseModel):
+    """Represent a perspective manifest."""
+
     schema_version: str = "1.0"
     owner_voice_id: str
     context_id: str
@@ -84,6 +101,8 @@ class PerspectiveManifest(BaseModel):
 
 
 class PerspectiveApprovalReceipt(BaseModel):
+    """Represent a perspective approval receipt."""
+
     owner_voice_id: str
     context_id: str
     activated_version: str
@@ -93,6 +112,8 @@ class PerspectiveApprovalReceipt(BaseModel):
 
 
 class PerspectiveProposalCandidate(BaseModel):
+    """Represent a perspective proposal candidate."""
+
     change_type: PerspectiveChangeType = PerspectiveChangeType.NEW
     type: str = "position"
     statement: str
@@ -105,11 +126,15 @@ class PerspectiveProposalCandidate(BaseModel):
 
 
 class PerspectiveExtraction(BaseModel):
+    """Represent a perspective extraction."""
+
     candidates: List[PerspectiveProposalCandidate] = Field(default_factory=list)
     author_signal: str = "publication_approval"
 
 
 class PerspectiveCatalogueEntry(BaseModel):
+    """Represent a perspective catalogue entry."""
+
     context_id: str
     display_name: str
     summary: str
@@ -119,12 +144,16 @@ class PerspectiveCatalogueEntry(BaseModel):
 
 
 class PerspectiveCatalogue(BaseModel):
+    """Represent a perspective catalogue."""
+
     schema_version: str = "1.0"
     routing_only: bool = True
     contexts: List[PerspectiveCatalogueEntry] = Field(default_factory=list)
 
 
 class PerspectiveResolution(BaseModel):
+    """Represent a perspective resolution."""
+
     mode: PerspectiveMode = PerspectiveMode.AUTOMATIC
     selected: List[PerspectiveSelection] = Field(default_factory=list)
     needs_clarification: bool = False
@@ -133,7 +162,10 @@ class PerspectiveResolution(BaseModel):
 
 
 class PerspectiveCatalogueStore:
+    """Manage perspective catalogue records."""
+
     def __init__(self, root: Path, voice_id: str):
+        """Initialize the perspective catalogue store."""
         self.root = root.resolve()
         self.voice_id = slugify(voice_id)
         if self.voice_id != voice_id:
@@ -141,6 +173,7 @@ class PerspectiveCatalogueStore:
         self.path = self.root / "profiles" / self.voice_id / "perspectives" / "catalogue.json"
 
     def load(self) -> PerspectiveCatalogue:
+        """Load perspective catalogue store."""
         if not self.path.exists():
             return PerspectiveCatalogue()
         catalogue = PerspectiveCatalogue.model_validate_json(self.path.read_text(encoding="utf-8"))
@@ -157,6 +190,7 @@ class PerspectiveCatalogueStore:
         return catalogue
 
     def _registry_contexts(self) -> Dict[str, Any]:
+        """Return the registry contexts."""
         registry_path = self.path.parent / "registry.json"
         if not registry_path.exists():
             return {}
@@ -164,6 +198,7 @@ class PerspectiveCatalogueStore:
         return registry.get("contexts", {})
 
     def routing_payload(self) -> Dict[str, Any]:
+        """Return the routing payload."""
         catalogue = self.load()
         active = self._registry_contexts()
         contexts = [
@@ -178,6 +213,7 @@ class PerspectiveCatalogueStore:
         }
 
     def verify(self) -> Dict[str, Any]:
+        """Verify perspective catalogue store."""
         catalogue = self.load()
         registry = self._registry_contexts()
         unknown = sorted(
@@ -199,7 +235,10 @@ class PerspectiveCatalogueStore:
 
 
 class PerspectiveResolver:
+    """Represent a perspective resolver."""
+
     def __init__(self, root: Path, runner: PerspectiveRunner):
+        """Initialize the perspective resolver."""
         self.root = root.resolve()
         self.runner = runner
 
@@ -208,6 +247,7 @@ class PerspectiveResolver:
         order: WorkOrder,
         policy: Dict[str, Any],
     ) -> PerspectiveResolution:
+        """Resolve perspective resolver."""
         forced_disabled_reason = policy.get("force_disabled_reason")
         mode = (
             PerspectiveMode.DISABLED
@@ -282,6 +322,8 @@ class PerspectiveResolver:
 
 
 class PerspectiveProposal(PerspectiveProposalCandidate):
+    """Represent a perspective proposal."""
+
     id: str = Field(default_factory=lambda: "proposal-" + uuid4().hex[:12])
     owner_voice_id: str
     context_id: str

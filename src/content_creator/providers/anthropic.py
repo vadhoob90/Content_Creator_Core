@@ -1,3 +1,5 @@
+"""Implement anthropic provider integration."""
+
 from __future__ import annotations
 
 from typing import Any, Dict, List
@@ -7,9 +9,12 @@ from .base import Provider, ProviderError
 
 
 class AnthropicProvider(Provider):
+    """Generate content through the Anthropic API."""
+
     name = "anthropic"
 
     def __init__(self, client: Any = None):
+        """Initialize the anthropic provider."""
         if client is None:
             try:
                 from anthropic import Anthropic
@@ -21,6 +26,7 @@ class AnthropicProvider(Provider):
         self.client = client
 
     def generate(self, request: ModelRequest) -> ModelResponse:
+        """Generate anthropic provider."""
         kwargs: Dict[str, Any] = {
             "model": request.selection.model,
             "max_tokens": request.max_output_tokens,

@@ -1,3 +1,5 @@
+"""Provide learning capabilities."""
+
 from __future__ import annotations
 
 import json
@@ -10,7 +12,10 @@ from .storage import RunStore
 
 
 class LearningMemory:
+    """Represent a learning memory."""
+
     def __init__(self, root: Path, voice_id: str = "default"):
+        """Initialize the learning memory."""
         self.path = root / "profiles" / voice_id / "learnings" / "memory.json"
 
     def apply(
@@ -21,6 +26,7 @@ class LearningMemory:
         voice_version: Optional[str] = None,
         content_pack: Optional[str] = None,
     ) -> None:
+        """Apply learning memory."""
         data: Dict[str, Any] = {"version": 1, "records": []}
         if self.path.exists():
             data = json.loads(self.path.read_text(encoding="utf-8"))
@@ -54,6 +60,7 @@ class LearningMemory:
         RunStore._atomic_text(self.path, json.dumps(data, indent=2, ensure_ascii=False))
 
     def consolidate_candidate(self) -> Path:
+        """Return the consolidate candidate."""
         data: Dict[str, Any] = {"version": 1, "records": []}
         if self.path.exists():
             data = json.loads(self.path.read_text(encoding="utf-8"))

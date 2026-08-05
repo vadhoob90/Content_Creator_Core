@@ -1,3 +1,5 @@
+"""Provide coordinator capabilities."""
+
 from __future__ import annotations
 
 import os
@@ -27,12 +29,14 @@ class ContentCoordinator:
     _operation = staticmethod(coordinator_operation)
 
     def __init__(self, root: Path):
+        """Initialize the content coordinator."""
         self.root = root.resolve()
         self.store = RunStore(self.root)
         self.configuration = Configuration(self.root)
         self.voice_registry = VoiceRegistry(self.root)
 
     def capabilities(self) -> Dict[str, Any]:
+        """Return the capabilities."""
         return {
             "schema_version": "1.1",
             "interface": "content-creator-coordinator",
@@ -98,6 +102,7 @@ class ContentCoordinator:
         }
 
     def snapshot(self, run_limit: int = 10) -> WorkspaceSnapshot:
+        """Return the snapshot."""
         policy = self.configuration.coordinator_policy
         packs = [item.id for item in PackRegistry(self.root).list()]
         voices = self._voices()
@@ -142,15 +147,18 @@ class ContentCoordinator:
         return snapshot
 
     def context(self, run_limit: int = 10) -> Dict[str, Any]:
+        """Return the context."""
         return self.snapshot(run_limit).model_dump(mode="json")
 
     def runs(self, limit: int = 20) -> Dict[str, Any]:
+        """Return the runs."""
         return {
             "schema_version": "1.0",
             "runs": [item.model_dump(mode="json") for item in self._run_summaries(limit)],
         }
 
     def next_actions(self, run_id: str) -> Dict[str, Any]:
+        """Return the next actions."""
         state = self.store.load(run_id)
         artifacts = self._artifacts(run_id)
         actions = self._actions_for_state(state, run_id)
@@ -176,6 +184,7 @@ class ContentCoordinator:
         }
 
     def _actions_for_state(self, state: RunState, run_id: str) -> List[CoordinatorAction]:
+        """Return the actions for state."""
         routes = {
             RunStatus.AWAITING_RESEARCH_APPROVAL: self._research_actions,
             RunStatus.READY: self._reviewed_actions,
@@ -187,6 +196,7 @@ class ContentCoordinator:
         return handler(state, run_id)
 
     def _research_actions(self, state: RunState, run_id: str) -> List[CoordinatorAction]:
+        """Return the research actions."""
         del state
         return [
             self._action("review-research", "Review the research brief", artifact="research.json"),
@@ -207,6 +217,7 @@ class ContentCoordinator:
         ]
 
     def _reviewed_actions(self, state: RunState, run_id: str) -> List[CoordinatorAction]:
+        """Return the reviewed actions."""
         actions = []
         if state.final_draft_path:
             actions.append(
@@ -235,6 +246,7 @@ class ContentCoordinator:
         return actions
 
     def _diagnostic_publish_actions(self, state: RunState, run_id: str) -> List[CoordinatorAction]:
+        """Return the diagnostic publish actions."""
         return [
             self._action(
                 "review-support-candidate",
@@ -258,6 +270,7 @@ class ContentCoordinator:
         ]
 
     def _published_actions(self, state: RunState, run_id: str) -> List[CoordinatorAction]:
+        """Return the published actions."""
         del run_id
         actions = [
             self._action(
@@ -277,6 +290,7 @@ class ContentCoordinator:
         return actions
 
     def _failed_actions(self, state: RunState, run_id: str) -> List[CoordinatorAction]:
+        """Return the failed actions."""
         del run_id
         actions = [
             self._action(
@@ -294,12 +308,14 @@ class ContentCoordinator:
         return actions
 
     def _fallback_actions(self, state: RunState, run_id: str) -> List[CoordinatorAction]:
+        """Return the fallback actions."""
         del state
         return [
             self._action("inspect-status", "Inspect the persisted run state", ["status", run_id])
         ]
 
     def _run_summaries(self, limit: int) -> List[RunSummary]:
+        """Run summaries."""
         states: List[RunState] = []
         for path in self.store.runs_dir.glob("*/state.json"):
             try:
@@ -327,6 +343,7 @@ class ContentCoordinator:
         ]
 
     def _voices(self) -> List[VoiceStatus]:
+        """Return the voices."""
         registry = self.voice_registry.list()
         voice_ids = set(registry)
         voice_ids.update(
@@ -375,6 +392,7 @@ class ContentCoordinator:
         return result
 
     def _provider_status(self) -> ProviderStatus:
+        """Return the provider status."""
         try:
             provider = self.configuration.default_provider
         except ValueError:
@@ -396,6 +414,7 @@ class ContentCoordinator:
 
     @staticmethod
     def _recommend(snapshot: WorkspaceSnapshot) -> CoordinatorAction:
+        """Return the recommend."""
         if not snapshot.is_workspace:
             return CoordinatorAction(
                 id="create-workspace",
@@ -469,6 +488,7 @@ class ContentCoordinator:
         )
 
     def _artifacts(self, run_id: str) -> List[str]:
+        """Return the artifacts."""
         directory = self.store.run_dir(run_id)
         return sorted(
             str(path.relative_to(self.root)) for path in directory.iterdir() if path.is_file()

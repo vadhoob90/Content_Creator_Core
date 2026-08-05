@@ -25,6 +25,7 @@ class RuntimeDiagnostics:
     """Collect runtime evidence and prepare sanitised support candidates."""
 
     def __init__(self, root: Path, enabled: bool = True):
+        """Initialize the runtime diagnostics."""
         self.root = root.resolve()
         self.store = RunStore(self.root)
         self.enabled = enabled
@@ -33,17 +34,20 @@ class RuntimeDiagnostics:
         self.content_session_id: Optional[str] = None
 
     def begin_invocation(self, content_session_id: Optional[str] = None) -> str:
+        """Begin invocation."""
         self.run_id = None
         self.invocation_id = uuid4().hex[:12]
         self.content_session_id = content_session_id
         return self.invocation_id
 
     def bind_run(self, run_id: str, content_session_id: str) -> None:
+        """Return the bind run."""
         self.run_id = run_id
         self.content_session_id = content_session_id
 
     @staticmethod
     def timer() -> float:
+        """Return the timer."""
         return monotonic()
 
     def attempt_started(
@@ -54,6 +58,7 @@ class RuntimeDiagnostics:
         provider: str,
         model: str,
     ) -> None:
+        """Return the attempt started."""
         self._record(
             DiagnosticEvent(
                 run_id=self.run_id,
@@ -78,6 +83,7 @@ class RuntimeDiagnostics:
         model: str,
         started_at: float,
     ) -> None:
+        """Return the attempt completed."""
         self._record(
             DiagnosticEvent(
                 run_id=self.run_id,
@@ -105,6 +111,7 @@ class RuntimeDiagnostics:
         started_at: float,
         retrying: bool,
     ) -> Dict[str, Any]:
+        """Return the attempt failed."""
         classification = classify_exception(exc)
         event = DiagnosticEvent(
             run_id=self.run_id,
@@ -129,6 +136,7 @@ class RuntimeDiagnostics:
         return event.model_dump(mode="json")
 
     def record_terminal_failure(self, exc: Exception, *, phase: str = "orchestration") -> None:
+        """Record terminal failure."""
         classification = classify_exception(exc)
         self._record(
             DiagnosticEvent(
@@ -148,6 +156,7 @@ class RuntimeDiagnostics:
         )
 
     def record_invocation_failure(self, exc: Exception) -> Path:
+        """Record invocation failure."""
         self.record_terminal_failure(exc, phase="initialisation")
         classification = classify_exception(exc)
         return write_invocation_summary(
@@ -159,24 +168,31 @@ class RuntimeDiagnostics:
         )
 
     def is_retryable(self, exc: Exception) -> bool:
+        """Return whether retryable."""
         return is_retryable_exception(exc)
 
     def classify(self, exc: Exception) -> Dict[str, Any]:
+        """Classify runtime diagnostics."""
         return classify_exception(exc)
 
     def sanitise(self, detail: str) -> str:
+        """Return the sanitise."""
         return sanitise_detail(self.root, detail)
 
     def preflight(self, run_id: str) -> Dict[str, Any]:
+        """Return the preflight."""
         return candidate_preflight(self.store, run_id)
 
     def decide(self, run_id: str, decision: str) -> Dict[str, Any]:
+        """Return the decide."""
         return decide_candidates(self.store, run_id, decision)
 
     def link_issue(self, run_id: str, issue_url: str) -> Dict[str, Any]:
+        """Link issue."""
         return link_candidate_issue(self.store, run_id, issue_url)
 
     def _record(self, event: DiagnosticEvent) -> None:
+        """Record runtime diagnostics."""
         append_event(
             self.store,
             enabled=self.enabled,

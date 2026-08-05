@@ -1,3 +1,5 @@
+"""Provide perspectives capabilities."""
+
 from __future__ import annotations
 
 import json
@@ -64,7 +66,10 @@ from .versioned_artifacts import (
 
 
 class PerspectiveRegistry:
+    """Manage perspective records."""
+
     def __init__(self, root: Path, voice_id: str):
+        """Initialize the perspective registry."""
         self.root = root.resolve()
         self.voice_id = slugify(voice_id)
         if self.voice_id != voice_id:
@@ -73,6 +78,7 @@ class PerspectiveRegistry:
         self.registry_path = self.base / "registry.json"
 
     def _read(self) -> Dict:
+        """Read perspective registry."""
         if not self.registry_path.exists():
             return {"schema_version": "1.0", "contexts": {}}
         data = json.loads(self.registry_path.read_text(encoding="utf-8"))
@@ -81,9 +87,11 @@ class PerspectiveRegistry:
         return data
 
     def list(self) -> Dict:
+        """List perspective registry."""
         return self._read()["contexts"]
 
     def context_root(self, context_id: str) -> Path:
+        """Return the context root."""
         context = slugify(context_id)
         if context != context_id:
             raise PerspectiveError(
@@ -97,6 +105,7 @@ class PerspectiveRegistry:
         entries: List[PerspectiveEntry],
         display_name: Optional[str] = None,
     ) -> PerspectiveManifest:
+        """Stage perspective registry."""
         from .perspective_lifecycle import stage_context
 
         return stage_context(self, context_id, entries, display_name)
@@ -107,6 +116,7 @@ class PerspectiveRegistry:
         version: Optional[str] = None,
         allow_inactive: bool = False,
     ) -> Dict:
+        """Resolve perspective registry."""
         item = self.list().get(context_id)
         if not item:
             raise PerspectiveError(
@@ -153,11 +163,13 @@ class PerspectiveRegistry:
         context_id: str,
         approved_by: str,
     ) -> PerspectiveApprovalReceipt:
+        """Activate perspective registry."""
         from .perspective_lifecycle import activate_context
 
         return activate_context(self, context_id, approved_by)
 
     def deactivate(self, context_id: str, reason: str) -> Dict:
+        """Deactivate perspective registry."""
         registry = self._read()
         item = registry["contexts"].get(context_id)
         if not item:
@@ -172,6 +184,7 @@ class PerspectiveRegistry:
         return item
 
     def current_entries(self, context_id: str) -> List[PerspectiveEntry]:
+        """Return the current entries."""
         resolved = self.resolve(context_id)
         path = self.root / resolved["path"] / "entries.json"
         return [
@@ -180,6 +193,7 @@ class PerspectiveRegistry:
         ]
 
     def stage_proposal(self, context_id: str, proposal_id: str) -> PerspectiveManifest:
+        """Stage proposal."""
         proposal_path = self.context_root(context_id) / "proposals" / (proposal_id + ".json")
         if not proposal_path.exists():
             raise PerspectiveError("Unknown perspective proposal: {}".format(proposal_id))
@@ -225,6 +239,7 @@ class PerspectiveRegistry:
         entry_id: str,
         reason: str,
     ) -> PerspectiveManifest:
+        """Retire entry."""
         entries = self.current_entries(context_id)
         target = next((entry for entry in entries if entry.id == entry_id), None)
         if not target:
@@ -235,6 +250,7 @@ class PerspectiveRegistry:
 
     @staticmethod
     def render_profile(context_id: str, entries: List[PerspectiveEntry]) -> str:
+        """Render profile."""
         lines = [
             "# Perspective Context: {}".format(context_id),
             "",
@@ -268,13 +284,17 @@ class PerspectiveRegistry:
 
 
 class PerspectiveProposalStore:
+    """Manage perspective proposal records."""
+
     def __init__(self, root: Path, voice_id: str, context_id: str):
+        """Initialize the perspective proposal store."""
         self.root = root.resolve()
         self.voice_id = voice_id
         self.context_id = context_id
         self.path = self.root / "profiles" / voice_id / "perspectives" / context_id / "proposals"
 
     def apply(self, run_id: str, extraction: PerspectiveExtraction) -> List[Path]:
+        """Apply perspective proposal store."""
         paths = []
         existing_statements = {
             json.loads(path.read_text()).get("statement", "").strip().lower()
@@ -297,6 +317,7 @@ class PerspectiveProposalStore:
         return paths
 
     def list(self) -> List[Dict]:
+        """List perspective proposal store."""
         return [
             json.loads(path.read_text(encoding="utf-8"))
             for path in sorted(self.path.glob("*.json"))

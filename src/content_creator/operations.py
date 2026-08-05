@@ -15,6 +15,8 @@ from .versioned_artifacts import hash_file
 
 
 class FailureCode(str, Enum):
+    """Represent a failure code."""
+
     PROVIDER_FAILURE = "provider_failure"
     CORRUPT_STATE = "corrupt_state"
     STALE_LOCK = "stale_lock"
@@ -23,6 +25,7 @@ class FailureCode(str, Enum):
 
 
 def classify_failure(message: Optional[str]) -> FailureCode:
+    """Classify failure."""
     normalized = (message or "").lower()
     if any(term in normalized for term in ("provider", "unavailable", "api")):
         return FailureCode.PROVIDER_FAILURE
@@ -36,6 +39,7 @@ def classify_failure(message: Optional[str]) -> FailureCode:
 
 
 def build_support_bundle(root: Path, run_id: str) -> Dict[str, Any]:
+    """Build support bundle."""
     if not re.fullmatch(r"[A-Za-z0-9_-]+", run_id):
         raise ValueError("run_id must use letters, digits, underscores, and hyphens")
     root = root.resolve()
@@ -78,6 +82,7 @@ def build_support_bundle(root: Path, run_id: str) -> Dict[str, Any]:
 
 
 def recovery_report(root: Path) -> Dict[str, Any]:
+    """Return the recovery report."""
     root = root.resolve()
     locks = []
     active_locks = []

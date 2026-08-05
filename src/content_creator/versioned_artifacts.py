@@ -59,11 +59,13 @@ class ActivationLock:
         conflict_message: str,
         error_type: Type[RuntimeError] = RuntimeError,
     ):
+        """Initialize the activation lock."""
         self.path = path
         self.conflict_message = conflict_message
         self.error_type = error_type
 
     def __enter__(self) -> ActivationLock:
+        """Enter the activation lock context."""
         self.path.parent.mkdir(parents=True, exist_ok=True)
         try:
             descriptor = os.open(self.path, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
@@ -82,4 +84,5 @@ class ActivationLock:
         exc: BaseException | None,
         traceback: TracebackType | None,
     ) -> None:
+        """Exit the activation lock context."""
         self.path.unlink(missing_ok=True)

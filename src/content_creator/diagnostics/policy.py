@@ -66,6 +66,7 @@ def _classification(
     issue_type: str,
     support_worthy: bool,
 ) -> Dict[str, Any]:
+    """Return the classification."""
     return {
         "classification": classification,
         "severity": severity,

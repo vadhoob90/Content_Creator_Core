@@ -67,6 +67,7 @@ ROUTES: dict[str, Handler] = {
 
 
 def run(argv: Optional[List[str]] = None) -> int:
+    """Run dispatch."""
     arguments = build_parser().parse_args(argv)
     handler = ROUTES.get(arguments.command)
     if handler is None:

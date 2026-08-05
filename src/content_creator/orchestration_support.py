@@ -1,3 +1,5 @@
+"""Provide orchestration support capabilities."""
+
 from __future__ import annotations
 
 import hashlib
@@ -33,10 +35,14 @@ from .voice_evaluation import evaluate_voice_output
 
 
 class OrchestrationError(RuntimeError):
+    """Report orchestration failures."""
+
     pass
 
 
 class OrchestrationSupport:
+    """Provide shared services used during orchestration."""
+
     def __init__(
         self,
         root: Path,
@@ -46,6 +52,7 @@ class OrchestrationSupport:
         capabilities: Optional[RunCapabilities] = None,
         stages: Optional[LifecycleStages] = None,
     ):
+        """Initialize the orchestration support."""
         self.root = root.resolve()
         self.configuration = Configuration(self.root)
         self.registry = registry or ProviderRegistry(root=self.root)
@@ -72,6 +79,7 @@ class OrchestrationSupport:
         )
 
     def diagnostic_preflight(self, run_id: str) -> Dict:
+        """Return the diagnostic preflight."""
         state = self.store.load(run_id)
         self.diagnostics.begin_invocation(state.work_order.content_session_id)
         self.diagnostics.bind_run(run_id, state.work_order.content_session_id)
@@ -81,6 +89,7 @@ class OrchestrationSupport:
         return result
 
     def link_diagnostic_issue(self, run_id: str, issue_url: str) -> Dict:
+        """Link diagnostic issue."""
         result = self.diagnostics.link_issue(run_id, issue_url)
         state = self.store.load(run_id)
         preflight = self.diagnostics.preflight(run_id)
@@ -89,6 +98,7 @@ class OrchestrationSupport:
         return result
 
     def _preflight_supplied_research(self, order: WorkOrder) -> Optional[ResearchBrief]:
+        """Return the preflight supplied research."""
         if order.research_source != ResearchSource.SUPPLIED:
             return None
         path = Path(order.supplied_research_path or "")
@@ -114,6 +124,7 @@ class OrchestrationSupport:
         order: WorkOrder,
         supplied_brief: Optional[ResearchBrief],
     ) -> str:
+        """Return the submission fingerprint."""
         payload = order.model_dump(mode="json")
         for transient in (
             "content_session_id",
@@ -138,6 +149,7 @@ class OrchestrationSupport:
         state: RunState,
         supplied_brief: Optional[ResearchBrief] = None,
     ) -> Optional[ResearchBrief]:
+        """Return the research."""
         order = state.work_order
         if order.research_depth == ResearchDepth.NONE:
             state.events.append(RunEvent(name="research_skipped"))
@@ -174,6 +186,7 @@ class OrchestrationSupport:
         return brief
 
     def _draft_and_review(self, state: RunState, brief: Optional[ResearchBrief]) -> RunState:
+        """Return the draft and review."""
         pack = self.packs.resolve(state.work_order.content_pack, state.work_order.pack_options)
         revision_context = self._revision_context(state.work_order)
         previous_critique: Optional[Critique] = None
@@ -206,6 +219,7 @@ class OrchestrationSupport:
         previous_critique: Optional[Critique],
         revision: int,
     ) -> tuple[str, Critique, Any]:
+        """Return the draft revision."""
         state.revision = revision
         state.status = RunStatus.DRAFTING
         self.store.save_state(state)
@@ -247,6 +261,7 @@ class OrchestrationSupport:
     def _validate_revision(
         self, state: RunState, pack: Any, draft: str, revision: int
     ) -> tuple[List[str], Optional[Dict[str, Any]]]:
+        """Validate revision."""
         errors = validate_draft(draft, state.work_order, pack.validators)
         voice_evaluation = evaluate_voice_output(self.root, state.work_order, draft)
         errors.extend(voice_evaluation["errors"])
@@ -281,6 +296,7 @@ class OrchestrationSupport:
         statistical_score: Optional[Dict[str, Any]],
         previous_critique: Optional[Critique],
     ) -> Critique:
+        """Return the critique revision."""
         state.status = RunStatus.REVIEWING
         self.store.save_state(state)
         payload = {
@@ -320,6 +336,7 @@ class OrchestrationSupport:
         )
 
     def _accept_draft(self, state: RunState, draft: str) -> RunState:
+        """Return the accept draft."""
         self.store.write_artifact(state.id, "final.md", draft)
         state.final_draft_path = f"runs/{state.id}/final.md"
         state.status = RunStatus.READY
@@ -329,6 +346,7 @@ class OrchestrationSupport:
         return state
 
     def _defer_to_author(self, state: RunState) -> RunState:
+        """Return the defer to author."""
         latest = self.store.read_artifact(state.id, f"draft-{state.revision:02d}.md")
         self.store.write_artifact(state.id, "final.md", latest)
         state.final_draft_path = f"runs/{state.id}/final.md"
@@ -339,6 +357,7 @@ class OrchestrationSupport:
         return state
 
     def _revision_context(self, order: WorkOrder) -> Optional[Dict]:
+        """Return the revision context."""
         if not order.parent_run_id:
             return None
         parent = self.store.load(order.parent_run_id)
@@ -373,6 +392,7 @@ class OrchestrationSupport:
         critique: Optional[Critique],
         revision_context: Optional[Dict] = None,
     ) -> Dict:
+        """Return the draft payload."""
         return {
             "work_order": order.model_dump(mode="json"),
             "research": brief.model_dump(mode="json") if brief else None,
@@ -381,12 +401,14 @@ class OrchestrationSupport:
         }
 
     def _available_critiques(self, run_id: str) -> List[Dict[str, Any]]:
+        """Return the available critiques."""
         result: List[Dict[str, Any]] = []
         for path in sorted(self.store.run_dir(run_id).glob("critique-*.json")):
             result.append(json.loads(path.read_text(encoding="utf-8")))
         return result
 
     def _persist_model_history(self, run_id: str) -> None:
+        """Persist model history."""
         responses = self.runner.responses
         self.store.write_artifact(
             run_id,
@@ -415,6 +437,7 @@ class OrchestrationSupport:
         )
 
     def _fail(self, state: RunState, exc: Exception) -> None:
+        """Return the fail."""
         state.status = RunStatus.FAILED
         state.last_error = str(exc)
         state.events.append(RunEvent(name="failed", detail=str(exc)))
@@ -426,6 +449,7 @@ class OrchestrationSupport:
 
     @staticmethod
     def _apply_diagnostic_state(state: RunState, preflight: Dict) -> None:
+        """Apply diagnostic state."""
         state.diagnostic_summary_path = preflight.get("diagnostic_summary")
         state.support_candidate_path = preflight.get("support_candidate")
         state.pending_support_count = sum(

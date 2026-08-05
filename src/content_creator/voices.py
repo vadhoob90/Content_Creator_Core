@@ -1,3 +1,5 @@
+"""Provide voices capabilities."""
+
 from __future__ import annotations
 
 import json
@@ -58,11 +60,15 @@ from .voice_models import (
 
 
 class VoiceRegistry:
+    """Manage voice records."""
+
     def __init__(self, root: Path):
+        """Initialize the voice registry."""
         self.root = root.resolve()
         self.path = self.root / "profiles" / "registry.json"
 
     def _read(self) -> Dict:
+        """Read voice registry."""
         if not self.path.exists():
             return {"schema_version": "1.0", "profiles": {}}
         data = json.loads(self.path.read_text(encoding="utf-8"))
@@ -71,9 +77,11 @@ class VoiceRegistry:
         return data
 
     def list(self) -> Dict:
+        """List voice registry."""
         return self._read()["profiles"]
 
     def get(self, voice_id: str) -> Dict:
+        """Return the voice registry."""
         item = self.list().get(voice_id)
         if not item:
             raise VoiceError("Unknown voice: {}".format(voice_id))
@@ -85,6 +93,7 @@ class VoiceRegistry:
         version: Optional[str] = None,
         allow_inactive: bool = False,
     ) -> Dict:
+        """Resolve voice registry."""
         if voice_id == "default" and voice_id not in self.list():
             workspace_onboarding = sorted((self.root / "profiles").glob("*/onboarding.json"))
             if workspace_onboarding:
@@ -161,6 +170,7 @@ class VoiceRegistry:
         intended_uses: List[str],
         template_id: str = STARTER_TEMPLATE_ID,
     ) -> Dict[str, Any]:
+        """Activate starter."""
         from .starter_voice import StarterVoiceRequest, activate_starter
 
         request = StarterVoiceRequest(
@@ -179,11 +189,13 @@ class VoiceRegistry:
         approved_by: str,
         override_reason: Optional[str] = None,
     ) -> VoiceApprovalReceipt:
+        """Activate voice registry."""
         from .voice_activation import activate_candidate
 
         return activate_candidate(self, voice_id, approved_by, override_reason)
 
     def deactivate(self, voice_id: str, reason: str) -> Dict:
+        """Deactivate voice registry."""
         registry = self._read()
         item = registry["profiles"].get(voice_id)
         if not item:
@@ -196,4 +208,5 @@ class VoiceRegistry:
 
 
 def voice_id_for(name: str) -> str:
+    """Return the voice id for."""
     return slugify(name)

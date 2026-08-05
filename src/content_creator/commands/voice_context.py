@@ -12,6 +12,8 @@ from ..voices import VoiceRegistry
 
 @dataclass(frozen=True)
 class VoiceCommandContext:
+    """Represent a voice command context."""
+
     root: Path
     arguments: argparse.Namespace
     builder: VoiceBuilder

@@ -8,6 +8,17 @@ release tag.
 
 ## [Unreleased]
 
+### Added
+
+- Concise docstrings for every production module, class, function, and method,
+  with a dependency-free AST coverage report enforced in CI.
+
+### Changed
+
+- Architecture and readability limits now measure implementation lines while
+  continuing to report physical size, so documentation does not consume the
+  executable-code budget.
+
 ## [0.16.0] - 2026-08-02
 
 ### Added

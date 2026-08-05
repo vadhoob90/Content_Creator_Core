@@ -1,3 +1,5 @@
+"""Implement fake provider integration."""
+
 from __future__ import annotations
 
 import json
@@ -16,12 +18,14 @@ class FakeProvider(Provider):
     name = "fake"
 
     def __init__(self, responses: Dict[str, Iterable[Any]]):
+        """Initialize the fake provider."""
         self.responses: Dict[str, Deque[Any]] = defaultdict(deque)
         for role, values in responses.items():
             self.responses[role].extend(values)
         self.requests: list[ModelRequest] = []
 
     def generate(self, request: ModelRequest) -> ModelResponse:
+        """Generate fake provider."""
         self.requests.append(request)
         if not self.responses[request.role]:
             raise ProviderError("No scripted response for role {}".format(request.role))

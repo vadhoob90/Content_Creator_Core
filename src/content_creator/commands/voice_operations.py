@@ -25,16 +25,19 @@ VoiceHandler = Callable[[VoiceCommandContext], int]
 
 
 def build(context: VoiceCommandContext) -> int:
+    """Build voice operations."""
     print_json(context.builder.build(context.arguments.voice_id))
     return 0
 
 
 def list_voices(context: VoiceCommandContext) -> int:
+    """List voices."""
     print_json(context.registry.list())
     return 0
 
 
 def _verify_voice(context: VoiceCommandContext, voice_id: str) -> dict[str, object]:
+    """Verify voice."""
     directory = context.root / "profiles" / voice_id / "candidate"
     manifest_path = directory / "manifest.json"
     if not manifest_path.exists():
@@ -52,6 +55,7 @@ def _verify_voice(context: VoiceCommandContext, voice_id: str) -> dict[str, obje
 
 
 def verify_all(context: VoiceCommandContext) -> int:
+    """Verify all."""
     voice_ids = set(context.registry.list())
     voice_ids.update(
         path.parent.parent.name
@@ -64,6 +68,7 @@ def verify_all(context: VoiceCommandContext) -> int:
 
 
 def approve(context: VoiceCommandContext) -> int:
+    """Approve voice operations."""
     arguments = context.arguments
     if arguments.override_evaluation and not arguments.reason:
         raise ValueError("--override-evaluation requires --reason")
@@ -75,17 +80,20 @@ def approve(context: VoiceCommandContext) -> int:
 
 
 def deactivate(context: VoiceCommandContext) -> int:
+    """Deactivate voice operations."""
     print_json(context.registry.deactivate(context.arguments.voice_id, context.arguments.reason))
     return 0
 
 
 def reactivate(context: VoiceCommandContext) -> int:
+    """Return the reactivate."""
     arguments = context.arguments
     print_json(context.registry.activate(arguments.voice_id, arguments.approved_by, "reactivation"))
     return 0
 
 
 def add_sources(context: VoiceCommandContext) -> int:
+    """Add sources."""
     arguments = context.arguments
     order = context.builder.load_work_order(arguments.voice_id)
     order.urls.extend(
@@ -100,6 +108,7 @@ def add_sources(context: VoiceCommandContext) -> int:
 
 
 def consolidate_learnings(context: VoiceCommandContext) -> int:
+    """Return the consolidate learnings."""
     path = LearningMemory(context.root, context.arguments.voice_id).consolidate_candidate()
     print_json(
         {
@@ -112,6 +121,7 @@ def consolidate_learnings(context: VoiceCommandContext) -> int:
 
 
 def assess(context: VoiceCommandContext) -> int:
+    """Assess voice operations."""
     arguments = context.arguments
     draft_path = Path(arguments.draft).expanduser()
     if not draft_path.is_absolute():
@@ -133,6 +143,7 @@ def assess(context: VoiceCommandContext) -> int:
 
 
 def configure_score(context: VoiceCommandContext) -> int:
+    """Return the configure score."""
     arguments = context.arguments
     if not (context.root / "profiles" / arguments.voice_id).is_dir():
         raise StorageError(f"Unknown voice: {arguments.voice_id}")
@@ -149,6 +160,7 @@ def configure_score(context: VoiceCommandContext) -> int:
 
 
 def train_model(context: VoiceCommandContext) -> int:
+    """Train model."""
     arguments = context.arguments
     training_result = train_voice_ml_model(
         context.root,
@@ -163,6 +175,7 @@ def train_model(context: VoiceCommandContext) -> int:
 
 
 def _profile_lines(context: VoiceCommandContext, version: str) -> list[str]:
+    """Return the profile lines."""
     voice_root = context.root / "profiles" / context.arguments.voice_id
     directory = (
         voice_root / "candidate" if version == "candidate" else voice_root / "versions" / version
@@ -171,6 +184,7 @@ def _profile_lines(context: VoiceCommandContext, version: str) -> list[str]:
 
 
 def show_diff(context: VoiceCommandContext) -> int:
+    """Show diff."""
     arguments = context.arguments
     print(
         "\n".join(
@@ -187,6 +201,7 @@ def show_diff(context: VoiceCommandContext) -> int:
 
 
 def show_status(context: VoiceCommandContext) -> int:
+    """Show status."""
     voice_id = context.arguments.voice_id
     manifest_path = context.root / "profiles" / voice_id / "candidate" / "manifest.json"
     onboarding = load_voice_onboarding(context.root, voice_id)
@@ -208,6 +223,7 @@ def show_status(context: VoiceCommandContext) -> int:
 
 
 def _profile_directory(context: VoiceCommandContext) -> Path:
+    """Return the profile directory."""
     candidate = context.root / "profiles" / context.arguments.voice_id / "candidate"
     if candidate.exists():
         return candidate
@@ -216,11 +232,13 @@ def _profile_directory(context: VoiceCommandContext) -> Path:
 
 
 def show_profile(context: VoiceCommandContext) -> int:
+    """Show profile."""
     print((_profile_directory(context) / "profile.md").read_text(encoding="utf-8"))
     return 0
 
 
 def show_signature(context: VoiceCommandContext) -> int:
+    """Show signature."""
     signature = (_profile_directory(context) / "linguistic-signature.json").read_text(
         encoding="utf-8"
     )
@@ -229,6 +247,7 @@ def show_signature(context: VoiceCommandContext) -> int:
 
 
 def verify(context: VoiceCommandContext) -> int:
+    """Verify voice operations."""
     report = _verify_voice(context, context.arguments.voice_id)
     print_json(report)
     return 0 if report["valid"] else 6

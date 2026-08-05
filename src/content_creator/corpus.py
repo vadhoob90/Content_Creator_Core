@@ -1,3 +1,5 @@
+"""Provide corpus capabilities."""
+
 from __future__ import annotations
 
 from collections import Counter
@@ -6,6 +8,7 @@ from .voices import SourceRecord
 
 
 def assess_corpus(records: list[SourceRecord], intended_packs: list[str]) -> dict:
+    """Assess corpus."""
     usable = [record for record in records if record.approved_for_analysis]
     words = sum(record.analysis_word_count or record.word_count for record in usable)
     weighted_words = round(

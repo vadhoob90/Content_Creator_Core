@@ -22,6 +22,7 @@ class RunCapabilities(Protocol):
         configured_policy: Dict[str, Any],
         eligible: bool,
     ) -> Optional[Dict[str, Any]]:
+        """Assess voice."""
         raise NotImplementedError
 
 
@@ -33,6 +34,7 @@ class DefaultRunCapabilities:
         root: Path,
         visual_adapters: Optional[VisualAdapterRegistry] = None,
     ):
+        """Initialize the default run capabilities."""
         self.root = root.resolve()
         self.visuals = VisualWorkflow(self.root, visual_adapters)
 
@@ -44,6 +46,7 @@ class DefaultRunCapabilities:
         configured_policy: Dict[str, Any],
         eligible: bool,
     ) -> Optional[Dict[str, Any]]:
+        """Assess voice."""
         policy = resolve_score_policy(self.root, voice_id, configured_policy)
         if not policy["enabled"] or not eligible:
             return None

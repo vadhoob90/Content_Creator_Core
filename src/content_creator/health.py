@@ -1,3 +1,5 @@
+"""Provide health capabilities."""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -13,9 +15,11 @@ class WorkspaceHealth:
     """Offline workspace validation shared by doctor and the coordinator."""
 
     def __init__(self, root: Path):
+        """Initialize the workspace health."""
         self.root = root.resolve()
 
     def report(self) -> Dict[str, Any]:
+        """Return the report."""
         configuration = Configuration(self.root)
         packs = PackRegistry(self.root).list()
         resources = ResourceResolver(self.root)

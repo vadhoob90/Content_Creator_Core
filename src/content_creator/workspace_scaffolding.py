@@ -17,6 +17,8 @@ from .workspace_templates import WorkspaceReadmeContext
 
 @dataclass(frozen=True)
 class WorkspaceCreateRequest:
+    """Represent a workspace create request."""
+
     name: str
     author_name: str
     voice_id: str | None = None
@@ -31,6 +33,8 @@ class WorkspaceCreateRequest:
 
 @dataclass(frozen=True)
 class WorkspaceIdentity:
+    """Represent a workspace identity."""
+
     display_name: str
     author_name: str
     voice_id: str
@@ -41,6 +45,8 @@ class WorkspaceIdentity:
 
 @dataclass(frozen=True)
 class WorkspaceServices:
+    """Provide the services used to scaffold a workspace."""
+
     default_core_ref: str
     default_packs: list[str]
     dependency_resolver: Callable[[str, str, str], str]
@@ -51,7 +57,7 @@ class WorkspaceServices:
 def create_workspace(
     scaffolder: Any, request: WorkspaceCreateRequest, services: WorkspaceServices
 ) -> dict:
-
+    """Create workspace."""
     if not request.core_ref:
         request = WorkspaceCreateRequest(
             **{**request.__dict__, "core_ref": services.default_core_ref}
@@ -65,6 +71,7 @@ def create_workspace(
 
 
 def _prepare_destination(root: Path) -> None:
+    """Prepare destination."""
     if root.exists() and not root.is_dir():
         raise ValueError(f"Workspace destination is not a directory: {root}")
     root.mkdir(parents=True, exist_ok=True)
@@ -73,6 +80,7 @@ def _prepare_destination(root: Path) -> None:
 def _validated_identity(
     root: Path, request: WorkspaceCreateRequest, services: WorkspaceServices
 ) -> WorkspaceIdentity:
+    """Return the validated identity."""
     display_name = request.name.strip()
     author_name = request.author_name.strip()
     if not display_name or not author_name:
@@ -103,6 +111,7 @@ def _initialise_base(
     identity: WorkspaceIdentity,
     services: WorkspaceServices,
 ) -> tuple[list[str], list[str]]:
+    """Initialise base."""
     base_paths = (root / "profiles" / "registry.json", root / "content-creator.yaml")
     existed = {path: path.exists() for path in base_paths}
     base = services.initialise(root, request.agent_template, request.perspective_mode)
@@ -135,6 +144,7 @@ def _write_workspace_files(
     preserved: list[str],
     services: WorkspaceServices,
 ) -> None:
+    """Write workspace files."""
     root = scaffolder.root
     intended_uses = "\n".join(f"  --use {pack} \\" for pack in identity.packs).rstrip(" \\")
     readme_context = WorkspaceReadmeContext(
@@ -177,6 +187,7 @@ def _write_workspace_files(
 
 
 def _onboarding(identity: WorkspaceIdentity) -> str:
+    """Return the onboarding."""
     record = {
         "schema_version": "1.0",
         "voice_id": identity.voice_id,
@@ -194,6 +205,7 @@ def _onboarding(identity: WorkspaceIdentity) -> str:
 
 
 def _source_instructions() -> str:
+    """Return the source instructions."""
     return (
         "# Add one authorised public source URL per line.\n"
         "# Local Markdown, text, DOCX, PDF, and HTML files may be placed\n"
@@ -208,6 +220,7 @@ def _result(
     created: list[str],
     preserved: list[str],
 ) -> dict:
+    """Return the result."""
     return {
         "status": "ok",
         "workspace": str(root),

@@ -1,3 +1,5 @@
+"""Implement codex native provider integration."""
+
 from __future__ import annotations
 
 import json
@@ -24,9 +26,11 @@ class CodexNativeProvider(NativeCliProvider):
         executable: Optional[str] = None,
         command_runner: Optional[CommandRunner] = None,
     ):
+        """Initialize the codex native provider."""
         super().__init__(root, executable, command_runner)
 
     def _ensure_subscription_auth(self) -> None:
+        """Ensure subscription auth."""
         if self._authenticated:
             return
         result = self._run([self.executable, "login", "status"], timeout=30)
@@ -40,10 +44,12 @@ class CodexNativeProvider(NativeCliProvider):
         self._authenticated = True
 
     def verify(self) -> Dict[str, str]:
+        """Verify codex native provider."""
         self._ensure_subscription_auth()
         return {"authentication": "chatgpt"}
 
     def generate(self, request: ModelRequest) -> ModelResponse:
+        """Generate codex native provider."""
         self._ensure_subscription_auth()
         with tempfile.TemporaryDirectory(prefix="content-creator-codex-") as directory:
             workdir = Path(directory)
@@ -115,6 +121,7 @@ class CodexNativeProvider(NativeCliProvider):
 
     @classmethod
     def _make_objects_strict(cls, value: Any) -> bool:
+        """Return the make objects strict."""
         if isinstance(value, list):
             return all(cls._make_objects_strict(item) for item in value)
         if not isinstance(value, dict):

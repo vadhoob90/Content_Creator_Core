@@ -22,10 +22,13 @@ from .voice_models import (
 
 
 class VoiceRegistryAccess(Protocol):
+    """Provide registry operations needed during voice activation."""
+
     root: Path
     path: Path
 
     def _read(self) -> dict:
+        """Read voice registry access."""
         raise NotImplementedError
 
 
@@ -35,6 +38,7 @@ def activate_candidate(
     approved_by: str,
     override_reason: str | None,
 ) -> VoiceApprovalReceipt:
+    """Activate candidate."""
     voice_root = registry_service.root / "profiles" / voice_id
     candidate = voice_root / "candidate"
     manifest, evaluation_path = _validated_candidate(candidate, override_reason)
@@ -59,6 +63,7 @@ def activate_candidate(
 def _validated_candidate(
     candidate: Path, override_reason: str | None
 ) -> tuple[VoiceManifest, Path]:
+    """Return the validated candidate."""
     manifest_path = candidate / "manifest.json"
     evaluation_path = candidate / "evaluation-report.json"
     if not manifest_path.exists():
@@ -83,6 +88,7 @@ def _validated_candidate(
 def _existing_receipt(
     voice_root: Path, registry: dict, voice_id: str, manifest: VoiceManifest
 ) -> VoiceApprovalReceipt | None:
+    """Return the existing receipt."""
     existing = registry["profiles"].get(voice_id, {})
     if existing.get("candidate_hash") != manifest.candidate_hash:
         return None
@@ -95,6 +101,7 @@ def _existing_receipt(
 def _promote_candidate(
     voice_root: Path, candidate: Path, manifest: VoiceManifest
 ) -> tuple[str, Path]:
+    """Return the promote candidate."""
     version = next_major_version(voice_root / "versions")
     destination = voice_root / "versions" / version
     shutil.copytree(candidate, destination)
@@ -112,6 +119,7 @@ def _write_receipt(
     override_reason: str | None,
     version: str,
 ) -> VoiceApprovalReceipt:
+    """Write receipt."""
     receipt = VoiceApprovalReceipt(
         voice_id=manifest.id,
         candidate_version="candidate",
@@ -136,6 +144,7 @@ def _write_receipt(
 def _activate_registry(
     registry_service: VoiceRegistryAccess, registry: dict, manifest: VoiceManifest, version: str
 ) -> None:
+    """Activate registry."""
     registry["profiles"][manifest.id] = {
         "display_name": manifest.display_name,
         "status": VoiceStatus.ACTIVE.value,
@@ -150,6 +159,7 @@ def _activate_registry(
 
 
 def _complete_onboarding(root: Path, voice_id: str) -> None:
+    """Return the complete onboarding."""
     onboarding = load_voice_onboarding(root, voice_id)
     if not onboarding:
         return

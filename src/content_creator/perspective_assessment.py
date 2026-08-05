@@ -1,3 +1,5 @@
+"""Provide perspective assessment capabilities."""
+
 from __future__ import annotations
 
 import hashlib
@@ -15,6 +17,7 @@ DIMENSIONS = [
 
 
 def create_blind_comparison(root: Path, run_id: str, baseline: Path) -> dict:
+    """Create blind comparison."""
     run_dir = RunStore(root).run_dir(run_id)
     candidate = run_dir / "final.md"
     if not candidate.exists():
@@ -66,6 +69,7 @@ def create_blind_comparison(root: Path, run_id: str, baseline: Path) -> dict:
 
 
 def record_blind_comparison(root: Path, run_id: str, assessment: Path) -> dict:
+    """Record blind comparison."""
     run_dir = RunStore(root).run_dir(run_id)
     directory = run_dir / "blind-comparison"
     mapping_path = directory / ".mapping.json"

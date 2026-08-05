@@ -17,7 +17,7 @@ multiple reasons to change.
 Core adopts enforceable production-module limits:
 
 - the command runtime compatibility façade is limited to 300 lines;
-- every production module is limited to 500 physical lines; and
+- every production module is limited to 500 implementation lines; and
 - 400 lines is a non-blocking review signal for extracting a cohesive
   responsibility.
 
@@ -32,6 +32,12 @@ with characterisation or architecture tests and retain public CLI, Python,
 schema, generated-workspace, and persisted-data contracts unless a deliberate
 migration is released.
 
+Implementation lines exclude only definition docstrings. The report retains
+physical line counts so documentation does not hide total file size. This
+clarification, adopted on 2026-08-05 with full production docstring coverage,
+preserves the executable-code budget instead of forcing cohesive modules to be
+split merely because their contracts are documented.
+
 ## Consequences
 
 The runtime, orchestration, diagnostics, scaffolding, coordinator, voice
@@ -40,4 +46,3 @@ into focused modules. More internal modules and compatibility re-exports are
 accepted in exchange for smaller review units and clearer ownership. A future
 exception requires an ADR with rationale, owner, expiry, and remediation issue;
 it is not added silently to an allow-list.
-

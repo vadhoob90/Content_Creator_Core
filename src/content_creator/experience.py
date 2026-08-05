@@ -1,3 +1,5 @@
+"""Provide experience capabilities."""
+
 from __future__ import annotations
 
 from typing import Iterable, Optional
@@ -7,6 +9,7 @@ from .domain import WorkOrder
 
 
 def render_overview(snapshot: WorkspaceSnapshot) -> str:
+    """Render overview."""
     active = [
         "{} ({})".format(voice.display_name, voice.active_version or "unversioned")
         for voice in snapshot.voices
@@ -51,6 +54,7 @@ def render_start(
     order: Optional[WorkOrder] = None,
     questions: Optional[Iterable[str]] = None,
 ) -> str:
+    """Render start."""
     if questions:
         return "\n".join(
             ["More information is needed:"] + ["  - {}".format(question) for question in questions]
@@ -81,6 +85,7 @@ def render_start(
 
 
 def _render_action_command(action: CoordinatorAction) -> str:
+    """Render action command."""
     if not action.command:
         return ""
     return "Command: content-creator {}".format(" ".join(action.command))

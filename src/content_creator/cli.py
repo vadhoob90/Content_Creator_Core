@@ -23,11 +23,13 @@ def _sync_overrides() -> None:
 
 
 def _main(argv: Any = None) -> int:
+    """Run the internal command-line entry point."""
     _sync_overrides()
     return runtime._main(argv)
 
 
 def main(argv: Any = None) -> int:
+    """Run the public command-line entry point."""
     _sync_overrides()
     return runtime.main(argv)
 

@@ -9,6 +9,7 @@ from ..operations import build_support_bundle, recovery_report
 
 
 def register(subparsers: Any) -> None:
+    """Register operations."""
     parser = subparsers.add_parser("operations", help="Inspect and recover local runtime state")
     commands = parser.add_subparsers(dest="operations_command", required=True)
     support = commands.add_parser("support-bundle")
@@ -17,6 +18,7 @@ def register(subparsers: Any) -> None:
 
 
 def run(root: Path, args: Any, print_value: Callable[[Any], None]) -> int:
+    """Run operations."""
     if args.operations_command == "support-bundle":
         print_value(build_support_bundle(root, args.run_id))
     else:

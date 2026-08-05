@@ -1,3 +1,5 @@
+"""Provide perspective evaluation capabilities."""
+
 from __future__ import annotations
 
 import json
@@ -14,6 +16,7 @@ _POSITION_MARKER = re.compile(
 
 
 def evaluate_perspective_output(root: Path, order: WorkOrder, draft: str) -> dict:
+    """Evaluate perspective output."""
     errors = []
     markers = _POSITION_MARKER.findall(draft)
     resolved = None
