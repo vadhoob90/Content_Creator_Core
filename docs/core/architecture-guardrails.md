@@ -19,6 +19,22 @@ affects a public contract, persisted data, operations, or a release.
 - Across `src/`, `scripts/`, and `tests/`, 300 module lines is the preferred
   target, 301–400 requires a cohesion review, and 500 is the hard limit.
 
+Size is a constraint, not a definition of cohesion. Every extraction names an
+independently understandable responsibility and reason to change. A package is
+appropriate when several modules form one named subsystem and each contained
+module remains cohesive; moving flat files into a directory is not sufficient.
+
+Inheritance represents genuine substitutability and must not be used merely to
+distribute one implementation across files. Prefer direct functions or
+composition when behavior is assembled. Do not introduce generic `base`,
+`support`, `common`, `helpers`, or `utils` layers as countersinks for code that
+does not have an independent responsibility.
+
+Importer count, shared prefixes, small modules, and cross-file inheritance are
+review signals rather than violations. They remain advisory unless a later ADR
+establishes an objective rule with a low false-positive rate and clear
+remediation.
+
 ## Function readability and control flow
 
 - Prefer functions of at most 40 physical lines. Lines 41–80 are an explicit
@@ -48,6 +64,24 @@ without forcing meaningless fragments.
 - Prefer descriptive functions and variables to explanatory comments. Comments
   record why a surprising business or safety constraint exists, never narrate
   what plainly written code does.
+
+## Structural-change review
+
+Before moving code, classify affected import paths as permanent façades,
+temporary migration shims, or internal implementation. Temporary shims need an
+explicit retention decision and are not presented as canonical architecture.
+
+Each structural pull request states:
+
+- the demonstrated reading or maintenance problem;
+- why every new module exists independently;
+- which old structure is removed;
+- whether the representative workflow is easier to trace; and
+- how public imports, persisted formats, and generated output remain stable.
+
+New protocols, factories, registries, and reusable abstractions require current
+consumers. Avoid forwarding layers that increase the normal call path without
+owning state, policy, or a distinct boundary.
 
 Run `python scripts/architecture_report.py --check` locally. CI blocks growth
 past these limits. Do not evade the check with generated monoliths, renamed
@@ -82,6 +116,7 @@ the guardrail.
 | Schema and operational governance | [ADR 0009](../adr/0009-schema-governance-and-operational-recovery.md) |
 | Module responsibility and size | [ADR 0010](../adr/0010-module-responsibility-and-size-guardrails.md) |
 | Function readability, complexity, and naming | [ADR 0011](../adr/0011-readable-components-and-control-flow.md) |
+| Concept cohesion and package promotion | [ADR 0012](../adr/0012-concept-cohesion-and-package-promotion.md) |
 
 ## Full local gate
 
