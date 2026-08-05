@@ -78,5 +78,6 @@ def write_invocation_summary(
             ),
         )
     except OSError:
+        # Diagnostic persistence must not replace the failure being reported.
         pass
     return summary
