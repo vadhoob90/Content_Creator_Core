@@ -12,6 +12,37 @@ release tag.
 
 ### Changed
 
+## [1.1.0] - 2026-08-06
+
+### Added
+
+- Resumable in-place revisions for reviewed runs, including author feedback,
+  baseline preservation, unified diffs, refreshed validation, criticism,
+  quality scores, provenance, and idempotent retry handling.
+- Chat-first workspace upgrade compatibility audits that separately report
+  dependency state, workspace readiness, and historical-run compatibility.
+- Persisted upgrade reports, per-run migration artifacts and events, and an
+  approval-gated route for adopting current pack policy and revalidating the
+  final draft.
+- Configurable inline-link or numbered-reference citation presentation for
+  research-backed output.
+
+### Changed
+
+- Redundant legacy pack overrides are migrated automatically when their value
+  is identical to the current pack default; differing values remain explicit
+  conflicts requiring an author decision.
+- Invalid supplied-research input now explains the required JSON contract and
+  makes clear that Markdown is unsupported.
+
+### Migration
+
+- Existing workspaces should upgrade their exact dependency pin and lockfile
+  to `content-creator==1.1.0`, then review the compatibility audit produced by
+  `workspace upgrade --to v1.1.0 --apply`. Compatible historical overrides are
+  handled automatically; conflicting runs remain blocked until the author
+  explicitly accepts current pack policy.
+
 ## [1.0.0] - 2026-08-06
 
 ### Added

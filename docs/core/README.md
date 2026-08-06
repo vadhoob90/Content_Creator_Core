@@ -348,13 +348,13 @@ Author workspaces remain on their pinned package until deliberately upgraded.
 Preview the upgrade first:
 
 ```bash
-uv run content-creator --workspace . workspace upgrade --to v1.0.0
+uv run content-creator --workspace . workspace upgrade --to v1.1.0
 ```
 
 Apply the reviewed preview explicitly:
 
 ```bash
-uv run content-creator --workspace . workspace upgrade --to v1.0.0 --apply
+uv run content-creator --workspace . workspace upgrade --to v1.1.0 --apply
 ```
 
 The apply operation updates the package requirement and lockfile, runs doctor,
