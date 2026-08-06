@@ -10,6 +10,12 @@ release tag.
 
 ### Added
 
+### Changed
+
+## [1.0.0] - 2026-08-06
+
+### Added
+
 - Comprehensive Google Style contracts for every production module, class,
   function, and method, including typed arguments, literal defaults, returns,
   explicit exceptions, and contextual descriptions for complex callables.
@@ -25,6 +31,20 @@ release tag.
   executable-code budget.
 - Recoverable corrupt-record and diagnostic-persistence failures now emit
   bounded warnings, and failed summary writes no longer expose nonexistent paths.
+
+### Stability
+
+- Version 1 establishes the supported CLI, public Python exports, persisted
+  schemas, generated-workspace structure, provider interfaces, and approval
+  boundaries documented in the Core public-contract and schema policies.
+- Future incompatible changes to these supported contracts require a new major
+  release and an explicit migration path.
+
+### Migration
+
+- No persisted-data migration is required. Downstream workspaces should upgrade
+  their exact dependency pin and lockfile to `content-creator==1.0.0`, then run
+  doctor, voice verification, and their workspace tests.
 
 ## [0.16.0] - 2026-08-02
 

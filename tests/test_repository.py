@@ -130,10 +130,10 @@ def test_core_development_readme_covers_clone_and_validation():
     assert "pytest" in guide
     assert "Core versus a thin workspace" in guide
     assert "Merging a change into `main` does not publish it" in guide
-    assert "git tag -a v0.16.0" in guide
+    assert "git tag -a v1.0.0" in guide
     assert ".github/workflows/release.yml" in guide
     assert "Trusted Publisher registration is a one-time" in guide
-    assert "workspace upgrade --to v0.16.0 --apply" in guide
+    assert "workspace upgrade --to v1.0.0 --apply" in guide
 
 
 def test_work_package_uses_the_repository_cli_name():
