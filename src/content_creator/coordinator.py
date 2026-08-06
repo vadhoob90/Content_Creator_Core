@@ -20,6 +20,7 @@ from .domain import RunState, RunStatus
 from .health import WorkspaceHealth
 from .packs import PackRegistry
 from .storage import RunStore
+from .upgrade_audit import coordinator_upgrade_operations, latest_upgrade_report
 from .voices import VoiceManifest, VoiceRegistry, load_voice_onboarding
 
 logger = logging.getLogger(__name__)
@@ -64,6 +65,7 @@ class ContentCoordinator:
             "operations": [
                 self._operation("workspace.inspect", ["coordinator", "context"]),
                 self._operation("workspace.overview", ["overview"]),
+                *coordinator_upgrade_operations(),
                 self._operation("workspace.start", ["start", "<request>"]),
                 self._operation("run.plan", ["plan", "<request>"]),
                 self._operation("run.create", ["run", "<request>"], mutates=True),
@@ -182,7 +184,9 @@ class ContentCoordinator:
         Returns:
             Dict[str, Any]: The structured resulting data for context.
         """
-        return self.snapshot(run_limit).model_dump(mode="json")
+        result = self.snapshot(run_limit).model_dump(mode="json")
+        result["latest_upgrade_compatibility"] = latest_upgrade_report(self.root)
+        return result
 
     def runs(self, limit: int = 20) -> Dict[str, Any]:
         """Return the runs.

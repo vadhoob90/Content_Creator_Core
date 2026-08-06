@@ -110,6 +110,7 @@ def test_top_level_cli_commands_are_characterized():
         "provider",
         "publish",
         "reject-research",
+        "revise",
         "run",
         "schema",
         "start",

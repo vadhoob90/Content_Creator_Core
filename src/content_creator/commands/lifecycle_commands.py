@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from .context import CommandContext
 
 
@@ -113,6 +115,36 @@ def publish(context: CommandContext) -> int:
             filename=arguments.filename,
             feedback=arguments.feedback,
             diagnostic_decision=arguments.diagnostic_decision,
+        )
+    )
+    return 0
+
+
+def revise(context: CommandContext) -> int:
+    """Run a traceable revision against an existing reviewed draft.
+
+    Args:
+        context (CommandContext): The operation context and its resolved dependencies.
+
+    Returns:
+        int: The process exit status, where zero indicates a handled revision.
+
+    Raises:
+        ValueError: If the supplied author draft cannot be read.
+    """
+    arguments = context.arguments
+    draft = None
+    if arguments.draft_file:
+        try:
+            draft = Path(arguments.draft_file).read_text(encoding="utf-8")
+        except OSError as exc:
+            raise ValueError("--draft-file could not be read") from exc
+    context.emit(
+        context.orchestrator.revise(
+            arguments.run_id,
+            feedback=arguments.feedback,
+            draft=draft,
+            idempotency_key=arguments.idempotency_key,
         )
     )
     return 0

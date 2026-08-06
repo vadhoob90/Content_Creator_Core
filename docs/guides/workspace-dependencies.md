@@ -49,7 +49,16 @@ content-creator --workspace . workspace upgrade --to v1.0.0
 
 The preview shows the dependency and lockfile operation, packaged template
 differences, preserved repository-owned paths, validation commands, and manual
-follow-up. It does not modify the workspace.
+follow-up. It also audits configuration and resources, provider selection and
+privacy boundaries, runtime write paths, agents, learning memory, idempotency
+storage, publications, sources, and every historical run against current pack
+policy. It does not modify the workspace.
+
+The compatibility result deliberately separates three claims: whether the
+dependency update has been applied, whether the current workspace is ready,
+and whether historical runs remain usable. Findings use `compatible`,
+`automatically_migrated`, `decision_required`, or `blocking`, and include
+plain-language summary lines plus decision prompts for the chat coordinator.
 
 Apply the reviewed preview explicitly:
 
@@ -63,6 +72,24 @@ refreshes the lock, runs doctor, verifies all voices, runs workspace tests, and
 restores the dependency and lockfile if validation fails. New packaged
 template files may be added, but existing repository-owned agents and skills
 are preserved for manual review.
+
+After a successful apply, Core persists the report under
+`.content-creator/upgrades/` and adds `pack-migration.json` plus a visible event
+to affected runs. The coordinator includes the latest report in its context,
+so a chat response can explain compatible migrations and show both values for
+conflicts. A conflict blocks only the affected run.
+
+When the author approves adopting current pack policy, chat can invoke the
+approval-gated operation represented by:
+
+```bash
+content-creator --workspace . workspace resolve-upgrade-run RUN_ID \
+  --accept-current-pack
+```
+
+Core records the decision, removes only the conflicting legacy override, and
+runs the existing final draft back through validation, criticism, quality
+scoring, diff history, and provenance before it can be published.
 
 Workspaces generated with the managed Core dependency block in their README
 also have that block refreshed and rolled back transactionally. The rest of

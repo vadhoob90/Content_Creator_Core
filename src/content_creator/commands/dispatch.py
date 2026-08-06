@@ -27,6 +27,7 @@ from .lifecycle_commands import (
     inspect_diagnostics,
     publish,
     reject_research,
+    revise,
     show_status,
     show_submission,
 )
@@ -55,6 +56,7 @@ ROUTES: dict[str, Handler] = {
     "provider": manage_provider,
     "publish": publish,
     "reject-research": reject_research,
+    "revise": revise,
     "run": run_content,
     "schema": inspect_schema,
     "start": start,

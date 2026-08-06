@@ -34,6 +34,14 @@ under `.content-creator/invocations/`; they do not create failed entries under
 `runs/`. Agent-generated research remains part of the persisted run because it
 is produced during execution.
 
+`--research-file` accepts UTF-8 JSON only. The object must contain `summary`,
+`evidence`, `sources`, `tensions`, and `gaps`; Markdown input is rejected with
+an example of the supported contract before a run is persisted.
+
+Research-backed output uses `--citation-style inline-links` by default. Use
+`--citation-style numbered-references` when the draft must include numbered
+in-text markers and a `References` section containing source URLs.
+
 ## Idempotent submission and intentional revisions
 
 Callers that may retry an uncertain invocation should supply a stable key:
@@ -64,10 +72,17 @@ human-checkpoint state. Normal `status <run-id>` and `coordinator next-actions
 publication retain their existing state gates and are never repeated by
 idempotent submission.
 
-A deliberate revision is not a retry. Give it a new idempotency key and pass
-`--parent-run <prior-run-id>` so it receives a distinct run while preserving
-the existing content lineage. Core loads the parent's reviewed `final.md` into
-a structured `revision_context` for every writer pass, carries forward the
-parent run and content-session identifiers, and instructs the writer to treat
-that text as the baseline while preserving unaffected approved passages. A
-parent that has not reached a reviewed state is rejected explicitly.
+A new editorial direction can still use `--parent-run <prior-run-id>` to create
+a distinct run. To change a reviewed draft while retaining its existing run,
+use `content-creator revise RUN_ID --feedback "..."`. Pass `--draft-file` when
+the author has already edited the Markdown. Core preserves the baseline and a
+unified diff, records feedback as run-scoped, and reruns validation, voice and
+perspective evaluation, criticism, quality scoring, and provenance updates.
+
+Attach `--idempotency-key` when retrying an exact revision. A completed retry
+returns the existing revision; an interrupted retry resumes the recorded
+request. Reusing the key with different feedback or draft content is rejected.
+
+Older runs that copied a pack-owned policy into `pack_options` are migrated
+automatically when the persisted and current effective values are identical.
+Conflicting legacy overrides remain forbidden.

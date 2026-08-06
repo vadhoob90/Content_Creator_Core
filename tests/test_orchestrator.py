@@ -199,6 +199,52 @@ def test_revision_limit_preserves_latest_draft(project):
     assert (project / state.final_draft_path).exists()
 
 
+def test_post_gate_author_revision_refreshes_checks_and_is_idempotent(project):
+    original = valid_draft()
+    edited = original.replace("useful writing system", "reviewed writing system", 1)
+    fake = FakeProvider(
+        {
+            "writer": [original],
+            "critic": [passing_critique(), passing_critique(9.5)],
+        }
+    )
+    orchestrator = Orchestrator(project, registry=ProviderRegistry({"anthropic": fake}))
+    state = orchestrator.start(
+        WorkOrder(
+            request="write",
+            topic="topic",
+            content_pack="linkedin-post",
+            format="post",
+        )
+    )
+
+    revised = orchestrator.revise(
+        state.id,
+        feedback="Use the author's reviewed wording.",
+        draft=edited,
+        idempotency_key="author-edit-1",
+    )
+    repeated = orchestrator.revise(
+        state.id,
+        feedback="Use the author's reviewed wording.",
+        draft=edited,
+        idempotency_key="author-edit-1",
+    )
+
+    run = project / "runs" / state.id
+    assert revised.status == RunStatus.READY
+    assert repeated.revision == 2
+    assert (run / "final.md").read_text(encoding="utf-8").strip() == edited.strip()
+    assert "reviewed writing system" in (run / "revision-02.diff").read_text()
+    assert (run / "validation-02.json").exists()
+    assert (run / "critique-02.json").exists()
+    assert (run / "quality-02.json").exists()
+    provenance = json.loads((run / "claim-provenance.json").read_text())
+    assert provenance["final_draft_revision"] == 2
+    assert provenance["revision_history"][-1]["feedback_scope"] == "run"
+    assert len([request for request in fake.requests if request.role == "critic"]) == 2
+
+
 def test_failure_is_persisted(project):
     orchestrator = make_orchestrator(
         project,

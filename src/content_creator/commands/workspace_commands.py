@@ -36,6 +36,9 @@ def manage_workspace(context: CommandContext) -> int:
         int: The resulting numeric value for manage workspace.
     """
     arguments = context.arguments
+    if arguments.workspace_command == "resolve-upgrade-run":
+        context.emit(context.orchestrator.adopt_current_pack(arguments.run_id))
+        return 0
     if arguments.workspace_command == "upgrade":
         upgrader = WorkspaceUpgrader(context.root)
         report = upgrader.apply(arguments.to) if arguments.apply else upgrader.preview(arguments.to)

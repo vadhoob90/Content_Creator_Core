@@ -69,6 +69,7 @@ def _explicit_order(context: CommandContext) -> WorkOrder:
             "language": arguments.language,
             "structure": arguments.structure,
             "destination": arguments.destination,
+            "citation_style": arguments.citation_style,
         }.items()
         if option is not None
     }

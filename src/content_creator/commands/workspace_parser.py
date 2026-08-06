@@ -45,6 +45,12 @@ def register_workspace(subparsers: argparse._SubParsersAction) -> None:
     upgrade = commands.add_parser("upgrade", help="Preview or apply an immutable Core upgrade")
     upgrade.add_argument("--to", required=True)
     upgrade.add_argument("--apply", action="store_true")
+    resolve_run = commands.add_parser(
+        "resolve-upgrade-run",
+        help="Adopt current pack policy and revalidate one historical run",
+    )
+    resolve_run.add_argument("run_id")
+    resolve_run.add_argument("--accept-current-pack", action="store_true", required=True)
 
 
 def register_agents(subparsers: argparse._SubParsersAction) -> None:
