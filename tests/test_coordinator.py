@@ -23,6 +23,8 @@ def test_coordinator_capabilities_expose_approval_boundaries(project, capsys):
     assert operations["run.submission-status"]["mutates_workspace"] is False
     assert operations["research.approve"]["requires_explicit_approval"] is True
     assert operations["content.publish-local"]["requires_explicit_approval"] is True
+    assert operations["workspace.upgrade-preview"]["mutates_workspace"] is False
+    assert operations["workspace.upgrade-apply"]["requires_explicit_approval"] is True
     assert result["boundaries"]["external_publication"] is False
 
 
@@ -49,6 +51,23 @@ def test_coordinator_context_uses_workspace_defaults_as_suggestions(project, cap
     assert result["provider"] == "anthropic"
     assert result["provider_status"]["name"] == "anthropic"
     assert result["warnings"] == []
+    assert result["latest_upgrade_compatibility"] is None
+
+
+def test_coordinator_context_surfaces_latest_upgrade_audit(project):
+    directory = project / ".content-creator" / "upgrades"
+    directory.mkdir(parents=True)
+    report = {
+        "workspace_readiness": "compatible",
+        "historical_run_compatibility": "decision_required",
+        "chat_summary": ["One historical run needs a decision"],
+        "decision_prompts": [{"run_id": "legacy-run"}],
+    }
+    (directory / "v1-to-v2.json").write_text(json.dumps(report), encoding="utf-8")
+
+    context = ContentCoordinator(project).context()
+
+    assert context["latest_upgrade_compatibility"] == report
 
 
 def test_coordinator_next_actions_come_from_persisted_state(project):

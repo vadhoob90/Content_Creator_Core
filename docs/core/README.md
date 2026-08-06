@@ -360,6 +360,12 @@ uv run content-creator --workspace . workspace upgrade --to v1.0.0 --apply
 The apply operation updates the package requirement and lockfile, runs doctor,
 verifies all voices, runs workspace tests, and restores the previous
 dependency, lockfile, and managed README dependency block if validation fails.
+Preview and apply also return a coordinator-ready compatibility audit that
+separates dependency status, workspace readiness, and historical-run
+compatibility. Applied audits are persisted under `.content-creator/upgrades/`;
+affected runs receive visible migration artifacts and events. Conflicting pack
+policy requires explicit author approval and final-draft revalidation rather
+than failing unexpectedly at publication.
 It never rewrites the rest of the README, and leaves legacy or custom READMEs
 without that marker unchanged. Review and commit the resulting
 `pyproject.toml`, `uv.lock`, `README.md` when updated, and any deliberately

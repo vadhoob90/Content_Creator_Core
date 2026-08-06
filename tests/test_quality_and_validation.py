@@ -131,3 +131,27 @@ def test_valid_researched_post_has_link():
         research_source="agent",
     )
     assert validate_draft(valid_draft(researched=True), order) == []
+
+
+def test_numbered_reference_style_requires_markers_and_references_section():
+    order = WorkOrder(
+        request="x",
+        topic="x",
+        research_depth="deep",
+        research_source="agent",
+        pack_options={"citation_style": "numbered-references"},
+    )
+
+    invalid = validate_draft("A sourced claim. https://example.org/source", order)
+    references_only = validate_draft(
+        "A sourced claim.\n\n## References\n\n[1] https://example.org/source",
+        order,
+    )
+    valid = validate_draft(
+        "A sourced claim.[1]\n\n## References\n\n[1] https://example.org/source",
+        order,
+    )
+
+    assert any("numbered-references" in error for error in invalid)
+    assert any("numbered-references" in error for error in references_only)
+    assert valid == []

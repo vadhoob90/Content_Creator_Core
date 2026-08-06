@@ -131,6 +131,41 @@ class PackRegistry:
         self._validate_destinations(data)
         return ContentPack.model_validate(data)
 
+    def override_compatibility(
+        self, pack_id: str, overrides: Optional[Dict[str, Any]] = None
+    ) -> List[Dict[str, Any]]:
+        """Describe legacy overrides no longer owned by a run.
+
+        Compare forbidden persisted overrides with current pack defaults without
+        changing either the run or the resolved pack.
+
+        Args:
+            pack_id (str): Content pack identifier.
+            overrides (Optional[Dict[str, Any]]): Persisted run overrides. Defaults to
+                ``None``.
+
+        Returns:
+            List[Dict[str, Any]]: Structured compatible or conflicting decisions.
+        """
+        data = self._merged_pack(pack_id)
+        requested = deepcopy(overrides or {})
+        forbidden = sorted(set(requested) - set(data["allowed_run_overrides"]))
+        defaults = data.get("defaults", {})
+        return [
+            {
+                "setting": key,
+                "legacy_value": requested[key],
+                "current_value": defaults.get(key),
+                "outcome": (
+                    "compatible"
+                    if key in defaults and requested[key] == defaults[key]
+                    else "conflict"
+                ),
+                "effective_source": "current_pack",
+            }
+            for key in forbidden
+        ]
+
     def _merged_pack(self, pack_id: str) -> Dict[str, Any]:
         """Return the merged pack.
 
@@ -191,6 +226,14 @@ class PackRegistry:
             PackError: If the pack operation cannot complete.
         """
         requested = deepcopy(overrides or {})
+        # Runs created by older Core versions could persist effective pack policy as a
+        # run override.  Newer packs own that policy.  Treat an identical value as
+        # redundant migration data, while continuing to reject a value that would
+        # actually change the resolved pack contract.
+        defaults = data.get("defaults", {})
+        for key in set(requested) - set(data["allowed_run_overrides"]):
+            if key in defaults and requested[key] == defaults[key]:
+                requested.pop(key)
         forbidden = sorted(set(requested) - set(data["allowed_run_overrides"]))
         if forbidden:
             raise PackError("Forbidden pack override(s): {}".format(", ".join(forbidden)))

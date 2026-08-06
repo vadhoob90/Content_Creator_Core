@@ -13,6 +13,9 @@ def validate_draft(
 ) -> List[str]:
     """Validate the draft.
 
+    Apply only the validators selected by the resolved content pack, including
+    presentation-specific citation rules for research-backed content.
+
     Args:
         draft (str): The draft content to evaluate or transform.
         order (WorkOrder): The work order that defines the requested content run.
@@ -55,10 +58,41 @@ def validate_draft(
     if (
         "citation-integrity" in enabled
         and order.research_depth != ResearchDepth.NONE
-        and not re.search(r"https?://|]\(https?://", draft)
+        and not _has_required_citations(draft, order)
     ):
-        errors.append("Research-backed drafts must include at least one source link")
+        style = str(order.pack_options.get("citation_style", "inline-links"))
+        if style == "numbered-references":
+            errors.append(
+                "Research-backed drafts using numbered-references must include numbered "
+                "in-text citations and a References section with source URLs"
+            )
+        else:
+            errors.append("Research-backed drafts must include at least one source link")
     return errors
+
+
+def _has_required_citations(draft: str, order: WorkOrder) -> bool:
+    """Return whether a draft satisfies the configured citation presentation.
+
+    Args:
+        draft (str): Draft content whose citations are inspected.
+        order (WorkOrder): Work order containing the citation-style option.
+
+    Returns:
+        bool: Whether the configured citation presentation is present.
+    """
+    style = str(order.pack_options.get("citation_style", "inline-links"))
+    if style == "inline-links":
+        return bool(re.search(r"https?://|]\(https?://", draft))
+    if style == "numbered-references":
+        heading = re.search(r"(?im)^#{1,6}\s+references\s*$", draft)
+        body = draft[: heading.start()] if heading else draft
+        references = draft[heading.end() :] if heading else ""
+        has_marker = bool(re.search(r"\[(?:[1-9]\d*)\]", body))
+        has_references = heading is not None
+        has_url = bool(re.search(r"https?://", references))
+        return has_marker and has_references and has_url
+    return False
 
 
 def validate_research_brief(brief: ResearchBrief) -> List[str]:

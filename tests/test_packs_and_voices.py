@@ -141,6 +141,29 @@ def test_general_text_resolves_and_forbidden_override_fails(project):
         registry.resolve("general-text", {"provider_api_key": "secret"})
 
 
+def test_legacy_override_matching_pack_policy_is_migrated(project):
+    pack_dir = project / "packs" / "legacy-pack"
+    pack_dir.mkdir()
+    (pack_dir / "pack.json").write_text(
+        json.dumps(
+            {
+                "id": "legacy-pack",
+                "version": "1.0.0",
+                "extends": "general-text",
+                "format": "text",
+                "destination": "content/general-text/published",
+                "defaults": {"banned_phrases": ["manufactured drama"]},
+            }
+        ),
+        encoding="utf-8",
+    )
+    registry = PackRegistry(project)
+
+    resolved = registry.resolve("legacy-pack", {"banned_phrases": ["manufactured drama"]})
+
+    assert resolved.defaults["banned_phrases"] == ["manufactured drama"]
+
+
 def test_child_pack_preserves_integrity_validators(project):
     registry = PackRegistry(project)
     base = registry.resolve("general-text")

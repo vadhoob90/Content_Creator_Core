@@ -10,6 +10,7 @@ from typing import Any, Callable, Dict, List, Optional
 
 from .agent_resources import AgentWorkspace
 from .storage import RunStore
+from .upgrade_audit import UpgradeCompatibilityAudit
 from .workspace import scaffold_skills, update_readme_core_dependency
 
 IMMUTABLE_REF = re.compile(r"^(?:v\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?|[0-9a-fA-F]{40})$")
@@ -86,6 +87,14 @@ class WorkspaceUpgrader:
             current = "v{}".format(registry_match.group("version"))
             dependency = "content-creator=={}".format(target.removeprefix("v"))
             source = "registry"
+        compatibility = UpgradeCompatibilityAudit(self.root).inspect()
+        compatibility.update(
+            {
+                "dependency_update": "preview",
+                "from": current,
+                "to": target,
+            }
+        )
         return {
             "schema_version": "1.0",
             "status": "preview",
@@ -133,6 +142,7 @@ class WorkspaceUpgrader:
                 target,
                 "--apply",
             ],
+            "compatibility": compatibility,
         }
 
     def apply(self, target: str) -> Dict[str, Any]:
@@ -177,6 +187,17 @@ class WorkspaceUpgrader:
         )
         agents = AgentWorkspace(self.root).scaffold()
         skills = scaffold_skills(self.root)
+        compatibility = UpgradeCompatibilityAudit(self.root).inspect()
+        compatibility.update(
+            {
+                "dependency_update": "applied",
+                "from": report["from"],
+                "to": target,
+            }
+        )
+        audit_path = UpgradeCompatibilityAudit(self.root).persist(
+            compatibility, report["from"], target
+        )
         report.update(
             {
                 "status": "applied",
@@ -186,6 +207,8 @@ class WorkspaceUpgrader:
                     "skills": skills["created"],
                 },
                 "readme_updated": readme_updated,
+                "compatibility": compatibility,
+                "compatibility_report": str(audit_path.relative_to(self.root)),
                 "manual_follow_up": [
                     "Review agent and skill template differences.",
                     "Review and commit pyproject.toml and uv.lock deliberately.",

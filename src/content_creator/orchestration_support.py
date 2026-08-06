@@ -27,6 +27,7 @@ from .perspective_evaluation import evaluate_perspective_output
 from .prompting import PromptAssembler
 from .providers import ProviderRegistry
 from .quality import evaluate_quality
+from .revision import RevisionLifecycle
 from .runner import AgentRunner, AgentRunOptions
 from .stages import CallableDraftReviewStage, CallableResearchStage, LifecycleStages
 from .storage import RunStore, StorageError
@@ -95,6 +96,51 @@ class OrchestrationSupport:
             draft_review=CallableDraftReviewStage(self._draft_and_review),
         )
 
+    def revise(
+        self,
+        run_id: str,
+        feedback: str,
+        draft: Optional[str] = None,
+        idempotency_key: Optional[str] = None,
+    ) -> RunState:
+        """Apply a reviewed-run revision and refresh final-draft quality metadata.
+
+        Args:
+            run_id (str): Reviewed run identifier.
+            feedback (str): Run-scoped author feedback.
+            draft (Optional[str]): Author-edited Markdown, or ``None`` to use the writer.
+                Defaults to ``None``.
+            idempotency_key (Optional[str]): Stable retry key for the exact revision.
+                Defaults to ``None``.
+
+        Returns:
+            RunState: Updated state after revision and review.
+
+        Raises:
+            OrchestrationError: If the run cannot enter the revision lifecycle.
+        """
+        try:
+            return RevisionLifecycle(self).execute(run_id, feedback, draft, idempotency_key)
+        except RuntimeError as exc:
+            raise OrchestrationError(str(exc)) from exc
+
+    def adopt_current_pack(self, run_id: str) -> RunState:
+        """Run current-pack adoption and revalidation for a conflicting legacy run.
+
+        Args:
+            run_id (str): Historical run identifier.
+
+        Returns:
+            RunState: Updated state after policy migration and revalidation.
+
+        Raises:
+            OrchestrationError: If the run has no resolvable pack-policy conflict.
+        """
+        try:
+            return RevisionLifecycle(self).adopt_current_pack(run_id)
+        except RuntimeError as exc:
+            raise OrchestrationError(str(exc)) from exc
+
     def diagnostic_preflight(self, run_id: str) -> Dict:
         """Return the diagnostic preflight.
 
@@ -154,7 +200,13 @@ class OrchestrationSupport:
         try:
             brief = ResearchBrief.model_validate_json(payload)
         except ValueError as exc:
-            raise OrchestrationError("Supplied research is not valid ResearchBrief JSON") from exc
+            raise OrchestrationError(
+                "Supplied research is not valid ResearchBrief JSON. It must be UTF-8 JSON "
+                "matching the ResearchBrief schema "
+                "(summary, evidence, sources, tensions, gaps); Markdown is not supported. "
+                'Example: {"summary": "...", "evidence": [], '
+                '"sources": [], "tensions": [], "gaps": []}'
+            ) from exc
         research_errors = validate_research_brief(brief)
         if research_errors:
             raise OrchestrationError(

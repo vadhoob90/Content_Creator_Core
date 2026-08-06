@@ -119,6 +119,11 @@ def _add_run_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--research", choices=["none", "light", "deep"])
     parser.add_argument("--research-source", choices=["none", "supplied", "agent"])
     parser.add_argument("--research-file")
+    parser.add_argument(
+        "--citation-style",
+        choices=["inline-links", "numbered-references"],
+        help="Citation presentation for research-backed output",
+    )
     parser.add_argument("--provider", choices=PROVIDERS)
     parser.add_argument("--objective")
     parser.add_argument("--audience")
@@ -150,6 +155,16 @@ def register_publication(subparsers: argparse._SubParsersAction) -> None:
     publish.add_argument("--filename")
     publish.add_argument("--feedback")
     publish.add_argument("--diagnostic-decision", choices=["publish-only", "prepare-issue"])
+    revise = subparsers.add_parser(
+        "revise", help="Revise a reviewed run in place and refresh its quality metadata"
+    )
+    revise.add_argument("run_id")
+    revise.add_argument("--feedback", required=True)
+    revise.add_argument(
+        "--draft-file",
+        help="Author-edited Markdown; omit to ask the configured writer to revise",
+    )
+    revise.add_argument("--idempotency-key")
 
 
 def register_evaluation(subparsers: argparse._SubParsersAction) -> None:
