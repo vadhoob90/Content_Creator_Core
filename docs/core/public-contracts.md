@@ -2,7 +2,9 @@
 
 Core is both a command-line application and a versioned dependency used by
 author workspaces. Internal refactoring must preserve the observable contracts
-below unless a release deliberately changes them with migration support.
+below. Version `1.0.0` establishes these surfaces as stable: an incompatible
+change requires a new major release, migration support, and explicit release
+notes.
 
 ## Supported surfaces
 

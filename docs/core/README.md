@@ -274,8 +274,9 @@ release therefore needs a new semantic version:
 - increment the minor version for backward-compatible functionality; and
 - increment the major version for an incompatible change.
 
-The project is currently below `1.0.0`, but release notes must still call out
-any migration required by a minor release.
+Version `1.0.0` establishes the stable public contracts documented in
+[`public-contracts.md`](public-contracts.md). Subsequent incompatible changes
+require a new major release and an explicit migration path.
 
 ### Prepare the release
 
@@ -309,13 +310,13 @@ commit reaches `main`.
 ### Publish the release
 
 Create the matching annotated tag only after the release PR is merged. For
-example, for `0.16.0`:
+example, for `1.0.0`:
 
 ```bash
 git switch main
 git pull --ff-only origin main
-git tag -a v0.16.0 -m "Content Creator 0.16.0"
-git push origin v0.16.0
+git tag -a v1.0.0 -m "Content Creator 1.0.0"
+git push origin v1.0.0
 ```
 
 Pushing the tag triggers `.github/workflows/release.yml`. The workflow:
@@ -347,13 +348,13 @@ Author workspaces remain on their pinned package until deliberately upgraded.
 Preview the upgrade first:
 
 ```bash
-uv run content-creator --workspace . workspace upgrade --to v0.16.0
+uv run content-creator --workspace . workspace upgrade --to v1.0.0
 ```
 
 Apply the reviewed preview explicitly:
 
 ```bash
-uv run content-creator --workspace . workspace upgrade --to v0.16.0 --apply
+uv run content-creator --workspace . workspace upgrade --to v1.0.0 --apply
 ```
 
 The apply operation updates the package requirement and lockfile, runs doctor,

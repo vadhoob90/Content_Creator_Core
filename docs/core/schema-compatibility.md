@@ -25,8 +25,8 @@ and stable filenames. Schema files include stable `$id` values.
 - A migration requires a historical fixture and a test proving the old form
   can be read without data loss.
 - Deprecation is announced in a minor release and supported for at least one
-  subsequent minor release. Removal requires a major release, or a documented
-  pre-1.0 breaking release with a migration command and release note.
+  subsequent minor release. Removal requires a major release with a migration
+  command and release note.
 
 Adding an optional field is normally backward compatible. Removing or
 renaming a field, changing its meaning, narrowing valid values, or changing a
