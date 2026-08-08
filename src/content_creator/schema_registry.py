@@ -16,7 +16,8 @@ from .perspective_semantic_review import (
     PerspectiveSemanticArtifact,
 )
 from .perspectives import PerspectiveManifest
-from .publication_provenance import PublicationBaseline, PublicationReceipt
+from .production_manifest import ProductionManifest
+from .publication_receipt_models import PublicationBaseline, PublicationReceipt
 from .storage import RunStore
 from .visuals import VisualManifest
 from .voice_evolution import VoiceEvolutionChangeSet, VoiceEvolutionDelta
@@ -43,6 +44,7 @@ SCHEMA_MODELS: Dict[str, Type[BaseModel]] = {
     "perspective-manifest": PerspectiveManifest,
     "perspective-review-decision": PerspectiveReviewDecision,
     "perspective-semantic-artifact": PerspectiveSemanticArtifact,
+    "production-manifest": ProductionManifest,
     "publication-baseline": PublicationBaseline,
     "publication-receipt": PublicationReceipt,
     "visual-manifest": VisualManifest,

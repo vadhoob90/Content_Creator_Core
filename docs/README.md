@@ -46,6 +46,7 @@ available independently of pack eligibility.
 - [How Content Creator works](guides/how-content-creator-works.md)
 - [Content Creator Coordinator](guides/content-coordinator.md)
 - [Routes and work orders](guides/routes-and-work-orders.md)
+- [Production manifests and review copies](guides/production-manifests.md)
 - [Learning and repository publication](guides/learning-and-publication.md)
 - [Publication provenance and CI verification](guides/publication-provenance.md)
 - [Visual asset workflows](guides/visual-assets.md)

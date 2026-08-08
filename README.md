@@ -57,6 +57,9 @@ Core can also explain the exact runtime composition for every agent: preview it
 before a run, trace source loading while content is created, or inspect the
 persisted provenance afterwards. See
 [runtime context composition](docs/guides/runtime-context-composition.md).
+Each run also produces a privacy-safe production manifest and a review copy
+showing the resolved pack, voice, perspectives, research route, models, and
+revision while keeping the publication artifact clean.
 
 ### 1. Create an author workspace
 

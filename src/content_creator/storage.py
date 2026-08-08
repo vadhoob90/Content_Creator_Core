@@ -284,6 +284,9 @@ class RunStore:
             None: The callable updates state state and returns no value.
         """
         state.updated_at = utc_now()
+        from .production_manifest import refresh_production_manifest
+
+        refresh_production_manifest(self.root, state, self._atomic_text)
         self._atomic_text(
             self.run_dir(state.id) / "state.json",
             state.model_dump_json(indent=2),
