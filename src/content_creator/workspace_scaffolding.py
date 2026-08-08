@@ -21,6 +21,7 @@ from .workspace_templates import (
     TECHNICAL_SETUP_TEMPLATE,
     VOICE_README_TEMPLATE,
     WorkspaceReadmeContext,
+    WorkspaceTemplates,
 )
 
 
@@ -64,12 +65,16 @@ class WorkspaceServices:
 
 
 def create_workspace(
-    scaffolder: Any, request: WorkspaceCreateRequest, services: WorkspaceServices
+    root: Path,
+    templates: WorkspaceTemplates,
+    request: WorkspaceCreateRequest,
+    services: WorkspaceServices,
 ) -> dict:
     """Create the workspace.
 
     Args:
-        scaffolder (Any): The scaffolder value passed to create workspace.
+        root (Path): The workspace root directory.
+        templates (WorkspaceTemplates): Renderer for generated workspace files.
         request (WorkspaceCreateRequest): The validated request that initiates the
             operation.
         services (WorkspaceServices): The services value passed to create workspace.
@@ -81,11 +86,10 @@ def create_workspace(
         request = WorkspaceCreateRequest(
             **{**request.__dict__, "core_ref": services.default_core_ref}
         )
-    root = scaffolder.root
     _prepare_destination(root)
     identity = _validated_identity(root, request, services)
     created, preserved = _initialise_base(root, request, identity, services)
-    _write_workspace_files(scaffolder, request, identity, created, preserved, services)
+    _write_workspace_files(root, templates, request, identity, created, preserved, services)
     return _result(root, request, identity, created, preserved)
 
 
@@ -196,7 +200,8 @@ def _initialise_base(
 
 
 def _write_workspace_files(
-    scaffolder: Any,
+    root: Path,
+    templates: WorkspaceTemplates,
     request: WorkspaceCreateRequest,
     identity: WorkspaceIdentity,
     created: list[str],
@@ -209,7 +214,8 @@ def _write_workspace_files(
     every created or retained path.
 
     Args:
-        scaffolder (Any): The scaffolder value passed to write workspace files.
+        root (Path): The workspace root directory.
+        templates (WorkspaceTemplates): Renderer for generated workspace files.
         request (WorkspaceCreateRequest): The validated request that initiates the
             operation.
         identity (WorkspaceIdentity): The identity value passed to write workspace
@@ -224,7 +230,6 @@ def _write_workspace_files(
     Returns:
         None: The callable updates write workspace files state and returns no value.
     """
-    root = scaffolder.root
     intended_uses = "\n".join(f"  --use {pack} \\" for pack in identity.packs).rstrip(" \\")
     readme_context = WorkspaceReadmeContext(
         identity.display_name,
@@ -237,19 +242,19 @@ def _write_workspace_files(
         intended_uses,
     )
     simple_files = {
-        "pyproject.toml": scaffolder._pyproject(
+        "pyproject.toml": templates._pyproject(
             slugify(identity.display_name),
             identity.display_name,
             identity.author_name,
             identity.dependency,
         ),
-        ".gitignore": scaffolder._gitignore(),
-        ".env.example": scaffolder._environment(),
-        "AGENTS.md": scaffolder._agents_guidance(
+        ".gitignore": templates._gitignore(),
+        ".env.example": templates._environment(),
+        "AGENTS.md": templates._agents_guidance(
             identity.display_name, identity.author_name, identity.voice_id
         ),
-        "CLAUDE.md": scaffolder._claude_guidance(),
-        "README.md": scaffolder._readme(readme_context),
+        "CLAUDE.md": templates._claude_guidance(),
+        "README.md": templates._readme(readme_context),
         "PERSONALISATION.md": PERSONALISATION_TEMPLATE.format(
             author_name=identity.author_name,
             voice_id=identity.voice_id,
@@ -275,7 +280,7 @@ def _write_workspace_files(
         ),
         f"profiles/{identity.voice_id}/onboarding.json": _onboarding(identity),
         f"voice-material/{identity.voice_id}/source-urls.txt": _source_instructions(),
-        "tests/test_workspace.py": scaffolder._smoke_test(identity.voice_id, identity.packs),
+        "tests/test_workspace.py": templates._smoke_test(identity.voice_id, identity.packs),
         "publication-receipts/baseline.json": json.dumps(
             {
                 "schema_version": "1.0",

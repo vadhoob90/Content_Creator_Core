@@ -65,6 +65,7 @@ Core always returns the result for review and never publishes externally.
 ## I develop Content Creator Core
 
 - [Core development guide](core/README.md)
+- [Extend providers, lifecycle stages, and packs](guides/extending-core.md)
 - [Development principles](core/development-principles.md)
 - [Architecture and development guardrails](core/architecture-guardrails.md)
 - [Public compatibility contracts](core/public-contracts.md)

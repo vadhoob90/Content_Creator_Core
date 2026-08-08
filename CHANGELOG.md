@@ -12,10 +12,40 @@ release tag.
 
 ### Changed
 
+## [1.7.0] - 2026-08-08
+
+### Added
+
+- Advisory architecture telemetry for single-importer modules and cross-file
+  inheritance, with characterized composition rules for orchestration, voice
+  building, and workspace generation.
+- Executable custom-provider and custom-stage examples, an extension guide,
+  maintainer module maps, and explicit `FakeProvider` testing guidance.
+- Property-based attribution and publication-path tests using the locked
+  Hypothesis dependency.
+
+### Changed
+
+- Orchestration, voice building, and workspace scaffolding now compose focused
+  collaborators instead of splitting implementations through inheritance.
+- Voice-build and voice-ML implementation clusters are cohesive packages;
+  corpus policy now lives with voice building and phrase-overlap policy lives
+  beside voice evaluation. Stable `voice_builder` and `voice_ml` imports remain
+  unchanged.
+- Post-publication perspective extraction and learning assessment now have
+  focused services, shortening the orchestrator's normal reading path.
+
 - CI and release automation now install from the frozen lockfile, audit known
   vulnerabilities across the supported Python range boundaries, enforce
   readability checks, reject release tags outside `main`, and publish SBOM and
   provenance attestations with reproducibly built artifacts.
+
+### Migration
+
+- No CLI, persisted-data, or generated-workspace migration is required. Internal
+  flat implementation modules were never supported import paths; consumers
+  should continue using `content_creator.voice_builder` and
+  `content_creator.voice_ml`.
 
 ## [1.6.0] - 2026-08-08
 

@@ -105,6 +105,46 @@ def deleted_parameters(tree: ast.AST) -> list[dict[str, object]]:
     return violations
 
 
+def defined_classes(tree: ast.AST) -> list[dict[str, object]]:
+    """Return top-level classes and the bases they declare."""
+    return [
+        {"name": node.name, "bases": [ast.unparse(base) for base in node.bases]}
+        for node in tree.body
+        if isinstance(node, ast.ClassDef)
+    ]
+
+
+def architecture_advisories(modules: list[dict[str, object]]) -> dict[str, object]:
+    """Build non-blocking cohesion and inheritance review signals."""
+    importer_counts = {str(module["module"]): 0 for module in modules}
+    for module in modules:
+        for imported in module["imports"]:
+            if imported in importer_counts:
+                importer_counts[imported] += 1
+    single_importers = sorted(
+        name for name, count in importer_counts.items() if count == 1 and name != PACKAGE_NAME
+    )
+    owners = {
+        str(item["name"]): str(module["module"]) for module in modules for item in module["classes"]
+    }
+    cross_file_inheritance = []
+    for module in modules:
+        for item in module["classes"]:
+            for base in item["bases"]:
+                owner = owners.get(str(base).rsplit(".", 1)[-1])
+                if owner and owner != module["module"]:
+                    cross_file_inheritance.append(
+                        {
+                            "class": f"{module['module']}.{item['name']}",
+                            "base": f"{owner}.{str(base).rsplit('.', 1)[-1]}",
+                        }
+                    )
+    return {
+        "single_importer_modules": single_importers,
+        "cross_file_inheritance": cross_file_inheritance,
+    }
+
+
 def build_report() -> dict:
     """Build module size and dependency measurements for production code."""
     modules = []
@@ -122,10 +162,11 @@ def build_report() -> dict:
                 "line_count": physical_line_count,
                 "implementation_line_count": implementation_line_count,
                 "imports": internal_imports(path, tree),
+                "classes": defined_classes(tree),
                 "deleted_parameters": deleted_parameters(tree),
             }
         )
-    return {
+    report = {
         "package": PACKAGE_NAME,
         "summary": {
             "module_count": len(modules),
@@ -136,6 +177,8 @@ def build_report() -> dict:
         },
         "modules": modules,
     }
+    report["advisories"] = architecture_advisories(modules)
+    return report
 
 
 def architecture_violations(report: dict) -> list[str]:
@@ -214,6 +257,13 @@ def main() -> int:
         report["modules"], key=lambda item: item["implementation_line_count"], reverse=True
     ):
         print("{implementation_line_count:5}  {module} ({line_count} physical)".format(**module))
+    advisories = report["advisories"]
+    print(
+        "Advisories: {} single-importer modules; {} cross-file inheritance relationships".format(
+            len(advisories["single_importer_modules"]),
+            len(advisories["cross_file_inheritance"]),
+        )
+    )
     if args.check:
         if violations:
             for violation in violations:

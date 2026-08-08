@@ -4,7 +4,7 @@ import pytest
 
 from content_creator.cli import main
 from content_creator.versioned_artifacts import hash_file, hash_json
-from content_creator.voice_build_models import VoiceBuildError
+from content_creator.voice_build.models import VoiceBuildError
 from content_creator.voice_models import VoiceManifest
 
 

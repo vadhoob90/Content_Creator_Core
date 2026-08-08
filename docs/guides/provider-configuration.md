@@ -109,3 +109,10 @@ To add another provider:
 3. Add profiles to `config/models.yaml`
 4. Run the shared adapter and route tests
 5. Add a manual live evaluation before treating it as production-ready
+
+The complete executable example in
+[`examples/extensions/custom_provider.py`](../../examples/extensions/custom_provider.py)
+implements `Provider.generate`, registers the adapter, creates a normalized
+`ModelRequest`, and verifies the normalized `ModelResponse`. Keep authentication,
+vendor payloads, retries, and response conversion inside the adapter; the
+orchestrator should receive only Core contracts.

@@ -8,26 +8,14 @@ import shutil
 from pathlib import Path
 from typing import List, Optional, cast
 
-from .attribution import classify_attribution, isolate_attributed_text
-from .corpus import assess_corpus
-from .ingestion import content_hash, is_near_duplicate, normalize_text, read_source
-from .linguistics import build_linguistic_signature, extract_linguistic_features
-from .runner import AgentRunner, AgentRunOptions
-from .storage import RunStore
-from .versioned_artifacts import hash_file, hash_json, publish_candidate
-from .voice_build_models import (
-    BuildState,
-    ProfileCriticism,
-    VoiceAnalysis,
-    VoiceBuildError,
-    VoiceEvaluationJudgement,
-    analysis_excerpt,
-    even_sample,
-    public_locator,
-)
-from .voice_evolution import VoiceEvolution
-from .voice_profile_renderer import VoiceProfileRenderer
-from .voices import (
+from ..attribution import classify_attribution, isolate_attributed_text
+from ..ingestion import content_hash, is_near_duplicate, normalize_text, read_source
+from ..linguistics import extract_linguistic_features
+from ..runner import AgentRunner, AgentRunOptions
+from ..storage import RunStore
+from ..versioned_artifacts import hash_file, hash_json, publish_candidate
+from ..voice_evolution import VoiceEvolution
+from ..voices import (
     AttributionResult,
     SourceRecord,
     VoiceManifest,
@@ -36,10 +24,24 @@ from .voices import (
     VoiceStrategy,
     VoiceWorkOrder,
 )
+from .corpus import analyse_corpus
+from .models import (
+    BuildState,
+    ProfileCriticism,
+    VoiceAnalysis,
+    VoiceBuildError,
+    VoiceEvaluationJudgement,
+    analysis_excerpt,
+    public_locator,
+)
+from .renderer import VoiceProfileRenderer
 
 
-class VoiceBuildPipeline(VoiceProfileRenderer):
-    """Represent a voice build pipeline."""
+class VoiceBuildPipeline:
+    """Represent a voice build pipeline.
+
+    Compose evidence collection, analysis, rendering, evaluation, and activation.
+    """
 
     def __init__(self, root: Path, runner: Optional[AgentRunner], provider: Optional[str]):
         """Initialize the voice build pipeline.
@@ -56,6 +58,7 @@ class VoiceBuildPipeline(VoiceProfileRenderer):
         self.root = root
         self.runner = runner
         self.provider = provider
+        self.renderer = VoiceProfileRenderer()
 
     def build(
         self,
@@ -299,38 +302,8 @@ class VoiceBuildPipeline(VoiceProfileRenderer):
         Returns:
             None: The callable updates analyse corpus state and returns no value.
 
-        Raises:
-            VoiceBuildError: If the voice build operation cannot complete.
         """
-        state.corpus = assess_corpus(state.sources, state.order.authorisation.intended_uses)
-        if state.final_candidate.exists() and not state.corpus["sufficient"]:
-            raise VoiceBuildError(
-                "Rebuild has insufficient usable material; previous candidate preserved"
-            )
-        usable = [record for record in state.sources if record.approved_for_analysis]
-        held_out_count = min(10, max(1, len(usable) // 10)) if len(usable) >= 2 else 0
-        state.held_out = even_sample(usable, held_out_count) if held_out_count else []
-        held_out_ids = {record.id for record in state.held_out}
-        measurement_records = [record for record in usable if record.id not in held_out_ids]
-        state.analysis_records = even_sample(measurement_records, 50)
-        state.corpus.update(
-            {
-                "held_out_source_ids": [record.id for record in state.held_out],
-                "measurement_source_ids": [record.id for record in measurement_records],
-                "semantic_analysis_source_ids": [record.id for record in state.analysis_records],
-                "semantic_analysis_limit": 50,
-            }
-        )
-        state.signature = build_linguistic_signature(
-            {
-                "id": record.id,
-                "kind": record.kind,
-                "text": state.analysis_texts[record.id],
-                "weight": record.attribution.voice_weight,
-            }
-            for record in measurement_records
-        )
-        state.patterns = self._patterns(state.analysis_records, state.signature)
+        analyse_corpus(state, self.renderer)
 
     def _analyse_patterns(self, state: BuildState) -> None:
         """Return the analyse patterns.
@@ -453,7 +426,7 @@ class VoiceBuildPipeline(VoiceProfileRenderer):
             },
             "hard_gates": ["unsupported_personal_context", "material_phrase_overlap"],
         }
-        profile = self._profile(state.order, state.patterns, state.corpus)
+        profile = self.renderer.profile(state.order, state.patterns, state.corpus)
         artifacts = {
             "profile.md": profile,
             "constraints.json": json.dumps(constraints, indent=2),

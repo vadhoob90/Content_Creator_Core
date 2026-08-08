@@ -13,7 +13,7 @@ from pydantic import BaseModel, Field
 
 from .storage import RunStore
 from .versioned_artifacts import hash_file, hash_json, verify_components
-from .voice_build_models import VoiceBuildError
+from .voice_build.models import VoiceBuildError
 from .voice_models import VoiceManifest, VoicePattern, VoiceStatus
 
 

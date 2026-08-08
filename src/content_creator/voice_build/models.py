@@ -8,7 +8,7 @@ from typing import Any, List, Optional
 
 from pydantic import BaseModel, Field
 
-from .voices import SourceRecord, VoicePattern, VoiceWorkOrder
+from ..voices import SourceRecord, VoicePattern, VoiceWorkOrder
 
 
 class VoiceBuildError(RuntimeError):

@@ -7,9 +7,9 @@ import math
 from pathlib import Path
 from typing import Any, Dict
 
-from .linguistics import extract_linguistic_features
-from .storage import StorageError
-from .voice_ml_training import ML_FRAMEWORK, ML_FRAMEWORK_VERSION, ml_model_path
+from ..linguistics import extract_linguistic_features
+from ..storage import StorageError
+from .training import ML_FRAMEWORK, ML_FRAMEWORK_VERSION, ml_model_path
 
 
 def assess_with_ml_artifact(

@@ -45,8 +45,8 @@ class OrchestrationError(RuntimeError):
     pass
 
 
-class OrchestrationSupport:
-    """Provide shared services used during orchestration."""
+class OrchestrationRuntime:
+    """Provide the collaborators and focused operations used by orchestration."""
 
     def __init__(
         self,

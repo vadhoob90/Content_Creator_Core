@@ -7,11 +7,11 @@ from typing import List, Optional
 
 from .runner import AgentRunner
 from .storage import RunStore
-from .voice_build_models import (
+from .voice_build.models import (
     VoiceBuildError as VoiceBuildError,
 )
-from .voice_build_models import analysis_excerpt, even_sample
-from .voice_build_pipeline import VoiceBuildPipeline
+from .voice_build.models import analysis_excerpt, even_sample
+from .voice_build.pipeline import VoiceBuildPipeline
 from .voices import SourceRecord, VoiceManifest, VoiceWorkOrder
 
 

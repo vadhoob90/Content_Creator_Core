@@ -17,6 +17,19 @@ guidance. A technical researcher can prioritise specifications, source code,
 benchmarks, and vendor documentation. Both remain subject to the same core
 research contract.
 
+For onboarding, inspect the layers in this order:
+
+1. `contracts/agent-harness.md` for authority, safety, and publication limits.
+2. `contracts/roles/<role>.md` for the role-specific invariant.
+3. `agents/<role>.md` for repository-owned specialization.
+4. `learnings/memory.json` and the selected voice's learning memory.
+5. `content-creator personalisation explain --role <role>` for the effective
+   preflight view, followed by `context show <run-id>` for persisted evidence.
+
+If these layers conflict, the Core harness and role contract win. Do not copy a
+Core invariant into every repository agent merely to make it more visible;
+link the invariant and keep the specialization focused.
+
 Use:
 
 ```bash

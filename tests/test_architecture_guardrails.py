@@ -60,6 +60,16 @@ def test_documented_subsystem_facades_are_characterized():
         "train_voice_ml_model",
         "training_reliability",
     ]
+    assert orchestrator.Orchestrator.__bases__ == (object,)
+
+
+def test_assembled_services_use_composition_and_cohesive_packages():
+    from content_creator.voice_build.pipeline import VoiceBuildPipeline
+    from content_creator.workspace import WorkspaceScaffolder
+
+    assert VoiceBuildPipeline.__bases__ == (object,)
+    assert WorkspaceScaffolder.__bases__ == (object,)
+    assert voice_ml.__name__ == "content_creator.voice_ml"
 
 
 def test_voice_ml_facade_does_not_eagerly_import_sklearn():
@@ -171,8 +181,16 @@ def test_architecture_report_describes_modules_and_dependencies():
     }
     assert oversized == {}
     assert all(module["deleted_parameters"] == [] for module in modules.values())
+    assert "single_importer_modules" in report["advisories"]
+    assert "cross_file_inheritance" in report["advisories"]
+    assert not any(
+        item["class"].endswith(("Orchestrator", "VoiceBuildPipeline", "WorkspaceScaffolder"))
+        for item in report["advisories"]["cross_file_inheritance"]
+    )
     assert "content_creator.diagnostic_recording" not in modules
     assert "content_creator.diagnostic_support" not in modules
+    assert "content_creator.voice_build.pipeline" in modules
+    assert "content_creator.voice_ml.training" in modules
     diagnostic_service_imports = modules["content_creator.diagnostics.service"]["imports"]
     assert "content_creator.diagnostics.candidates" in diagnostic_service_imports
     assert "content_creator.diagnostics.policy" in diagnostic_service_imports

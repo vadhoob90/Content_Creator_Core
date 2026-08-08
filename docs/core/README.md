@@ -48,19 +48,17 @@ src/content_creator/
 ├── schema_registry.py    versioned persisted-contract catalogue and migrations
 ├── operations.py         privacy-safe support evidence and recovery inspection
 ├── orchestrator.py       public workflow and checkpoint application service
-├── orchestration_support.py workflow execution support used by the service
+├── orchestration_support.py composed runtime services used by orchestration
 ├── stages.py             replaceable research and draft-review stages
 ├── capabilities.py       optional visual and voice-scoring seam
 ├── versioned_artifacts.py shared immutable-artifact mechanics
 ├── voices.py             voice lifecycle compatibility façade and registry
 ├── voice_models.py       voice contracts and onboarding records
-├── voice_builder.py      source-derived voice build pipeline
-├── voice_profile_renderer.py voice pattern and profile rendering
+├── voice_builder.py      stable source-derived voice build façade
+├── voice_build/          corpus policy, models, rendering, and pipeline execution
 ├── linguistics.py        deterministic voice measurements and statistics
 ├── voice_assessment.py   advisory draft-to-voice scoring
-├── voice_ml.py           optional local ML compatibility façade
-├── voice_ml_training.py  ML evidence preparation and training
-├── voice_ml_inference.py dependency-free ML artifact inference
+├── voice_ml/             stable façade plus ML dependencies, training, and inference
 ├── perspectives.py       perspective registry compatibility façade
 ├── perspective_support.py perspective contracts, catalogue, and resolution
 ├── diagnostics/          runtime evidence, sanitisation, and support candidates

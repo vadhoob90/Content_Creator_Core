@@ -5,10 +5,34 @@ from __future__ import annotations
 import json
 import re
 from pathlib import Path
+from typing import Iterable
 
 from .domain import WorkOrder
-from .overlap import phrase_overlap
 from .voices import VoiceRegistry
+
+
+def phrase_overlap(text: str, corpus: Iterable[str], n: int = 12) -> dict:
+    """Return material phrase overlap between a draft and voice evidence.
+
+    Args:
+        text (str): Draft text to inspect.
+        corpus (Iterable[str]): Authorized voice evidence.
+        n (int): Phrase length in normalized words. Defaults to ``12``.
+
+    Returns:
+        dict: Pass status and sorted matching phrases.
+    """
+    words = re.findall(r"\b[\w'-]+\b", text.lower())
+    generated = {" ".join(words[index : index + n]) for index in range(max(0, len(words) - n + 1))}
+    matches = set()
+    for source in corpus:
+        source_words = re.findall(r"\b[\w'-]+\b", source.lower())
+        source_ngrams = {
+            " ".join(source_words[index : index + n])
+            for index in range(max(0, len(source_words) - n + 1))
+        }
+        matches.update(generated & source_ngrams)
+    return {"passed": not matches, "matches": sorted(matches)}
 
 
 def evaluate_voice_output(root: Path, order: WorkOrder, draft: str) -> dict:

@@ -4,14 +4,14 @@ from __future__ import annotations
 
 from typing import Dict, List
 
-from .voices import SourceRecord, VoicePattern, VoiceWorkOrder
+from ..voices import SourceRecord, VoicePattern, VoiceWorkOrder
 
 
 class VoiceProfileRenderer:
     """Represent a voice profile renderer."""
 
     @staticmethod
-    def _patterns(
+    def patterns(
         records: List[SourceRecord],
         signature: dict,
     ) -> List[VoicePattern]:
@@ -68,7 +68,7 @@ class VoiceProfileRenderer:
         ]
 
     @staticmethod
-    def _profile(order: VoiceWorkOrder, patterns: List[VoicePattern], corpus: dict) -> str:
+    def profile(order: VoiceWorkOrder, patterns: List[VoicePattern], corpus: dict) -> str:
         """Return the profile.
 
         Args:

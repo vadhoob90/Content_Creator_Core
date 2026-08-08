@@ -34,9 +34,9 @@ implementations may move:
 | `content_creator.voice_builder` | `VoiceBuilder` and `VoiceBuildError` |
 | `content_creator.voice_ml` | Names declared by `voice_ml.__all__` |
 
-Sibling implementation paths such as `orchestration_support`,
-`diagnostic_support`, `diagnostic_recording`, `voice_build_pipeline`, and the
-`voice_ml_*` modules are internal unless a future release documents them as
+Sibling implementation paths such as `orchestration_support`, the modules under
+`voice_build`, and the implementation modules under `voice_ml` are internal unless a
+future release documents them as
 supported. Repository tests may import an internal module to test its focused
 behavior; that does not convert the path into a public contract.
 
