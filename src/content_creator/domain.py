@@ -465,6 +465,8 @@ class RunState(BaseModel):
     route_plan: RoutePlan
     revision: int = 0
     final_draft_path: Optional[str] = None
+    production_manifest_path: Optional[str] = None
+    review_draft_path: Optional[str] = None
     published_path: Optional[str] = None
     published_visual_path: Optional[str] = None
     last_error: Optional[str] = None

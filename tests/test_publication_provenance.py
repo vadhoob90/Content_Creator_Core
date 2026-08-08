@@ -81,6 +81,8 @@ def test_publication_writes_privacy_safe_receipt_for_direct_author_contribution(
     receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
 
     assert published.published_path == "content/general-text/published/direct.md"
+    assert receipt["content_pack_id"] == "general-text"
+    assert receipt["content_pack_version"] == "1.0.0"
     assert receipt["author_contribution_provenance"] == "direct-author-contribution"
     assert receipt["perspectives"] == []
     assert receipt["perspective_evaluation"]["passed"] is True

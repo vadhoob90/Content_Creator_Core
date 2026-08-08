@@ -9,6 +9,9 @@ perspective evaluation used at the publication boundary.
 Receipts live under `publication-receipts/` by default. They contain hashes and
 minimal provenance classifications, not prompts, drafts, feedback, research
 notes, or author-contribution text.
+New receipts also record the resolved content pack ID and version. The
+[production manifest](production-manifests.md) provides the broader run summary
+and review-only table without decorating the published content.
 
 ## Verify publications offline
 

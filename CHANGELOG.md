@@ -12,6 +12,30 @@ release tag.
 
 ### Changed
 
+## [1.8.0] - 2026-08-08
+
+### Added
+
+- A versioned `production-manifest.json` for every new content run, unifying
+  content pack, voice, perspective, research, model-routing, lineage, revision,
+  artifact-hash, and publication metadata without copying private inputs.
+- A compact `production-manifest.md` table and `review.md` copy that place
+  production details above reviewed content while preserving clean `final.md`
+  and published files.
+
+### Changed
+
+- Production metadata now refreshes at every persisted run-state transition,
+  including checkpoints, failures, revisions, and publication.
+- New publication receipts record the resolved content pack ID and version in
+  addition to pinned voice and perspective evidence.
+
+### Migration
+
+- No stored-data migration is required. Existing runs remain unchanged when
+  read; their next deliberate state-saving operation backfills a manifest from
+  available evidence without inventing missing historical model context.
+
 ## [1.7.0] - 2026-08-08
 
 ### Added

@@ -7,13 +7,20 @@ from enum import Enum
 from pathlib import Path
 from typing import Any, Dict, Iterable, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 from .domain import RunState, RunStatus, utc_now
 from .packs import PackRegistry
 from .perspective_evaluation import evaluate_perspective_output
 from .perspective_semantic_review import SemanticReviewReceipt
 from .perspectives import PerspectiveEntryStatus, PerspectiveRegistry
+from .publication_receipt_models import (
+    PerspectiveEvaluationReceipt,
+    PerspectiveReceipt,
+    PublicationBaseline,
+    PublicationBaselineEntry,
+    PublicationReceipt,
+)
 from .storage import RunStore
 from .versioned_artifacts import hash_file, hash_json
 from .voices import VoiceRegistry
@@ -39,60 +46,6 @@ class PublicationFinding(BaseModel):
     code: str
     artifact_path: Optional[str] = None
     detail: str
-
-
-class PerspectiveReceipt(BaseModel):
-    """Represent one pinned perspective and its approved entries."""
-
-    context_id: str
-    version: str
-    status_at_publication: str
-    manifest_hash: str
-    entries_hash: str
-    selected_entry_hashes: Dict[str, str] = Field(default_factory=dict)
-
-
-class PerspectiveEvaluationReceipt(BaseModel):
-    """Persist the privacy-safe deterministic evaluation result."""
-
-    passed: bool
-    artifact_hash: str
-    errors: list[str] = Field(default_factory=list)
-    position_marker_count: int = 0
-    selected_entry_ids: list[str] = Field(default_factory=list)
-
-
-class PublicationReceipt(BaseModel):
-    """Represent repository-tracked evidence for one publication."""
-
-    schema_version: str = "1.0"
-    artifact_path: str
-    artifact_hash: str
-    run_id: str
-    final_status: str
-    voice_id: str
-    voice_version: str
-    voice_manifest_hash: Optional[str] = None
-    author_contribution_provenance: str
-    perspectives: list[PerspectiveReceipt] = Field(default_factory=list)
-    perspective_evaluation: PerspectiveEvaluationReceipt
-    semantic_review: SemanticReviewReceipt = Field(default_factory=SemanticReviewReceipt)
-    published_at: str
-
-
-class PublicationBaselineEntry(BaseModel):
-    """Represent one legacy publication admitted by prospective enforcement."""
-
-    artifact_path: str
-    artifact_hash: str
-
-
-class PublicationBaseline(BaseModel):
-    """Record legacy publications that predate tracked receipts."""
-
-    schema_version: str = "1.0"
-    created_at: str
-    artifacts: list[PublicationBaselineEntry] = Field(default_factory=list)
 
 
 class PublicationProvenance:
@@ -148,6 +101,9 @@ class PublicationProvenance:
     ) -> Path:
         """Write the tracked receipt for a successful publication.
 
+        Pin the resolved pack, voice, perspectives, exact artifact, and review
+        evidence without copying private run content into tracked provenance.
+
         Args:
             state (RunState): Published in-memory run state.
             target (Path): Published artifact path.
@@ -166,11 +122,17 @@ class PublicationProvenance:
             state.work_order.voice_id,
             state.work_order.voice_version,
         )
+        pack = PackRegistry(self.root).resolve(
+            state.work_order.content_pack,
+            state.work_order.pack_options,
+        )
         receipt = PublicationReceipt(
             artifact_path=relative_target,
             artifact_hash=hash_file(target),
             run_id=state.id,
             final_status=RunStatus.PUBLISHED.value,
+            content_pack_id=pack.id,
+            content_pack_version=pack.version,
             voice_id=state.work_order.voice_id,
             voice_version=str(state.work_order.voice_version),
             voice_manifest_hash=voice.get("manifest_hash"),
