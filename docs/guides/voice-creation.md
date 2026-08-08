@@ -63,6 +63,23 @@ content-creator voice approve example-person-general \
 Approval makes no model call. It verifies component hashes, creates an approval
 receipt, assigns a stable version, and atomically updates the registry.
 
+## Evolve an active voice
+
+Adding sources to an active voice preserves its approved profile, constraints,
+rubric, and patterns by default. Rebuild, inspect the semantic diff, and approve
+the new candidate explicitly:
+
+```bash
+content-creator voice add-sources example-person-general \
+  --documents "/absolute/path/to/new-writing"
+content-creator voice rebuild example-person-general
+content-creator voice diff example-person-general
+```
+
+Rule changes require an evidence-backed change set. Full regeneration is a
+separate explicit replacement mode. See [Safe voice evolution](voice-evolution.md)
+for the contracts, commands, and failure-safety guarantees.
+
 Deactivate without deleting history:
 
 ```bash

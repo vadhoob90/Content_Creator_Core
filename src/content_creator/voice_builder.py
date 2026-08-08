@@ -97,14 +97,27 @@ class VoiceBuilder:
             raise VoiceBuildError(f"Unknown voice work order: {voice_id}")
         return VoiceWorkOrder.model_validate_json(path.read_text(encoding="utf-8"))
 
-    def build(self, voice_id: str) -> VoiceManifest:
+    def build(
+        self,
+        voice_id: str,
+        full_regenerate: bool = False,
+        change_set: Optional[Path] = None,
+    ) -> VoiceManifest:
         """Build the voice builder workflow.
 
         Args:
             voice_id (str): The stable identifier for the selected voice.
+            full_regenerate (bool): Explicitly replace active guidance. Defaults to
+                ``False``.
+            change_set (Optional[Path]): Evidence-backed semantic change proposals.
+                Defaults to ``None``.
 
         Returns:
             VoiceManifest: The constructed voice manifest for value.
         """
         pipeline = VoiceBuildPipeline(self.root, self.runner, self.provider)
-        return pipeline.build(self.load_work_order(voice_id))
+        return pipeline.build(
+            self.load_work_order(voice_id),
+            full_regenerate=full_regenerate,
+            change_set=change_set,
+        )

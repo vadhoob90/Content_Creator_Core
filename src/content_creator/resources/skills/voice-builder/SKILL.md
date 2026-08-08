@@ -127,7 +127,19 @@ To add material:
 ```bash
 content-creator voice add-sources <voice-id> --sources "<URL file>"
 content-creator voice rebuild <voice-id>
+content-creator voice diff <voice-id>
 ```
+
+When a voice is active, rebuild evolves its immutable approved baseline by
+default. It preserves approved profile prose, constraints, rubric, and patterns;
+new evidence may add non-conflicting proposals. Always show the semantic diff
+before asking for approval.
+
+Use an evidence-backed `--change-set` for an intentional rule modification,
+supersession, or removal. Every changed rule needs authorised source IDs,
+confidence, and rationale, followed by author review. Never use
+`--full-regenerate` unless the user explicitly asks to replace the approved
+guidance.
 
 ## Approve deterministically
 

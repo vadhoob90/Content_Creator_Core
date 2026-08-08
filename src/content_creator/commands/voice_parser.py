@@ -78,6 +78,15 @@ def _register_build_and_assessment(commands: argparse._SubParsersAction) -> None
         if command_name in {"build", "rebuild"}:
             command.add_argument("--provider", choices=PROVIDERS)
             command.add_argument("--offline-analysis", action="store_true")
+            command.add_argument(
+                "--full-regenerate",
+                action="store_true",
+                help="Explicitly replace an active voice instead of preserving it",
+            )
+            command.add_argument(
+                "--change-set",
+                help="JSON file containing evidence-backed semantic voice changes",
+            )
     assess = commands.add_parser("assess")
     assess.add_argument("voice_id")
     assess.add_argument("--draft", required=True)
@@ -143,8 +152,8 @@ def _register_lifecycle(commands: argparse._SubParsersAction) -> None:
     add_sources.add_argument("--documents", action="append", default=[])
     diff = commands.add_parser("diff")
     diff.add_argument("voice_id")
-    diff.add_argument("--from", dest="from_version", required=True)
-    diff.add_argument("--to", dest="to_version", required=True)
+    diff.add_argument("--from", dest="from_version", default="active")
+    diff.add_argument("--to", dest="to_version", default="candidate")
     consolidate = commands.add_parser("consolidate-learnings")
     consolidate.add_argument("voice_id")
 

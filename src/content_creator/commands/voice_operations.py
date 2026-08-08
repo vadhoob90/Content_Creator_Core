@@ -34,7 +34,14 @@ def build(context: VoiceCommandContext) -> int:
     Returns:
         int: The constructed numeric value for value.
     """
-    print_json(context.builder.build(context.arguments.voice_id))
+    change_set = getattr(context.arguments, "change_set", None)
+    print_json(
+        context.builder.build(
+            context.arguments.voice_id,
+            full_regenerate=getattr(context.arguments, "full_regenerate", False),
+            change_set=Path(change_set) if change_set else None,
+        )
+    )
     return 0
 
 
@@ -292,6 +299,8 @@ def _profile_lines(context: VoiceCommandContext, version: str) -> list[str]:
         list[str]: The resulting profile lines values in their documented order.
     """
     voice_root = context.root / "profiles" / context.arguments.voice_id
+    if version == "active":
+        version = context.registry.get(context.arguments.voice_id)["active_version"]
     directory = (
         voice_root / "candidate" if version == "candidate" else voice_root / "versions" / version
     )
@@ -309,17 +318,37 @@ def show_diff(context: VoiceCommandContext) -> int:
         int: The resulting numeric value for show diff.
     """
     arguments = context.arguments
-    print(
-        "\n".join(
-            difflib.unified_diff(
-                _profile_lines(context, arguments.from_version),
-                _profile_lines(context, arguments.to_version),
-                fromfile=arguments.from_version,
-                tofile=arguments.to_version,
-                lineterm="",
-            )
+    profile_diff = list(
+        difflib.unified_diff(
+            _profile_lines(context, arguments.from_version),
+            _profile_lines(context, arguments.to_version),
+            fromfile=arguments.from_version,
+            tofile=arguments.to_version,
+            lineterm="",
         )
     )
+    evolution_path = (
+        context.root / "profiles" / arguments.voice_id / "candidate" / "voice-evolution.json"
+    )
+    delta = (
+        json.loads(evolution_path.read_text(encoding="utf-8")) if evolution_path.is_file() else {}
+    )
+    semantic_baseline = {"active", str(delta.get("baseline_version"))}
+    if (
+        delta
+        and arguments.to_version == "candidate"
+        and arguments.from_version in semantic_baseline
+    ):
+        print_json(
+            {
+                "from": arguments.from_version,
+                "to": arguments.to_version,
+                "semantic_delta": delta,
+                "profile_diff": profile_diff,
+            }
+        )
+    else:
+        print("\n".join(profile_diff))
     return 0
 
 
