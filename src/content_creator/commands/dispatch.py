@@ -35,6 +35,7 @@ from .lifecycle_commands import (
 )
 from .pack_commands import manage_pack
 from .parser import build_parser
+from .personalisation import run as show_personalisation
 from .run_commands import run as run_content
 from .shared import print_json, resolve_root
 from .workspace_commands import manage_workspace
@@ -52,6 +53,7 @@ ROUTES: dict[str, Handler] = {
     "learn": learn,
     "operations": inspect_operations,
     "overview": show_overview,
+    "personalisation": show_personalisation,
     "pack": manage_pack,
     "packs": list_packs,
     "perspective": manage_perspective,

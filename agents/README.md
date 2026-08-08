@@ -1,42 +1,35 @@
-# Standard repository agent template
+# My agents
 
-These files are editable starting points for a content repository. The
-`content-creator init` and `content-creator agents scaffold` commands copy them
-into a workspace without overwriting existing files.
+Each Markdown file in this directory specialises one agent for this repository.
+Run `content-creator --workspace . personalisation show` to see which files
+have been customised and which remain unchanged Core starting points.
 
-Repository agents define domain and editorial behaviour. They do not own
-routing, model selection, persistence, approvals, retries, publication, or
-output schemas. Those mechanisms and mandatory role boundaries come from the
-versioned Content Creator core.
+## How an agent becomes personal
 
-At runtime Core composes the applicable prompt layers in this order (some
-layers are role- or route-specific):
+Core builds an effective instruction set for every run from:
 
-1. core harness;
-2. core role contract;
-3. repository-owned agent;
-4. repository learning policy;
-5. resolved active voice and approved perspectives;
-6. active repository and voice-scoped learnings; and
-7. rubrics and content-pack instructions.
+1. the mandatory Core harness and role contract;
+2. the editable repository agent in this directory;
+3. the role's learning policy, where applicable;
+4. the selected active voice and approved perspectives;
+5. active repository-wide and voice-specific learning; and
+6. rubrics and content-pack instructions.
 
-The voice-building agents also receive deterministic linguistic measurements
-from the authorised corpus. They interpret those measurements as evidence,
-not as writing targets or proof of authorship. See the [statistical voice
-evidence guide](https://github.com/vadhoob90/Content_Creator_Core/blob/main/docs/guides/linguistic-voice-framework.md).
+The files here are deliberately stable. New author feedback is recorded as
+traceable learning rather than silently rewriting an agent definition.
 
-When statistical draft scoring and the selected pack are both eligible, Core
-supplies its advisory report only to the critic. The writer receives no
-numerical target, and the score does not change validation, rubric weighting,
-or publication gates.
+## Roles
 
-Customise the copied files for the repository. For example, a legal researcher
-and a technical researcher should use different source hierarchies while both
-remain subject to the same core evidence-integrity contract.
+- `briefing-agent.md` turns a request into a structured work order.
+- `researcher.md` builds a traceable evidence brief.
+- `writer.md` produces the draft.
+- `critic.md` reviews it against evidence, voice, and rubrics.
+- `learning-extractor.md` proposes role-specific learning after author review.
+- `voice-analyst.md`, `profile-critic.md`, `attribution-reviewer.md`, and
+  `voice-evaluator.md` build and assess voice candidates.
+- `perspective-extractor.md` and `perspective-evaluator.md` govern reusable
+  author positions.
 
-Maintainers changing this packaged template must also follow the Core
-[architecture and development guardrails](https://github.com/vadhoob90/Content_Creator_Core/blob/main/docs/core/architecture-guardrails.md),
-including mirrored-resource parity, focused tests, and the full release gate.
-Core contributors should also run the linked readability check; generated agent
-guidance should remain self-explanatory and must not hide workflow rules in
-generic helper modules.
+The `researcher-learnings.md`, `writer-learnings.md`, and
+`critic-learnings.md` files define what each role may learn. Core still owns
+routing, persistence, approvals, publication, retries, and output schemas.

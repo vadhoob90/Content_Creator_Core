@@ -47,6 +47,7 @@ def test_upgrade_preview_is_immutable_and_non_mutating(project):
     assert "agents/" in report["preserved"]
     assert report["compatibility"]["dependency_update"] == "preview"
     assert report["compatibility"]["workspace_readiness"] == "compatible"
+    assert report["personalisation"]["inspect_command"] == ["personalisation", "show"]
 
 
 @pytest.mark.parametrize("target", ["main", "release-0.6", "abc123", "v0.6"])
@@ -73,6 +74,7 @@ def test_upgrade_applies_dependency_and_runs_validation(project):
     assert "Content_Creator_Core/tree/v0.6.0" in readme
     assert "## Custom section\n\nKeep me." in readme
     assert report["readme_updated"] is True
+    assert "Run content-creator --workspace . personalisation show." in report["manual_follow_up"]
     assert report["compatibility"]["dependency_update"] == "applied"
     assert (root / report["compatibility_report"]).exists()
     assert commands[0] == ["uv", "lock", "--upgrade-package", "content-creator"]

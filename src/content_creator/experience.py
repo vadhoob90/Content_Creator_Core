@@ -9,7 +9,10 @@ from .domain import WorkOrder
 
 
 def render_overview(snapshot: WorkspaceSnapshot) -> str:
-    """Render the overview.
+    """Render workspace state and the safest useful next action.
+
+    Summarize active and pending personalisation, runtime health, recent runs,
+    and a command the author can run next.
 
     Args:
         snapshot (WorkspaceSnapshot): The snapshot value passed to render overview.
@@ -25,7 +28,7 @@ def render_overview(snapshot: WorkspaceSnapshot) -> str:
     pending = [
         voice.display_name
         for voice in snapshot.voices
-        if voice.onboarding_status == "undecided" or voice.candidate_status
+        if voice.onboarding_status == "undecided" or voice.candidate_decision == "pending"
     ]
     lines = [
         "Content Creator workspace",
@@ -53,6 +56,7 @@ def render_overview(snapshot: WorkspaceSnapshot) -> str:
     command = _render_action_command(snapshot.recommended_action)
     if command:
         lines.append(command)
+    lines.append("Explore personalisation: content-creator personalisation show")
     return "\n".join(lines)
 
 
@@ -79,7 +83,15 @@ def render_start(
         )
     if order is None:
         command = _render_action_command(snapshot.recommended_action)
-        return "\n".join(line for line in [snapshot.recommended_action.label, command] if line)
+        return "\n".join(
+            line
+            for line in [
+                snapshot.recommended_action.label,
+                command,
+                "Explore personalisation: content-creator personalisation show",
+            ]
+            if line
+        )
     lines = [
         "Proposed content plan",
         "Topic: {}".format(order.topic),

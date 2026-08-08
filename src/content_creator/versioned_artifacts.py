@@ -9,6 +9,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+from collections.abc import Callable
 from datetime import UTC, datetime
 from pathlib import Path
 from types import TracebackType
@@ -80,6 +81,31 @@ def verify_components(
         if not (directory / filename).is_file()
         or hash_file(directory / filename) != expected_hashes.get(name)
     ]
+
+
+def publish_candidate(
+    voice_root: Path,
+    operation: Callable[[Any], None],
+    state: Any,
+    error_type: Type[RuntimeError],
+) -> None:
+    """Publish a built voice candidate under the shared lifecycle lock.
+
+    Args:
+        voice_root (Path): Root directory for one selected voice.
+        operation (Callable[[Any], None]): Candidate directory swap operation.
+        state (Any): Completed build state passed to the swap operation.
+        error_type (Type[RuntimeError]): Runtime error raised on lock conflict.
+
+    Returns:
+        None: The candidate is published in place.
+    """
+    with ActivationLock(
+        voice_root / ".lifecycle.lock",
+        "Voice candidate lifecycle operation is already in progress",
+        error_type,
+    ):
+        operation(state)
 
 
 class ActivationLock:

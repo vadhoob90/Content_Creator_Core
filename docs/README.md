@@ -12,6 +12,14 @@ on the author journey; these guides contain the detailed terminal procedures.
 After setup, run `content-creator --workspace . start` to see the next task and
 `content-creator --workspace . overview` to inspect workspace health.
 
+## I want to understand how this workspace is personalised
+
+- [Agents, learning, voice, and perspectives](guides/personalisation.md)
+- [Repository-owned agents](guides/repository-agents.md)
+
+Run `content-creator --workspace . personalisation show` for a direct view of
+the effective state and the repository paths behind it.
+
 ## I want to create or revise a voice
 
 - [Voice onboarding](guides/voice-onboarding.md)
@@ -45,7 +53,6 @@ Core always returns the result for review and never publishes externally.
 ## I maintain an author workspace
 
 - [Versioned dependencies and upgrades](guides/workspace-dependencies.md)
-- [Repository-owned agents](guides/repository-agents.md)
 - [Content pack authoring](guides/content-pack-authoring.md)
 - [Testing and evaluation](guides/testing-and-evaluation.md)
 - [Troubleshooting](guides/troubleshooting.md)

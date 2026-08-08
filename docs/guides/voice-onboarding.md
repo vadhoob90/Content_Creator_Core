@@ -110,6 +110,19 @@ content-creator --workspace . voice approve example-person-general \
   --approved-by "Example Person"
 ```
 
+If the candidate should not replace the active voice, reject the exact reviewed
+hash instead:
+
+```bash
+content-creator --workspace . voice reject example-person-general \
+  --candidate-hash sha256:<complete-hash> \
+  --rejected-by "Example Person" \
+  --reason "The active version remains preferable."
+```
+
+Rejection archives the candidate and its decision receipt without changing the
+active version. Repeating the same hash-anchored decision is idempotent.
+
 Only activation makes the candidate available to new runs. For the full
 analysis and evaluation pipeline, see
 [How Content Creator derives a voice](how-voice-is-derived.md).
@@ -201,4 +214,5 @@ content-creator --workspace . voice verify example-person-general
 ```
 
 `voice status` reports the onboarding record, candidate state, and active
-registry entry together.
+registry entry together. It also classifies whether a candidate is genuinely
+pending, already active, rejected, or invalid.

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import argparse
 
-from . import operations, perspective, provider, schema, visual, voice
+from . import operations, personalisation, perspective, provider, schema, visual, voice
 from .lifecycle_parser import (
     register_coordinator,
     register_diagnostics,
@@ -29,7 +29,7 @@ def build_parser() -> argparse.ArgumentParser:
         dest="command",
         required=True,
         metavar=(
-            "{start,overview,workspace,doctor,run,status,submission,publish,learn,"
+            "{start,overview,personalisation,workspace,doctor,run,status,submission,publish,learn,"
             "verify-publications,diagnostics,advanced}"
         ),
     )
@@ -39,6 +39,7 @@ def build_parser() -> argparse.ArgumentParser:
     register_agents(subparsers)
     provider.register(subparsers, PROVIDERS)
     register_experience(subparsers)
+    personalisation.register(subparsers)
     register_coordinator(subparsers)
     register_diagnostics(subparsers)
     register_packs(subparsers)
