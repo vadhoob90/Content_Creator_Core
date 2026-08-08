@@ -449,15 +449,25 @@ class Orchestrator(OrchestrationSupport):
 
         Returns:
             RunState: The resulting run state for publish.
+
         """
         state, draft, pack, visual_asset, target = self._prepare_publication(
             run_id, filename, diagnostic_decision
         )
+        perspective_evaluation, evaluation_artifact_hash = self._publication_gate(state, draft)
         assessment = self._publication_assessment(state, run_id, target, feedback)
         self.store.write_artifact(run_id, "assessment.json", assessment)
         self._extract_learnings(state, draft, assessment, feedback)
         self._extract_perspectives(state, draft, assessment)
-        return self._finish_publication(state, target, pack, visual_asset)
+        return self._finish_publication(
+            state,
+            target,
+            pack,
+            visual_asset,
+            draft,
+            perspective_evaluation,
+            evaluation_artifact_hash,
+        )
 
     def _prepare_publication(
         self,
@@ -504,7 +514,7 @@ class Orchestrator(OrchestrationSupport):
         target = target_dir / Path(requested).name
         if target.exists():
             raise StorageError(f"Refusing to overwrite {target}")
-        RunStore._atomic_text(target, draft.rstrip())
+        self.publications.ensure_receipt_available(target)
         return state, draft, pack, visual_asset, target
 
     def _publication_assessment(
@@ -671,7 +681,14 @@ class Orchestrator(OrchestrationSupport):
         )
 
     def _finish_publication(
-        self, state: RunState, target: Path, pack: Any, visual_asset: Any
+        self,
+        state: RunState,
+        target: Path,
+        pack: Any,
+        visual_asset: Any,
+        draft: str,
+        perspective_evaluation: Dict[str, Any],
+        evaluation_artifact_hash: str,
     ) -> RunState:
         """Finish the publication.
 
@@ -680,10 +697,14 @@ class Orchestrator(OrchestrationSupport):
             target (Path): The filesystem path containing the target.
             pack (Any): The resolved content-pack contract.
             visual_asset (Any): The visual asset value passed to finish publication.
+            draft (str): Exact reviewed draft approved for publication.
+            perspective_evaluation (Dict[str, Any]): Deterministic provenance evaluation.
+            evaluation_artifact_hash (str): Hash of the run-scoped evaluation artifact.
 
         Returns:
             RunState: The resulting run state for finish publication.
         """
+        RunStore._atomic_text(target, draft.rstrip())
         state.published_path = str(target.relative_to(self.root))
         if visual_asset is not None:
             visual_target = self.visuals.publish(state.id, pack.visuals)
@@ -695,6 +716,17 @@ class Orchestrator(OrchestrationSupport):
             )
         state.status = RunStatus.PUBLISHED
         state.events.append(RunEvent(name="published", detail=state.published_path))
+        receipt_path = self.publications.issue(
+            state,
+            target,
+            perspective_evaluation,
+            evaluation_artifact_hash,
+        )
+        state.events.append(
+            RunEvent(
+                name="publication_receipt_written", detail=str(receipt_path.relative_to(self.root))
+            )
+        )
         self._persist_model_history(state.id)
         self.store.save_state(state)
         post_publish = self.diagnostics.preflight(state.id)

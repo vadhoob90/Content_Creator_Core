@@ -214,6 +214,10 @@ def initialise_workspace(
                 "max_attempts": 2,
                 "defer_recovered_until_publication": True,
             },
+            "publication_provenance": {
+                "policy": "advisory",
+                "receipts_directory": "publication-receipts",
+            },
             "statistical_voice_score": {
                 "enabled": False,
                 "method": "deterministic",

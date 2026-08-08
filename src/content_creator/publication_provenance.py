@@ -1,0 +1,662 @@
+"""Create and verify privacy-safe publication provenance receipts."""
+
+from __future__ import annotations
+
+import json
+from enum import Enum
+from pathlib import Path
+from typing import Any, Dict, Iterable, Optional
+
+from pydantic import BaseModel, Field
+
+from .domain import RunState, RunStatus, utc_now
+from .packs import PackRegistry
+from .perspective_evaluation import evaluate_perspective_output
+from .perspectives import PerspectiveEntryStatus, PerspectiveRegistry
+from .storage import RunStore
+from .versioned_artifacts import hash_file, hash_json
+from .voices import VoiceRegistry
+
+
+class PublicationProvenanceError(RuntimeError):
+    """Report a deterministic publication-provenance failure."""
+
+
+class PublicationPolicy(str, Enum):
+    """Enumerate supported publication receipt enforcement levels."""
+
+    OFF = "off"
+    ADVISORY = "advisory"
+    REQUIRED_FOR_NEW = "required-for-new-publications"
+    REQUIRED = "required"
+
+
+class PublicationFinding(BaseModel):
+    """Describe one deterministic publication verification finding."""
+
+    category: str = "deterministic_failure"
+    code: str
+    artifact_path: Optional[str] = None
+    detail: str
+
+
+class PerspectiveReceipt(BaseModel):
+    """Represent one pinned perspective and its approved entries."""
+
+    context_id: str
+    version: str
+    status_at_publication: str
+    manifest_hash: str
+    entries_hash: str
+    selected_entry_hashes: Dict[str, str] = Field(default_factory=dict)
+
+
+class PerspectiveEvaluationReceipt(BaseModel):
+    """Persist the privacy-safe deterministic evaluation result."""
+
+    passed: bool
+    artifact_hash: str
+    errors: list[str] = Field(default_factory=list)
+    position_marker_count: int = 0
+    selected_entry_ids: list[str] = Field(default_factory=list)
+
+
+class PublicationReceipt(BaseModel):
+    """Represent repository-tracked evidence for one publication."""
+
+    schema_version: str = "1.0"
+    artifact_path: str
+    artifact_hash: str
+    run_id: str
+    final_status: str
+    voice_id: str
+    voice_version: str
+    voice_manifest_hash: Optional[str] = None
+    author_contribution_provenance: str
+    perspectives: list[PerspectiveReceipt] = Field(default_factory=list)
+    perspective_evaluation: PerspectiveEvaluationReceipt
+    published_at: str
+
+
+class PublicationBaselineEntry(BaseModel):
+    """Represent one legacy publication admitted by prospective enforcement."""
+
+    artifact_path: str
+    artifact_hash: str
+
+
+class PublicationBaseline(BaseModel):
+    """Record legacy publications that predate tracked receipts."""
+
+    schema_version: str = "1.0"
+    created_at: str
+    artifacts: list[PublicationBaselineEntry] = Field(default_factory=list)
+
+
+class PublicationProvenance:
+    """Manage publication gates and deterministic tracked evidence."""
+
+    def __init__(self, root: Path, policy: Dict[str, Any]):
+        """Initialize publication provenance for a workspace.
+
+        Args:
+            root (Path): Workspace root.
+            policy (Dict[str, Any]): Validated publication-provenance policy.
+
+        Returns:
+            None: The service is initialized in place.
+        """
+        self.root = root.resolve()
+        self.policy = policy
+        self.receipts_root = self._within_root(str(policy["receipts_directory"]))
+        self.baseline_path = self.receipts_root / "baseline.json"
+
+    def evaluate(self, state: RunState, draft: str) -> Dict[str, Any]:
+        """Evaluate the exact bytes proposed for publication.
+
+        Args:
+            state (RunState): Reviewed run being published.
+            draft (str): Exact publication content.
+
+        Returns:
+            Dict[str, Any]: Deterministic perspective evaluation.
+
+        Raises:
+            PublicationProvenanceError: If provenance is invalid.
+        """
+        order = state.work_order
+        evaluation = evaluate_perspective_output(self.root, order, draft)
+        failures = list(evaluation["errors"])
+        try:
+            VoiceRegistry(self.root).resolve(order.voice_id, order.voice_version)
+            self._perspective_receipts(order, strict=True)
+        except Exception as exc:
+            failures.append(str(exc))
+        if failures:
+            raise PublicationProvenanceError("; ".join(dict.fromkeys(failures)))
+        return evaluation
+
+    def issue(
+        self,
+        state: RunState,
+        target: Path,
+        evaluation: Dict[str, Any],
+        evaluation_artifact_hash: str,
+    ) -> Path:
+        """Write the tracked receipt for a successful publication.
+
+        Args:
+            state (RunState): Published in-memory run state.
+            target (Path): Published artifact path.
+            evaluation (Dict[str, Any]): Exact-draft deterministic evaluation.
+            evaluation_artifact_hash (str): Hash of the ignored run evaluation artifact.
+
+        Returns:
+            Path: Written receipt path.
+
+        Raises:
+            PublicationProvenanceError: If the receipt would overwrite existing evidence.
+        """
+        relative_target = self._relative(target)
+        voice = VoiceRegistry(self.root).resolve(
+            state.work_order.voice_id,
+            state.work_order.voice_version,
+        )
+        receipt = PublicationReceipt(
+            artifact_path=relative_target,
+            artifact_hash=hash_file(target),
+            run_id=state.id,
+            final_status=RunStatus.PUBLISHED.value,
+            voice_id=state.work_order.voice_id,
+            voice_version=str(state.work_order.voice_version),
+            voice_manifest_hash=voice.get("manifest_hash"),
+            author_contribution_provenance=self._provenance_source(state),
+            perspectives=self._perspective_receipts(state.work_order, strict=True),
+            perspective_evaluation=PerspectiveEvaluationReceipt(
+                passed=bool(evaluation["passed"]),
+                artifact_hash=evaluation_artifact_hash,
+                errors=list(evaluation["errors"]),
+                position_marker_count=len(evaluation["position_markers"]),
+                selected_entry_ids=list(evaluation["selected_entry_ids"]),
+            ),
+            published_at=utc_now().isoformat(),
+        )
+        receipt_path = self.receipt_path(relative_target)
+        if receipt_path.exists():
+            raise PublicationProvenanceError(f"Refusing to overwrite {receipt_path}")
+        RunStore._atomic_text(receipt_path, receipt.model_dump_json(indent=2))
+        return receipt_path
+
+    def verify(self) -> Dict[str, Any]:
+        """Verify all configured publication destinations and receipts.
+
+        Returns:
+            Dict[str, Any]: Deterministic CI-ready verification report.
+        """
+        policy = PublicationPolicy(self.policy["policy"])
+        if policy == PublicationPolicy.OFF:
+            return self._report(policy, [], 0, 0, "disabled")
+        artifacts = self._published_artifacts()
+        baseline = self._load_baseline()
+        findings: list[PublicationFinding] = []
+        receipt_count = 0
+        for artifact in artifacts:
+            relative = self._relative(artifact)
+            receipt_path = self.receipt_path(relative)
+            if not receipt_path.exists():
+                if self._receipt_required(policy, artifact, relative, baseline):
+                    findings.append(
+                        self._finding("missing_receipt", relative, "Publication has no receipt")
+                    )
+                continue
+            receipt_count += 1
+            findings.extend(self._verify_receipt(receipt_path, expected_artifact=relative))
+        known = {self.receipt_path(self._relative(path)).resolve() for path in artifacts}
+        for receipt_path in self._receipt_files():
+            if receipt_path.resolve() not in known:
+                findings.append(
+                    self._finding(
+                        "orphan_receipt",
+                        None,
+                        f"Receipt has no published artifact: {self._relative(receipt_path)}",
+                    )
+                )
+        if findings and policy == PublicationPolicy.ADVISORY:
+            status = "advisory"
+        elif findings:
+            status = "failed"
+        else:
+            status = "ok"
+        return self._report(policy, findings, len(artifacts), receipt_count, status)
+
+    def write_baseline(self, replace: bool = False) -> Dict[str, Any]:
+        """Record current unreceipted publications as the prospective baseline.
+
+        Args:
+            replace (bool): Replace an existing baseline when true. Defaults to ``False``.
+
+        Returns:
+            Dict[str, Any]: Serialized baseline metadata.
+
+        Raises:
+            PublicationProvenanceError: If a baseline already exists.
+        """
+        if self.baseline_path.exists() and not replace:
+            raise PublicationProvenanceError(
+                "Publication baseline already exists; pass --replace-baseline to replace it"
+            )
+        entries = [
+            PublicationBaselineEntry(
+                artifact_path=self._relative(path),
+                artifact_hash=hash_file(path),
+            )
+            for path in self._published_artifacts()
+            if not self.receipt_path(self._relative(path)).exists()
+        ]
+        baseline = PublicationBaseline(created_at=utc_now().isoformat(), artifacts=entries)
+        RunStore._atomic_text(self.baseline_path, baseline.model_dump_json(indent=2))
+        return {
+            "status": "ok",
+            "baseline_path": self._relative(self.baseline_path),
+            "artifact_count": len(entries),
+        }
+
+    def receipt_path(self, artifact_path: str) -> Path:
+        """Return the deterministic sidecar path for a publication.
+
+        Args:
+            artifact_path (str): Workspace-relative published artifact path.
+
+        Returns:
+            Path: Workspace-local receipt sidecar path.
+
+        Raises:
+            PublicationProvenanceError: If the artifact path leaves the workspace.
+        """
+        relative = Path(artifact_path)
+        if relative.is_absolute() or ".." in relative.parts:
+            raise PublicationProvenanceError("Publication artifact path must stay in workspace")
+        return self.receipts_root / relative.parent / f"{relative.name}.receipt.json"
+
+    def ensure_receipt_available(self, target: Path) -> None:
+        """Validate receipt-path availability before publication writes.
+
+        Args:
+            target (Path): Proposed workspace publication target.
+
+        Returns:
+            None: Availability is validated without mutation.
+
+        Raises:
+            PublicationProvenanceError: If tracked evidence would be overwritten.
+        """
+        receipt_path = self.receipt_path(self._relative(target))
+        if receipt_path.exists():
+            raise PublicationProvenanceError(f"Refusing to overwrite {receipt_path}")
+
+    def _perspective_receipts(self, order: Any, strict: bool) -> list[PerspectiveReceipt]:
+        """Return immutable evidence for every selected perspective.
+
+        Resolve the exact versions and hash both the complete entries component and
+        every approved entry used by the run.
+
+        Args:
+            order (Any): Work order containing pinned perspective selections.
+            strict (bool): Require the selected context to remain active when true.
+
+        Returns:
+            list[PerspectiveReceipt]: Ordered pinned perspective evidence.
+
+        Raises:
+            PublicationProvenanceError: If a selected approved entry is unavailable.
+        """
+        receipts = []
+        requested_ids = (
+            order.author_contribution.reusable_perspective_entry_ids
+            if order.author_contribution
+            else []
+        )
+        for selection in order.perspective_selections:
+            resolved = PerspectiveRegistry(self.root, order.voice_id).resolve(
+                selection.context_id,
+                selection.version,
+                allow_inactive=not strict,
+            )
+            entries_path = self.root / resolved["path"] / "entries.json"
+            entries = json.loads(entries_path.read_text(encoding="utf-8"))
+            approved = {
+                entry["id"]: entry
+                for entry in entries
+                if entry.get("status") == PerspectiveEntryStatus.APPROVED.value
+            }
+            selected_ids = requested_ids or list(resolved["active_entry_ids"])
+            missing = sorted(set(selected_ids) - set(approved))
+            if missing:
+                raise PublicationProvenanceError(
+                    "Unavailable approved perspective entries: {}".format(", ".join(missing))
+                )
+            receipts.append(
+                PerspectiveReceipt(
+                    context_id=selection.context_id,
+                    version=resolved["version"],
+                    status_at_publication=resolved["status"],
+                    manifest_hash=resolved["manifest_hash"],
+                    entries_hash=hash_file(entries_path),
+                    selected_entry_hashes={
+                        entry_id: hash_json(approved[entry_id]) for entry_id in selected_ids
+                    },
+                )
+            )
+        return receipts
+
+    def _verify_receipt(
+        self, receipt_path: Path, expected_artifact: str
+    ) -> list[PublicationFinding]:
+        """Return deterministic failures for one receipt and artifact pair.
+
+        Validate the schema before comparing the published bytes, recorded lifecycle
+        status, author provenance, voice, and perspectives.
+
+        Args:
+            receipt_path (Path): Tracked receipt file to validate.
+            expected_artifact (str): Artifact path implied by the receipt sidecar.
+
+        Returns:
+            list[PublicationFinding]: Stable deterministic validation failures.
+        """
+        try:
+            receipt = PublicationReceipt.model_validate_json(
+                receipt_path.read_text(encoding="utf-8")
+            )
+        except Exception as exc:
+            return [self._finding("invalid_receipt", expected_artifact, str(exc))]
+        failures: list[PublicationFinding] = []
+        if receipt.artifact_path != expected_artifact:
+            failures.append(
+                self._finding(
+                    "artifact_path_mismatch",
+                    expected_artifact,
+                    f"Receipt names {receipt.artifact_path}",
+                )
+            )
+        artifact = self._within_root(receipt.artifact_path)
+        if not artifact.is_file():
+            failures.append(
+                self._finding("missing_artifact", receipt.artifact_path, "Missing file")
+            )
+        elif hash_file(artifact) != receipt.artifact_hash:
+            failures.append(
+                self._finding("artifact_hash_mismatch", receipt.artifact_path, "Content changed")
+            )
+        if receipt.final_status != RunStatus.PUBLISHED.value:
+            failures.append(
+                self._finding(
+                    "invalid_originating_status",
+                    receipt.artifact_path,
+                    f"Recorded status is {receipt.final_status}",
+                )
+            )
+        evaluation = receipt.perspective_evaluation
+        if not evaluation.passed or evaluation.errors:
+            failures.append(
+                self._finding(
+                    "failed_perspective_evaluation",
+                    receipt.artifact_path,
+                    "; ".join(evaluation.errors) or "Evaluation did not pass",
+                )
+            )
+        if (
+            evaluation.position_marker_count
+            and receipt.author_contribution_provenance == "none"
+            and not receipt.perspectives
+        ):
+            failures.append(
+                self._finding(
+                    "missing_authorial_provenance",
+                    receipt.artifact_path,
+                    "Authorial position has neither direct nor selected provenance",
+                )
+            )
+        failures.extend(self._verify_voice(receipt))
+        failures.extend(self._verify_perspectives(receipt))
+        return failures
+
+    def _verify_voice(self, receipt: PublicationReceipt) -> list[PublicationFinding]:
+        """Return failures for the pinned voice evidence.
+
+        Args:
+            receipt (PublicationReceipt): Receipt containing the pinned voice.
+
+        Returns:
+            list[PublicationFinding]: Voice availability or hash failures.
+        """
+        try:
+            voice = VoiceRegistry(self.root).resolve(
+                receipt.voice_id, receipt.voice_version, allow_inactive=True
+            )
+        except Exception as exc:
+            return [self._finding("unavailable_voice", receipt.artifact_path, str(exc))]
+        if (
+            receipt.voice_manifest_hash
+            and voice.get("manifest_hash") != receipt.voice_manifest_hash
+        ):
+            return [
+                self._finding(
+                    "voice_hash_mismatch", receipt.artifact_path, "Pinned voice manifest changed"
+                )
+            ]
+        return []
+
+    def _verify_perspectives(self, receipt: PublicationReceipt) -> list[PublicationFinding]:
+        """Return failures for pinned perspective versions and entries.
+
+        Args:
+            receipt (PublicationReceipt): Receipt containing selected perspectives.
+
+        Returns:
+            list[PublicationFinding]: Perspective availability or hash failures.
+
+        Raises:
+            PublicationProvenanceError: If immutable perspective evidence differs.
+        """
+        failures = []
+        for expected in receipt.perspectives:
+            try:
+                actual = PerspectiveRegistry(self.root, receipt.voice_id).resolve(
+                    expected.context_id,
+                    expected.version,
+                    allow_inactive=True,
+                )
+                entries_path = self.root / actual["path"] / "entries.json"
+                entries = json.loads(entries_path.read_text(encoding="utf-8"))
+                approved = {
+                    item["id"]: item
+                    for item in entries
+                    if item.get("status") == PerspectiveEntryStatus.APPROVED.value
+                }
+                if actual["manifest_hash"] != expected.manifest_hash:
+                    raise PublicationProvenanceError("Pinned perspective manifest changed")
+                if hash_file(entries_path) != expected.entries_hash:
+                    raise PublicationProvenanceError("Pinned perspective entries changed")
+                for entry_id, entry_hash in expected.selected_entry_hashes.items():
+                    if entry_id not in approved or hash_json(approved[entry_id]) != entry_hash:
+                        raise PublicationProvenanceError(
+                            f"Pinned perspective entry is unavailable or changed: {entry_id}"
+                        )
+            except Exception as exc:
+                failures.append(
+                    self._finding("invalid_perspective", receipt.artifact_path, str(exc))
+                )
+        return failures
+
+    def _published_artifacts(self) -> list[Path]:
+        """Return files from every configured pack publication destination.
+
+        Returns:
+            list[Path]: Published files in stable path order.
+        """
+        destinations = {
+            (self.root / pack.destination).resolve() for pack in PackRegistry(self.root).list()
+        }
+        return sorted(
+            path
+            for destination in destinations
+            if destination.exists()
+            for path in destination.rglob("*")
+            if path.is_file() and path.name != ".gitkeep"
+        )
+
+    def _receipt_files(self) -> Iterable[Path]:
+        """Return tracked publication receipt files in stable order.
+
+        Returns:
+            Iterable[Path]: Existing receipt sidecars, excluding the baseline.
+        """
+        if not self.receipts_root.exists():
+            return []
+        return sorted(path for path in self.receipts_root.rglob("*.receipt.json") if path.is_file())
+
+    def _load_baseline(self) -> Dict[str, str]:
+        """Return legacy baseline artifact hashes keyed by path.
+
+        Returns:
+            Dict[str, str]: Workspace-relative paths mapped to approved legacy hashes.
+        """
+        if not self.baseline_path.exists():
+            return {}
+        baseline = PublicationBaseline.model_validate_json(
+            self.baseline_path.read_text(encoding="utf-8")
+        )
+        return {item.artifact_path: item.artifact_hash for item in baseline.artifacts}
+
+    @staticmethod
+    def _provenance_source(state: RunState) -> str:
+        """Return the minimal non-sensitive author provenance classification.
+
+        Args:
+            state (RunState): Run whose direct and reusable inputs are classified.
+
+        Returns:
+            str: Direct, selected, combined, or absent provenance classification.
+        """
+        contribution = state.work_order.author_contribution
+        direct = bool(
+            contribution
+            and contribution.supplied_by_author
+            and (
+                contribution.thesis
+                or contribution.intended_challenge
+                or contribution.personal_basis
+            )
+        )
+        selected = bool(state.work_order.perspective_selections)
+        if direct and selected:
+            return "direct-and-selected-perspective"
+        if direct:
+            return "direct-author-contribution"
+        if selected:
+            return "selected-perspective"
+        return "none"
+
+    @staticmethod
+    def _receipt_required(
+        policy: PublicationPolicy,
+        artifact: Path,
+        relative: str,
+        baseline: Dict[str, str],
+    ) -> bool:
+        """Return whether policy requires a receipt for this artifact.
+
+        Args:
+            policy (PublicationPolicy): Active enforcement level.
+            artifact (Path): Existing publication being assessed.
+            relative (str): Workspace-relative artifact path.
+            baseline (Dict[str, str]): Approved legacy path and hash mapping.
+
+        Returns:
+            bool: Whether a missing receipt is an active finding.
+        """
+        if policy == PublicationPolicy.REQUIRED:
+            return True
+        if policy == PublicationPolicy.REQUIRED_FOR_NEW:
+            return baseline.get(relative) != hash_file(artifact)
+        return policy == PublicationPolicy.ADVISORY
+
+    def _within_root(self, relative: str) -> Path:
+        """Return a workspace-local path or fail closed.
+
+        Args:
+            relative (str): Candidate path relative to the workspace.
+
+        Returns:
+            Path: Resolved path inside the workspace.
+
+        Raises:
+            PublicationProvenanceError: If the resolved path leaves the workspace.
+        """
+        path = (self.root / relative).resolve()
+        try:
+            path.relative_to(self.root)
+        except ValueError as exc:
+            raise PublicationProvenanceError("Publication path leaves workspace") from exc
+        return path
+
+    def _relative(self, path: Path) -> str:
+        """Return a workspace-relative path or fail closed.
+
+        Args:
+            path (Path): Candidate filesystem path.
+
+        Returns:
+            str: Stable workspace-relative path.
+
+        Raises:
+            PublicationProvenanceError: If the path leaves the workspace.
+        """
+        try:
+            return str(path.resolve().relative_to(self.root))
+        except ValueError as exc:
+            raise PublicationProvenanceError("Publication path leaves workspace") from exc
+
+    @staticmethod
+    def _finding(code: str, artifact_path: Optional[str], detail: str) -> PublicationFinding:
+        """Return one normalized deterministic finding.
+
+        Args:
+            code (str): Stable machine-readable finding identifier.
+            artifact_path (Optional[str]): Related publication path when available.
+            detail (str): Human-readable failure detail.
+
+        Returns:
+            PublicationFinding: Normalized deterministic failure.
+        """
+        return PublicationFinding(code=code, artifact_path=artifact_path, detail=detail)
+
+    @staticmethod
+    def _report(
+        policy: PublicationPolicy,
+        findings: list[PublicationFinding],
+        artifacts: int,
+        receipts: int,
+        status: str,
+    ) -> Dict[str, Any]:
+        """Return a stable JSON-serializable verification report.
+
+        Args:
+            policy (PublicationPolicy): Active enforcement level.
+            findings (list[PublicationFinding]): Ordered verification findings.
+            artifacts (int): Number of published artifacts inspected.
+            receipts (int): Number of matching receipts inspected.
+            status (str): Overall disabled, advisory, failed, or successful state.
+
+        Returns:
+            Dict[str, Any]: Stable command report mapping.
+        """
+        return {
+            "schema_version": "1.0",
+            "status": status,
+            "policy": policy.value,
+            "artifact_count": artifacts,
+            "receipt_count": receipts,
+            "findings": [item.model_dump(mode="json") for item in findings],
+        }

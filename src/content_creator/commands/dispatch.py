@@ -31,6 +31,7 @@ from .lifecycle_commands import (
     revise,
     show_status,
     show_submission,
+    verify_publications,
 )
 from .pack_commands import manage_pack
 from .parser import build_parser
@@ -67,6 +68,7 @@ ROUTES: dict[str, Handler] = {
     "visual": manage_visuals,
     "voice": manage_voice,
     "workspace": manage_workspace,
+    "verify-publications": verify_publications,
 }
 
 

@@ -130,6 +130,18 @@ not post externally. It then records approval and updates only the active
 voice's learning memory. Explicit feedback may become active learning;
 publication-only inference remains provisional.
 
+Successful publication also writes a tracked, privacy-safe receipt under
+`publication-receipts/`. Before committing a publication, run:
+
+```bash
+content-creator verify-publications
+```
+
+This verification is deterministic and offline. Surface enforced hash,
+provenance, voice, perspective, or missing-receipt failures before committing.
+Do not replace a legacy baseline unless the author explicitly approves the
+reviewed legacy set.
+
 If the author supplies durable feedback after publication, or for a reviewed
 run that should not be published yet, use the learning-only operation:
 

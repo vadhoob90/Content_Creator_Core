@@ -22,6 +22,8 @@ def test_schema_catalogue_covers_persisted_public_contracts():
         "run-state",
         "voice-manifest",
         "perspective-manifest",
+        "publication-baseline",
+        "publication-receipt",
         "visual-manifest",
     } <= set(catalogue)
     assert all(item["schema_version"] == "1.0" for item in catalogue.values())

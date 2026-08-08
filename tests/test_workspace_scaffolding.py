@@ -61,6 +61,7 @@ def test_workspace_create_generates_complete_thin_repository(tmp_path, capsys):
         "content/linkedin-post/published/.gitkeep",
         "content/linkedin-article/published/.gitkeep",
         "tests/test_workspace.py",
+        "publication-receipts/baseline.json",
     }
     assert all((destination / path).exists() for path in expected)
     assert not (destination / "src" / "content_creator").exists()
@@ -77,6 +78,7 @@ def test_workspace_create_generates_complete_thin_repository(tmp_path, capsys):
     assert configuration["coordinator"]["external_publication"] == "disabled"
     assert configuration["statistical_voice_score"]["enabled"] is False
     assert configuration["statistical_voice_score"]["method"] == "deterministic"
+    assert configuration["publication_provenance"]["policy"] == "required-for-new-publications"
     onboarding = json.loads(
         (destination / "profiles" / "alice-general" / "onboarding.json").read_text(encoding="utf-8")
     )

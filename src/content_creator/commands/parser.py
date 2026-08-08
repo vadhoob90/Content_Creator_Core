@@ -30,7 +30,7 @@ def build_parser() -> argparse.ArgumentParser:
         required=True,
         metavar=(
             "{start,overview,workspace,doctor,run,status,submission,publish,learn,"
-            "diagnostics,advanced}"
+            "verify-publications,diagnostics,advanced}"
         ),
     )
     schema.register(subparsers)

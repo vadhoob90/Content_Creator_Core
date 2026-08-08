@@ -34,6 +34,7 @@ available independently of pack eligibility.
 - [Content Creator Coordinator](guides/content-coordinator.md)
 - [Routes and work orders](guides/routes-and-work-orders.md)
 - [Learning and repository publication](guides/learning-and-publication.md)
+- [Publication provenance and CI verification](guides/publication-provenance.md)
 - [Visual asset workflows](guides/visual-assets.md)
 - [Runtime diagnostics and Core support candidates](guides/runtime-diagnostics.md)
 - [Content Creator compared with a general-purpose chat app](guides/why-not-just-chat.md)

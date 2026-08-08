@@ -11,6 +11,7 @@ from pydantic import BaseModel
 
 from .domain import RunState, WorkOrder
 from .perspectives import PerspectiveManifest
+from .publication_provenance import PublicationBaseline, PublicationReceipt
 from .storage import RunStore
 from .visuals import VisualManifest
 from .voices import VoiceManifest
@@ -30,6 +31,8 @@ SCHEMA_MODELS: Dict[str, Type[BaseModel]] = {
     "run-state": RunState,
     "voice-manifest": VoiceManifest,
     "perspective-manifest": PerspectiveManifest,
+    "publication-baseline": PublicationBaseline,
+    "publication-receipt": PublicationReceipt,
     "visual-manifest": VisualManifest,
 }
 
