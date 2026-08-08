@@ -1,4 +1,4 @@
-"""Implement init provider integration."""
+"""Provide provider contracts, the registry, and the deterministic test adapter."""
 
 from .base import Provider, ProviderError
 from .fake import FakeProvider

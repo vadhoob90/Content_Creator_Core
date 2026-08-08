@@ -38,6 +38,10 @@ review signals rather than violations. They remain advisory unless a later ADR
 establishes an objective rule with a low false-positive rate and clear
 remediation.
 
+`scripts/architecture_report.py` records single-importer modules and cross-file
+inheritance under `advisories`. Review changes to those lists during structural
+work; the report deliberately does not turn either signal into a blocking rule.
+
 ## Function readability and control flow
 
 - Prefer functions of at most 40 implementation lines. Lines 41–80 are an

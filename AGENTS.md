@@ -46,6 +46,21 @@ incremental learning memory.
 - Do not mix profiles or learnings between voices
 - Do not commit or push unless explicitly requested
 
+## Core module map
+
+- `orchestrator.py` coordinates lifecycle checkpoints through a composed runtime.
+- `stages.py` and `capabilities.py` define replaceable execution seams.
+- `commands/` owns CLI parsing and dispatch; domain behavior stays outside it.
+- `providers/` contains the provider contract, registry, fakes, and adapters.
+- `diagnostics/` owns privacy-safe runtime evidence and support candidates.
+- `voice_build/` owns voice-build models, rendering, and pipeline execution.
+- `voice_ml/` owns optional training dependencies, training, and inference.
+- `workspace.py`, `workspace_scaffolding.py`, and `workspace_templates.py` generate
+  thin author repositories without overwriting author-owned files.
+
+Start structural work in `docs/core/architecture-guardrails.md`. Start provider,
+stage, or pack extensions in `docs/guides/extending-core.md`.
+
 ## Verification
 
 Use `content-creator doctor` for offline configuration checks,

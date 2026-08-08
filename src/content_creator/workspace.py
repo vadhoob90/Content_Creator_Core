@@ -249,7 +249,7 @@ def initialise_workspace(
     }
 
 
-class WorkspaceScaffolder(WorkspaceTemplates):
+class WorkspaceScaffolder:
     """Generate a complete thin repository that consumes Content Creator Core."""
 
     def __init__(self, destination: Path):
@@ -262,6 +262,7 @@ class WorkspaceScaffolder(WorkspaceTemplates):
             None: The instance is initialized in place and no value is returned.
         """
         self.root = destination.resolve()
+        self.templates = WorkspaceTemplates()
 
     def create(self, request: WorkspaceCreateRequest) -> Dict[str, Any]:
         """Create the workspace scaffolder workflow.
@@ -280,4 +281,4 @@ class WorkspaceScaffolder(WorkspaceTemplates):
             initialise=initialise_workspace,
             write_if_missing=_write_if_missing,
         )
-        return create_workspace(self, request, services)
+        return create_workspace(self.root, self.templates, request, services)

@@ -4,8 +4,8 @@ from pypdf import PdfReader, PdfWriter
 from pypdf.generic import DecodedStreamObject, DictionaryObject, NameObject
 
 from content_creator.attribution import classify_attribution, isolate_attributed_text
-from content_creator.corpus import assess_corpus
 from content_creator.ingestion import content_hash, is_near_duplicate, read_source
+from content_creator.voice_build.corpus import assess_corpus
 from content_creator.voices import SourceRecord
 
 

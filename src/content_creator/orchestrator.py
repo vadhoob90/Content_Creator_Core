@@ -20,16 +20,12 @@ from .domain import (
     WorkOrder,
 )
 from .orchestration_support import OrchestrationError as OrchestrationError
-from .orchestration_support import OrchestrationSupport
-from .perspectives import (
-    PerspectiveCatalogueStore,
-    PerspectiveExtraction,
-    PerspectiveProposalStore,
-    PerspectiveRegistry,
-    PerspectiveResolver,
-)
+from .orchestration_support import OrchestrationRuntime
+from .perspective_extraction import extract_perspectives
+from .perspectives import PerspectiveCatalogueStore, PerspectiveRegistry, PerspectiveResolver
+from .providers import ProviderRegistry
+from .publication_assessment import build_publication_assessment
 from .routing import build_route
-from .runner import AgentRunOptions
 from .stages import CallableDraftReviewStage as CallableDraftReviewStage
 from .stages import CallableResearchStage as CallableResearchStage
 from .stages import LifecycleStages as LifecycleStages
@@ -40,8 +36,129 @@ from .voices import VoiceRegistry
 logger = logging.getLogger(__name__)
 
 
-class Orchestrator(OrchestrationSupport):
+class Orchestrator:
     """Coordinate the content creation lifecycle."""
+
+    def __init__(
+        self,
+        root: Path,
+        registry: Optional[ProviderRegistry] = None,
+        visual_adapters: Any = None,
+        max_revisions: int = 3,
+        capabilities: Optional[RunCapabilities] = None,
+        stages: Optional[LifecycleStages] = None,
+    ):
+        """Initialize orchestration through a composed runtime service.
+
+        Keep lifecycle coordination in this class while the runtime owns construction
+        and focused drafting, revision, diagnostic, and research operations.
+
+        Args:
+            root (Path): The workspace root directory.
+            registry (Optional[ProviderRegistry]): Provider registry used for model
+                execution. Defaults to ``None``.
+            visual_adapters (Any): Optional visual adapter registry. Defaults to ``None``.
+            max_revisions (int): Maximum automated revision attempts. Defaults to ``3``.
+            capabilities (Optional[RunCapabilities]): Optional capability implementation.
+                Defaults to ``None``.
+            stages (Optional[LifecycleStages]): Optional lifecycle stage implementations.
+                Defaults to ``None``.
+
+        Returns:
+            None: The instance is initialized in place and no value is returned.
+        """
+        self._runtime = OrchestrationRuntime(
+            root,
+            registry=registry,
+            visual_adapters=visual_adapters,
+            max_revisions=max_revisions,
+            capabilities=capabilities,
+            stages=stages,
+        )
+        self.root = self._runtime.root
+        self.configuration = self._runtime.configuration
+        self.registry = self._runtime.registry
+        self.prompts = self._runtime.prompts
+        self.diagnostics = self._runtime.diagnostics
+        self.runner = self._runtime.runner
+        self.intake = self._runtime.intake
+        self.store = self._runtime.store
+        self.packs = self._runtime.packs
+        self.capabilities = self._runtime.capabilities
+        self.visuals = self._runtime.visuals
+        self.max_revisions = self._runtime.max_revisions
+        self.stages = self._runtime.stages
+        self.learning = self._runtime.learning
+        self.publications = self._runtime.publications
+        self.semantic_review = self._runtime.semantic_review
+        self.publication_lifecycle = self._runtime.publication_lifecycle
+
+    def learn(self, run_id: str, feedback: str, idempotency_key: Optional[str] = None) -> RunState:
+        """Apply explicit author feedback through the runtime lifecycle.
+
+        Args:
+            run_id (str): Reviewed or published run supplying persisted context.
+            feedback (str): Explicit author-approved durable feedback.
+            idempotency_key (Optional[str]): Stable retry key. Defaults to ``None``.
+
+        Returns:
+            RunState: Run state with appended learning audit events.
+        """
+        return self._runtime.learn(run_id, feedback, idempotency_key)
+
+    def revise(
+        self,
+        run_id: str,
+        feedback: str,
+        draft: Optional[str] = None,
+        idempotency_key: Optional[str] = None,
+    ) -> RunState:
+        """Apply a reviewed-run revision through the runtime lifecycle.
+
+        Args:
+            run_id (str): Reviewed run identifier.
+            feedback (str): Run-scoped author feedback.
+            draft (Optional[str]): Author-edited Markdown. Defaults to ``None``.
+            idempotency_key (Optional[str]): Stable retry key. Defaults to ``None``.
+
+        Returns:
+            RunState: Updated state after revision and review.
+        """
+        return self._runtime.revise(run_id, feedback, draft, idempotency_key)
+
+    def adopt_current_pack(self, run_id: str) -> RunState:
+        """Run current-pack adoption through the runtime lifecycle.
+
+        Args:
+            run_id (str): Historical run identifier.
+
+        Returns:
+            RunState: Updated state after policy migration and revalidation.
+        """
+        return self._runtime.adopt_current_pack(run_id)
+
+    def diagnostic_preflight(self, run_id: str) -> Dict:
+        """Apply diagnostic preflight through the runtime lifecycle.
+
+        Args:
+            run_id (str): Persisted run identifier.
+
+        Returns:
+            Dict: Structured diagnostic preflight result.
+        """
+        return self._runtime.diagnostic_preflight(run_id)
+
+    def link_diagnostic_issue(self, run_id: str, issue_url: str) -> Dict:
+        """Link a prepared diagnostic issue through the runtime lifecycle.
+
+        Args:
+            run_id (str): Persisted run identifier.
+            issue_url (str): GitHub issue URL created from the support candidate.
+
+        Returns:
+            Dict: Structured diagnostic issue-link result.
+        """
+        return self._runtime.link_diagnostic_issue(run_id, issue_url)
 
     def plan_request(self, request: str, provider: Optional[str] = None) -> WorkOrder:
         """Plan a work order from a natural-language content request.
@@ -113,8 +230,10 @@ class Orchestrator(OrchestrationSupport):
             RunState: The resulting run state for start.
         """
         pack = self._validated_pack(order)
-        supplied_brief = self._preflight_supplied_research(order)
-        fingerprint = self._submission_fingerprint(submitted_order or order, supplied_brief)
+        supplied_brief = self._runtime._preflight_supplied_research(order)
+        fingerprint = self._runtime._submission_fingerprint(
+            submitted_order or order, supplied_brief
+        )
         existing = self._existing_submission(idempotency_key, fingerprint)
         if existing:
             return existing
@@ -364,12 +483,12 @@ class Orchestrator(OrchestrationSupport):
             if state.route_plan.requires_research_checkpoint:
                 state.status = RunStatus.AWAITING_RESEARCH_APPROVAL
                 state.events.append(RunEvent(name="research_checkpoint"))
-                self._persist_model_history(state.id)
+                self._runtime._persist_model_history(state.id)
                 self.store.save_state(state)
                 return state
             return self.stages.draft_review.execute(state, brief)
         except Exception as exc:
-            self._fail(state, exc)
+            self._runtime._fail(state, exc)
             raise
 
     def _record_research(self, state: RunState, brief: ResearchBrief) -> None:
@@ -423,7 +542,7 @@ class Orchestrator(OrchestrationSupport):
         try:
             return self.stages.draft_review.execute(state, brief)
         except Exception as exc:
-            self._fail(state, exc)
+            self._runtime._fail(state, exc)
             raise
 
     def publish(
@@ -507,11 +626,11 @@ class Orchestrator(OrchestrationSupport):
         preflight = self.diagnostics.preflight(run_id)
         if preflight["requires_diagnostic_decision"]:
             if diagnostic_decision is None:
-                self._apply_diagnostic_state(state, preflight)
+                self._runtime._apply_diagnostic_state(state, preflight)
                 self.store.save_state(state)
                 raise DiagnosticDecisionRequired(preflight)
             preflight = self.diagnostics.decide(run_id, diagnostic_decision)
-            self._apply_diagnostic_state(state, preflight)
+            self._runtime._apply_diagnostic_state(state, preflight)
         draft = self.store.read_artifact(run_id, "final.md").rstrip() + "\n"
         pack = self.packs.resolve(state.work_order.content_pack, state.work_order.pack_options)
         visual_asset = self.visuals.ensure_publication_ready(run_id, pack.visuals)
@@ -543,33 +662,7 @@ class Orchestrator(OrchestrationSupport):
         Returns:
             Dict[str, Any]: The structured resulting data for publication assessment.
         """
-        return {
-            "run_id": run_id,
-            "published_path": str(target.relative_to(self.root)),
-            "voice_id": state.work_order.voice_id,
-            "voice_version": state.work_order.voice_version,
-            "content_pack": state.work_order.content_pack,
-            "perspective_context": state.work_order.perspective_context,
-            "perspective_version": state.work_order.perspective_version,
-            "perspective_selections": [
-                selection.model_dump(mode="json")
-                for selection in state.work_order.perspective_selections
-            ],
-            "author_signal": "explicit_feedback" if feedback else "publication_approval",
-            "feedback": feedback,
-            "questions": {
-                "plausibly_approvable": True,
-                "passages_not_in_voice": None,
-                "exaggerated_habit": None,
-                "invented_experience": None,
-                "channel_appropriate": True,
-                "perspective_authentic": None,
-                "unsupported_author_position": None,
-                "perspective_qualifications_preserved": None,
-                "research_conflicts_surfaced": None,
-                "claim_provenance_clear": None,
-            },
-        }
+        return build_publication_assessment(self.root, state, run_id, target, feedback)
 
     def _extract_learnings(
         self,
@@ -614,77 +707,14 @@ class Orchestrator(OrchestrationSupport):
         Returns:
             None: The callable updates perspectives state and returns no value.
         """
-        for selection in state.work_order.perspective_selections:
-            try:
-                self._extract_perspective(state, selection, draft, assessment)
-            except Exception as exc:
-                state.events.append(RunEvent(name="perspective_update_failed", detail=str(exc)))
-
-    def _extract_perspective(
-        self,
-        state: RunState,
-        selection: Any,
-        draft: str,
-        assessment: Dict[str, Any],
-    ) -> None:
-        """Extract the perspective.
-
-        Run perspective extraction after publication, validate the proposed reusable
-        context, and stage it for author review.
-
-        Args:
-            state (RunState): The persisted lifecycle state to inspect or update.
-            selection (Any): The selection value passed to extract perspective.
-            draft (str): The draft content to evaluate or transform.
-            assessment (Dict[str, Any]): The structured assessment to inspect or persist.
-
-        Returns:
-            None: The callable updates perspective state and returns no value.
-        """
-        order = state.work_order
-        extraction_order = order.model_copy(deep=True)
-        extraction_order.perspective_context = selection.context_id
-        extraction_order.perspective_version = selection.version
-        extraction_order.perspective_selections = [selection]
-        instruction = (
-            "Propose only reusable author positions evidenced by this published run. "
-            "Preserve qualifications and keep every proposal in the explicitly resolved "
-            "context. Compare direct author input and explicit feedback with active entries. "
-            "When they conflict, use qualify, replace, or supersede and name the exact target "
-            "entry id. Never activate a proposal. Conflict policy: {}."
-        ).format(self.configuration.perspective_policy.get("conflict_policy", "propose-update"))
-        research_path = self.store.run_dir(state.id) / "research.json"
-        extraction = self.runner.run(
-            role="perspective-extractor",
-            role_key="perspective-extractor",
-            instruction=instruction,
-            payload={
-                "work_order": order.model_dump(mode="json"),
-                "draft": draft,
-                "assessment": assessment,
-                "research": (
-                    json.loads(self.store.read_artifact(state.id, "research.json"))
-                    if research_path.exists()
-                    else None
-                ),
-            },
-            options=AgentRunOptions(
-                order=extraction_order,
-                output_model=PerspectiveExtraction,
-                provider=order.provider,
-            ),
-        )
-        filename = (
-            "perspective-extraction.json"
-            if len(order.perspective_selections) == 1
-            else f"perspective-extraction-{selection.context_id}.json"
-        )
-        self.store.write_artifact(state.id, filename, extraction)
-        paths = PerspectiveProposalStore(self.root, order.voice_id, selection.context_id).apply(
-            state.id, extraction
-        )
-        state.events.append(
-            RunEvent(name="perspective_candidates_proposed", detail=f"count={len(paths)}")
+        extract_perspectives(
+            self.root,
+            self.configuration,
+            self.store,
+            self.runner,
+            state,
+            draft,
+            assessment,
         )
 
     def _finish_publication(
@@ -733,9 +763,9 @@ class Orchestrator(OrchestrationSupport):
                 name="publication_receipt_written", detail=str(receipt_path.relative_to(self.root))
             )
         )
-        self._persist_model_history(state.id)
+        self._runtime._persist_model_history(state.id)
         self.store.save_state(state)
         post_publish = self.diagnostics.preflight(state.id)
-        self._apply_diagnostic_state(state, post_publish)
+        self._runtime._apply_diagnostic_state(state, post_publish)
         self.store.save_state(state)
         return state

@@ -78,3 +78,10 @@ must explain architectural judgment rather than cite one metric. Stable
 façades protect deliberate entry points, while internal modules remain free to
 move. Architecture reporting can expose useful structural signals without
 forcing maintainers to optimise for the report.
+
+The v1.7 review applied this rule to the earlier `overlap`, `corpus`, and
+`health` candidates. Corpus sufficiency moved into the cohesive `voice_build`
+subpackage, and phrase-overlap policy moved beside its sole consumer in voice
+evaluation. `health` remains a standalone capability because CLI diagnostics,
+the coordinator, and upgrade auditing consume it for the same named purpose;
+merging it would hide rather than improve cohesion.

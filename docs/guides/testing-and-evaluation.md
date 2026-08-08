@@ -2,6 +2,18 @@
 
 The project separates software correctness from output assessment.
 
+Tests prefer observable contracts over private call shape. Focused unit tests
+cover deterministic policy and transformation functions; integration tests
+cross persistence, lifecycle, and adapter boundaries; the offline replay matrix
+proves representative routes without network access. Structural tests are used
+only for accepted architecture rules or characterized compatibility façades.
+
+`FakeProvider` is the standard model boundary in tests. Give it role-keyed,
+schema-valid responses and pass it through `ProviderRegistry`; do not patch
+vendor SDK internals or make network calls. A fake demonstrates that Core sends
+the normalized provider contract and handles the returned contract—it does not
+claim that a live vendor model will produce equivalent prose.
+
 `pytest` covers routing, pack inheritance and isolation, candidate selection,
 quality calculation, mechanical validation, source ingestion, attribution,
 voice building and activation, version resolution, phrase overlap, API and

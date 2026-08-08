@@ -9,11 +9,11 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Set, Tuple
 
-from .ingestion import content_hash, read_source
-from .linguistics import extract_linguistic_features
-from .storage import RunStore, StorageError
-from .voice_ml_dependencies import require_sklearn
-from .voices import VoiceRegistry
+from ..ingestion import content_hash, read_source
+from ..linguistics import extract_linguistic_features
+from ..storage import RunStore, StorageError
+from ..voices import VoiceRegistry
+from .dependencies import require_sklearn
 
 ML_FRAMEWORK = "regularised-logistic-regression-stylometry"
 ML_FRAMEWORK_VERSION = "1.0"
