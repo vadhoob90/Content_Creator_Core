@@ -9,6 +9,17 @@ content-creator --workspace . personalisation show
 
 Use `--json` when a chat host or another tool needs the same structured view.
 
+To see the exact sources a particular role would receive, use the read-only
+preflight:
+
+```bash
+content-creator --workspace . personalisation explain \
+  --role writer --voice bharath-linkedin --pack linkedin-post
+```
+
+See [runtime context composition](runtime-context-composition.md) for live and
+historical traces.
+
 ## Who are my agents and how are they personalised?
 
 The report lists every role, its purpose, and its editable file under `agents/`.
@@ -59,6 +70,11 @@ Core composes the applicable layers in this order:
 
 Some layers apply only to the roles that consume them. The JSON report includes
 the exact role mapping.
+
+Each real model invocation also writes exact loaded and skipped source evidence
+to `runs/<run-id>/context-composition.json`. This includes selected learning
+record IDs, so a writer run can prove which `bharath-linkedin` principles it
+received without duplicating their private text.
 
 ## Candidate decisions
 

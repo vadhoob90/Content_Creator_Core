@@ -28,6 +28,20 @@ where voice and perspectives live, run the read-only inspection:
 content-creator --workspace . personalisation show
 ```
 
+Before a run, use `personalisation explain --role <role>` to preview the exact
+Core, workspace, voice, perspective, learning, and pack sources that would be
+composed. For live evidence, add `--show-context` to `run`; the trace is written
+to stderr and does not change the normal result on stdout. For a persisted run,
+use:
+
+```bash
+content-creator --workspace . context show <run-id>
+```
+
+Treat `runs/<run-id>/context-composition.json` as the privacy-safe provenance
+record. It contains source hashes, versions, selected record IDs, and private
+task-input hashes, not duplicated prompt or draft contents.
+
 For an existing run, ask Core what can happen next:
 
 ```bash

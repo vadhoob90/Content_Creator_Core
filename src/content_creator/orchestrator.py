@@ -273,6 +273,7 @@ class Orchestrator(OrchestrationSupport):
             state.events.append(RunEvent(name="submission_accepted"))
             state, created = self.store.create_idempotent(state, idempotency_key, fingerprint)
         self.diagnostics.bind_run(state.id, state.work_order.content_session_id)
+        self.runner.bind_context_run(state.id)
         return state, created
 
     def _write_start_artifacts(self, state: RunState, pack: Any, context: Dict[str, Any]) -> None:

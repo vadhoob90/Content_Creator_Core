@@ -62,6 +62,7 @@ def test_workspace_create_generates_complete_thin_repository(tmp_path, capsys):
         "profiles/alice-general/learnings/memory.json",
         "learnings/README.md",
         "docs/setup-and-technical-guide.md",
+        "docs/runtime-context.md",
         "voice-material/alice-general/source-urls.txt",
         "content/linkedin-post/published/.gitkeep",
         "content/linkedin-article/published/.gitkeep",
@@ -121,6 +122,10 @@ def _assert_author_navigation(destination, readme):
     technical = (destination / "docs" / "setup-and-technical-guide.md").read_text(encoding="utf-8")
     assert "uv sync --dev" in technical
     assert "`voice add-sources` command" in technical
+    runtime_context = (destination / "docs" / "runtime-context.md").read_text(encoding="utf-8")
+    assert "personalisation explain" in runtime_context
+    assert "context show <run-id>" in runtime_context
+    assert "context-composition.json" in runtime_context
 
 
 def _assert_generated_workspace_runs(destination, capsys):

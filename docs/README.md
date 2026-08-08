@@ -15,10 +15,13 @@ After setup, run `content-creator --workspace . start` to see the next task and
 ## I want to understand how this workspace is personalised
 
 - [Agents, learning, voice, and perspectives](guides/personalisation.md)
+- [What each agent receives at runtime](guides/runtime-context-composition.md)
 - [Repository-owned agents](guides/repository-agents.md)
 
 Run `content-creator --workspace . personalisation show` for a direct view of
 the effective state and the repository paths behind it.
+Use `personalisation explain --role <role>` before a run, or `context show
+<run-id>` after one, to inspect exact composition provenance.
 
 ## I want to create or revise a voice
 
@@ -46,6 +49,7 @@ available independently of pack eligibility.
 - [Publication provenance and CI verification](guides/publication-provenance.md)
 - [Visual asset workflows](guides/visual-assets.md)
 - [Runtime diagnostics and Core support candidates](guides/runtime-diagnostics.md)
+- [Runtime context composition](guides/runtime-context-composition.md)
 - [Content Creator compared with a general-purpose chat app](guides/why-not-just-chat.md)
 
 Core always returns the result for review and never publishes externally.

@@ -13,6 +13,7 @@ from .agent_resources import STANDARD_TEMPLATE
 from .domain import utc_now
 from .packs import PackRegistry
 from .storage import RunStore, slugify
+from .workspace_context_templates import RUNTIME_CONTEXT_TEMPLATE
 from .workspace_templates import (
     LEARNINGS_README_TEMPLATE,
     PERSONALISATION_TEMPLATE,
@@ -262,6 +263,10 @@ def _write_workspace_files(
         ),
         "learnings/README.md": LEARNINGS_README_TEMPLATE,
         "docs/setup-and-technical-guide.md": TECHNICAL_SETUP_TEMPLATE.format(
+            voice_id=identity.voice_id,
+            first_pack=identity.packs[0],
+        ),
+        "docs/runtime-context.md": RUNTIME_CONTEXT_TEMPLATE.format(
             voice_id=identity.voice_id,
             first_pack=identity.packs[0],
         ),

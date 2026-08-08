@@ -134,6 +134,11 @@ def _add_run_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--content-session")
     parser.add_argument("--parent-run")
     parser.add_argument("--idempotency-key")
+    parser.add_argument(
+        "--show-context",
+        action="store_true",
+        help="Trace loaded and skipped context sources on stderr",
+    )
 
 
 def register_publication(subparsers: argparse._SubParsersAction) -> None:

@@ -20,6 +20,7 @@ from .base_commands import (
     show_advanced,
 )
 from .context import CommandContext
+from .context_commands import run as show_context
 from .coordinator_commands import inspect_coordinator
 from .experience_commands import plan, show_overview, start
 from .lifecycle_commands import (
@@ -46,6 +47,7 @@ ROUTES: dict[str, Handler] = {
     "agents": manage_agents,
     "approve-research": approve_research,
     "coordinator": inspect_coordinator,
+    "context": show_context,
     "diagnostics": inspect_diagnostics,
     "doctor": check_workspace,
     "eval": evaluate,

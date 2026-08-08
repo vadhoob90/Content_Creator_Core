@@ -18,6 +18,7 @@ def test_schema_catalogue_covers_persisted_public_contracts():
     catalogue = schema_catalogue()
 
     assert {
+        "context-composition-manifest",
         "work-order",
         "run-state",
         "voice-manifest",
