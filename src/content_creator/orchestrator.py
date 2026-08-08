@@ -12,7 +12,6 @@ from .capabilities import RunCapabilities as RunCapabilities
 from .context import resolved_context
 from .diagnostics import DiagnosticDecisionRequired
 from .domain import (
-    LearningExtraction,
     ResearchBrief,
     ResearchDepth,
     RunEvent,
@@ -20,7 +19,6 @@ from .domain import (
     RunStatus,
     WorkOrder,
 )
-from .learning import LearningMemory
 from .orchestration_support import OrchestrationError as OrchestrationError
 from .orchestration_support import OrchestrationSupport
 from .perspectives import (
@@ -575,33 +573,12 @@ class Orchestrator(OrchestrationSupport):
             None: The callable updates learnings state and returns no value.
         """
         try:
-            extraction = self.runner.run(
-                role="learning-extractor",
-                role_key="learning-extractor",
-                instruction=(
-                    "Extract only durable, reusable learning. Explicit author feedback may "
-                    "be active; inferences from draft changes or publication alone must be "
-                    "provisional."
-                ),
-                payload={
-                    "work_order": state.work_order.model_dump(mode="json"),
-                    "draft": draft,
-                    "assessment": assessment,
-                    "critiques": self._available_critiques(state.id),
-                },
-                options=AgentRunOptions(
-                    order=state.work_order,
-                    output_model=LearningExtraction,
-                    provider=state.work_order.provider,
-                ),
-            )
-            self.store.write_artifact(state.id, "learning-extraction.json", extraction)
-            LearningMemory(self.root, state.work_order.voice_id).apply(
-                state.id,
-                extraction,
-                explicit_feedback=feedback,
-                voice_version=state.work_order.voice_version,
-                content_pack=state.work_order.content_pack,
+            self.learning.extract(
+                state,
+                draft,
+                assessment,
+                feedback,
+                "learning-extraction.json",
             )
             state.events.append(RunEvent(name="learnings_updated"))
         except Exception as exc:

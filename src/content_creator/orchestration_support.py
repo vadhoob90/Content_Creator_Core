@@ -22,6 +22,7 @@ from .domain import (
     WorkOrder,
 )
 from .intake import BriefingAgent
+from .learning_lifecycle import LearningLifecycle
 from .packs import PackRegistry
 from .perspective_evaluation import evaluate_perspective_output
 from .prompting import PromptAssembler
@@ -30,7 +31,7 @@ from .quality import evaluate_quality
 from .revision import RevisionLifecycle
 from .runner import AgentRunner, AgentRunOptions
 from .stages import CallableDraftReviewStage, CallableResearchStage, LifecycleStages
-from .storage import RunStore, StorageError
+from .storage import IdempotencyError, RunStore, StorageError
 from .validation import validate_draft, validate_research_brief
 from .voice_evaluation import evaluate_voice_output
 
@@ -95,6 +96,32 @@ class OrchestrationSupport:
             research=CallableResearchStage(self._research),
             draft_review=CallableDraftReviewStage(self._draft_and_review),
         )
+        self.learning = LearningLifecycle(self)
+
+    def learn(
+        self,
+        run_id: str,
+        feedback: str,
+        idempotency_key: Optional[str] = None,
+    ) -> RunState:
+        """Apply explicit author feedback without publishing content.
+
+        Args:
+            run_id (str): Reviewed or published run supplying persisted context.
+            feedback (str): Explicit author-approved durable feedback.
+            idempotency_key (Optional[str]): Stable key for retrying this exact update.
+                Defaults to ``None``.
+
+        Returns:
+            RunState: Run state with appended learning audit events.
+
+        Raises:
+            OrchestrationError: If the learning-only lifecycle cannot complete.
+        """
+        try:
+            return self.learning.execute(run_id, feedback, idempotency_key)
+        except (IdempotencyError, RuntimeError) as exc:
+            raise OrchestrationError(str(exc)) from exc
 
     def revise(
         self,

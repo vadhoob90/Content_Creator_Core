@@ -155,6 +155,12 @@ def register_publication(subparsers: argparse._SubParsersAction) -> None:
     publish.add_argument("--filename")
     publish.add_argument("--feedback")
     publish.add_argument("--diagnostic-decision", choices=["publish-only", "prepare-issue"])
+    learn = subparsers.add_parser(
+        "learn", help="Apply explicit author feedback without publishing content"
+    )
+    learn.add_argument("run_id")
+    learn.add_argument("--feedback", required=True)
+    learn.add_argument("--idempotency-key")
     revise = subparsers.add_parser(
         "revise", help="Revise a reviewed run in place and refresh its quality metadata"
     )

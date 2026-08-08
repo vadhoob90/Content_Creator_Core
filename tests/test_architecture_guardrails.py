@@ -101,6 +101,7 @@ def test_top_level_cli_commands_are_characterized():
         "doctor",
         "eval",
         "init",
+        "learn",
         "overview",
         "operations",
         "pack",

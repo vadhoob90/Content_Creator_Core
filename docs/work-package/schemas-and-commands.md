@@ -284,6 +284,10 @@ content-creator run \
 content-creator status <run-id>
 content-creator publish <run-id> \
   --feedback "Preserve the concrete opening."
+
+content-creator learn <run-id> \
+  --feedback "Prefer the operational consequence before abstraction." \
+  --idempotency-key post-publication-feedback-1
 ```
 
 ### Perspective provenance
@@ -315,6 +319,10 @@ before future runs can use a change.
 `publish` records author acceptance, writes the channel-ready repository
 artifact, and triggers voice-scoped learning. External distribution is not part
 of the initial scope.
+
+`learn` applies later explicit author feedback through the same voice-scoped
+memory path without writing or replacing a publication. The exact persisted
+voice version must still be active and verifiable.
 
 ## Exit codes
 

@@ -12,6 +12,36 @@ release tag.
 
 ### Changed
 
+## [1.2.0] - 2026-08-08
+
+### Added
+
+- A supported `content-creator learn <run-id> --feedback ...` operation for
+  explicit voice learning from reviewed or already-published runs without
+  writing to a content-pack destination.
+- Retry-safe learning requests with hashed idempotency keys, input
+  fingerprints, verified voice and pack provenance, versioned assessment and
+  extraction artifacts, and visible run events.
+
+### Changed
+
+- Publication and learning-only updates now use the same extraction and
+  voice-memory application path, retaining existing deduplication, conflict
+  detection, and explicit-versus-inferred activation rules.
+
+### Security
+
+- The locked `pypdf` resolution is updated to `6.15.0`, resolving
+  `CVE-2026-71852` and `CVE-2026-71870` before release.
+
+### Migration
+
+- No persisted-data migration is required. Learning-only updates require the
+  run's exact voice version to remain active and verifiable; placeholder,
+  missing, inactive, or tampered voices fail before memory is changed.
+- Retry-capable hosts should supply one stable `--idempotency-key` for the same
+  run and feedback, and use a new key for intentional additional feedback.
+
 ## [1.1.0] - 2026-08-06
 
 ### Added
