@@ -398,6 +398,7 @@ class LearningCandidate(BaseModel):
 class LearningExtraction(BaseModel):
     """Represent a learning extraction."""
 
+    schema_version: str = "1.0"
     candidates: List[LearningCandidate] = Field(default_factory=list)
     author_signal: str = "implicit_publication_approval"
 

@@ -25,6 +25,7 @@ from .experience_commands import plan, show_overview, start
 from .lifecycle_commands import (
     approve_research,
     inspect_diagnostics,
+    learn,
     publish,
     reject_research,
     revise,
@@ -47,6 +48,7 @@ ROUTES: dict[str, Handler] = {
     "doctor": check_workspace,
     "eval": evaluate,
     "init": initialise,
+    "learn": learn,
     "operations": inspect_operations,
     "overview": show_overview,
     "pack": manage_pack,

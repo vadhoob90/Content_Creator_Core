@@ -399,6 +399,11 @@ An instruction to move the active draft into its published directory is author
 approval for repository-local publication and learning extraction. It does not
 authorise posting externally.
 
+When durable author feedback arrives after publication, or on a reviewed draft
+that should remain unpublished, use `learn <run-id> --feedback "..."
+--idempotency-key <stable-key>`. This updates only the run's verified voice
+learning memory and never writes to a content pack destination.
+
 Recovered operational diagnostics stay deferred throughout normal draft
 iterations. If publication returns `awaiting_diagnostic_decision`, present the
 sanitised Core support candidate once and ask whether to publish only or

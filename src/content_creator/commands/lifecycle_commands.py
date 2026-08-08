@@ -120,6 +120,26 @@ def publish(context: CommandContext) -> int:
     return 0
 
 
+def learn(context: CommandContext) -> int:
+    """Apply explicit feedback through the learning-only lifecycle.
+
+    Args:
+        context (CommandContext): The operation context and its resolved dependencies.
+
+    Returns:
+        int: The process exit status, where zero indicates a handled update.
+    """
+    arguments = context.arguments
+    context.emit(
+        context.orchestrator.learn(
+            arguments.run_id,
+            feedback=arguments.feedback,
+            idempotency_key=arguments.idempotency_key,
+        )
+    )
+    return 0
+
+
 def revise(context: CommandContext) -> int:
     """Run a traceable revision against an existing reviewed draft.
 

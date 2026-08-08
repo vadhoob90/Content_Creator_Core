@@ -45,3 +45,34 @@ a deliberate human-reviewed policy change.
 If extraction fails, publication is retained and the run records a
 `learning_update_failed` event. This prevents a model outage from losing an
 already approved piece.
+
+## Add feedback without publishing again
+
+Durable feedback can arrive after repository publication or after a reviewed
+draft receives later author edits. Apply that feedback directly to the run's
+selected voice without writing to the content pack destination:
+
+```bash
+content-creator learn <run-id> \
+  --feedback "Prefer the concrete operational consequence before abstraction." \
+  --idempotency-key post-publication-feedback-1
+```
+
+`learn` accepts runs in `ready`, `needs_author`, or `published` state. It loads
+the persisted `final.md`, resolves the original content pack, and verifies the
+exact persisted voice version against its active manifest and component
+hashes. A missing, inactive, placeholder, or tampered voice fails before memory
+is changed.
+
+Each attempt preserves a hashed `learning-request-*.json`, a versioned
+`learning-assessment-NN.json`, and a versioned
+`learning-extraction-NN.json` under the original run. The run receives visible
+`learning_update_started`, `learning_update_completed`, or
+`learning_update_failed` events. Existing publication files are never opened
+for writing by this operation.
+
+Reuse the same idempotency key only for the same run and feedback. A completed
+retry returns without invoking the extractor or applying memory again. Reusing
+the key with different feedback fails; intentional new feedback needs a new
+key. Unkeyed requests remain supported, but retry-capable hosts should always
+supply a stable key.

@@ -130,6 +130,18 @@ not post externally. It then records approval and updates only the active
 voice's learning memory. Explicit feedback may become active learning;
 publication-only inference remains provisional.
 
+If the author supplies durable feedback after publication, or for a reviewed
+run that should not be published yet, use the learning-only operation:
+
+```bash
+content-creator learn <run-id> --feedback "<explicit author feedback>" \
+  --idempotency-key <stable-retry-key>
+```
+
+This operation must not create, replace, or duplicate a publication. Reuse the
+same key only for the same run and feedback; intentional new feedback uses a
+new key.
+
 When a run resolves a perspective context, publication may create proposals
 only in that context. Perspective proposals never become active without a
 separate author approval command.

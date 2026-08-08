@@ -28,7 +28,10 @@ def build_parser() -> argparse.ArgumentParser:
     subparsers = parser.add_subparsers(
         dest="command",
         required=True,
-        metavar="{start,overview,workspace,doctor,run,status,submission,publish,diagnostics,advanced}",
+        metavar=(
+            "{start,overview,workspace,doctor,run,status,submission,publish,learn,"
+            "diagnostics,advanced}"
+        ),
     )
     schema.register(subparsers)
     operations.register(subparsers)
