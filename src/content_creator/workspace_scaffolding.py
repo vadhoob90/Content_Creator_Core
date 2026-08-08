@@ -13,7 +13,14 @@ from .agent_resources import STANDARD_TEMPLATE
 from .domain import utc_now
 from .packs import PackRegistry
 from .storage import RunStore, slugify
-from .workspace_templates import WorkspaceReadmeContext
+from .workspace_templates import (
+    LEARNINGS_README_TEMPLATE,
+    PERSONALISATION_TEMPLATE,
+    PROFILES_README_TEMPLATE,
+    TECHNICAL_SETUP_TEMPLATE,
+    VOICE_README_TEMPLATE,
+    WorkspaceReadmeContext,
+)
 
 
 @dataclass(frozen=True)
@@ -242,6 +249,22 @@ def _write_workspace_files(
         ),
         "CLAUDE.md": scaffolder._claude_guidance(),
         "README.md": scaffolder._readme(readme_context),
+        "PERSONALISATION.md": PERSONALISATION_TEMPLATE.format(
+            author_name=identity.author_name,
+            voice_id=identity.voice_id,
+        ),
+        "profiles/README.md": PROFILES_README_TEMPLATE.format(
+            voice_id=identity.voice_id,
+        ),
+        f"profiles/{identity.voice_id}/README.md": VOICE_README_TEMPLATE.format(
+            voice_id=identity.voice_id,
+            voice_label=identity.voice_label,
+        ),
+        "learnings/README.md": LEARNINGS_README_TEMPLATE,
+        "docs/setup-and-technical-guide.md": TECHNICAL_SETUP_TEMPLATE.format(
+            voice_id=identity.voice_id,
+            first_pack=identity.packs[0],
+        ),
         f"profiles/{identity.voice_id}/learnings/memory.json": json.dumps(
             {"version": 1, "records": []}, indent=2
         ),

@@ -21,6 +21,7 @@ from .health import WorkspaceHealth
 from .packs import PackRegistry
 from .storage import RunStore
 from .upgrade_audit import coordinator_upgrade_operations, latest_upgrade_report
+from .voice_rejection import candidate_decision
 from .voices import VoiceManifest, VoiceRegistry, load_voice_onboarding
 
 logger = logging.getLogger(__name__)
@@ -511,6 +512,7 @@ class ContentCoordinator:
                     ).status.value
                 except ValueError:
                     candidate_status = "invalid"
+            decision = candidate_decision(self.root, voice_id, active)
             result.append(
                 VoiceStatus(
                     voice_id=voice_id,
@@ -519,6 +521,8 @@ class ContentCoordinator:
                     active_status=active.get("status"),
                     active_version=active.get("active_version"),
                     candidate_status=candidate_status,
+                    candidate_decision=decision["status"],
+                    candidate_hash=decision.get("candidate_hash"),
                     onboarding_status=onboarding.status if onboarding else None,
                     strategy=active.get("strategy")
                     or (onboarding.strategy.value if onboarding and onboarding.strategy else None),
@@ -605,14 +609,14 @@ class ContentCoordinator:
                 command=["voice", "status", undecided.voice_id],
             )
         candidate = next(
-            (voice for voice in snapshot.voices if voice.candidate_status),
+            (voice for voice in snapshot.voices if voice.candidate_decision == "pending"),
             None,
         )
         if candidate:
             return CoordinatorAction(
                 id="review-voice-candidate",
                 label="Review the pending voice candidate",
-                command=["voice", "status", candidate.voice_id],
+                command=["personalisation", "show"],
             )
         if snapshot.provider_status.status in {
             "not-selected",

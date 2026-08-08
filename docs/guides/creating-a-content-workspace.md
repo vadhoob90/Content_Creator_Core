@@ -9,10 +9,10 @@ material owned by that workspace.
 
 ## Install Core
 
-Install the immutable `v1.4.1` release:
+Install the immutable `v1.5.0` release:
 
 ```bash
-uv tool install content-creator==1.4.1
+uv tool install content-creator==1.5.0
 ```
 
 ## Generate the repository
@@ -27,7 +27,7 @@ content-creator workspace create Content_Creator_Alice \
   --voice-label "Alice — General" \
   --pack linkedin-post \
   --pack linkedin-article \
-  --core-ref v1.4.1
+  --core-ref v1.5.0
 ```
 
 Without `--pack`, the command enables `general-text`.
@@ -59,7 +59,7 @@ Relative destinations are resolved from the current directory. When the global
 `--workspace` option is supplied, it acts as the base directory.
 
 The generated main README names both the immutable Core revision and the exact
-dependency declaration (for example, `content-creator==1.4.1`). That small
+dependency declaration (for example, `content-creator==1.5.0`). That small
 section is marked as generator-owned so a later `workspace upgrade --apply`
 can refresh it without replacing the rest of the workspace's README.
 
@@ -70,6 +70,7 @@ The result is a thin consumer:
 ```text
 Content_Creator_Alice/
 ├── README.md
+├── PERSONALISATION.md
 ├── AGENTS.md
 ├── CLAUDE.md
 ├── pyproject.toml
@@ -83,10 +84,13 @@ Content_Creator_Alice/
 │   ├── critic.md
 │   └── ...
 ├── learnings/
+│   ├── README.md
 │   └── memory.json
 ├── profiles/
+│   ├── README.md
 │   ├── registry.json
 │   └── alice-general/
+│       ├── README.md
 │       ├── onboarding.json
 │       └── learnings/
 │           └── memory.json
@@ -99,6 +103,8 @@ Content_Creator_Alice/
 │   └── linkedin-article/
 │       └── published/
 ├── runs/
+├── docs/
+│   └── setup-and-technical-guide.md
 └── tests/
     └── test_workspace.py
 ```
@@ -114,6 +120,11 @@ It does not copy:
 - orchestration and versioning code.
 
 Those remain supplied by the pinned Core dependency.
+
+The generated root README is an author-facing quick start. It signposts
+`PERSONALISATION.md`, agent definitions, learning memory, profiles, and the
+separate technical setup guide so ordinary content creation does not begin
+with package-manager detail.
 
 ## What belongs in the generated repository
 

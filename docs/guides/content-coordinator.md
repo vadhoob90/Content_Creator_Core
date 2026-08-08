@@ -22,11 +22,17 @@ Authors can use the calmer human-readable entry points:
 content-creator --workspace . overview
 content-creator --workspace . start
 content-creator --workspace . start "Write a concise launch announcement"
+content-creator --workspace . personalisation show
 ```
 
 `overview` renders active voice and version, provider state, default pack,
 incomplete runs, warnings, and one recommended action. `overview --json`
 returns the same typed snapshot used by agent hosts.
+
+`personalisation show` answers who the agents are, which editable definitions
+have been customised, what active principles they have learnt, and where the
+selected voice and approved perspectives live. See the
+[personalisation guide](personalisation.md).
 
 `start` is read-only. With no request it routes the author to setup, onboarding,
 an interrupted run, or draft review. With a request it proposes the voice,

@@ -114,6 +114,7 @@ class WorkspaceUpgrader:
                 "path": "README.md",
                 "managed_core_dependency": self._readme_is_managed(),
             },
+            "personalisation": self._personalisation_changes(),
             "template_changes": {
                 "agents": AgentWorkspace(self.root).diff_template(),
                 "skills": self._skill_changes(),
@@ -211,11 +212,29 @@ class WorkspaceUpgrader:
                 "compatibility_report": str(audit_path.relative_to(self.root)),
                 "manual_follow_up": [
                     "Review agent and skill template differences.",
+                    "Run content-creator --workspace . personalisation show.",
+                    "Add the v1.5 personalisation navigation links to a customised README.",
                     "Review and commit pyproject.toml and uv.lock deliberately.",
                 ],
             }
         )
         return report
+
+    @staticmethod
+    def _personalisation_changes() -> Dict[str, Any]:
+        """Return author-navigation guidance for a Core upgrade.
+
+        Returns:
+            Dict[str, Any]: Inspection command and non-destructive migration guidance.
+        """
+        return {
+            "inspect_command": ["personalisation", "show"],
+            "guide": "PERSONALISATION.md",
+            "guidance": (
+                "Run the inspection after upgrading. Fresh v1.5 workspaces include "
+                "author-first navigation; existing custom README files remain untouched."
+            ),
+        }
 
     def _validation_commands(self) -> List[List[str]]:
         """Return the validation commands.

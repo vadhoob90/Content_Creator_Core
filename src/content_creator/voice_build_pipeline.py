@@ -14,7 +14,7 @@ from .ingestion import content_hash, is_near_duplicate, normalize_text, read_sou
 from .linguistics import build_linguistic_signature, extract_linguistic_features
 from .runner import AgentRunner, AgentRunOptions
 from .storage import RunStore
-from .versioned_artifacts import hash_file, hash_json
+from .versioned_artifacts import hash_file, hash_json, publish_candidate
 from .voice_build_models import (
     BuildState,
     ProfileCriticism,
@@ -85,7 +85,7 @@ class VoiceBuildPipeline(VoiceProfileRenderer):
         state.patterns = evolved.patterns
         evaluation = self._evaluate(state, evolved.profile, evolved.constraints, evolved.rubric)
         manifest = self._write_manifest(state, evaluation)
-        self._activate_candidate(state)
+        publish_candidate(state.voice_root, self._activate_candidate, state, VoiceBuildError)
         return manifest
 
     def _prepare(self, order: VoiceWorkOrder) -> BuildState:

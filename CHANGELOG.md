@@ -12,9 +12,38 @@ release tag.
 
 ### Changed
 
+## [1.5.0] - 2026-08-08
+
+### Added
+
+- An author-facing `personalisation show` command that explains each agent,
+  identifies customised agent files, shows actual active repository and
+  voice-scoped learning, and links voice and perspective state to direct paths.
+- Hash-anchored `voice reject` decisions with immutable rejection snapshots and
+  receipts, while preserving the currently active voice version.
+- Author-first navigation in newly generated workspaces, including a concise
+  quick start, personalisation guide, profile and learning indexes, and a
+  separate technical setup and `uv` guide.
+
+### Changed
+
+- Candidate status now distinguishes pending review, already-active candidates,
+  rejected candidates, and invalid candidates instead of treating directory
+  presence as an unresolved decision.
+- Candidate build publication, approval, and rejection share one per-voice
+  lifecycle lock so a reviewed hash cannot change during a decision.
 - The Core release policy now includes a decision table for borderline semantic
   versioning cases, including stricter validation, error contracts, security
   hardening, dependencies, and experimental interfaces.
+
+### Migration
+
+- No stored-data migration is required. After upgrading, run
+  `content-creator --workspace . personalisation show` to inspect effective
+  agent, learning, voice, and perspective state.
+- Existing customised READMEs remain untouched. Fresh workspaces receive the
+  author-first navigation automatically; existing workspaces can add the links
+  from the upgrade preview deliberately.
 
 ## [1.4.1] - 2026-08-08
 

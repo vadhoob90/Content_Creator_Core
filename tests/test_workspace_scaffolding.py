@@ -44,6 +44,7 @@ def test_workspace_create_generates_complete_thin_repository(tmp_path, capsys):
 
     expected = {
         "README.md",
+        "PERSONALISATION.md",
         "AGENTS.md",
         "CLAUDE.md",
         "pyproject.toml",
@@ -55,8 +56,12 @@ def test_workspace_create_generates_complete_thin_repository(tmp_path, capsys):
         "agents/writer.md",
         "learnings/memory.json",
         "profiles/registry.json",
+        "profiles/README.md",
+        "profiles/alice-general/README.md",
         "profiles/alice-general/onboarding.json",
         "profiles/alice-general/learnings/memory.json",
+        "learnings/README.md",
+        "docs/setup-and-technical-guide.md",
         "voice-material/alice-general/source-urls.txt",
         "content/linkedin-post/published/.gitkeep",
         "content/linkedin-article/published/.gitkeep",
@@ -90,25 +95,32 @@ def test_workspace_create_generates_complete_thin_repository(tmp_path, capsys):
         VoiceRegistry(destination).resolve("default")
 
     readme = (destination / "README.md").read_text(encoding="utf-8")
-    assert "Create content using chat" in readme
-    assert "Choose how to begin" in readme
-    assert "--strategy source-derived" in readme
-    assert "--strategy starter" in readme
-    assert "automatically disables" in readme
-    assert '"/absolute/path/to/my-writing"' in readme
-    assert "discovered recursively" in readme
     ignore = (destination / ".gitignore").read_text(encoding="utf-8")
     assert "profiles/*/work-order.json" in ignore
     assert "voice-material/**/*" in ignore
     assert "!voice-material/**/source-urls.txt" in ignore
-    assert "--use linkedin-post" in readme
-    assert "--use linkedin-article" in readme
+    assert "- `linkedin-post`" in readme
+    assert "- `linkedin-article`" in readme
     assert "## Core dependency" in readme
     assert "content-creator==0.4.0" in readme
     assert "Content_Creator_Core/tree/v0.4.0" in readme
     assert "pyproject.toml` and the\nresolution in `uv.lock` are authoritative" in readme
+    _assert_author_navigation(destination, readme)
 
     _assert_generated_workspace_runs(destination, capsys)
+
+
+def _assert_author_navigation(destination, readme):
+    assert "## Quick start" in readme
+    assert "How this system is personalised to me" in readme
+    assert "Technical setup, uv, providers, and CLI usage" in readme
+    assert "Terminal installation and maintenance use `uv`" in readme
+    personalisation = (destination / "PERSONALISATION.md").read_text(encoding="utf-8")
+    assert "## What my agents have learnt" in personalisation
+    assert "profiles/alice-general/learnings/memory.json" in personalisation
+    technical = (destination / "docs" / "setup-and-technical-guide.md").read_text(encoding="utf-8")
+    assert "uv sync --dev" in technical
+    assert "`voice add-sources` command" in technical
 
 
 def _assert_generated_workspace_runs(destination, capsys):

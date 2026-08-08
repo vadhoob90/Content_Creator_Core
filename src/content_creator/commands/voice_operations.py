@@ -16,6 +16,7 @@ from ..voice_assessment import (
     save_score_preference,
 )
 from ..voice_ml import train_voice_ml_model
+from ..voice_rejection import candidate_decision, list_rejections
 from ..voices import VoiceManifest, hash_file, load_voice_onboarding
 from .shared import print_json
 from .voice_context import VoiceCommandContext
@@ -141,6 +142,27 @@ def deactivate(context: VoiceCommandContext) -> int:
         int: The resulting numeric value for deactivate.
     """
     print_json(context.registry.deactivate(context.arguments.voice_id, context.arguments.reason))
+    return 0
+
+
+def reject(context: VoiceCommandContext) -> int:
+    """Reject the exact candidate reviewed by an author.
+
+    Args:
+        context (VoiceCommandContext): Voice command dependencies and arguments.
+
+    Returns:
+        int: Zero after the rejection receipt is persisted or found.
+    """
+    arguments = context.arguments
+    print_json(
+        context.registry.reject(
+            arguments.voice_id,
+            arguments.candidate_hash,
+            arguments.rejected_by,
+            arguments.reason,
+        )
+    )
     return 0
 
 
@@ -370,12 +392,15 @@ def show_status(context: VoiceCommandContext) -> int:
         if manifest_path.exists()
         else None
     )
+    active = context.registry.list().get(voice_id)
     print_json(
         {
             "voice_id": voice_id,
             "onboarding": onboarding.model_dump(mode="json") if onboarding else None,
             "candidate": candidate_status,
-            "active": context.registry.list().get(voice_id),
+            "active": active,
+            "candidate_decision": candidate_decision(context.root, voice_id, active),
+            "rejections": list_rejections(context.root, voice_id),
             "statistical_voice_score": load_score_preference(context.root, voice_id),
         }
     )

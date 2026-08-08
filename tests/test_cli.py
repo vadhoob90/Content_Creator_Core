@@ -29,6 +29,7 @@ def test_default_help_is_calm_and_advanced_commands_remain_discoverable(capsys):
     help_text = capsys.readouterr().out
     assert "start" in help_text
     assert "overview" in help_text
+    assert "personalisation" in help_text
     assert "==SUPPRESS==" not in help_text
     assert "voice               " not in help_text
 

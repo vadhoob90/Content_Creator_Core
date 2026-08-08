@@ -21,6 +21,7 @@ def test_schema_catalogue_covers_persisted_public_contracts():
         "work-order",
         "run-state",
         "voice-manifest",
+        "voice-rejection-receipt",
         "voice-evolution-change-set",
         "voice-evolution-delta",
         "perspective-manifest",

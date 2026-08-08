@@ -106,6 +106,7 @@ def test_top_level_cli_commands_are_characterized():
         "operations",
         "pack",
         "packs",
+        "personalisation",
         "perspective",
         "plan",
         "provider",

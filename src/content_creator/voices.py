@@ -40,6 +40,9 @@ from .voice_models import (
     VoicePattern as VoicePattern,
 )
 from .voice_models import (
+    VoiceRejectionReceipt as VoiceRejectionReceipt,
+)
+from .voice_models import (
     VoiceStatus as VoiceStatus,
 )
 from .voice_models import (
@@ -259,6 +262,28 @@ class VoiceRegistry:
         from .voice_activation import activate_candidate
 
         return activate_candidate(self, voice_id, approved_by, override_reason)
+
+    def reject(
+        self,
+        voice_id: str,
+        candidate_hash: str,
+        rejected_by: str,
+        reason: str,
+    ) -> VoiceRejectionReceipt:
+        """Reject one exact candidate without changing the active voice.
+
+        Args:
+            voice_id (str): Stable selected voice identifier.
+            candidate_hash (str): Reviewed candidate hash that must still be current.
+            rejected_by (str): Human identity recorded with the rejection.
+            reason (str): Human explanation for rejecting the candidate.
+
+        Returns:
+            VoiceRejectionReceipt: Immutable evidence of the rejection decision.
+        """
+        from .voice_rejection import reject_candidate
+
+        return reject_candidate(self, voice_id, candidate_hash, rejected_by, reason)
 
     def deactivate(self, voice_id: str, reason: str) -> Dict:
         """Deactivate the voice registry workflow.

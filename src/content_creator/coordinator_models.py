@@ -34,6 +34,8 @@ class VoiceStatus(BaseModel):
     active_status: Optional[str] = None
     active_version: Optional[str] = None
     candidate_status: Optional[str] = None
+    candidate_decision: Optional[str] = None
+    candidate_hash: Optional[str] = None
     onboarding_status: Optional[str] = None
     strategy: Optional[str] = None
 
@@ -68,6 +70,13 @@ class WorkspaceSnapshot(BaseModel):
     health: Dict[str, Any]
     warnings: List[str] = Field(default_factory=list)
     recommended_action: CoordinatorAction
+    personalisation_action: CoordinatorAction = Field(
+        default_factory=lambda: CoordinatorAction(
+            id="inspect-personalisation",
+            label="Understand agents, learnings, voice, and perspectives",
+            command=["personalisation", "show"],
+        )
+    )
 
 
 def operation(

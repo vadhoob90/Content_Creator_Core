@@ -35,6 +35,7 @@ class VoiceStatus(str, Enum):
     ACTIVE = "active"
     SUPERSEDED = "superseded"
     INACTIVE = "inactive"
+    REJECTED = "rejected"
 
 
 class Authorisation(BaseModel):
@@ -170,6 +171,21 @@ class VoiceApprovalReceipt(BaseModel):
     candidate_hash: str
     evaluation_report_hash: str
     override_reason: Optional[str] = None
+
+
+class VoiceRejectionReceipt(BaseModel):
+    """Record a deterministic human rejection of one exact voice candidate."""
+
+    schema_version: str = "1.0"
+    voice_id: str
+    candidate_hash: str
+    candidate_manifest_hash: str
+    rejected_by: str
+    rejected_at: str
+    reason: str
+    active_version: Optional[str] = None
+    active_candidate_hash: Optional[str] = None
+    snapshot_path: str
 
 
 def onboarding_path(root: Path, voice_id: str) -> Path:

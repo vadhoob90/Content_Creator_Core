@@ -67,12 +67,12 @@ def activate_candidate(
     """
     voice_root = registry_service.root / "profiles" / voice_id
     candidate = voice_root / "candidate"
-    manifest, evaluation_path = _validated_candidate(candidate, override_reason)
     with ActivationLock(
-        voice_root / ".activation.lock",
-        "Voice activation is already in progress",
+        voice_root / ".lifecycle.lock",
+        "Voice candidate lifecycle operation is already in progress",
         VoiceError,
     ):
+        manifest, evaluation_path = _validated_candidate(candidate, override_reason)
         registry = registry_service._read()
         existing_receipt = _existing_receipt(voice_root, registry, voice_id, manifest)
         if existing_receipt:

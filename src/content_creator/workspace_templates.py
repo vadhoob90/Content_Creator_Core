@@ -51,23 +51,163 @@ class WorkspaceReadmeContext:
     intended_uses: str
 
 
-WORKSPACE_README_TEMPLATE = """# {display_name}
+AUTHOR_WORKSPACE_README_TEMPLATE = """# {display_name}
 
-This is {author_name}'s thin Content Creator workspace. It owns the mutable
-editorial material: authorised voice sources, voice-scoped learning,
-perspectives, repository agents, drafts, and approved publications.
+This is {author_name}'s Content Creator workspace. It keeps your voice,
+perspectives, editorial agents, feedback-derived learning, drafts, and approved
+content together without publishing anything externally.
 
-Reusable routing, provider adapters, schemas, validation, versioning, content
-packs, and workflow contracts come from
-[`Content_Creator_Core`](https://github.com/vadhoob90/Content_Creator_Core).
+## Quick start
 
-{core_dependency_section}
+Open this folder in Codex or Claude Code and describe what you want to create:
+
+```text
+Write a useful piece for my professional audience. Use no external research.
+```
+
+The assistant will inspect the workspace, select only an active voice and
+approved perspectives, apply previous feedback, and return a draft for review.
+To approve a repository-local copy, say:
+
+```text
+Move the active draft into the published directory.
+```
+
+## Understand your workspace
+
+- [How this system is personalised to me](PERSONALISATION.md)
+- [My agents](agents/README.md)
+- [My voices and perspectives](profiles/README.md)
+- [My shared learning](learnings/README.md)
+- [My approved content](content/)
+- [Technical setup, uv, providers, and CLI usage](docs/setup-and-technical-guide.md)
+
+The guided personalisation view is also available as:
+
+```bash
+content-creator --workspace . personalisation show
+```
 
 ## Included content packs
 
 {pack_list}
 
-## Set up
+## First-time voice choice
+
+Before creating content, the assistant will ask whether to build a personalised
+voice from writing you provide or begin with the neutral Clear Professional
+Starter. It must not choose for you. Your intended voice is `{voice_id}`
+(`{voice_label}`).
+
+The starter is a writing policy, not a representation of {author_name}'s
+established voice. It cannot invent experience, identity, opinions, or
+perspectives.
+
+## Technical users
+
+Terminal installation and maintenance use `uv`, but they are not required to
+understand or navigate this workspace. See the
+[technical setup guide](docs/setup-and-technical-guide.md) for the complete
+commands.
+
+{core_dependency_section}
+
+## Ownership
+
+Your agents, voice material, learnings, perspectives, content, and tests belong
+in this repository. Reusable workflow mechanisms come from
+[`Content_Creator_Core`](https://github.com/vadhoob90/Content_Creator_Core).
+"""
+
+
+PERSONALISATION_TEMPLATE = """# How this system is personalised to me
+
+This page is the starting point for understanding how Content Creator represents
+{author_name}. Live state always comes from Core's manifests, registries, and
+receipts rather than this explanatory page.
+
+Run `content-creator --workspace . personalisation show` for the current
+human-readable view, or add `--json` for structured output.
+
+## My agents
+
+Open [`agents/README.md`](agents/README.md) to see what each agent does. The live
+view identifies which agent files are customised and which remain unchanged Core
+starting points. An agent's effective instructions combine its Core contract,
+repository file, active voice, selected perspectives, role-matched learning,
+rubrics, and pack instructions.
+
+## What my agents have learnt
+
+- [`learnings/memory.json`](learnings/memory.json) contains policies shared by
+  every voice in this workspace.
+- [`profiles/{voice_id}/learnings/memory.json`](profiles/{voice_id}/learnings/memory.json)
+  contains learning belonging only to `{voice_id}`.
+
+Only active records matching the executing role reach an agent. Provisional and
+rejected records remain inspectable but do not enter prompts.
+
+## My voice and perspectives
+
+- [`profiles/registry.json`](profiles/registry.json) selects active voices.
+- [`profiles/{voice_id}/`](profiles/{voice_id}/) contains the intended voice,
+  immutable versions, candidate decisions, learning, and perspectives.
+- [`profiles/{voice_id}/perspectives/`](profiles/{voice_id}/perspectives/) contains
+  separately governed author positions.
+
+Candidate and active lifecycle state comes from manifests and decision receipts.
+Profile prose is evidence and guidance, not lifecycle authority.
+"""
+
+
+PROFILES_README_TEMPLATE = """# Voices and perspectives
+
+The registry in [`registry.json`](registry.json) selects the active immutable
+voice version. Each voice directory contains its evidence, versions, incremental
+learning, and separately approved perspective contexts.
+
+Start with [`{voice_id}/README.md`]({voice_id}/README.md), or run
+`content-creator --workspace . personalisation show` for current state and valid
+decisions.
+"""
+
+
+VOICE_README_TEMPLATE = """# {voice_label}
+
+This directory contains the voice `{voice_id}`.
+
+- `versions/` contains immutable approved voice versions.
+- `candidate/` contains a candidate awaiting a decision, when present.
+- `rejections/` preserves rejected candidate evidence and receipts.
+- `learnings/memory.json` contains active, provisional, and rejected learning.
+- `perspectives/` contains context-specific author positions.
+
+Use `content-creator --workspace . personalisation show` for authoritative
+current state. Do not infer lifecycle state from historical profile prose.
+"""
+
+
+LEARNINGS_README_TEMPLATE = """# Shared learning
+
+`memory.json` contains learning that applies to every voice in this repository.
+Voice-specific feedback belongs under `profiles/<voice-id>/learnings/memory.json`.
+
+Learning is role-specific. Only active records for the executing `writer`,
+`researcher`, or `critic` enter that agent's prompt. Provisional and rejected
+records remain visible for review but are not applied.
+
+Run `content-creator --workspace . personalisation show` to read the active
+principles in plain language.
+"""
+
+
+TECHNICAL_SETUP_TEMPLATE = """# Technical setup and command-line usage
+
+Most authors can work conversationally by opening the repository in Codex or
+Claude Code. This page is for maintainers who install dependencies, select a
+provider, run checks, or upgrade Core.
+
+## Install and verify
 
 Install [uv](https://docs.astral.sh/uv/), then run:
 
@@ -75,6 +215,7 @@ Install [uv](https://docs.astral.sh/uv/), then run:
 uv sync --dev
 uv run content-creator --workspace . doctor
 uv run content-creator --workspace . overview
+uv run content-creator --workspace . personalisation show
 uv run pytest
 ```
 
@@ -87,134 +228,22 @@ uv run content-creator --workspace . provider verify codex-native
 ```
 
 For Claude Code, authenticate and select `claude-native` instead. Core has no
-implicit provider default: the workspace records this choice so opening a new
-terminal cannot silently switch to a metered API provider.
+implicit provider default.
 
-## Choose how to begin
+## Voice onboarding
 
-Run the guided entry point:
+Run `uv run content-creator --workspace . start` for the guided route. Source
+material may remain outside this repository and be supplied with the
+`voice add-sources` command and its `--documents` option. Review candidate
+status and the copyable approval or rejection commands with
+`personalisation show`.
 
-```bash
-uv run content-creator --workspace . start
-```
-
-Before creating content, choose one voice route. If you are using chat, the
-assistant must ask this question when onboarding is still undecided:
-
-```text
-Do you want to build a personalised voice from writing you can provide, or
-begin with the neutral Clear Professional Starter?
-```
-
-The starter is a writing policy, not a representation of {author_name}'s
-established voice. It cannot invent experience, identity, opinions, or
-perspectives.
-
-### Route A: build a voice from previous writing
-
-Record the choice:
-
-```bash
-uv run content-creator --workspace . voice onboard {voice_id} \\
-  --strategy source-derived \\
-  --author-name "{author_name}" \\
-  --label "{voice_label}" \\
-  --selected-by "{author_name}" \\
-{intended_uses}
-```
-
-If you already have writing on this computer, point Core directly at its
-directory. The files may remain outside this Git repository and are read in
-place; supported files are discovered recursively:
-
-```bash
-uv run content-creator --workspace . voice add-sources {voice_id} \\
-  --documents "/absolute/path/to/my-writing"
-```
-
-Core does not copy those originals into the repository. Private filesystem
-paths remain in the ignored operational work order and cache; versioned voice
-artifacts retain only `local-document:<filename>` references and content
-hashes.
-
-For authorised public sources, add URLs to
-`voice-material/{voice_id}/source-urls.txt` and run:
-
-```bash
-uv run content-creator --workspace . voice add-sources {voice_id} \\
-  --sources voice-material/{voice_id}/source-urls.txt
-```
-
-Build the candidate:
-
-```bash
-uv run content-creator --workspace . voice build {voice_id}
-```
-
-Review and approve it:
-
-```bash
-uv run content-creator --workspace . voice status {voice_id}
-uv run content-creator --workspace . voice show {voice_id}
-uv run content-creator --workspace . voice verify {voice_id}
-uv run content-creator --workspace . voice approve {voice_id} \\
-  --approved-by "{author_name}"
-```
-
-### Route B: begin without previous writing
-
-Activate the neutral starter:
-
-```bash
-uv run content-creator --workspace . voice onboard {voice_id} \\
-  --strategy starter \\
-  --author-name "{author_name}" \\
-  --label "{voice_label}" \\
-  --selected-by "{author_name}" \\
-{intended_uses}
-```
-
-This activates a versioned starter profile and automatically disables
-perspective creation, selection, and extraction for that voice. Runs record
-that no author evidence was used.
-
-When approved writing becomes available, repeat Route A. The starter remains
-usable while the candidate is reviewed. Activating the source-derived version
-re-enables the workspace's normal perspective policy.
-
-## Create content using chat
-
-Open this repository in Codex or Claude Code and describe the content in
-ordinary language:
-
-```text
-Write a useful piece for my professional audience. Use no external research.
-```
-
-Repository guidance tells the chat to invoke Content Creator, resolve the
-selected pack and active voice, preserve the run artifacts, and return the
-draft for review.
-
-To approve repository-local publication, say:
-
-```text
-Move the active draft into the published directory.
-```
-
-This does not post to an external platform.
-
-## Create content using the CLI
-
-Preview Core's proposed decisions without creating a run:
+## Direct content creation
 
 ```bash
 uv run content-creator --workspace . start \\
   "Write a useful piece for my professional audience"
-```
 
-Then create the reviewed route explicitly:
-
-```bash
 uv run content-creator --workspace . run \\
   "Write a useful piece for my professional audience" \\
   --pack {first_pack} \\
@@ -223,14 +252,8 @@ uv run content-creator --workspace . run \\
   --provider codex-native
 ```
 
-## Ownership boundary
-
-Change author-specific agents, voices, sources, learnings, perspectives,
-content, and tests here. Add reusable mechanisms to Content Creator Core and
-upgrade the pinned dependency deliberately.
-
-Do not copy `src/content_creator`, core contracts, provider adapters, or
-packaged resources into this repository.
+Core never publishes externally. The `publish` command writes only an approved
+copy inside this repository.
 """
 
 
@@ -455,7 +478,7 @@ ownership boundaries, approval trigger, and content-integrity rules.
             str: The resulting text for readme.
         """
         pack_list = "\n".join("- `{}`".format(pack) for pack in context.packs)
-        return WORKSPACE_README_TEMPLATE.format(
+        return AUTHOR_WORKSPACE_README_TEMPLATE.format(
             display_name=context.display_name,
             author_name=context.author_name,
             core_dependency_section=readme_core_dependency(context.core_ref, context.dependency),
