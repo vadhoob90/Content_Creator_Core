@@ -186,6 +186,43 @@ class Configuration:
         return policy
 
     @property
+    def publication_provenance_policy(self) -> Dict[str, Any]:
+        """Return tracked publication provenance policy.
+
+        Returns:
+            Dict[str, Any]: Validated receipt and enforcement settings.
+
+        Raises:
+            ConfigurationError: If publication provenance configuration is invalid.
+        """
+        path = self.root / "content-creator.yaml"
+        data = self._read_yaml(path) if path.exists() else {}
+        configured = data.get("publication_provenance", {}) or {}
+        if not isinstance(configured, dict):
+            raise ConfigurationError("publication_provenance configuration must be a mapping")
+        policy = {
+            "policy": "advisory",
+            "receipts_directory": "publication-receipts",
+        }
+        policy.update(configured)
+        if policy["policy"] not in {
+            "off",
+            "advisory",
+            "required-for-new-publications",
+            "required",
+        }:
+            raise ConfigurationError(
+                "publication_provenance.policy must be off, advisory, "
+                "required-for-new-publications, or required"
+            )
+        receipts = Path(str(policy["receipts_directory"]))
+        if receipts.is_absolute() or ".." in receipts.parts or receipts == Path("."):
+            raise ConfigurationError(
+                "publication_provenance.receipts_directory must stay inside the workspace"
+            )
+        return policy
+
+    @property
     def coordinator_policy(self) -> Dict[str, Any]:
         """Return the coordinator policy.
 

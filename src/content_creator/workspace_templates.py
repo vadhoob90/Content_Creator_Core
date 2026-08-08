@@ -399,6 +399,11 @@ An instruction to move the active draft into its published directory is author
 approval for repository-local publication and learning extraction. It does not
 authorise posting externally.
 
+Successful publication writes a privacy-safe receipt under
+`publication-receipts/`. Run `verify-publications` before committing published
+content or receipt changes. Treat an enforced finding as a publication
+integrity failure; the verifier is offline and must not invoke a model.
+
 When durable author feedback arrives after publication, or on a reviewed draft
 that should remain unpublished, use `learn <run-id> --feedback "..."
 --idempotency-key <stable-key>`. This updates only the run's verified voice

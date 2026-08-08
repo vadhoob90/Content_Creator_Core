@@ -14,6 +14,7 @@ from ..diagnostics import DiagnosticDecisionRequired
 from ..orchestrator import OrchestrationError, Orchestrator
 from ..packs import PackError
 from ..providers import ProviderError
+from ..publication_provenance import PublicationProvenanceError
 from ..runner import AgentOutputError
 from ..storage import StorageError
 from ..upgrade import WorkspaceUpgradeError
@@ -45,6 +46,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         OrchestrationError,
         PackError,
         ProviderError,
+        PublicationProvenanceError,
         MLDependencyError,
         StorageError,
         WorkspaceUpgradeError,

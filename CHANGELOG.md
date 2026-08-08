@@ -10,7 +10,15 @@ release tag.
 
 ### Added
 
+- Privacy-safe, repository-tracked publication receipts and the deterministic
+  offline `content-creator verify-publications` command.
+- Advisory, prospective, and complete receipt-enforcement policies, including
+  a hashed legacy-publication baseline for deliberate migration.
+
 ### Changed
+
+- Repository publication now revalidates exact-draft provenance and pinned
+  voice and perspective integrity before writing to a pack destination.
 
 ## [1.2.0] - 2026-08-08
 

@@ -140,6 +140,28 @@ def learn(context: CommandContext) -> int:
     return 0
 
 
+def verify_publications(context: CommandContext) -> int:
+    """Verify tracked publication provenance without invoking a provider.
+
+    Args:
+        context (CommandContext): Active command context.
+
+    Returns:
+        int: Zero for success or advisory findings; one for enforced failures.
+    """
+    arguments = context.arguments
+    if arguments.write_baseline or arguments.replace_baseline:
+        context.emit(
+            context.orchestrator.publications.write_baseline(
+                replace=arguments.replace_baseline,
+            )
+        )
+        return 0
+    report = context.orchestrator.publications.verify()
+    context.emit(report)
+    return 1 if report["status"] == "failed" else 0
+
+
 def revise(context: CommandContext) -> int:
     """Run a traceable revision against an existing reviewed draft.
 

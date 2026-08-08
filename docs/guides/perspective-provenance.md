@@ -272,3 +272,6 @@ whether the machinery executes.
 - Publication produces candidates, not active beliefs.
 - Approval, versioning, retirement, and deactivation are deterministic.
 - Exact perspective versions are part of the run record.
+- Repository publication pins selected versions and entry hashes in a tracked,
+  privacy-safe receipt. `content-creator verify-publications` checks that
+  evidence offline without requiring every piece to select a perspective.

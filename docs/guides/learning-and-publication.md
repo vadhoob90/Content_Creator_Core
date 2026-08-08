@@ -10,11 +10,18 @@ After that pre-publication decision, the application:
 
 1. Resolves `final.md` for the specified run
 2. Refuses to overwrite an existing target
-3. Writes the piece to the selected pack's configured repository destination
-4. Records `assessment.json`
-5. Calls the learning extractor
-6. Adds deduplicated records to
+3. Revalidates deterministic perspective provenance against the exact final
+   bytes and pinned immutable context
+4. Records `assessment.json` and the publication perspective evaluation
+5. Calls the learning and perspective extractors
+6. Writes the piece to the selected pack's configured repository destination
+7. Writes a privacy-safe tracked publication receipt
+8. Adds deduplicated records to
    `profiles/<voice-id>/learnings/memory.json`
+
+The destination is untouched when provenance fails. See
+[Publication provenance and CI verification](publication-provenance.md) for
+receipt policy, legacy migration, and the offline CI command.
 
 This is repository publication only. It never posts to LinkedIn and never
 commits or pushes.

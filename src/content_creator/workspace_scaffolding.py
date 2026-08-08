@@ -10,6 +10,7 @@ from typing import Any, Callable, Iterable
 import yaml
 
 from .agent_resources import STANDARD_TEMPLATE
+from .domain import utc_now
 from .packs import PackRegistry
 from .storage import RunStore, slugify
 from .workspace_templates import WorkspaceReadmeContext
@@ -165,6 +166,10 @@ def _initialise_base(
         configuration = yaml.safe_load(configuration_path.read_text(encoding="utf-8"))
         configuration["coordinator"]["default_voice"] = identity.voice_id
         configuration["coordinator"]["default_pack"] = identity.packs[0]
+        configuration["publication_provenance"] = {
+            "policy": "required-for-new-publications",
+            "receipts_directory": "publication-receipts",
+        }
         RunStore._atomic_text(configuration_path, yaml.safe_dump(configuration, sort_keys=False))
     created = [
         entry if entry.startswith("learnings/") else f"agents/{entry}"
@@ -242,6 +247,14 @@ def _write_workspace_files(
         f"profiles/{identity.voice_id}/onboarding.json": _onboarding(identity),
         f"voice-material/{identity.voice_id}/source-urls.txt": _source_instructions(),
         "tests/test_workspace.py": scaffolder._smoke_test(identity.voice_id, identity.packs),
+        "publication-receipts/baseline.json": json.dumps(
+            {
+                "schema_version": "1.0",
+                "created_at": utc_now().isoformat(),
+                "artifacts": [],
+            },
+            indent=2,
+        ),
     }
     for relative, contents in simple_files.items():
         services.write_if_missing(root, root / relative, contents, created, preserved)

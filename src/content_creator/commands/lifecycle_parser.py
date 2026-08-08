@@ -161,6 +161,20 @@ def register_publication(subparsers: argparse._SubParsersAction) -> None:
     learn.add_argument("run_id")
     learn.add_argument("--feedback", required=True)
     learn.add_argument("--idempotency-key")
+    verify = subparsers.add_parser(
+        "verify-publications",
+        help="Verify tracked publication provenance receipts",
+    )
+    verify.add_argument(
+        "--write-baseline",
+        action="store_true",
+        help="Record current unreceipted publications as legacy content",
+    )
+    verify.add_argument(
+        "--replace-baseline",
+        action="store_true",
+        help="Replace an existing legacy baseline",
+    )
     revise = subparsers.add_parser(
         "revise", help="Revise a reviewed run in place and refresh its quality metadata"
     )
