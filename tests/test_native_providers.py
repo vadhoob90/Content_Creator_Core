@@ -8,6 +8,16 @@ from content_creator.domain import Critique, ModelRequest, ModelSelection
 from content_creator.providers.base import ProviderError
 from content_creator.providers.claude_native import ClaudeNativeProvider
 from content_creator.providers.codex_native import CodexNativeProvider
+from content_creator.providers.native_cli import NativeCliProvider
+
+
+class ExampleNativeProvider(NativeCliProvider):
+    name = "example-native"
+    executable_name = "example"
+    api_environment_variables = ["EXAMPLE_API_KEY"]
+
+    def generate(self, request):
+        raise NotImplementedError
 
 
 def model_request(provider, structured=True, search=True):
@@ -188,3 +198,80 @@ def test_claude_native_disables_tools_when_search_is_not_requested(tmp_path):
 
     command, _ = capture.calls[1]
     assert command[command.index("--tools") + 1] == ""
+
+
+def test_native_provider_requires_installed_executable(monkeypatch, tmp_path):
+    monkeypatch.setattr("content_creator.providers.native_cli.shutil.which", lambda _: None)
+
+    with pytest.raises(ProviderError, match="not installed"):
+        ExampleNativeProvider(root=tmp_path)
+
+
+@pytest.mark.parametrize(
+    ("failure", "message"),
+    [
+        (subprocess.TimeoutExpired("example", 3), "timed out after 3 seconds"),
+        (OSError("permission denied"), "Could not start example: permission denied"),
+    ],
+)
+def test_native_provider_translates_process_start_failures(tmp_path, failure, message):
+    def fail(_command, **_kwargs):
+        raise failure
+
+    provider = ExampleNativeProvider(
+        root=tmp_path,
+        executable="/fake/example",
+        command_runner=fail,
+    )
+
+    with pytest.raises(ProviderError, match=message):
+        provider._run([provider.executable], timeout=3)
+
+
+@pytest.mark.parametrize(
+    ("stderr", "stdout", "expected"),
+    [
+        ("private stderr detail", "fallback stdout", "private stderr detail"),
+        ("", "fallback stdout", "fallback stdout"),
+        ("", "", "unknown error"),
+    ],
+)
+def test_native_provider_reports_bounded_nonzero_exit_detail(
+    tmp_path,
+    stderr,
+    stdout,
+    expected,
+):
+    def fail(command, **_kwargs):
+        return subprocess.CompletedProcess(command, 9, stdout, stderr)
+
+    provider = ExampleNativeProvider(
+        root=tmp_path,
+        executable="/fake/example",
+        command_runner=fail,
+    )
+
+    with pytest.raises(ProviderError, match=expected):
+        provider._run([provider.executable])
+
+
+def test_native_provider_bounds_large_failure_detail(tmp_path):
+    detail = "sensitive-prefix-" + ("x" * 3000) + "-diagnostic-tail"
+
+    def fail(command, **_kwargs):
+        return subprocess.CompletedProcess(command, 1, "", detail)
+
+    provider = ExampleNativeProvider(
+        root=tmp_path,
+        executable="/fake/example",
+        command_runner=fail,
+    )
+
+    with pytest.raises(ProviderError) as raised:
+        provider._run([provider.executable])
+
+    rendered = str(raised.value)
+    assert "sensitive-prefix" in rendered
+    assert "diagnostic-tail" in rendered
+    assert "\n…\n" in rendered
+    assert len(rendered) < len(detail)

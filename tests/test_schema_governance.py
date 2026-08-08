@@ -52,6 +52,14 @@ def test_supported_legacy_artifact_is_migrated_without_mutating_input():
     assert "schema_version" not in legacy
 
 
+def test_current_schema_is_preserved_and_unknown_artifact_kinds_are_rejected():
+    current = {"schema_version": "1.0", "request": "Draft", "topic": "Draft"}
+
+    assert migrate_artifact("work-order", current) == current
+    with pytest.raises(SchemaCompatibilityError, match="Unknown artifact schema"):
+        migrate_artifact("unknown-kind", current)
+
+
 def test_current_models_write_explicit_schema_versions():
     work_order_schema = schema_catalogue()["work-order"]["schema"]
     run_state_schema = schema_catalogue()["run-state"]["schema"]

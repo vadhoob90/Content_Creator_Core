@@ -66,7 +66,7 @@ life.
 - Behaviour changes require regression tests.
 - The full test suite must pass on every declared Python version.
 - Overall statement coverage may not fall below 88%, and branch coverage may
-  not fall below the measured 71% baseline. Coverage.py measures branches for
+  not fall below the measured 80% baseline. Coverage.py measures branches for
   every coverage run. `scripts/coverage_report.py` enforces the thresholds
   independently so branch adoption cannot weaken the statement guarantee.
   Coverage is a guardrail, not a substitute for meaningful assertions.

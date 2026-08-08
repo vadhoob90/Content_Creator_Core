@@ -10,7 +10,7 @@ release tag.
 
 ### Added
 
-- Independent branch-coverage measurement and a 71% baseline ratchet, while
+- Independent branch-coverage measurement and an 80% risk-driven floor, while
   preserving the existing 88% statement-coverage guarantee and separate route
   matrix evaluation.
 
@@ -18,6 +18,18 @@ release tag.
 
 - CI and the complete local gate now report partial branches and enforce
   statement and branch thresholds independently.
+- Provider, native-process, idempotency, storage-path, citation, and research
+  validation tests now exercise plausible failure and recovery decisions before
+  raising the branch floor.
+- Configuration trust-boundary and voice-activation integrity tests cover invalid
+  policy values, candidate tampering, and explicit quality overrides; retry-count
+  validation now rejects booleans instead of treating them as integers.
+- Provider subprocess failures, immutable voice baselines, publication receipts,
+  coordinator decisions, workspace upgrades, and operational recovery now have
+  explicit failure-path coverage.
+- Voice-evolution semantic actions, diagnostic classification and issue lifecycle,
+  upgrade-audit recovery, schema migration, and degraded coordinator guidance are
+  covered as the final risk-driven tranche to 80%.
 
 ## [1.8.0] - 2026-08-08
 

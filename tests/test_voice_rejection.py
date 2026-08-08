@@ -126,3 +126,78 @@ def test_reject_refuses_changed_candidate_without_mutation(project, capsys):
         )
 
     assert (candidate / "manifest.json").read_bytes() == before
+
+
+def test_candidate_decision_distinguishes_missing_and_invalid_manifests(project):
+    assert candidate_decision(project, "missing-voice")["status"] == "none"
+
+    candidate = project / "profiles" / "invalid-voice" / "candidate"
+    candidate.mkdir(parents=True)
+    (candidate / "manifest.json").write_text("not-json", encoding="utf-8")
+
+    decision = candidate_decision(project, "invalid-voice")
+
+    assert decision["status"] == "invalid"
+    assert decision["manifest_status"] == "invalid"
+    assert decision["actions"] == []
+
+
+def test_candidate_decision_and_rejection_fail_closed_after_component_tampering(project, capsys):
+    _create(project, _voice_material(project))
+    capsys.readouterr()
+    candidate = project / "profiles" / "example-person" / "candidate"
+    manifest = json.loads((candidate / "manifest.json").read_text(encoding="utf-8"))
+    component = candidate / next(iter(manifest["components"].values()))
+    component.write_text(component.read_text(encoding="utf-8") + "\ntampered", encoding="utf-8")
+
+    decision = candidate_decision(project, "example-person")
+
+    assert decision["status"] == "invalid"
+    assert decision["problems"]
+    with pytest.raises(VoiceError, match="component hash mismatch"):
+        VoiceRegistry(project).reject(
+            "example-person",
+            manifest["candidate_hash"],
+            "Owner",
+            "The candidate evidence changed.",
+        )
+
+
+@pytest.mark.parametrize(
+    ("actor", "reason"),
+    [("", "Not suitable."), ("Owner", ""), ("   ", "Not suitable."), ("Owner", "   ")],
+)
+def test_rejection_requires_a_nonempty_human_decision(project, actor, reason):
+    with pytest.raises(VoiceError, match="non-empty actor and reason"):
+        VoiceRegistry(project).reject(
+            "example-person",
+            "sha256:" + "0" * 64,
+            actor,
+            reason,
+        )
+
+
+def test_rejection_requires_an_existing_candidate(project):
+    with pytest.raises(VoiceError, match="has not been built"):
+        VoiceRegistry(project).reject(
+            "missing-voice",
+            "sha256:" + "0" * 64,
+            "Owner",
+            "There is no reviewed candidate.",
+        )
+
+
+def test_rejection_refuses_candidate_that_is_already_active(project, capsys):
+    _create(project, _voice_material(project))
+    capsys.readouterr()
+    main(["--root", str(project), "voice", "approve", "example-person"])
+    capsys.readouterr()
+    active = VoiceRegistry(project).get("example-person")
+
+    with pytest.raises(VoiceError, match="already the active voice"):
+        VoiceRegistry(project).reject(
+            "example-person",
+            active["candidate_hash"],
+            "Owner",
+            "An active candidate cannot be rejected retrospectively.",
+        )

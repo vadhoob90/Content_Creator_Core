@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Any
 
 STATEMENT_MINIMUM = 88.0
-BRANCH_MINIMUM = 71.0
+BRANCH_MINIMUM = 80.0
 
 
 @dataclass(frozen=True)

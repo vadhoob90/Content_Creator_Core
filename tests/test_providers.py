@@ -1,4 +1,7 @@
+import builtins
 from types import SimpleNamespace
+
+import pytest
 
 from content_creator.domain import ModelRequest, ModelSelection
 from content_creator.providers.anthropic import AnthropicProvider
@@ -18,7 +21,7 @@ class Capture:
         return self.response
 
 
-def request(provider):
+def request(provider, *, structured=True, search=True, reasoning=True):
     return ModelRequest(
         role="critic",
         system="system",
@@ -27,11 +30,11 @@ def request(provider):
             provider=provider,
             profile="balanced",
             model="test-model",
-            reasoning_effort="medium" if provider == "openai" else None,
+            reasoning_effort="medium" if provider == "openai" and reasoning else None,
             capabilities=["structured_output", "web_search"],
         ),
-        output_schema={"type": "object", "properties": {}},
-        tools=["web_search"],
+        output_schema={"type": "object", "properties": {}} if structured else None,
+        tools=["web_search"] if search else [],
     )
 
 
@@ -96,6 +99,92 @@ def test_anthropic_token_limit_fails_closed():
         raise AssertionError("Expected ProviderError")
 
 
+def test_openai_minimal_response_omits_unrequested_capabilities():
+    response = SimpleNamespace(output_text="plain text", status="completed")
+    capture = Capture(response)
+
+    result = OpenAIProvider(SimpleNamespace(responses=capture)).generate(
+        request("openai", structured=False, search=False, reasoning=False)
+    )
+
+    assert "reasoning" not in capture.kwargs
+    assert "text" not in capture.kwargs
+    assert "tools" not in capture.kwargs
+    assert result.raw_id is None
+    assert result.input_tokens is None
+    assert result.output_tokens is None
+
+
+def test_anthropic_ignores_non_text_blocks_and_omits_unrequested_capabilities():
+    response = SimpleNamespace(
+        content=[
+            SimpleNamespace(type="tool_use", text="must not be returned"),
+            SimpleNamespace(type="text", text="first"),
+            SimpleNamespace(type="text", text="second"),
+        ],
+        stop_reason="end_turn",
+    )
+    capture = Capture(response)
+
+    result = AnthropicProvider(SimpleNamespace(messages=capture)).generate(
+        request("anthropic", structured=False, search=False)
+    )
+
+    assert "output_config" not in capture.kwargs
+    assert "tools" not in capture.kwargs
+    assert result.text == "first\nsecond"
+    assert result.raw_id is None
+    assert result.input_tokens is None
+    assert result.output_tokens is None
+
+
+@pytest.mark.parametrize(
+    ("provider", "client", "message"),
+    [
+        (
+            OpenAIProvider,
+            SimpleNamespace(
+                responses=SimpleNamespace(
+                    create=lambda **_: (_ for _ in ()).throw(RuntimeError("transport unavailable"))
+                )
+            ),
+            "OpenAI request failed: transport unavailable",
+        ),
+        (
+            AnthropicProvider,
+            SimpleNamespace(
+                messages=SimpleNamespace(
+                    create=lambda **_: (_ for _ in ()).throw(RuntimeError("transport unavailable"))
+                )
+            ),
+            "Anthropic request failed: transport unavailable",
+        ),
+    ],
+)
+def test_api_provider_transport_failures_preserve_stable_boundary(provider, client, message):
+    with pytest.raises(ProviderError, match=message):
+        provider(client).generate(request(provider.name))
+
+
+def test_openai_empty_output_fails_closed():
+    response = SimpleNamespace(output_text="", status="completed")
+
+    with pytest.raises(ProviderError, match="no text output"):
+        OpenAIProvider(SimpleNamespace(responses=Capture(response))).generate(request("openai"))
+
+
+def test_anthropic_non_text_output_fails_closed():
+    response = SimpleNamespace(
+        content=[SimpleNamespace(type="tool_use", text="not model text")],
+        stop_reason="end_turn",
+    )
+
+    with pytest.raises(ProviderError, match="no text output"):
+        AnthropicProvider(SimpleNamespace(messages=Capture(response))).generate(
+            request("anthropic")
+        )
+
+
 def test_registry_accepts_a_third_party_provider_adapter():
     provider = FakeProvider({"critic": ['{"ok": true}']})
     registry = ProviderRegistry()
@@ -103,3 +192,73 @@ def test_registry_accepts_a_third_party_provider_adapter():
     registry.register("local-llm", provider)
 
     assert registry.get("local-llm") is provider
+
+
+def test_registry_rejects_unknown_provider_without_mutation():
+    registry = ProviderRegistry()
+
+    with pytest.raises(ProviderError, match="Unknown provider: missing"):
+        registry.get("missing")
+
+    assert registry.providers == {}
+
+
+@pytest.mark.parametrize(
+    ("name", "module_name", "class_name"),
+    [
+        ("openai", "content_creator.providers.openai", "OpenAIProvider"),
+        ("anthropic", "content_creator.providers.anthropic", "AnthropicProvider"),
+        ("codex-native", "content_creator.providers.codex_native", "CodexNativeProvider"),
+        ("claude-native", "content_creator.providers.claude_native", "ClaudeNativeProvider"),
+    ],
+)
+def test_registry_lazily_constructs_and_caches_supported_providers(
+    monkeypatch,
+    tmp_path,
+    name,
+    module_name,
+    class_name,
+):
+    provider = FakeProvider({})
+    constructed = []
+
+    def construct(**kwargs):
+        constructed.append(kwargs)
+        return provider
+
+    monkeypatch.setattr(f"{module_name}.{class_name}", construct)
+    registry = ProviderRegistry(root=tmp_path)
+
+    assert registry.get(name) is provider
+    assert registry.get(name) is provider
+    assert len(constructed) == 1
+    if name.endswith("-native"):
+        assert constructed == [{"root": tmp_path}]
+    else:
+        assert constructed == [{}]
+
+
+@pytest.mark.parametrize(
+    ("missing_module", "provider", "extra"),
+    [
+        ("openai", OpenAIProvider, "openai"),
+        ("anthropic", AnthropicProvider, "anthropic"),
+    ],
+)
+def test_api_provider_explains_missing_optional_dependency(
+    monkeypatch,
+    missing_module,
+    provider,
+    extra,
+):
+    real_import = builtins.__import__
+
+    def reject_optional_dependency(name, *args, **kwargs):
+        if name == missing_module:
+            raise ImportError(f"{missing_module} unavailable")
+        return real_import(name, *args, **kwargs)
+
+    monkeypatch.setattr(builtins, "__import__", reject_optional_dependency)
+
+    with pytest.raises(ProviderError, match=rf"pip install -e '.\[{extra}\]'"):
+        provider()

@@ -283,7 +283,11 @@ class Configuration:
         policy.update(configured)
         if not isinstance(policy["enabled"], bool):
             raise ConfigurationError("diagnostics.enabled must be a boolean")
-        if not isinstance(policy["max_attempts"], int) or not (1 <= policy["max_attempts"] <= 3):
+        if (
+            isinstance(policy["max_attempts"], bool)
+            or not isinstance(policy["max_attempts"], int)
+            or not (1 <= policy["max_attempts"] <= 3)
+        ):
             raise ConfigurationError("diagnostics.max_attempts must be an integer from 1 to 3")
         if policy["defer_recovered_until_publication"] is not True:
             raise ConfigurationError("diagnostics.defer_recovered_until_publication must be true")
