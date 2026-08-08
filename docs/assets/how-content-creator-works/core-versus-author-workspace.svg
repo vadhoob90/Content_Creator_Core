@@ -1,0 +1,80 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1134" height="666" viewBox="0 0 1134 666" role="img" aria-labelledby="title desc">
+  <title id="title">Core versus the Author's workspace</title>
+  <desc id="desc">Content Creator Core supplies reusable mechanisms while the Author's workspace owns editorial policy, voice, agents, learning, evidence, runs, and publications. Both resolve into a reproducible content run.</desc>
+  <defs>
+    <marker id="arrowhead" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L8,4 L0,8 Z" fill="#8b8d90"/>
+    </marker>
+    <style>
+      text { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; fill: #1a1c1f; font-size: 14px; font-weight: 400; }
+      .heading { font-size: 29px; font-weight: 500; }
+      .tagline { fill: #8b8d90; font-size: 17px; }
+      .label { font-weight: 500; }
+      .small { fill: #8b8d90; font-size: 14px; }
+      .boundary { stroke: rgba(26, 28, 31, 0.10); stroke-width: 1.5; }
+      .core-field { fill: #dce9f6; }
+      .workspace-field { fill: #f3e5da; }
+      .compose { fill: #e6f1fb; stroke: rgba(26, 28, 31, 0.10); }
+      .check { fill: #339cff; }
+      .rule { stroke: rgba(26, 28, 31, 0.09); stroke-width: 1; }
+      .arrow { fill: none; stroke: #8b8d90; stroke-width: 1.7; }
+      .caption { fill: #8b8d90; font-size: 17px; }
+    </style>
+  </defs>
+
+  <rect width="1134" height="666" fill="#ffffff"/>
+  <text class="heading" x="45" y="44">2. Core versus downstream workspace</text>
+  <text class="tagline" x="692" y="44">Mechanism stays reusable; author policy stays local</text>
+
+  <g transform="translate(45 68) scale(.985)">
+    <rect class="boundary core-field" x="18" y="30" width="476" height="330" rx="16"/>
+    <rect class="boundary workspace-field" x="566" y="30" width="476" height="330" rx="16"/>
+
+    <text class="label" x="48" y="66">CONTENT CREATOR CORE</text>
+    <text class="small" x="48" y="87">Reusable kernel · pinned at v1.5.0</text>
+    <line class="rule" x1="48" y1="104" x2="464" y2="104"/>
+
+    <circle class="check" cx="58" cy="132" r="4"/>
+    <text x="76" y="137">Routing, orchestration, and lifecycle</text>
+    <circle class="check" cx="58" cy="170" r="4"/>
+    <text x="76" y="175">Typed schemas and state transitions</text>
+    <circle class="check" cx="58" cy="208" r="4"/>
+    <text x="76" y="213">Provider adapters and prompt composition</text>
+    <circle class="check" cx="58" cy="246" r="4"/>
+    <text x="76" y="251">Validation, quality gates, and retries</text>
+    <circle class="check" cx="58" cy="284" r="4"/>
+    <text x="76" y="289">Evidence, provenance, and integrity rules</text>
+    <circle class="check" cx="58" cy="322" r="4"/>
+    <text x="76" y="327">Immutable versions, receipts, idempotency</text>
+
+    <text class="label" x="596" y="66">AUTHOR'S WORKSPACE</text>
+    <text class="small" x="596" y="87">Author-owned editorial system</text>
+    <line class="rule" x1="596" y1="104" x2="1012" y2="104"/>
+
+    <circle class="check" cx="606" cy="132" r="4"/>
+    <text x="624" y="137">Editable agent instructions</text>
+    <circle class="check" cx="606" cy="170" r="4"/>
+    <text x="624" y="175">Verified voice and approved perspectives</text>
+    <circle class="check" cx="606" cy="208" r="4"/>
+    <text x="624" y="213">LinkedIn packs, rubrics, and route policy</text>
+    <circle class="check" cx="606" cy="246" r="4"/>
+    <text x="624" y="251">Repository and voice-scoped learning</text>
+    <circle class="check" cx="606" cy="284" r="4"/>
+    <text x="624" y="289">Research sources and author evidence</text>
+    <circle class="check" cx="606" cy="322" r="4"/>
+    <text x="624" y="327">Runs, approved content, and publications</text>
+
+    <path class="arrow" d="M256 360 L256 391 C256 409 377 407 421 407" marker-end="url(#arrowhead)"/>
+    <path class="arrow" d="M804 360 L804 391 C804 409 683 407 639 407" marker-end="url(#arrowhead)"/>
+
+    <rect class="compose" x="365" y="384" width="330" height="74" rx="14"/>
+    <text class="label" x="530" y="409" text-anchor="middle">Resolved run context</text>
+    <text class="small" x="530" y="430" text-anchor="middle">Core contracts + local agents + voice + learning</text>
+    <text class="small" x="530" y="447" text-anchor="middle">+ perspective + pack + rubric + request</text>
+
+    <path class="arrow" d="M530 458 L530 487" marker-end="url(#arrowhead)"/>
+    <text class="label" x="530" y="513" text-anchor="middle">Reproducible, reviewable content run</text>
+  </g>
+
+  <text class="caption" x="45" y="636">Core can be upgraded without moving the author’s voice, editorial policy, learning, or published content out of this repository.</text>
+</svg>
