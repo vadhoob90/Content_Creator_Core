@@ -230,6 +230,8 @@ def run(context: CommandContext) -> int:
     Returns:
         int: The process exit status, where zero indicates successful handling.
     """
+    if context.arguments.show_context:
+        context.orchestrator.runner.enable_context_trace()
     order = _build_order(context)
     if order is None:
         return 3

@@ -12,6 +12,37 @@ release tag.
 
 ### Changed
 
+## [1.6.0] - 2026-08-08
+
+### Added
+
+- Privacy-safe `context-composition.json` manifests for every persisted agent
+  invocation, including ordered loaded and skipped sources, hashes, versions,
+  selected learning and perspective record IDs, model routing, and hashed task
+  input references.
+- A read-only `personalisation explain --role <role>` preflight, historical
+  `context show <run-id>` inspection, and opt-in `run --show-context` loading
+  trace on standard error.
+- A runtime context composition guide in Core and a concise equivalent page in
+  every newly generated author workspace.
+
+### Changed
+
+- Prompt assembly now returns composition provenance alongside the unchanged
+  provider prompt, making voice-scoped learning and all other runtime layers
+  directly auditable.
+- Generated workspace navigation and the packaged content-creator skill now
+  signpost preflight, live, and historical context inspection.
+
+### Migration
+
+- No stored-data migration is required. Existing runs remain readable but do
+  not gain retrospective composition evidence; runs created with v1.6.0 record
+  the new artifact automatically.
+- Existing customised workspace documentation remains untouched. Fresh
+  workspaces receive `docs/runtime-context.md`; existing authors can use the
+  commands immediately after upgrading Core.
+
 ## [1.5.0] - 2026-08-08
 
 ### Added

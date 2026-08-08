@@ -34,7 +34,7 @@ branch:
 name = "example-content-workspace"
 version = "0.1.0"
 dependencies = [
-  "content-creator==1.5.0",
+  "content-creator==1.6.0",
 ]
 ```
 
@@ -44,7 +44,7 @@ refreshing the lock, and running downstream tests.
 From v0.6, preview that change with:
 
 ```bash
-content-creator --workspace . workspace upgrade --to v1.5.0
+content-creator --workspace . workspace upgrade --to v1.6.0
 ```
 
 The preview shows the dependency and lockfile operation, packaged template
@@ -63,7 +63,7 @@ plain-language summary lines plus decision prompts for the chat coordinator.
 Apply the reviewed preview explicitly:
 
 ```bash
-content-creator --workspace . workspace upgrade --to v1.5.0 --apply
+content-creator --workspace . workspace upgrade --to v1.6.0 --apply
 ```
 
 Core accepts only a semantic-version tag or full 40-character reviewed commit,

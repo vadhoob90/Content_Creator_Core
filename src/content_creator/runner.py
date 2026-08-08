@@ -3,13 +3,22 @@
 from __future__ import annotations
 
 import json
+import sys
 from typing import Any, Dict, Optional
 
 from pydantic import ValidationError
 
 from .configuration import Configuration
+from .context_composition import (
+    ContextCompositionStore,
+    ContextInvocation,
+    ContextInvocationIdentity,
+    invocation_record,
+    render_live_context,
+)
 from .diagnostics import RuntimeDiagnostics
 from .domain import ModelRequest, ModelResponse
+from .prompt_provenance import PromptComposition
 from .prompting import PromptAssembler
 from .providers import ProviderRegistry
 from .runner_models import AgentRunOptions as AgentRunOptions
@@ -50,6 +59,30 @@ class AgentRunner:
         self.diagnostics = diagnostics
         self.history: list[ModelRequest] = []
         self.responses: list[Optional[ModelResponse]] = []
+        self.context_store = ContextCompositionStore(prompts.root)
+        self.pending_context: list[ContextInvocation] = []
+        self.show_context = False
+
+    def enable_context_trace(self) -> None:
+        """Configure privacy-safe live composition output on stderr.
+
+        Returns:
+            None: Subsequent invocation provenance is printed to stderr.
+        """
+        self.show_context = True
+
+    def bind_context_run(self, run_id: str) -> None:
+        """Bind and flush relevant pre-run composition.
+
+        Args:
+            run_id (str): Stable persisted content run identifier.
+
+        Returns:
+            None: Pending evidence is persisted into the new run.
+        """
+        for invocation in self.pending_context:
+            self.context_store.append(run_id, invocation)
+        self.pending_context.clear()
 
     def run(
         self,
@@ -76,7 +109,18 @@ class AgentRunner:
             AgentOutputError: If the agent output operation cannot complete.
         """
         resolved_options = options or AgentRunOptions()
-        request = self._request(role, role_key, instruction, payload, resolved_options)
+        request, composition = self._prepared_request(
+            role, role_key, instruction, payload, resolved_options
+        )
+        self._record_context(
+            role,
+            role_key,
+            instruction,
+            payload,
+            resolved_options,
+            request,
+            composition,
+        )
         policy = self.configuration.diagnostic_policy
         max_attempts = policy["max_attempts"] if self.diagnostics and policy["enabled"] else 1
         for attempt in range(1, max_attempts + 1):
@@ -105,6 +149,28 @@ class AgentRunner:
         Returns:
             ModelRequest: The resulting model request for request.
         """
+        return self._prepared_request(role, role_key, instruction, payload, options)[0]
+
+    def _prepared_request(
+        self,
+        role: str,
+        role_key: str,
+        instruction: str,
+        payload: Dict[str, Any],
+        options: AgentRunOptions,
+    ) -> tuple[ModelRequest, PromptComposition]:
+        """Build one exact request together with instruction provenance.
+
+        Args:
+            role (str): Repository-owned agent role.
+            role_key (str): Model-selection role key.
+            instruction (str): Private task instruction.
+            payload (Dict[str, Any]): Private structured task payload.
+            options (AgentRunOptions): Invocation options.
+
+        Returns:
+            tuple[ModelRequest, PromptComposition]: Exact request and composition evidence.
+        """
         required = set(options.tools)
         if options.output_model:
             required.add("structured_output")
@@ -114,9 +180,10 @@ class AgentRunner:
             profile=options.profile,
             required_capabilities=required,
         )
-        return ModelRequest(
+        composition = self.prompts.compose(role, options.order)
+        request = ModelRequest(
             role=role,
-            system=self.prompts.system_prompt(role, options.order),
+            system=composition.prompt,
             user=self.prompts.user_prompt(instruction, payload),
             selection=selection,
             max_output_tokens=self.configuration.max_output_tokens,
@@ -125,6 +192,80 @@ class AgentRunner:
             ),
             tools=options.tools,
         )
+        return request, composition
+
+    def _record_context(
+        self,
+        role: str,
+        role_key: str,
+        instruction: str,
+        payload: Dict[str, Any],
+        options: AgentRunOptions,
+        request: ModelRequest,
+        composition: PromptComposition,
+    ) -> None:
+        """Persist or queue privacy-safe provenance before provider execution.
+
+        Args:
+            role (str): Repository-owned agent role.
+            role_key (str): Model-selection role key.
+            instruction (str): Private task instruction.
+            payload (Dict[str, Any]): Private structured task payload.
+            options (AgentRunOptions): Invocation options.
+            request (ModelRequest): Exact provider request.
+            composition (PromptComposition): Exact system-prompt provenance.
+
+        Returns:
+            None: Evidence is displayed, queued, or persisted in place.
+        """
+        run_id = options.run_id or (self.diagnostics.run_id if self.diagnostics else None)
+        payload_sources = options.payload_sources or self._payload_sources(
+            run_id, options.phase or role_key, payload
+        )
+        invocation = invocation_record(
+            identity=ContextInvocationIdentity(
+                role=role,
+                role_key=role_key,
+                phase=options.phase or role_key,
+                provider=request.selection.provider,
+                model=request.selection.model,
+            ),
+            layers=composition.layers,
+            instruction=instruction,
+            payload=payload,
+            payload_sources=payload_sources,
+        )
+        if self.show_context:
+            print(render_live_context(invocation), file=sys.stderr)
+        if run_id:
+            self.context_store.append(run_id, invocation)
+        else:
+            self.pending_context.append(invocation)
+
+    @staticmethod
+    def _payload_sources(run_id: Optional[str], phase: str, payload: Dict[str, Any]) -> list[str]:
+        """Return exact run artifacts represented in a private task payload.
+
+        Args:
+            run_id (Optional[str]): Bound persisted run identifier, when available.
+            phase (str): Human-readable lifecycle phase.
+            payload (Dict[str, Any]): Private structured task payload.
+
+        Returns:
+            list[str]: Existing or imminent run-local artifact locators.
+        """
+        if not run_id:
+            return []
+        root = f"runs/{run_id}/"
+        sources = [root + "work-order.json"] if "work_order" in payload else []
+        if payload.get("research") is not None:
+            sources.append(root + "research.json")
+        if payload.get("draft") is not None:
+            suffix = phase.removeprefix("critique-")
+            sources.append(root + (f"draft-{suffix}.md" if suffix != phase else "final.md"))
+        if payload.get("assessment") is not None:
+            sources.append(root + "assessment.json")
+        return sources
 
     def _attempt(
         self,

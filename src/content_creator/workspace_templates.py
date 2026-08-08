@@ -79,6 +79,7 @@ Move the active draft into the published directory.
 - [My agents](agents/README.md)
 - [My voices and perspectives](profiles/README.md)
 - [My shared learning](learnings/README.md)
+- [What my agents receive at runtime](docs/runtime-context.md)
 - [My approved content](content/)
 - [Technical setup, uv, providers, and CLI usage](docs/setup-and-technical-guide.md)
 
@@ -128,6 +129,10 @@ receipts rather than this explanatory page.
 
 Run `content-creator --workspace . personalisation show` for the current
 human-readable view, or add `--json` for structured output.
+
+Use [`docs/runtime-context.md`](docs/runtime-context.md) to preview the exact
+sources a role would receive, watch a live loading trace, or inspect a completed
+run.
 
 ## My agents
 
@@ -216,6 +221,7 @@ uv sync --dev
 uv run content-creator --workspace . doctor
 uv run content-creator --workspace . overview
 uv run content-creator --workspace . personalisation show
+uv run content-creator --workspace . personalisation explain --role writer
 uv run pytest
 ```
 

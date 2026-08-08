@@ -8,9 +8,11 @@ from pathlib import Path
 from typing import Any, Dict, Iterable, Optional
 
 from .agent_resources import LEARNING_FILES, AgentWorkspace
-from .domain import LearningRole, WorkOrder
+from .context_composition import ContextLayer
+from .domain import LearningRole, PerspectiveSelection, WorkOrder
 from .packs import PackRegistry
 from .perspectives import PerspectiveEntry, PerspectiveRegistry
+from .prompt_provenance import PromptComposition, PromptProvenance
 from .resource_paths import ResourceResolver
 from .voices import VoiceRegistry
 
@@ -30,6 +32,7 @@ class PromptAssembler:
         self.root = root.resolve()
         self.resources = ResourceResolver(self.root)
         self.agent_workspace = AgentWorkspace(self.root)
+        self.provenance = PromptProvenance(self.root, self.resources.core)
 
     def system_prompt(self, role: str, order: Optional[WorkOrder] = None) -> str:
         """Return the system prompt.
@@ -42,37 +45,75 @@ class PromptAssembler:
         Returns:
             str: The resulting text for system prompt.
         """
-        parts = self._base_prompt_parts(role)
-        self._append_voice_profile(parts, role, order)
-        self._append_perspectives(parts, role, order)
-        self._append_learnings(parts, role, order)
-        self._append_rubrics(parts, role, order)
-        return "\n\n---\n\n".join(parts)
+        return self.compose(role, order).prompt
 
-    def _base_prompt_parts(self, role: str) -> list[str]:
+    def compose(self, role: str, order: Optional[WorkOrder] = None) -> PromptComposition:
+        """Compose prompt text and exact loaded or skipped source provenance.
+
+        Args:
+            role (str): The repository-owned agent role to execute.
+            order (Optional[WorkOrder]): Resolved content work order. Defaults to ``None``.
+
+        Returns:
+            PromptComposition: Prompt text and privacy-safe ordered layer evidence.
+        """
+        layers: list[ContextLayer] = []
+        parts = self._base_prompt_parts(role, layers)
+        self._append_voice_profile(parts, layers, role, order)
+        self._append_perspectives(parts, layers, role, order)
+        self._append_learnings(parts, layers, role, order)
+        self._append_rubrics(parts, layers, role, order)
+        return PromptComposition(prompt="\n\n---\n\n".join(parts), layers=layers)
+
+    def _base_prompt_parts(self, role: str, layers: list[ContextLayer]) -> list[str]:
         """Return the base prompt parts.
 
         Args:
             role (str): The repository-owned agent role to execute.
+            layers (list[ContextLayer]): Ordered provenance collection.
 
         Returns:
             list[str]: The resulting base prompt parts values in their documented order.
         """
+        harness = self.agent_workspace.harness_path()
+        contract = self.agent_workspace.contract_path(role)
+        repository_agent = self.agent_workspace.role_path(role)
         parts = [
-            self._read(self.agent_workspace.harness_path()),
-            self._read(self.agent_workspace.contract_path(role)),
-            "## Repository agent\n\n" + self._read(self.agent_workspace.role_path(role)),
+            self.provenance.load(layers, "core-harness", "Core harness", harness),
+            self.provenance.load(layers, "core-role-contract", f"Core {role} contract", contract),
+            "## Repository agent\n\n"
+            + self.provenance.load(
+                layers,
+                "repository-agent",
+                f"Workspace {role} agent",
+                repository_agent,
+            ),
         ]
         if role in LEARNING_FILES:
+            policy = self.agent_workspace.learning_instructions_path(role)
             parts.append(
                 "## Repository learning policy\n\n"
-                + self._read(self.agent_workspace.learning_instructions_path(role))
+                + self.provenance.load(
+                    layers,
+                    "repository-learning-policy",
+                    f"Workspace {role} learning policy",
+                    policy,
+                )
+            )
+        else:
+            self.provenance.skip(
+                layers,
+                "repository-learning-policy",
+                "Workspace learning policy",
+                "workspace:not-applicable",
+                "role-does-not-have-a-learning-policy",
             )
         return parts
 
     def _append_voice_profile(
         self,
         parts: list[str],
+        layers: list[ContextLayer],
         role: str,
         order: Optional[WorkOrder],
     ) -> None:
@@ -80,6 +121,7 @@ class PromptAssembler:
 
         Args:
             parts (list[str]): The parts collection consumed while append voice profile.
+            layers (list[ContextLayer]): Ordered provenance collection.
             role (str): The repository-owned agent role to execute.
             order (Optional[WorkOrder]): The work order that defines the requested content
                 run.
@@ -87,24 +129,42 @@ class PromptAssembler:
         Returns:
             None: The callable updates append voice profile state and returns no value.
         """
-        if role in {"writer", "critic", "learning-extractor"}:
-            voice_id = order.voice_id if order else "default"
-            resolved = VoiceRegistry(self.root).resolve(
-                voice_id,
-                order.voice_version if order else None,
-                allow_inactive=bool(order and order.resolved_voice),
+        if role not in {"writer", "critic", "learning-extractor"}:
+            self.provenance.skip(
+                layers,
+                "active-voice",
+                "Active voice",
+                "voice:not-applicable",
+                "role-does-not-receive-voice",
+                owner="voice",
             )
-            profile_root = self.resources.path(resolved["path"])
-            profile = (
-                profile_root / "profile.md"
-                if (profile_root / "profile.md").exists()
-                else profile_root / "voice.md"
-            )
-            parts.append(self._resolved_voice_profile(resolved, self._read(profile)))
+            return
+        voice_id = order.voice_id if order else "default"
+        resolved = VoiceRegistry(self.root).resolve(
+            voice_id,
+            order.voice_version if order else None,
+            allow_inactive=bool(order and order.resolved_voice),
+        )
+        profile_root = self.resources.path(resolved["path"])
+        profile = (
+            profile_root / "profile.md"
+            if (profile_root / "profile.md").exists()
+            else profile_root / "voice.md"
+        )
+        text = self.provenance.load(
+            layers,
+            "active-voice",
+            f"Active voice {voice_id}",
+            profile,
+            owner="voice",
+            version=resolved.get("version"),
+        )
+        parts.append(self._resolved_voice_profile(resolved, text))
 
     def _append_perspectives(
         self,
         parts: list[str],
+        layers: list[ContextLayer],
         role: str,
         order: Optional[WorkOrder],
     ) -> None:
@@ -115,6 +175,7 @@ class PromptAssembler:
 
         Args:
             parts (list[str]): The parts collection consumed while append perspectives.
+            layers (list[ContextLayer]): Ordered provenance collection.
             role (str): The repository-owned agent role to execute.
             order (Optional[WorkOrder]): The work order that defines the requested content
                 run.
@@ -122,57 +183,128 @@ class PromptAssembler:
         Returns:
             None: The callable updates append perspectives state and returns no value.
         """
-        if (
-            order
-            and order.perspective_selections
-            and role
-            in {
-                "researcher",
-                "writer",
-                "critic",
-                "learning-extractor",
-                "perspective-extractor",
-                "perspective-evaluator",
-            }
-        ):
-            for index, selection in enumerate(order.perspective_selections):
-                perspective = PerspectiveRegistry(self.root, order.voice_id).resolve(
-                    selection.context_id,
-                    selection.version,
-                    allow_inactive=order.resolved_perspective,
+        eligible = {
+            "researcher",
+            "writer",
+            "critic",
+            "learning-extractor",
+            "perspective-extractor",
+            "perspective-evaluator",
+        }
+        if role not in eligible:
+            self.provenance.skip(
+                layers,
+                "approved-perspectives",
+                "Approved perspectives",
+                "perspective:not-applicable",
+                "role-does-not-receive-perspectives",
+                owner="perspective",
+            )
+            return
+        if not order or not order.perspective_selections:
+            self.provenance.skip(
+                layers,
+                "approved-perspectives",
+                "Approved perspectives",
+                "perspective:none-selected",
+                "no-approved-perspective-selected",
+                owner="perspective",
+            )
+            return
+        for index, selection in enumerate(order.perspective_selections):
+            perspective_profile, perspective_root, perspective = self._perspective_profile(
+                layers, order, selection, index
+            )
+            parts.append(
+                "## Approved perspective context: {}\n\n".format(selection.context_id)
+                + perspective_profile
+            )
+            constraints = perspective_root / "constraints.json"
+            parts.append(
+                "## Perspective constraints: {}\n\n".format(selection.context_id)
+                + self.provenance.load(
+                    layers,
+                    "perspective-constraints",
+                    f"Perspective constraints {selection.context_id}",
+                    constraints,
+                    owner="perspective",
+                    version=perspective.get("version"),
                 )
-                perspective_root = self.root / perspective["path"]
-                selected_ids = (
-                    order.author_contribution.reusable_perspective_entry_ids
-                    if order.author_contribution and index == 0
-                    else []
-                )
-                if selected_ids:
-                    entries = [
-                        PerspectiveEntry.model_validate(item)
-                        for item in json.loads(
-                            (perspective_root / "entries.json").read_text(encoding="utf-8")
-                        )
-                        if item.get("id") in selected_ids
-                    ]
-                    perspective_profile = PerspectiveRegistry.render_profile(
-                        selection.context_id,
-                        entries,
-                    )
-                else:
-                    perspective_profile = self._read(perspective_root / "perspective.md")
-                parts.append(
-                    "## Approved perspective context: {}\n\n".format(selection.context_id)
-                    + perspective_profile
-                )
-                parts.append(
-                    "## Perspective constraints: {}\n\n".format(selection.context_id)
-                    + self._read(perspective_root / "constraints.json")
-                )
+            )
+
+    def _perspective_profile(
+        self,
+        layers: list[ContextLayer],
+        order: WorkOrder,
+        selection: PerspectiveSelection,
+        index: int,
+    ) -> tuple[str, Path, Dict[str, Any]]:
+        """Load one isolated selected perspective profile and provenance.
+
+        Resolve the selected immutable context, then load either its complete active
+        profile or only the explicitly selected reusable entries.
+
+        Args:
+            layers (list[ContextLayer]): Ordered provenance collection.
+            order (WorkOrder): Resolved content work order.
+            selection (PerspectiveSelection): Approved selected context.
+            index (int): Zero-based selection position.
+
+        Returns:
+            tuple[str, Path, Dict[str, Any]]: Profile text, root, and manifest data.
+        """
+        perspective = PerspectiveRegistry(self.root, order.voice_id).resolve(
+            selection.context_id,
+            selection.version,
+            allow_inactive=order.resolved_perspective,
+        )
+        perspective_root = self.root / perspective["path"]
+        selected_ids = (
+            order.author_contribution.reusable_perspective_entry_ids
+            if order.author_contribution and index == 0
+            else []
+        )
+        entry_ids = selected_ids or perspective.get("active_entry_ids", [])
+        if not selected_ids:
+            profile_path = perspective_root / "perspective.md"
+            return (
+                self.provenance.load(
+                    layers,
+                    "approved-perspectives",
+                    f"Approved perspective {selection.context_id}",
+                    profile_path,
+                    owner="perspective",
+                    version=perspective.get("version"),
+                    record_ids=entry_ids,
+                ),
+                perspective_root,
+                perspective,
+            )
+        entries_path = perspective_root / "entries.json"
+        entries = [
+            PerspectiveEntry.model_validate(item)
+            for item in json.loads(entries_path.read_text(encoding="utf-8"))
+            if item.get("id") in selected_ids
+        ]
+        self.provenance.record_loaded(
+            layers,
+            "approved-perspectives",
+            f"Approved perspective {selection.context_id}",
+            entries_path,
+            owner="perspective",
+            version=perspective.get("version"),
+            record_ids=entry_ids,
+        )
+        return (
+            PerspectiveRegistry.render_profile(selection.context_id, entries),
+            perspective_root,
+            perspective,
+        )
 
     def _append_learnings(
         self,
         parts: list[str],
+        layers: list[ContextLayer],
         role: str,
         order: Optional[WorkOrder],
     ) -> None:
@@ -180,6 +312,7 @@ class PromptAssembler:
 
         Args:
             parts (list[str]): The parts collection consumed while append learnings.
+            layers (list[ContextLayer]): Ordered provenance collection.
             role (str): The repository-owned agent role to execute.
             order (Optional[WorkOrder]): The work order that defines the requested content
                 run.
@@ -187,30 +320,41 @@ class PromptAssembler:
         Returns:
             None: The callable updates append learnings state and returns no value.
         """
-        repository_learnings = self._active_learnings(
-            self.root / "learnings" / "memory.json",
-            role,
+        repository_path = self.root / "learnings" / "memory.json"
+        repository_records = self._active_learning_records(repository_path, role)
+        self.provenance.append_learning_scope(
+            parts,
+            layers,
+            repository_path,
+            repository_records,
+            "repository",
         )
-        if repository_learnings:
-            parts.append("## Active repository learnings\n\n" + "\n".join(repository_learnings))
         voice_id = order.voice_id if order else "default"
-        voice_learnings = self._active_learnings(
-            self.root / "profiles" / voice_id / "learnings" / "memory.json",
-            role,
+        voice_path = self.root / "profiles" / voice_id / "learnings" / "memory.json"
+        voice_records = self._active_learning_records(voice_path, role)
+        self.provenance.append_learning_scope(
+            parts,
+            layers,
+            voice_path,
+            voice_records,
+            "voice",
         )
-        if voice_learnings:
-            parts.append("## Active voice learnings\n\n" + "\n".join(voice_learnings))
 
     def _append_rubrics(
         self,
         parts: list[str],
+        layers: list[ContextLayer],
         role: str,
         order: Optional[WorkOrder],
     ) -> None:
         """Return the append rubrics.
 
+        Compose only eligible pack policy while retaining explicit skip evidence for
+        roles and sources that do not contribute to the provider prompt.
+
         Args:
             parts (list[str]): The parts collection consumed while append rubrics.
+            layers (list[ContextLayer]): Ordered provenance collection.
             role (str): The repository-owned agent role to execute.
             order (Optional[WorkOrder]): The work order that defines the requested content
                 run.
@@ -218,24 +362,94 @@ class PromptAssembler:
         Returns:
             None: The callable updates append rubrics state and returns no value.
         """
-        if order and role in {"writer", "critic"}:
-            packs = PackRegistry(self.root)
-            pack = packs.resolve(order.content_pack, order.pack_options)
-            rubric_paths = [self.resources.path("rubrics/core.yaml")]
-            if pack.rubric:
-                rubric_paths.append(packs.path(order.content_pack, pack.rubric))
-            rubric_paths.extend(self.resources.path(item) for item in pack.rubrics)
-            rubric_paths.append(
-                self.resources.path("rubrics/research-{}.yaml".format(order.research_depth.value))
+        if not order or role not in {"writer", "critic"}:
+            reason = "no-work-order" if not order else "role-does-not-receive-rubrics"
+            self.provenance.skip(
+                layers,
+                "rubrics",
+                "Rubrics",
+                "pack:not-applicable",
+                reason,
+                owner="pack",
             )
+            self.provenance.skip(
+                layers,
+                "pack-instructions",
+                "Pack instructions",
+                "pack:not-applicable",
+                reason,
+                owner="pack",
+            )
+            return
+        packs = PackRegistry(self.root)
+        pack = packs.resolve(order.content_pack, order.pack_options)
+        rubric_paths = self._rubric_paths(order, pack, packs)
+        rubric_parts = []
+        for path in rubric_paths:
+            if path.exists():
+                rubric_parts.append(
+                    self.provenance.load(
+                        layers,
+                        "rubrics",
+                        f"Rubric {path.name}",
+                        path,
+                        owner=self.provenance.owner(path),
+                        version=pack.version,
+                    )
+                )
+            else:
+                self.provenance.skip(
+                    layers,
+                    "rubrics",
+                    f"Rubric {path.name}",
+                    self.provenance.source(path),
+                    "rubric-file-is-missing",
+                    owner=self.provenance.owner(path),
+                )
+        parts.append("## Rubrics\n\n" + "\n\n".join(rubric_parts))
+        overlay = pack.prompts.get(role)
+        if overlay:
+            overlay_path = self.resources.path(overlay)
             parts.append(
-                "## Rubrics\n\n"
-                + "\n\n".join(self._read(path) for path in rubric_paths if path.exists())
+                "## Pack instructions\n\n"
+                + self.provenance.load(
+                    layers,
+                    "pack-instructions",
+                    f"{pack.id} {role} instructions",
+                    overlay_path,
+                    owner=self.provenance.owner(overlay_path),
+                    version=pack.version,
+                )
             )
-            overlay = pack.prompts.get(role)
-            if overlay:
-                overlay_path = self.resources.path(overlay)
-                parts.append("## Pack instructions\n\n" + self._read(overlay_path))
+        else:
+            self.provenance.skip(
+                layers,
+                "pack-instructions",
+                f"{pack.id} {role} instructions",
+                f"pack:{pack.id}",
+                "selected-pack-has-no-role-overlay",
+                owner="pack",
+            )
+
+    def _rubric_paths(self, order: WorkOrder, pack: Any, packs: PackRegistry) -> list[Path]:
+        """Resolve the complete ordered rubric source list.
+
+        Args:
+            order (WorkOrder): Resolved content work order.
+            pack (Any): Resolved content-pack contract.
+            packs (PackRegistry): Registry resolving pack-owned paths.
+
+        Returns:
+            list[Path]: Core, pack, and research-depth rubrics in prompt order.
+        """
+        paths = [self.resources.path("rubrics/core.yaml")]
+        if pack.rubric:
+            paths.append(packs.path(order.content_pack, pack.rubric))
+        paths.extend(self.resources.path(item) for item in pack.rubrics)
+        paths.append(
+            self.resources.path("rubrics/research-{}.yaml".format(order.research_depth.value))
+        )
+        return paths
 
     @staticmethod
     def _resolved_voice_profile(resolved: Dict[str, Any], profile: str) -> str:
@@ -315,15 +529,15 @@ class PromptAssembler:
         return result
 
     @staticmethod
-    def _active_learnings(path: Path, role: str) -> list[str]:
-        """Return the active learnings.
+    def _active_learning_records(path: Path, role: str) -> list[dict[str, Any]]:
+        """Return active role-matched learning records.
 
         Args:
             path (Path): The filesystem path to inspect or update.
             role (str): The repository-owned agent role to execute.
 
         Returns:
-            list[str]: The resulting active learnings values in their documented order.
+            list[dict[str, Any]]: Active records in their persisted order.
 
         Raises:
             ValueError: If an input value violates the supported domain constraints.
@@ -348,9 +562,25 @@ class PromptAssembler:
                 "for author review.".format(path, details)
             )
         return [
-            "- {}".format(item["principle"])
+            item
             for item in data.get("records", [])
             if item.get("role") == role and item.get("status") == "active"
+        ]
+
+    @staticmethod
+    def _active_learnings(path: Path, role: str) -> list[str]:
+        """Return formatted active learnings for compatibility.
+
+        Args:
+            path (Path): Learning-memory source file.
+            role (str): Repository-owned agent role.
+
+        Returns:
+            list[str]: Markdown bullets for active matching principles.
+        """
+        return [
+            "- {}".format(item["principle"])
+            for item in PromptAssembler._active_learning_records(path, role)
         ]
 
     @staticmethod

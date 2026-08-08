@@ -337,6 +337,7 @@ class OrchestrationSupport:
                     output_model=ResearchBrief,
                     provider=order.provider,
                     tools=["web_search"],
+                    phase="research",
                 ),
             )
             research_errors = validate_research_brief(brief)
@@ -428,6 +429,7 @@ class OrchestrationSupport:
                 order=state.work_order,
                 provider=state.work_order.provider,
                 profile=state.route_plan.model_profiles["writer"],
+                phase=f"draft-{revision:02d}",
             ),
         )
         self.store.write_artifact(state.id, f"draft-{revision:02d}.md", draft)
@@ -553,6 +555,7 @@ class OrchestrationSupport:
                 output_model=Critique,
                 provider=state.work_order.provider,
                 profile=state.route_plan.model_profiles["critic"],
+                phase=f"critique-{state.revision:02d}",
             ),
         )
 

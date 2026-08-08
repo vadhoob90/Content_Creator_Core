@@ -19,3 +19,6 @@ class AgentRunOptions:
     provider: Optional[str] = None
     profile: Optional[str] = None
     tools: list[str] = field(default_factory=list)
+    phase: Optional[str] = None
+    payload_sources: list[str] = field(default_factory=list)
+    run_id: Optional[str] = None

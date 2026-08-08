@@ -9,6 +9,7 @@ from typing import Any, Dict, Type
 
 from pydantic import BaseModel
 
+from .context_composition import ContextCompositionManifest
 from .domain import RunState, WorkOrder
 from .perspective_semantic_review import (
     PerspectiveReviewDecision,
@@ -32,6 +33,7 @@ class SchemaCompatibilityError(ValueError):
 
 
 SCHEMA_MODELS: Dict[str, Type[BaseModel]] = {
+    "context-composition-manifest": ContextCompositionManifest,
     "work-order": WorkOrder,
     "run-state": RunState,
     "voice-manifest": VoiceManifest,

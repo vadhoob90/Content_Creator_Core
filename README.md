@@ -48,6 +48,11 @@ flowchart LR
 Persisted files—not chat history—hold workflow state. Core returns content for
 human review and does not publish externally.
 
+Core can also explain the exact runtime composition for every agent: preview it
+before a run, trace source loading while content is created, or inspect the
+persisted provenance afterwards. See
+[runtime context composition](docs/guides/runtime-context-composition.md).
+
 ### 1. Create an author workspace
 
 The generated repository belongs to the author. It keeps editorial material
