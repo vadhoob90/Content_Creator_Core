@@ -276,6 +276,12 @@ release therefore needs a new semantic version:
 - increment the minor version for backward-compatible functionality; and
 - increment the major version for an incompatible change.
 
+Apply the [release classification decision table](public-contracts.md#release-classification-decision-table)
+to borderline changes such as stricter validation, error-output changes,
+security hardening, dependency support, and experimental interfaces. Classify
+each included change separately and use the highest required increment for the
+release as a whole.
+
 Version `1.0.0` establishes the stable public contracts documented in
 [`public-contracts.md`](public-contracts.md). Subsequent incompatible changes
 require a new major release and an explicit migration path.

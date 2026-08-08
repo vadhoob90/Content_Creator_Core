@@ -12,6 +12,10 @@ release tag.
 
 ### Changed
 
+- The Core release policy now includes a decision table for borderline semantic
+  versioning cases, including stricter validation, error contracts, security
+  hardening, dependencies, and experimental interfaces.
+
 ## [1.4.1] - 2026-08-08
 
 ### Changed

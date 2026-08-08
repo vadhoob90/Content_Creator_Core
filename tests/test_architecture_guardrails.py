@@ -234,6 +234,27 @@ def test_maintainability_documents_are_linked_from_the_core_guide():
         assert target in core_guide
 
 
+def test_release_classification_policy_covers_borderline_changes():
+    public_contracts = (ROOT / "docs" / "core" / "public-contracts.md").read_text(encoding="utf-8")
+    core_guide = (ROOT / "docs" / "core" / "README.md").read_text(encoding="utf-8")
+
+    assert "## Release classification decision table" in public_contracts
+    for change_class in (
+        "Stricter validation",
+        "Human-readable error or help wording",
+        "Machine-readable errors or command output",
+        "Compatible security hardening",
+        "Incompatible security restriction",
+        "Add an experimental interface",
+        "Change or remove an experimental interface",
+        "Drop a supported runtime or Python version",
+    ):
+        assert change_class in public_contracts
+    assert "use the highest version increment required" in public_contracts
+    assert "A security emergency may shorten the normal deprecation window" in public_contracts
+    assert "public-contracts.md#release-classification-decision-table" in core_guide
+
+
 def test_large_cli_families_have_dedicated_command_modules():
     for family in (operations, perspective, provider, schema, visual, voice):
         assert callable(family.run)
