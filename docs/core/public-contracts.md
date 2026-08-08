@@ -84,3 +84,50 @@ and documented in a future release.
 
 Use Semantic Versioning for public releases and record migrations in the
 changelog and focused guides.
+
+## Release classification decision table
+
+Classify a release by its effect on the supported surfaces above, not by the
+number of changed lines or the implementation effort. When a release contains
+more than one kind of change, use the highest version increment required by any
+of them.
+
+| Change | Version | Conditions and examples |
+| --- | --- | --- |
+| Internal refactor or maintenance | None or patch | No observable contract changes. It may remain unreleased or accompany a patch release. |
+| Documentation-only correction | None or patch | Leave it unreleased unless users need a corrected immutable release. Do not use documentation to disguise a behavior change. |
+| Backward-compatible bug fix | Patch | Restores documented behavior while preserving valid inputs and supported outputs. Document any tightened invalid-input handling. |
+| Stricter validation | Patch or major | Use patch when rejecting input that was already documented as invalid or is unsafe. Rejecting a previously valid, supported workflow is incompatible and requires major, normally after deprecation. |
+| Human-readable error or help wording | Patch | Applies when exact prose is not documented as stable. Preserve machine-readable classifications, JSON fields, and exit behavior. |
+| Machine-readable errors or command output | Minor or major | Add an optional field or a new error classification with a minor release. Rename, remove, reinterpret, or make a field required only in a major release. Changing documented exit behavior incompatibly is also major. |
+| Backward-compatible capability | Minor | Includes new optional commands, arguments, root exports, adapters, provider integrations, or schema fields. Existing callers and persisted data must continue to work. |
+| Deprecation of a stable contract | Minor | Announce the replacement and migration window. Removal is a later major release. |
+| Removal, rename, or incompatible default | Major | Includes supported CLI or Python APIs, accepted values, runtime requirements, generated-workspace behavior, adapter contracts, and persisted fields. Supply migration support and release notes. |
+| Compatible security hardening | Patch | Close the vulnerability without rejecting valid supported use. Disclose only details that are safe to publish. |
+| New opt-in security control | Minor | Adds functionality while leaving existing supported workflows available. |
+| Incompatible security restriction | Major | A security emergency may shorten the normal deprecation window, but it does not turn a breaking change into a patch. Document mitigation and migration. |
+| Add an experimental interface | Minor | Label it explicitly and keep it outside all stable surfaces documented above. |
+| Change or remove an experimental interface | Minor | Allowed with release notes only while the interface remains explicitly experimental and outside stable surfaces. Otherwise apply the normal compatibility rules. |
+| Compatible dependency update | Patch | Does not drop a supported runtime, alter a stable adapter contract, or require downstream configuration changes. |
+| Add optional runtime or Python support | Minor | Expands supported functionality without invalidating current installations. |
+| Drop a supported runtime or Python version | Major | Existing supported installations would no longer work. Provide advance notice and an upgrade path where practical. |
+
+A bug label does not automatically make a change a patch. If callers could
+reasonably rely on the documented behavior being changed, classify the change
+by that compatibility impact. Conversely, an implementation detail does not
+become public merely because downstream code can reach it.
+
+An interface is experimental only when all of these are true:
+
+- user-facing documentation and help label it experimental;
+- it is not exported from `content_creator.__all__` or a documented subsystem
+  façade;
+- it is not written into a stable persisted schema or required by generated
+  workspaces; and
+- it is not part of a supported provider or visual adapter contract.
+
+Feature flags and opt-in settings can make an additive capability minor. They
+do not make an incompatible change to an existing default backward compatible.
+When classification remains uncertain after checking tests, documentation, and
+known downstream workspaces, perform an explicit compatibility review and use
+the more conservative version increment.
