@@ -48,6 +48,11 @@ flowchart LR
 Persisted files—not chat history—hold workflow state. Core returns content for
 human review and does not publish externally.
 
+For a system-level view of the human interaction, agent workflow, persisted
+artifacts, provider-neutral LLM layer, and the boundary between Core and the
+Author's workspace, see
+[How Content Creator works](docs/guides/how-content-creator-works.md).
+
 Core can also explain the exact runtime composition for every agent: preview it
 before a run, trace source loading while content is created, or inspect the
 persisted provenance afterwards. See

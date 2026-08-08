@@ -43,6 +43,7 @@ available independently of pack eligibility.
 
 ## I want to create content
 
+- [How Content Creator works](guides/how-content-creator-works.md)
 - [Content Creator Coordinator](guides/content-coordinator.md)
 - [Routes and work orders](guides/routes-and-work-orders.md)
 - [Learning and repository publication](guides/learning-and-publication.md)
