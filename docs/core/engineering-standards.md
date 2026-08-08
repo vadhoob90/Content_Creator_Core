@@ -65,9 +65,15 @@ life.
 
 - Behaviour changes require regression tests.
 - The full test suite must pass on every declared Python version.
-- Overall statement coverage may not fall below 88%. Coverage is a guardrail,
-  not a substitute for meaningful assertions; branch coverage can be adopted
-  later with a measured baseline and ratchet.
+- Overall statement coverage may not fall below 88%, and branch coverage may
+  not fall below the measured 71% baseline. Coverage.py measures branches for
+  every coverage run. `scripts/coverage_report.py` enforces the thresholds
+  independently so branch adoption cannot weaken the statement guarantee.
+  Coverage is a guardrail, not a substitute for meaningful assertions.
+- Branch coverage proves that both outcomes of individual control-flow
+  decisions execute somewhere in the suite. It does not prove that every
+  meaningful end-to-end combination executes; the deterministic route matrix
+  remains a separate required evaluation.
 - Offline evaluation must remain deterministic and pass without provider
   credentials or external network access.
 - Provider and ingestion evaluations remain manually dispatched, bounded, and
@@ -133,7 +139,8 @@ mypy
 python scripts/architecture_report.py --check
 python scripts/readability_report.py --check
 python scripts/documentation_report.py --check
-pytest --cov=content_creator --cov-report=term-missing
+pytest --cov=content_creator --cov-report=term-missing --cov-report=json:.coverage-report.json
+python scripts/coverage_report.py .coverage-report.json --check
 content-creator eval
 git diff --check
 ```

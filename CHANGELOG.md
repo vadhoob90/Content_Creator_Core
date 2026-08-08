@@ -10,7 +10,14 @@ release tag.
 
 ### Added
 
+- Independent branch-coverage measurement and a 71% baseline ratchet, while
+  preserving the existing 88% statement-coverage guarantee and separate route
+  matrix evaluation.
+
 ### Changed
+
+- CI and the complete local gate now report partial branches and enforce
+  statement and branch thresholds independently.
 
 ## [1.8.0] - 2026-08-08
 

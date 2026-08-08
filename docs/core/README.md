@@ -193,7 +193,8 @@ mypy
 python scripts/architecture_report.py --check
 python scripts/readability_report.py --check
 python scripts/documentation_report.py --check
-pytest --cov=content_creator --cov-report=term-missing
+pytest --cov=content_creator --cov-report=term-missing --cov-report=json:.coverage-report.json
+python scripts/coverage_report.py .coverage-report.json --check
 content-creator doctor
 content-creator eval
 git diff --check
