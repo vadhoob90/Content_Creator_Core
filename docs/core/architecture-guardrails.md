@@ -96,6 +96,24 @@ without forcing meaningless fragments.
   descriptive test names and short task-oriented scripts are often clearer than
   compulsory prose.
 
+## Dependency direction and import cycles
+
+- The internal `content_creator` module graph remains acyclic. A function-local
+  import is still a dependency and must not be used to conceal a cycle.
+- Low-level persistence and domain modules do not import application workflows,
+  manifests, packs, providers, or entry points. Higher-level capabilities may
+  depend on storage, but storage never reaches back into those capabilities.
+- Cross-cutting save behavior is composed at an application boundary through a
+  narrow callback or existing service contract. It is not activated by importing
+  the higher-level feature from the persistence implementation.
+- `scripts/architecture_report.py --check` rejects every internal import edge
+  that participates in a cycle. A cycle is fixed by restoring dependency
+  direction, not by moving the import inside a function or suppressing CodeQL.
+
+These rules apply even when Python's import cache makes the current execution
+order appear safe. Import-order-dependent code is not an accepted runtime
+contract.
+
 ## Structural-change review
 
 Before moving code, classify affected import paths as permanent façades,

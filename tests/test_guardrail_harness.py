@@ -77,6 +77,25 @@ def test_architecture_harness_rejects_representative_weakened_boundaries():
     )
 
 
+def test_architecture_harness_rejects_every_edge_in_an_internal_import_cycle():
+    modules = _valid_architecture_modules()
+    modules.extend(
+        [
+            _module("content_creator.persistence", imports=["content_creator.application"]),
+            _module("content_creator.application", imports=["content_creator.persistence"]),
+        ]
+    )
+
+    violations = ARCHITECTURE["architecture_violations"]({"modules": modules})
+
+    assert (
+        "internal import cycle includes content_creator.application -> content_creator.persistence"
+    ) in violations
+    assert (
+        "internal import cycle includes content_creator.persistence -> content_creator.application"
+    ) in violations
+
+
 def test_architecture_harness_attributes_nested_deleted_parameters_to_their_owners():
     tree = ast.parse(
         """

@@ -28,6 +28,12 @@ The intended dependency direction is:
    implement those interfaces.
 4. The CLI and package entry points compose the application.
 
+The internal package import graph remains acyclic. Low-level persistence does
+not import application features to trigger secondary behavior. When a save must
+also refresh feature-owned evidence, the application composition boundary
+injects that behavior through a narrow callback or existing service contract.
+Function-local imports are not an acceptable way to hide a reversed dependency.
+
 Repository workspaces remain outside this package boundary. They supply
 configuration, author-owned agents, voices, perspectives, and learning, but
 cannot weaken Core contracts.
@@ -48,6 +54,8 @@ workflow.
   domain that owns them.
 - Architecture reporting begins as advisory evidence. A rule becomes blocking
   only after it is precise, useful, and compatible with current behavior.
+- Architecture reporting blocks internal import cycles and identifies each
+  participating direct edge so remediation restores dependency direction.
 
 Microservices, a general event bus, and an unrestricted third-party plugin
 system are explicitly out of scope.
