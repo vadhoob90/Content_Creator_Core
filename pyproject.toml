@@ -74,9 +74,9 @@ testpaths = ["tests"]
 
 [tool.coverage.run]
 source = ["content_creator"]
+branch = true
 
 [tool.coverage.report]
-fail_under = 88
 show_missing = true
 skip_covered = false
 

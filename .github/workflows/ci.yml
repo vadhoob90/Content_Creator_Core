@@ -46,6 +46,7 @@ jobs:
             -m pytest \
             tests/test_guardrail_harness.py \
             tests/test_distribution_harness.py \
+            tests/test_coverage_report.py \
             tests/test_documentation_report.py \
             tests/test_release_reproducibility.py
           uv run --frozen --extra dev coverage report \
@@ -84,7 +85,15 @@ jobs:
           python-version: ${{ matrix.python-version }}
           enable-cache: true
       - run: uv sync --frozen --extra dev
-      - run: uv run --frozen --extra dev pytest --cov=content_creator --cov-report=term-missing
+      - name: Enforce statement and branch coverage independently
+        run: |
+          uv run --frozen --extra dev pytest \
+            --cov=content_creator \
+            --cov-report=term-missing \
+            --cov-report=json:.coverage-report.json
+          uv run --frozen --extra dev python scripts/coverage_report.py \
+            .coverage-report.json \
+            --check
 
   evaluation:
     name: Offline evaluation
