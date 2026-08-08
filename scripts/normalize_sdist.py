@@ -49,6 +49,7 @@ def main() -> None:
         source_date_epoch = int(os.environ["SOURCE_DATE_EPOCH"])
     except (KeyError, ValueError) as error:
         parser.error(f"SOURCE_DATE_EPOCH must be an integer: {error}")
+        return
     for archive in args.archives:
         normalize_sdist(archive, source_date_epoch)
 
