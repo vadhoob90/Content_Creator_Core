@@ -329,15 +329,20 @@ git push origin v1.0.0
 
 Pushing the tag triggers `.github/workflows/release.yml`. The workflow:
 
-1. rejects a tag that does not match the package version;
-2. builds and validates the wheel and source distribution;
+1. rejects a tag that does not match the package version or whose commit is not
+   contained in protected `main`;
+2. installs the exact locked build environment, then builds and validates the
+   wheel and source distribution twice without isolated dependency resolution,
+   requiring byte-identical artifacts;
 3. checks packaged contracts, packs, profiles, skills, templates, metadata,
    licences, and hashes;
 4. installs the wheel in a clean environment and tests a generated workspace;
-5. publishes to PyPI through the `pypi` environment using Trusted Publishing;
+5. produces a CycloneDX SBOM and GitHub artifact attestations for the
+   distributions and release evidence;
+6. publishes to PyPI through the `pypi` environment using Trusted Publishing;
    and
-6. creates a GitHub release containing the distributions, manifest, and
-   checksums.
+7. creates a GitHub release containing the distributions, manifest, checksums,
+   and SBOM.
 
 Trusted Publisher registration is a one-time repository setup. Maintainers do
 not create or copy a PyPI API token for each release. Do not manually create
