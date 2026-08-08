@@ -8,6 +8,13 @@ from content_creator.providers import FakeProvider, ProviderRegistry
 from content_creator.runner import AgentOutputError, AgentRunner, AgentRunOptions
 
 
+def _write_workspace_config(project, section, value):
+    path = project / "content-creator.yaml"
+    data = yaml.safe_load(path.read_text(encoding="utf-8")) if path.exists() else {}
+    data[section] = value
+    path.write_text(yaml.safe_dump(data), encoding="utf-8")
+
+
 def test_model_selector_uses_first_capable_candidate(project):
     path = project / "config" / "models.yaml"
     data = yaml.safe_load(path.read_text(encoding="utf-8"))
@@ -36,6 +43,31 @@ def test_model_selector_fails_closed_when_capability_is_missing(project):
         assert "unsupported_tool" in str(exc)
     else:
         raise AssertionError("Expected ConfigurationError")
+
+
+def test_configuration_reader_rejects_missing_and_non_mapping_yaml(tmp_path):
+    with pytest.raises(ConfigurationError, match="Missing configuration"):
+        Configuration._read_yaml(tmp_path / "missing.yaml")
+
+    invalid = tmp_path / "invalid.yaml"
+    invalid.write_text("- list\n- not-a-mapping\n", encoding="utf-8")
+    with pytest.raises(ConfigurationError, match="Expected a mapping"):
+        Configuration._read_yaml(invalid)
+
+
+def test_default_provider_rejects_unknown_provider(project, monkeypatch):
+    monkeypatch.setenv("CONTENT_CREATOR_PROVIDER", "unregistered")
+
+    with pytest.raises(ConfigurationError, match="Unknown default provider"):
+        _ = Configuration(project).default_provider
+
+
+def test_model_selector_rejects_missing_role_and_profile(project):
+    configuration = Configuration(project)
+    with pytest.raises(ConfigurationError, match="No model profile configured"):
+        configuration.selection("unknown-role")
+    with pytest.raises(ConfigurationError, match="Unknown provider/profile combination"):
+        configuration.selection("writer-post", profile="unknown-profile")
 
 
 def test_default_provider_can_be_selected_for_current_shell(project, monkeypatch):
@@ -157,3 +189,132 @@ def test_legacy_voice_assessment_configuration_is_mapped(project):
 
     assert policy["enabled"] is True
     assert policy["method"] == "deterministic"
+
+
+@pytest.mark.parametrize(
+    ("section", "attribute", "message"),
+    [
+        ("provider", "default_provider", "provider configuration must be a mapping"),
+        ("perspective", "perspective_policy", "perspective configuration must be a mapping"),
+        (
+            "publication_provenance",
+            "publication_provenance_policy",
+            "publication_provenance configuration must be a mapping",
+        ),
+        ("coordinator", "coordinator_policy", "coordinator configuration must be a mapping"),
+        ("diagnostics", "diagnostic_policy", "diagnostics configuration must be a mapping"),
+        (
+            "statistical_voice_score",
+            "statistical_voice_score_policy",
+            "statistical_voice_score configuration must be a mapping",
+        ),
+    ],
+)
+def test_configuration_sections_reject_non_mapping_values(project, section, attribute, message):
+    _write_workspace_config(project, section, "invalid")
+
+    with pytest.raises(ConfigurationError, match=message):
+        getattr(Configuration(project), attribute)
+
+
+def test_perspective_policy_rejects_unknown_mode(project):
+    _write_workspace_config(project, "perspective", {"mode": "implicit"})
+
+    with pytest.raises(ConfigurationError, match="explicit, automatic, or disabled"):
+        _ = Configuration(project).perspective_policy
+
+
+@pytest.mark.parametrize("directory", ["/tmp/receipts", "../receipts", "."])
+def test_publication_receipts_must_stay_inside_workspace(project, directory):
+    _write_workspace_config(
+        project,
+        "publication_provenance",
+        {"receipts_directory": directory},
+    )
+
+    with pytest.raises(ConfigurationError, match="must stay inside the workspace"):
+        _ = Configuration(project).publication_provenance_policy
+
+
+@pytest.mark.parametrize(
+    ("setting", "value", "message"),
+    [
+        ("policy", "best-effort", "publication_provenance.policy"),
+        ("semantic_review", "all", "publication_provenance.semantic_review"),
+    ],
+)
+def test_publication_provenance_rejects_unknown_policy_values(project, setting, value, message):
+    _write_workspace_config(project, "publication_provenance", {setting: value})
+
+    with pytest.raises(ConfigurationError, match=message):
+        _ = Configuration(project).publication_provenance_policy
+
+
+@pytest.mark.parametrize(
+    ("setting", "value", "message"),
+    [
+        ("external_publication", "enabled", "external_publication must be disabled"),
+        ("ask_before_voice_change", "yes", "ask_before_voice_change must be a boolean"),
+        ("require_final_review", 1, "require_final_review must be a boolean"),
+    ],
+)
+def test_coordinator_policy_rejects_unsafe_values(project, setting, value, message):
+    _write_workspace_config(project, "coordinator", {setting: value})
+
+    with pytest.raises(ConfigurationError, match=message):
+        _ = Configuration(project).coordinator_policy
+
+
+@pytest.mark.parametrize(
+    ("setting", "value", "message"),
+    [
+        ("enabled", "yes", "diagnostics.enabled must be a boolean"),
+        ("max_attempts", True, "max_attempts must be an integer"),
+        (
+            "defer_recovered_until_publication",
+            False,
+            "defer_recovered_until_publication must be true",
+        ),
+    ],
+)
+def test_diagnostic_policy_rejects_unsafe_values(project, setting, value, message):
+    _write_workspace_config(project, "diagnostics", {setting: value})
+
+    with pytest.raises(ConfigurationError, match=message):
+        _ = Configuration(project).diagnostic_policy
+
+
+@pytest.mark.parametrize(
+    ("setting", "value"),
+    [
+        ("minimum_draft_words", 24),
+        ("max_reported_outliers", 51),
+    ],
+)
+def test_statistical_voice_score_rejects_out_of_range_integer_settings(project, setting, value):
+    _write_workspace_config(project, "statistical_voice_score", {setting: value})
+
+    with pytest.raises(ConfigurationError, match=setting):
+        _ = Configuration(project).statistical_voice_score_policy
+
+
+@pytest.mark.parametrize(
+    ("settings", "message"),
+    [
+        ({"enabled": "yes"}, "enabled must be a boolean"),
+        ({"outlier_iqr_multiplier": True}, "must be a number"),
+        ({"outlier_iqr_multiplier": 5.1}, "must be from 1.0 to 5.0"),
+    ],
+)
+def test_statistical_voice_score_rejects_unsafe_scalar_settings(project, settings, message):
+    _write_workspace_config(project, "statistical_voice_score", settings)
+
+    with pytest.raises(ConfigurationError, match=message):
+        _ = Configuration(project).statistical_voice_score_policy
+
+
+def test_legacy_voice_assessment_rejects_unknown_mode(project):
+    _write_workspace_config(project, "voice_assessment", {"mode": "hybrid"})
+
+    with pytest.raises(ConfigurationError, match="mode must be statistical or ml"):
+        _ = Configuration(project).statistical_voice_score_policy

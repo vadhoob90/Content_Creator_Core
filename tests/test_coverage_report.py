@@ -10,7 +10,7 @@ CoverageMeasure = COVERAGE_REPORT["CoverageMeasure"]
 
 
 def test_coverage_harness_accepts_each_threshold_at_its_boundary():
-    measure = CoverageMeasure(statements=88.0, branches=71.0)
+    measure = CoverageMeasure(statements=88.0, branches=80.0)
 
     assert COVERAGE_REPORT["violations"](measure) == []
 
@@ -18,8 +18,8 @@ def test_coverage_harness_accepts_each_threshold_at_its_boundary():
 @pytest.mark.parametrize(
     ("measure", "expected"),
     [
-        (CoverageMeasure(statements=87.99, branches=71.0), "statement coverage"),
-        (CoverageMeasure(statements=88.0, branches=70.99), "branch coverage"),
+        (CoverageMeasure(statements=87.99, branches=80.0), "statement coverage"),
+        (CoverageMeasure(statements=88.0, branches=79.99), "branch coverage"),
     ],
 )
 def test_coverage_harness_rejects_each_threshold_independently(measure, expected):

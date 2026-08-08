@@ -3,6 +3,7 @@ __pycache__/
 *.egg-info/
 .pytest_cache/
 .coverage
+.coverage-harness
 .coverage-report.json
 .venv/
 dist/

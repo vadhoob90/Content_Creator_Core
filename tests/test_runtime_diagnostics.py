@@ -5,11 +5,14 @@ import pytest
 from conftest import passing_critique, valid_draft
 
 from content_creator.diagnostics import DiagnosticDecisionRequired, RuntimeDiagnostics
+from content_creator.diagnostics.candidates import decide, link_issue
+from content_creator.diagnostics.policy import classify, is_retryable
 from content_creator.domain import RunState, RunStatus, WorkOrder
 from content_creator.orchestrator import Orchestrator
 from content_creator.providers import FakeProvider, ProviderRegistry
+from content_creator.providers.base import ProviderError
 from content_creator.runner import AgentOutputError
-from content_creator.storage import RunStore
+from content_creator.storage import RunStore, StorageError
 
 
 def orchestrator_for(project, responses):
@@ -139,6 +142,35 @@ def test_provider_failure_does_not_become_core_candidate(project):
     assert detail["support_worthy"] is False
 
 
+@pytest.mark.parametrize(
+    ("error", "expected"),
+    [
+        (ValueError("bad input"), False),
+        (ProviderError("service timed out"), True),
+        (ProviderError("request denied"), False),
+    ],
+)
+def test_retry_policy_distinguishes_transient_provider_failures(error, expected):
+    assert is_retryable(error) is expected
+
+
+@pytest.mark.parametrize(
+    ("error", "expected_classification", "support_worthy"),
+    [
+        (ProviderError("authentication login required"), "workspace_configuration", False),
+        (StorageError("disk failed"), "core", True),
+        (RuntimeError("unexpected"), "core", True),
+    ],
+)
+def test_diagnostic_policy_classifies_configuration_storage_and_unknown_failures(
+    error, expected_classification, support_worthy
+):
+    result = classify(error)
+
+    assert result["classification"] == expected_classification
+    assert result["support_worthy"] is support_worthy
+
+
 def test_diagnostic_sanitiser_removes_secrets_and_user_paths(project):
     diagnostics = RuntimeDiagnostics(project)
     value = diagnostics.sanitise(
@@ -183,6 +215,32 @@ def test_linking_issue_completes_candidate_lifecycle(project):
     assert result["status"] == "issue_raised"
     assert candidates[0]["status"] == "issue_raised"
     assert candidates[0]["issue_url"].endswith("/123")
+
+    with pytest.raises(ValueError, match="no issue-requested"):
+        orchestrator.link_diagnostic_issue(
+            state.id,
+            "https://github.com/vadhoob90/Content_Creator_Core/issues/124",
+        )
+    repeated = decide(RunStore(project), state.id, "publish-only")
+    assert repeated["candidates"][0]["status"] == "issue_raised"
+
+
+def test_diagnostic_decisions_reject_unknown_values_and_invalid_issue_links(project):
+    store = RunStore(project)
+    state = RunState(
+        id="no-candidate-run",
+        status=RunStatus.READY,
+        work_order=WorkOrder(request="Draft", topic="Draft"),
+        route_plan={"route": "text-none-none", "stages": ["writer"]},
+    )
+    store.create(state)
+
+    with pytest.raises(ValueError, match="Unknown diagnostic decision"):
+        decide(store, state.id, "ignore")
+    with pytest.raises(ValueError, match="must identify a GitHub issue"):
+        link_issue(store, state.id, "https://example.com/issues/1")
+    with pytest.raises(ValueError, match="no support candidate"):
+        link_issue(store, state.id, "https://github.com/example/repository/issues/1")
 
 
 def test_failure_before_run_creation_preserves_invocation_summary(project):

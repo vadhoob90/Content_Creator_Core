@@ -8,7 +8,7 @@ from content_creator.cli import build_parser, main
 from content_creator.domain import RoutePlan, RunState, RunStatus, WorkOrder
 from content_creator.orchestrator import OrchestrationError, Orchestrator
 from content_creator.providers import FakeProvider, ProviderRegistry
-from content_creator.storage import IdempotencyError, RunStore
+from content_creator.storage import IdempotencyError, RunStore, StorageError
 
 
 def _orchestrator(project, responses):
@@ -205,3 +205,91 @@ def test_submission_status_resolves_key_without_execution(project, capsys):
 def test_run_parser_accepts_idempotency_key():
     args = build_parser().parse_args(["run", "write", "--idempotency-key", "request-123"])
     assert args.idempotency_key == "request-123"
+
+
+def test_idempotent_creation_rolls_back_index_when_run_persistence_fails(project, monkeypatch):
+    store = RunStore(project)
+    state = RunState(
+        id="failed-persistence",
+        work_order=WorkOrder(request="write", topic="topic"),
+        route_plan=RoutePlan(route="text-none-none", stages=["writer"]),
+    )
+
+    def fail_create(_state):
+        raise OSError("disk unavailable")
+
+    monkeypatch.setattr(store, "create", fail_create)
+
+    with pytest.raises(StorageError, match="Could not persist idempotent run submission"):
+        store.create_idempotent(state, "rollback-key", "fingerprint")
+
+    assert store.load_by_idempotency_key("rollback-key") is None
+    assert not store.run_dir(state.id).exists()
+
+
+def test_idempotency_lookup_reports_corrupt_database(project):
+    database = project / ".content-creator" / "idempotency.sqlite3"
+    database.parent.mkdir(parents=True)
+    database.write_text("not a sqlite database", encoding="utf-8")
+
+    with pytest.raises(StorageError, match="Could not read idempotent run submission"):
+        RunStore(project).load_by_idempotency_key("corrupt-index")
+
+
+def test_idempotency_lookup_returns_none_for_missing_index_and_unknown_key(project):
+    store = RunStore(project)
+
+    assert store.load_by_idempotency_key("absent-database") is None
+
+    state = RunState(
+        id="known-run",
+        work_order=WorkOrder(request="write", topic="topic"),
+        route_plan=RoutePlan(route="text-none-none", stages=["writer"]),
+    )
+    store.create_idempotent(state, "known-key", "fingerprint")
+
+    assert store.load_by_idempotency_key("unknown-key") is None
+
+
+def test_idempotency_lookup_rejects_index_and_run_state_mismatch(project):
+    store = RunStore(project)
+    state = RunState(
+        id="mismatched-run",
+        work_order=WorkOrder(request="write", topic="topic"),
+        route_plan=RoutePlan(route="text-none-none", stages=["writer"]),
+    )
+    store.create_idempotent(state, "mismatch-key", "fingerprint")
+    state.idempotency_key_hash = "tampered"
+    store.save_state(state)
+
+    with pytest.raises(StorageError, match="index does not match persisted run"):
+        store.load_by_idempotency_key("mismatch-key")
+
+
+@pytest.mark.parametrize("key", ["", "space separated", "slash/value", 42])
+def test_idempotency_keys_reject_ambiguous_or_non_text_values(key):
+    with pytest.raises(IdempotencyError, match="Idempotency keys must be"):
+        RunStore.idempotency_key_hash(key)
+
+
+@pytest.mark.parametrize("run_id", ["../outside", "nested/run", "space separated"])
+def test_run_store_rejects_unsafe_run_identifiers(project, run_id):
+    with pytest.raises(StorageError, match="Invalid run id"):
+        RunStore(project).run_dir(run_id)
+
+
+def test_run_store_distinguishes_unknown_runs_and_missing_artifacts(project):
+    store = RunStore(project)
+
+    with pytest.raises(StorageError, match="Unknown run: absent-run"):
+        store.load("absent-run")
+
+    state = RunState(
+        id="artifact-run",
+        work_order=WorkOrder(request="write", topic="topic"),
+        route_plan=RoutePlan(route="text-none-none", stages=["writer"]),
+    )
+    store.create(state)
+
+    with pytest.raises(StorageError, match="Missing artifact"):
+        store.read_artifact(state.id, "missing.json")

@@ -4,11 +4,14 @@ from conftest import passing_critique, valid_draft
 from content_creator.configuration import Configuration
 from content_creator.domain import (
     Critique,
+    EvidenceItem,
     PriorIssueDisposition,
+    ResearchBrief,
+    Source,
     WorkOrder,
 )
 from content_creator.quality import evaluate_quality
-from content_creator.validation import validate_draft
+from content_creator.validation import validate_draft, validate_research_brief
 
 
 def test_quality_gate_recomputes_weighted_score(project):
@@ -155,3 +158,56 @@ def test_numbered_reference_style_requires_markers_and_references_section():
     assert any("numbered-references" in error for error in invalid)
     assert any("numbered-references" in error for error in references_only)
     assert valid == []
+
+
+def test_banned_phrase_validator_normalises_string_and_ignores_invalid_configuration():
+    string_order = WorkOrder(
+        request="x",
+        topic="x",
+        pack_options={"banned_phrases": "single forbidden phrase"},
+    )
+    invalid_order = WorkOrder(
+        request="x",
+        topic="x",
+        pack_options={"banned_phrases": {"unexpected": "mapping"}},
+    )
+
+    assert validate_draft(
+        "A single forbidden phrase appears.", string_order, ["banned-phrase"]
+    ) == ["Banned phrase: single forbidden phrase"]
+    assert validate_draft("Safe text.", invalid_order, ["banned-phrase"]) == []
+
+
+@pytest.mark.parametrize("citation_style", ["inline-links", "unsupported-style"])
+def test_researched_draft_fails_closed_without_supported_citation(citation_style):
+    order = WorkOrder(
+        request="x",
+        topic="x",
+        research_depth="light",
+        research_source="agent",
+        pack_options={"citation_style": citation_style},
+    )
+
+    errors = validate_draft("An unsupported sourced claim.", order)
+
+    assert errors == ["Research-backed drafts must include at least one source link"]
+
+
+def test_research_brief_reports_invalid_missing_and_unknown_sources_together():
+    brief = ResearchBrief(
+        summary="A deliberately invalid research brief.",
+        sources=[Source(title="Relative", url="relative/source")],
+        evidence=[
+            EvidenceItem(claim="Unsupported claim"),
+            EvidenceItem(
+                claim="Unknown source claim",
+                source_urls=["https://example.org/not-in-catalogue"],
+            ),
+        ],
+    )
+
+    assert validate_research_brief(brief) == [
+        "Source URL is not absolute: relative/source",
+        "Evidence item 1 has no source",
+        "Evidence item 2 references an unknown source",
+    ]
