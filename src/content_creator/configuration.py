@@ -203,6 +203,7 @@ class Configuration:
         policy = {
             "policy": "advisory",
             "receipts_directory": "publication-receipts",
+            "semantic_review": "selected-perspectives",
         }
         policy.update(configured)
         if policy["policy"] not in {
@@ -219,6 +220,10 @@ class Configuration:
         if receipts.is_absolute() or ".." in receipts.parts or receipts == Path("."):
             raise ConfigurationError(
                 "publication_provenance.receipts_directory must stay inside the workspace"
+            )
+        if policy["semantic_review"] not in {"off", "selected-perspectives"}:
+            raise ConfigurationError(
+                "publication_provenance.semantic_review must be off or selected-perspectives"
             )
         return policy
 

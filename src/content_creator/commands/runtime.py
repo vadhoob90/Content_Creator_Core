@@ -14,6 +14,7 @@ from ..diagnostics import DiagnosticDecisionRequired
 from ..orchestrator import OrchestrationError, Orchestrator
 from ..packs import PackError
 from ..providers import ProviderError
+from ..publication_lifecycle import PublicationReviewRequired
 from ..publication_provenance import PublicationProvenanceError
 from ..runner import AgentOutputError
 from ..storage import StorageError
@@ -39,6 +40,9 @@ def main(argv: Optional[List[str]] = None) -> int:
         return dispatch.run(argv)
     except DiagnosticDecisionRequired as exc:
         print_json(exc.preflight)
+        return 4
+    except PublicationReviewRequired as exc:
+        print_json(exc.report)
         return 4
     except (
         AgentOutputError,

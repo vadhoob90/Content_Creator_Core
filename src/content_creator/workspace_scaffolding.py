@@ -169,6 +169,7 @@ def _initialise_base(
         configuration["publication_provenance"] = {
             "policy": "required-for-new-publications",
             "receipts_directory": "publication-receipts",
+            "semantic_review": "selected-perspectives",
         }
         RunStore._atomic_text(configuration_path, yaml.safe_dump(configuration, sort_keys=False))
     created = [

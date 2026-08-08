@@ -98,6 +98,7 @@ DOCUMENTED_COMMANDS = [
     ["approve-research", "run-id"],
     ["reject-research", "run-id"],
     ["publish", "run-id"],
+    ["publish", "run-id", "--perspective-review-approved-by", "Author"],
     ["verify-publications"],
     ["verify-publications", "--write-baseline"],
     ["learn", "run-id", "--feedback", "Prefer concrete openings."],

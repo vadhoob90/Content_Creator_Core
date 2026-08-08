@@ -217,6 +217,7 @@ def initialise_workspace(
             "publication_provenance": {
                 "policy": "advisory",
                 "receipts_directory": "publication-receipts",
+                "semantic_review": "selected-perspectives",
             },
             "statistical_voice_score": {
                 "enabled": False,

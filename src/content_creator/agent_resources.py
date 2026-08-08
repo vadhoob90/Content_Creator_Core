@@ -21,6 +21,7 @@ ROLE_FILES = {
     "attribution-reviewer": "attribution-reviewer.md",
     "voice-evaluator": "voice-evaluator.md",
     "perspective-extractor": "perspective-extractor.md",
+    "perspective-evaluator": "perspective-evaluator.md",
 }
 
 LEARNING_FILES = {

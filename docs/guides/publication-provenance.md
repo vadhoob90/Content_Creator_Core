@@ -30,6 +30,7 @@ Configure enforcement in `content-creator.yaml`:
 publication_provenance:
   policy: required-for-new-publications
   receipts_directory: publication-receipts
+  semantic_review: selected-perspectives
 ```
 
 Supported policies are:
@@ -86,3 +87,36 @@ The receipt provides repository integrity evidence under the repository's
 review and branch-protection trust boundary. It is not a cryptographic author
 signature. Workspaces that require protection from an authorized committer
 forging a receipt need a separate signing or CI-attestation policy.
+
+## Semantic review and author decisions
+
+When a run selects reusable perspective entries, Core asks the bounded
+Perspective Evaluator to compare those entries with the exact publication
+draft. The evaluator cannot produce deterministic failures and cannot approve
+or reject publication. It may return:
+
+- `review_required` for a possible omitted material qualification, possible
+  counterposition, or ambiguous author/research/model attribution;
+- `informational` for a possible new author position that may warrant a later
+  perspective proposal.
+
+Informational findings are recorded without blocking. Review-required findings
+leave the run in `needs_author`, preserve
+`publication-semantic-review.json` under the ignored run directory, and leave
+the publication destination untouched.
+
+The author may revise the draft and run publication again. If the author has
+reviewed the unchanged draft and findings and decides they are acceptable,
+record that decision explicitly:
+
+```bash
+content-creator publish <run-id> \
+  --perspective-review-approved-by "Author" \
+  --perspective-review-notes "Qualification is established in the preceding paragraph."
+```
+
+Core verifies that the approval refers to the exact reviewed draft and does not
+invoke the evaluator again. Reviewer identity and notes remain in ignored run
+evidence; the tracked receipt contains only the decision artifact hash and
+finding codes. Set `semantic_review: off` only when the workspace deliberately
+chooses deterministic provenance without model-assisted review.

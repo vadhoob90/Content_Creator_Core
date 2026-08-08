@@ -233,11 +233,7 @@ class Orchestrator(OrchestrationSupport):
         record = PerspectiveRegistry(self.root, order.voice_id).resolve(
             selection.context_id, selection.version
         )
-        requested = (
-            order.author_contribution.reusable_perspective_entry_ids
-            if order.author_contribution
-            else []
-        )
+        requested = getattr(order.author_contribution, "reusable_perspective_entry_ids", [])
         unknown = sorted(set(requested) - set(record["active_entry_ids"]))
         if unknown:
             raise OrchestrationError(
@@ -435,6 +431,8 @@ class Orchestrator(OrchestrationSupport):
         filename: Optional[str] = None,
         feedback: Optional[str] = None,
         diagnostic_decision: Optional[str] = None,
+        perspective_review_approved_by: Optional[str] = None,
+        perspective_review_notes: Optional[str] = None,
     ) -> RunState:
         """Publish the orchestrator workflow.
 
@@ -446,6 +444,10 @@ class Orchestrator(OrchestrationSupport):
                 ``None``.
             diagnostic_decision (Optional[str]): The diagnostic decision text processed when
                 publish. Defaults to ``None``.
+            perspective_review_approved_by (Optional[str]): Reviewer resolving persisted
+                semantic findings. Defaults to ``None``.
+            perspective_review_notes (Optional[str]): Optional author review notes. Defaults
+                to ``None``.
 
         Returns:
             RunState: The resulting run state for publish.
@@ -454,7 +456,12 @@ class Orchestrator(OrchestrationSupport):
         state, draft, pack, visual_asset, target = self._prepare_publication(
             run_id, filename, diagnostic_decision
         )
-        perspective_evaluation, evaluation_artifact_hash = self._publication_gate(state, draft)
+        gate = self.publication_lifecycle.prepare(
+            state,
+            draft,
+            perspective_review_approved_by,
+            perspective_review_notes,
+        )
         assessment = self._publication_assessment(state, run_id, target, feedback)
         self.store.write_artifact(run_id, "assessment.json", assessment)
         self._extract_learnings(state, draft, assessment, feedback)
@@ -465,8 +472,7 @@ class Orchestrator(OrchestrationSupport):
             pack,
             visual_asset,
             draft,
-            perspective_evaluation,
-            evaluation_artifact_hash,
+            gate,
         )
 
     def _prepare_publication(
@@ -536,17 +542,17 @@ class Orchestrator(OrchestrationSupport):
         Returns:
             Dict[str, Any]: The structured resulting data for publication assessment.
         """
-        order = state.work_order
         return {
             "run_id": run_id,
             "published_path": str(target.relative_to(self.root)),
-            "voice_id": order.voice_id,
-            "voice_version": order.voice_version,
-            "content_pack": order.content_pack,
-            "perspective_context": order.perspective_context,
-            "perspective_version": order.perspective_version,
+            "voice_id": state.work_order.voice_id,
+            "voice_version": state.work_order.voice_version,
+            "content_pack": state.work_order.content_pack,
+            "perspective_context": state.work_order.perspective_context,
+            "perspective_version": state.work_order.perspective_version,
             "perspective_selections": [
-                selection.model_dump(mode="json") for selection in order.perspective_selections
+                selection.model_dump(mode="json")
+                for selection in state.work_order.perspective_selections
             ],
             "author_signal": "explicit_feedback" if feedback else "publication_approval",
             "feedback": feedback,
@@ -687,8 +693,7 @@ class Orchestrator(OrchestrationSupport):
         pack: Any,
         visual_asset: Any,
         draft: str,
-        perspective_evaluation: Dict[str, Any],
-        evaluation_artifact_hash: str,
+        gate: Any,
     ) -> RunState:
         """Finish the publication.
 
@@ -698,8 +703,7 @@ class Orchestrator(OrchestrationSupport):
             pack (Any): The resolved content-pack contract.
             visual_asset (Any): The visual asset value passed to finish publication.
             draft (str): Exact reviewed draft approved for publication.
-            perspective_evaluation (Dict[str, Any]): Deterministic provenance evaluation.
-            evaluation_artifact_hash (str): Hash of the run-scoped evaluation artifact.
+            gate (Any): Deterministic and semantic receipt evidence.
 
         Returns:
             RunState: The resulting run state for finish publication.
@@ -719,8 +723,9 @@ class Orchestrator(OrchestrationSupport):
         receipt_path = self.publications.issue(
             state,
             target,
-            perspective_evaluation,
-            evaluation_artifact_hash,
+            gate.perspective_evaluation,
+            gate.evaluation_artifact_hash,
+            gate.semantic_review,
         )
         state.events.append(
             RunEvent(

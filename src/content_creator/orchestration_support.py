@@ -25,8 +25,10 @@ from .intake import BriefingAgent
 from .learning_lifecycle import LearningLifecycle
 from .packs import PackRegistry
 from .perspective_evaluation import evaluate_perspective_output
+from .perspective_semantic_review import PerspectiveSemanticReview
 from .prompting import PromptAssembler
 from .providers import ProviderRegistry
+from .publication_lifecycle import PublicationLifecycle
 from .publication_provenance import PublicationProvenance
 from .quality import evaluate_quality
 from .revision import RevisionLifecycle
@@ -34,7 +36,6 @@ from .runner import AgentRunner, AgentRunOptions
 from .stages import CallableDraftReviewStage, CallableResearchStage, LifecycleStages
 from .storage import IdempotencyError, RunStore, StorageError
 from .validation import validate_draft, validate_research_brief
-from .versioned_artifacts import hash_file
 from .voice_evaluation import evaluate_voice_output
 
 
@@ -57,6 +58,9 @@ class OrchestrationSupport:
         stages: Optional[LifecycleStages] = None,
     ):
         """Initialize the orchestration support with its required state and collaborators.
+
+        Build the shared registries, runners, lifecycle services, and capability adapters
+        once so the orchestrator can keep command flows focused on state transitions.
 
         Args:
             root (Path): The workspace root directory.
@@ -103,6 +107,15 @@ class OrchestrationSupport:
             self.root,
             self.configuration.publication_provenance_policy,
         )
+        self.semantic_review = PerspectiveSemanticReview(self.root, self.runner, self.store)
+        self.publication_lifecycle = PublicationLifecycle(
+            self.root,
+            self.store,
+            self.publications,
+            self.semantic_review,
+            self.configuration.publication_provenance_policy,
+            OrchestrationError,
+        )
 
     def learn(
         self,
@@ -127,31 +140,6 @@ class OrchestrationSupport:
         try:
             return self.learning.execute(run_id, feedback, idempotency_key)
         except (IdempotencyError, RuntimeError) as exc:
-            raise OrchestrationError(str(exc)) from exc
-
-    def _publication_gate(self, state: RunState, draft: str) -> tuple[Dict[str, Any], str]:
-        """Return deterministic provenance evidence for an exact reviewed draft.
-
-        Args:
-            state (RunState): Reviewed run being published.
-            draft (str): Exact draft proposed for publication.
-
-        Returns:
-            tuple[Dict[str, Any], str]: Evaluation and ignored artifact hash.
-
-        Raises:
-            OrchestrationError: If publication provenance cannot be verified.
-        """
-        try:
-            evaluation = self.publications.evaluate(state, draft)
-            artifact = self.store.write_artifact(
-                state.id, "publication-perspective-evaluation.json", evaluation
-            )
-            return evaluation, hash_file(artifact)
-        except Exception as exc:
-            state.status = RunStatus.NEEDS_AUTHOR
-            state.events.append(RunEvent(name="publication_provenance_failed", detail=str(exc)))
-            self.store.save_state(state)
             raise OrchestrationError(str(exc)) from exc
 
     def revise(

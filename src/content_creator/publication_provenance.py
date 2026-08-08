@@ -12,6 +12,7 @@ from pydantic import BaseModel, Field
 from .domain import RunState, RunStatus, utc_now
 from .packs import PackRegistry
 from .perspective_evaluation import evaluate_perspective_output
+from .perspective_semantic_review import SemanticReviewReceipt
 from .perspectives import PerspectiveEntryStatus, PerspectiveRegistry
 from .storage import RunStore
 from .versioned_artifacts import hash_file, hash_json
@@ -75,6 +76,7 @@ class PublicationReceipt(BaseModel):
     author_contribution_provenance: str
     perspectives: list[PerspectiveReceipt] = Field(default_factory=list)
     perspective_evaluation: PerspectiveEvaluationReceipt
+    semantic_review: SemanticReviewReceipt = Field(default_factory=SemanticReviewReceipt)
     published_at: str
 
 
@@ -142,6 +144,7 @@ class PublicationProvenance:
         target: Path,
         evaluation: Dict[str, Any],
         evaluation_artifact_hash: str,
+        semantic_review: SemanticReviewReceipt,
     ) -> Path:
         """Write the tracked receipt for a successful publication.
 
@@ -150,6 +153,7 @@ class PublicationProvenance:
             target (Path): Published artifact path.
             evaluation (Dict[str, Any]): Exact-draft deterministic evaluation.
             evaluation_artifact_hash (str): Hash of the ignored run evaluation artifact.
+            semantic_review (SemanticReviewReceipt): Privacy-safe semantic review summary.
 
         Returns:
             Path: Written receipt path.
@@ -179,6 +183,7 @@ class PublicationProvenance:
                 position_marker_count=len(evaluation["position_markers"]),
                 selected_entry_ids=list(evaluation["selected_entry_ids"]),
             ),
+            semantic_review=semantic_review,
             published_at=utc_now().isoformat(),
         )
         receipt_path = self.receipt_path(relative_target)
@@ -221,12 +226,8 @@ class PublicationProvenance:
                         f"Receipt has no published artifact: {self._relative(receipt_path)}",
                     )
                 )
-        if findings and policy == PublicationPolicy.ADVISORY:
-            status = "advisory"
-        elif findings:
-            status = "failed"
-        else:
-            status = "ok"
+        failed_status = "advisory" if policy == PublicationPolicy.ADVISORY else "failed"
+        status = failed_status if findings else "ok"
         return self._report(policy, findings, len(artifacts), receipt_count, status)
 
     def write_baseline(self, replace: bool = False) -> Dict[str, Any]:
@@ -419,7 +420,57 @@ class PublicationProvenance:
             )
         failures.extend(self._verify_voice(receipt))
         failures.extend(self._verify_perspectives(receipt))
+        failures.extend(self._verify_semantic(receipt))
         return failures
+
+    def _verify_semantic(self, receipt: PublicationReceipt) -> list[PublicationFinding]:
+        """Return failures for an unresolved or inconsistent semantic review.
+
+        Args:
+            receipt (PublicationReceipt): Receipt containing semantic review evidence.
+
+        Returns:
+            list[PublicationFinding]: Semantic review consistency failures.
+        """
+        review = receipt.semantic_review
+        if review.status == "review_required":
+            return [
+                self._finding(
+                    "unresolved_semantic_review",
+                    receipt.artifact_path,
+                    "Review-required findings have no author decision",
+                )
+            ]
+        if review.status == "passed" and review.review_required_codes:
+            return [
+                self._finding(
+                    "inconsistent_semantic_review",
+                    receipt.artifact_path,
+                    "Passed review contains review-required findings",
+                )
+            ]
+        if review.status == "author_approved" and not review.decision_artifact_hash:
+            return [
+                self._finding(
+                    "missing_semantic_review_decision",
+                    receipt.artifact_path,
+                    "Author-approved review has no decision artifact hash",
+                )
+            ]
+        if review.status not in {
+            "not_applicable",
+            "disabled",
+            "passed",
+            "author_approved",
+        }:
+            return [
+                self._finding(
+                    "invalid_semantic_review_status",
+                    receipt.artifact_path,
+                    f"Unsupported semantic review status: {review.status}",
+                )
+            ]
+        return []
 
     def _verify_voice(self, receipt: PublicationReceipt) -> list[PublicationFinding]:
         """Return failures for the pinned voice evidence.

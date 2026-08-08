@@ -142,6 +142,19 @@ provenance, voice, perspective, or missing-receipt failures before committing.
 Do not replace a legacy baseline unless the author explicitly approves the
 reviewed legacy set.
 
+If publication returns `review_required`, present the finding codes and the
+ignored assessment artifact. The author may revise the draft, or explicitly
+approve the unchanged review with:
+
+```bash
+content-creator publish <run-id> \
+  --perspective-review-approved-by "<reviewer>" \
+  --perspective-review-notes "<optional decision context>"
+```
+
+Never choose this approval on the author's behalf. Model-assisted findings may
+pause for review but cannot reject, approve, or redefine the author's position.
+
 If the author supplies durable feedback after publication, or for a reviewed
 run that should not be published yet, use the learning-only operation:
 
