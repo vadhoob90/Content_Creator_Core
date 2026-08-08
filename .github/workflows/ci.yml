@@ -7,6 +7,8 @@ on:
   pull_request:
   push:
     branches: [main]
+  schedule:
+    - cron: "41 5 * * 1"
 
 jobs:
   quality:
@@ -15,19 +17,41 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          fetch-depth: 0
           persist-credentials: false
-      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
         with:
+          version: "0.11.29"
           python-version: "3.14"
-          cache: pip
-      - run: python -m pip install -e ".[dev]"
+          enable-cache: true
+      - name: Verify and install the locked environment
+        run: |
+          uv lock --check
+          uv sync --frozen --extra dev
       - name: Enforce lint, exception, and argument rules
-        run: ruff check .
-      - run: ruff format --check .
-      - run: mypy
+        run: uv run --frozen --extra dev ruff check .
+      - run: uv run --frozen --extra dev ruff format --check .
+      - run: uv run --frozen --extra dev mypy
       - name: Enforce Google Style documentation contracts
-        run: python scripts/documentation_report.py --check
-      - run: python scripts/architecture_report.py --check
+        run: uv run --frozen --extra dev python scripts/documentation_report.py --check
+      - name: Enforce architecture and readability limits
+        run: |
+          uv run --frozen --extra dev python scripts/architecture_report.py --check
+          uv run --frozen --extra dev python scripts/readability_report.py --check
+      - name: Reject malformed patches
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          BEFORE_SHA: ${{ github.event.before }}
+        run: |
+          if [ "${GITHUB_EVENT_NAME}" = pull_request ]; then
+            git diff --check "${BASE_SHA}...${GITHUB_SHA}"
+          elif [ "${GITHUB_EVENT_NAME}" = push ] && \
+               [ -n "${BEFORE_SHA}" ] && \
+               [ "${BEFORE_SHA}" != "0000000000000000000000000000000000000000" ]; then
+            git diff --check "${BEFORE_SHA}...${GITHUB_SHA}"
+          else
+            git diff --check "${GITHUB_SHA}^...${GITHUB_SHA}"
+          fi
 
   test:
     name: Test Python ${{ matrix.python-version }}
@@ -40,12 +64,13 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
         with:
+          version: "0.11.29"
           python-version: ${{ matrix.python-version }}
-          cache: pip
-      - run: python -m pip install -e ".[dev]"
-      - run: pytest --cov=content_creator --cov-report=term-missing
+          enable-cache: true
+      - run: uv sync --frozen --extra dev
+      - run: uv run --frozen --extra dev pytest --cov=content_creator --cov-report=term-missing
 
   evaluation:
     name: Offline evaluation
@@ -54,12 +79,13 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
         with:
+          version: "0.11.29"
           python-version: "3.14"
-          cache: pip
-      - run: python -m pip install -e ".[dev]"
-      - run: content-creator eval
+          enable-cache: true
+      - run: uv sync --frozen --extra dev
+      - run: uv run --frozen --extra dev content-creator eval
 
   dependency-review:
     name: Dependency review
@@ -76,18 +102,23 @@ jobs:
           fail-on-severity: moderate
 
   dependency-audit:
-    name: Dependency vulnerability audit
+    name: Dependency vulnerability audit Python ${{ matrix.python-version }}
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.14"]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
         with:
-          python-version: "3.14"
-          cache: pip
-      - run: python -m pip install -e ".[dev,providers]"
-      - run: python -m pip_audit --local --progress-spinner=off
+          version: "0.11.29"
+          python-version: ${{ matrix.python-version }}
+          enable-cache: true
+      - run: uv sync --frozen --all-extras
+      - run: uv run --frozen --all-extras python -m pip_audit --local --progress-spinner=off
 
   required:
     name: Required checks

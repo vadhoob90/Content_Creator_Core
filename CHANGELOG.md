@@ -12,6 +12,11 @@ release tag.
 
 ### Changed
 
+- CI and release automation now install from the frozen lockfile, audit known
+  vulnerabilities across the supported Python range boundaries, enforce
+  readability checks, reject release tags outside `main`, and publish SBOM and
+  provenance attestations with reproducibly built artifacts.
+
 ## [1.6.0] - 2026-08-08
 
 ### Added

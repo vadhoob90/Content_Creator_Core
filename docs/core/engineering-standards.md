@@ -85,10 +85,12 @@ life.
 ## Security and dependencies
 
 - Dependencies must use bounded compatible ranges and the lockfile is
-  committed.
+  committed. CI installs from `uv.lock` in frozen mode and fails if dependency
+  declarations and the lockfile disagree.
 - Dependency review blocks pull requests that introduce known vulnerabilities
   of moderate severity or higher.
-- `pip-audit` checks the installed dependency environment in CI.
+- `pip-audit` checks the complete locked dependency environment on Python 3.11
+  and 3.14 for pull requests, pushes to `main`, and a weekly schedule.
 - CodeQL scans Python source on pull requests, `main`, and a weekly schedule.
 - Dependabot checks Python and GitHub Actions dependencies weekly.
 - GitHub Actions must be pinned to full commit SHAs, with the release tag kept
@@ -105,12 +107,18 @@ life.
   required CI check must pass; force pushes and branch deletion are disabled.
 - Unrelated editorial state or generated run artifacts must not be mixed into
   Core changes.
-- Release tags are immutable and must match the package version.
+- Release tags are immutable, must match the package version, and must point to
+  a commit contained in protected `main`.
 - The release workflow builds and validates both distributions, tests the
   wheel in a clean environment, publishes through PyPI Trusted Publishing,
-  and records checksums and a manifest in the GitHub release.
-- A future supply-chain hardening increment may add signed provenance and an
-  SBOM; these do not replace distribution tests or dependency review.
+  and records checksums, a manifest, and a CycloneDX SBOM in the GitHub
+  release. The distributions and release evidence receive GitHub artifact
+  attestations, including an SBOM-linked attestation.
+- Release build tools are installed from `uv.lock`, and builds disable isolated
+  dependency resolution. CI builds each distribution twice with a commit-based
+  `SOURCE_DATE_EPOCH` and requires byte-identical artifacts, so an unreviewed
+  build-tool release or wall-clock timestamp cannot alter the artifacts
+  produced by an existing source commit.
 
 ## Local validation
 

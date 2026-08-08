@@ -26,6 +26,7 @@ Security reports may cover the Core package, release artifacts, dependency
 handling, provider boundaries, diagnostics redaction, workspace isolation, or
 unauthorised disclosure of repository-owned material.
 
-`pip-audit`, dependency review, CodeQL, and secret scanning are complementary
-controls. They reduce known risks but do not prove that a release is free of
-vulnerabilities.
+Frozen lockfile installation, multi-version `pip-audit`, dependency review,
+CodeQL, secret and malware scanning, release SBOMs, and artifact attestations
+are complementary controls. They reduce known risks but do not prove that a
+release is free of vulnerabilities.
