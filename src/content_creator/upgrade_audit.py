@@ -15,6 +15,7 @@ from .coordinator_models import operation as coordinator_operation
 from .domain import RunEvent
 from .health import WorkspaceHealth
 from .packs import PackRegistry
+from .production_store import production_run_store
 from .storage import RunStore
 
 logger = logging.getLogger(__name__)
@@ -145,7 +146,7 @@ class UpgradeCompatibilityAudit:
         Returns:
             None: Readable affected runs are updated in place.
         """
-        store = RunStore(self.root)
+        store = production_run_store(self.root)
         for finding in findings:
             if finding["outcome"] not in {"automatically_migrated", "decision_required"}:
                 continue

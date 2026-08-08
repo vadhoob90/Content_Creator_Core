@@ -27,6 +27,9 @@ release tag.
 
 - Production metadata now refreshes at every persisted run-state transition,
   including checkpoints, failures, revisions, and publication.
+- Production metadata refresh is composed at the application boundary so
+  low-level storage remains independent of manifests, packs, and context
+  composition. CI now rejects every internal import edge involved in a cycle.
 - New publication receipts record the resolved content pack ID and version in
   addition to pinned voice and perspective evidence.
 

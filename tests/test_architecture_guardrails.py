@@ -181,6 +181,7 @@ def test_architecture_report_describes_modules_and_dependencies():
     }
     assert oversized == {}
     assert all(module["deleted_parameters"] == [] for module in modules.values())
+    assert report["import_cycle_edges"] == []
     assert "single_importer_modules" in report["advisories"]
     assert "cross_file_inheritance" in report["advisories"]
     assert not any(

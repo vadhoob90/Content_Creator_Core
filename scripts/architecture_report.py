@@ -145,6 +145,38 @@ def architecture_advisories(modules: list[dict[str, object]]) -> dict[str, objec
     }
 
 
+def _depends_on(graph: dict[str, set[str]], start: str, target: str) -> bool:
+    """Return whether one internal module transitively imports another."""
+    pending = [start]
+    visited = set()
+    while pending:
+        current = pending.pop()
+        if current == target:
+            return True
+        if current in visited:
+            continue
+        visited.add(current)
+        pending.extend(graph.get(current, set()) - visited)
+    return False
+
+
+def import_cycle_edges(modules: list[dict[str, object]]) -> list[dict[str, str]]:
+    """Return every direct internal import that participates in a cycle."""
+    names = {str(module["module"]) for module in modules}
+    graph = {
+        str(module["module"]): {
+            str(imported) for imported in module["imports"] if str(imported) in names
+        }
+        for module in modules
+    }
+    return [
+        {"source": source, "target": target}
+        for source, targets in sorted(graph.items())
+        for target in sorted(targets)
+        if _depends_on(graph, target, source)
+    ]
+
+
 def build_report() -> dict:
     """Build module size and dependency measurements for production code."""
     modules = []
@@ -177,6 +209,7 @@ def build_report() -> dict:
         },
         "modules": modules,
     }
+    report["import_cycle_edges"] = import_cycle_edges(modules)
     report["advisories"] = architecture_advisories(modules)
     return report
 
@@ -185,6 +218,8 @@ def architecture_violations(report: dict) -> list[str]:
     """Evaluate precise dependency rules that have an established green baseline."""
     modules = {module["module"]: module for module in report["modules"]}
     violations = []
+    for edge in import_cycle_edges(list(modules.values())):
+        violations.append("internal import cycle includes {source} -> {target}".format(**edge))
     cli = modules.get("content_creator.cli")
     if not cli or cli["implementation_line_count"] > 100:
         violations.append("content_creator.cli must remain a façade of at most 100 lines")

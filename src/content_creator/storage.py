@@ -8,12 +8,16 @@ import os
 import re
 import sqlite3
 import tempfile
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any, Dict, Optional, Tuple
 
 from pydantic import BaseModel
 
 from .domain import RunState, utc_now
+
+StateWriter = Callable[[Path, str], None]
+StateSaveHook = Callable[[Path, RunState, StateWriter], None]
 
 
 class StorageError(RuntimeError):
@@ -44,11 +48,14 @@ def slugify(value: str) -> str:
 class RunStore:
     """Manage run records."""
 
-    def __init__(self, root: Path):
+    def __init__(self, root: Path, before_state_save: Optional[StateSaveHook] = None):
         """Initialize the run store with its required state and collaborators.
 
         Args:
             root (Path): The workspace root directory.
+            before_state_save (Optional[StateSaveHook]): Optional application-owned
+                preparation invoked after the timestamp changes and before state is
+                persisted. Defaults to ``None``.
 
         Returns:
             None: The instance is initialized in place and no value is returned.
@@ -56,6 +63,7 @@ class RunStore:
         self.root = root.resolve()
         self.runs_dir = self.root / "runs"
         self.runs_dir.mkdir(parents=True, exist_ok=True)
+        self.before_state_save = before_state_save
 
     def create(self, state: RunState) -> RunState:
         """Create the run store workflow.
@@ -284,9 +292,8 @@ class RunStore:
             None: The callable updates state state and returns no value.
         """
         state.updated_at = utc_now()
-        from .production_manifest import refresh_production_manifest
-
-        refresh_production_manifest(self.root, state, self._atomic_text)
+        if self.before_state_save is not None:
+            self.before_state_save(self.root, state, self._atomic_text)
         self._atomic_text(
             self.run_dir(state.id) / "state.json",
             state.model_dump_json(indent=2),

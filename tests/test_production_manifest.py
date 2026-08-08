@@ -10,8 +10,8 @@ from content_creator.domain import (
     WorkOrder,
 )
 from content_creator.orchestrator import Orchestrator
+from content_creator.production_store import production_run_store
 from content_creator.providers import FakeProvider, ProviderRegistry
-from content_creator.storage import RunStore
 
 
 def _orchestrator(project):
@@ -79,7 +79,7 @@ def test_manifest_renders_zero_one_or_multiple_perspectives(project, perspective
         ),
         route_plan=RoutePlan(route="test", stages=[]),
     )
-    RunStore(project).create(state)
+    production_run_store(project).create(state)
     run = project / "runs" / state.id
     manifest = json.loads((run / "production-manifest.json").read_text(encoding="utf-8"))
     summary = (run / "production-manifest.md").read_text(encoding="utf-8")
@@ -136,7 +136,7 @@ def test_revision_and_publication_refresh_manifest_without_decorating_publicatio
 
 
 def test_legacy_run_is_backfilled_on_next_state_save(project):
-    store = RunStore(project)
+    store = production_run_store(project)
     state = RunState(
         work_order=WorkOrder(request="write", topic="legacy"),
         route_plan=RoutePlan(route="legacy", stages=[]),

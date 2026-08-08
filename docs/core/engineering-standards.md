@@ -34,8 +34,10 @@ life.
   boundaries: a small CLI and runtime façade, a 500 implementation-line maximum
   for production modules, optional capabilities outside the orchestrator,
   explicit application stages, shared immutable-artifact mechanics, and the ban
-  on deleting function parameters. Physical size remains visible in the report.
-  New rules need a documented green baseline before becoming blocking.
+  on deleting function parameters. It also blocks every internal import edge
+  that participates in a cycle, including imports placed inside functions.
+  Physical size remains visible in the report. New rules need a documented green
+  baseline before becoming blocking.
 - `python scripts/readability_report.py --check` scans every Python module in
   `src/`, `scripts/`, and `tests`: 500 module implementation lines, 80 function
   implementation lines, and 7 parameters are hard limits. It reports physical

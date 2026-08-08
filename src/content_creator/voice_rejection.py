@@ -7,14 +7,50 @@ import re
 import shutil
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import Any, Protocol
 
 from .storage import RunStore
 from .versioned_artifacts import ActivationLock, hash_file, verify_components
 from .voice_models import VoiceError, VoiceManifest, VoiceRejectionReceipt, VoiceStatus
 
-if TYPE_CHECKING:
-    from .voices import VoiceRegistry
+
+class VoiceRegistryAccess(Protocol):
+    """Provide registry operations needed during candidate rejection."""
+
+    root: Path
+
+    def _read(self) -> dict:
+        """Read the current registry document.
+
+        Returns:
+            dict: Current registry data.
+
+        Raises:
+            NotImplementedError: If the registry cannot provide read access.
+        """
+        raise NotImplementedError
+
+    def resolve(
+        self,
+        voice_id: str,
+        version: str | None = None,
+        allow_inactive: bool = False,
+    ) -> dict:
+        """Resolve one immutable voice version.
+
+        Args:
+            voice_id (str): Stable selected voice identifier.
+            version (str | None): Immutable version identifier. Defaults to ``None``.
+            allow_inactive (bool): Whether inactive registry entries are permitted.
+                Defaults to ``False``.
+
+        Returns:
+            dict: Resolved voice evidence.
+
+        Raises:
+            NotImplementedError: If the registry cannot resolve the voice.
+        """
+        raise NotImplementedError
 
 
 def rejection_directory(root: Path, voice_id: str, candidate_hash: str) -> Path:
@@ -132,7 +168,7 @@ def list_rejections(root: Path, voice_id: str) -> list[dict[str, Any]]:
 
 
 def reject_candidate(
-    registry_service: VoiceRegistry,
+    registry_service: VoiceRegistryAccess,
     voice_id: str,
     expected_hash: str,
     rejected_by: str,
@@ -144,7 +180,7 @@ def reject_candidate(
     preserve both the active version and an immutable decision receipt.
 
     Args:
-        registry_service (VoiceRegistry): Voice registry service.
+        registry_service (VoiceRegistryAccess): Voice registry service.
         voice_id (str): Stable selected voice identifier.
         expected_hash (str): Candidate hash reviewed by the author.
         rejected_by (str): Human identity recorded with the rejection.

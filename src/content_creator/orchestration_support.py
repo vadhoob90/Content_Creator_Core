@@ -26,6 +26,7 @@ from .learning_lifecycle import LearningLifecycle
 from .packs import PackRegistry
 from .perspective_evaluation import evaluate_perspective_output
 from .perspective_semantic_review import PerspectiveSemanticReview
+from .production_store import production_run_store
 from .prompting import PromptAssembler
 from .providers import ProviderRegistry
 from .publication_lifecycle import PublicationLifecycle
@@ -34,7 +35,7 @@ from .quality import evaluate_quality
 from .revision import RevisionLifecycle
 from .runner import AgentRunner, AgentRunOptions
 from .stages import CallableDraftReviewStage, CallableResearchStage, LifecycleStages
-from .storage import IdempotencyError, RunStore, StorageError
+from .storage import IdempotencyError, StorageError
 from .validation import validate_draft, validate_research_brief
 from .voice_evaluation import evaluate_voice_output
 
@@ -93,7 +94,7 @@ class OrchestrationRuntime:
             diagnostics=self.diagnostics,
         )
         self.intake = BriefingAgent(self.runner)
-        self.store = RunStore(self.root)
+        self.store = production_run_store(self.root)
         self.packs = PackRegistry(self.root)
         self.capabilities = capabilities or DefaultRunCapabilities(self.root, visual_adapters)
         self.visuals = self.capabilities.visuals
