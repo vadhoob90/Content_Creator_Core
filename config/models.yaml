@@ -85,3 +85,4 @@ roles:
   profile-critic: balanced
   voice-evaluator: deep
   perspective-extractor: balanced
+  perspective-evaluator: balanced

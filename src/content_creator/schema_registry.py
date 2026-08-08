@@ -10,6 +10,10 @@ from typing import Any, Dict, Type
 from pydantic import BaseModel
 
 from .domain import RunState, WorkOrder
+from .perspective_semantic_review import (
+    PerspectiveReviewDecision,
+    PerspectiveSemanticArtifact,
+)
 from .perspectives import PerspectiveManifest
 from .publication_provenance import PublicationBaseline, PublicationReceipt
 from .storage import RunStore
@@ -31,6 +35,8 @@ SCHEMA_MODELS: Dict[str, Type[BaseModel]] = {
     "run-state": RunState,
     "voice-manifest": VoiceManifest,
     "perspective-manifest": PerspectiveManifest,
+    "perspective-review-decision": PerspectiveReviewDecision,
+    "perspective-semantic-artifact": PerspectiveSemanticArtifact,
     "publication-baseline": PublicationBaseline,
     "publication-receipt": PublicationReceipt,
     "visual-manifest": VisualManifest,

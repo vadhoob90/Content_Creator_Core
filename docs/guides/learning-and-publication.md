@@ -12,11 +12,13 @@ After that pre-publication decision, the application:
 2. Refuses to overwrite an existing target
 3. Revalidates deterministic perspective provenance against the exact final
    bytes and pinned immutable context
-4. Records `assessment.json` and the publication perspective evaluation
-5. Calls the learning and perspective extractors
-6. Writes the piece to the selected pack's configured repository destination
-7. Writes a privacy-safe tracked publication receipt
-8. Adds deduplicated records to
+4. Runs bounded semantic perspective review when reusable entries were selected
+5. Pauses for an author decision when semantic findings require review
+6. Records `assessment.json` and the publication perspective evaluation
+7. Calls the learning and perspective extractors
+8. Writes the piece to the selected pack's configured repository destination
+9. Writes a privacy-safe tracked publication receipt
+10. Adds deduplicated records to
    `profiles/<voice-id>/learnings/memory.json`
 
 The destination is untouched when provenance fails. See

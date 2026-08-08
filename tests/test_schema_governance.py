@@ -22,6 +22,8 @@ def test_schema_catalogue_covers_persisted_public_contracts():
         "run-state",
         "voice-manifest",
         "perspective-manifest",
+        "perspective-review-decision",
+        "perspective-semantic-artifact",
         "publication-baseline",
         "publication-receipt",
         "visual-manifest",

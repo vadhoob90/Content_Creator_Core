@@ -10,15 +10,38 @@ release tag.
 
 ### Added
 
+### Changed
+
+## [1.3.0] - 2026-08-08
+
+### Added
+
 - Privacy-safe, repository-tracked publication receipts and the deterministic
   offline `content-creator verify-publications` command.
 - Advisory, prospective, and complete receipt-enforcement policies, including
   a hashed legacy-publication baseline for deliberate migration.
+- A bounded Perspective Evaluator that records review-required and
+  informational semantic findings separately from deterministic failures.
+- Exact-draft author resolution for review-required findings, with private
+  decision evidence kept under the ignored run and only hashes and finding
+  codes copied into tracked receipts.
 
 ### Changed
 
 - Repository publication now revalidates exact-draft provenance and pinned
   voice and perspective integrity before writing to a pack destination.
+- Possible omitted qualifications, counterpositions, and ambiguous attribution
+  now pause selected-perspective publication for author review; informational
+  new-position findings do not block publication.
+
+### Migration
+
+- Existing workspaces remain in advisory receipt mode when the policy is absent.
+  Generate and inspect a baseline before enabling prospective or complete
+  enforcement, then scaffold the new `perspective-evaluator` agent resource.
+- Semantic perspective review defaults to `selected-perspectives`. Workspaces
+  may explicitly set `semantic_review: off`, but doing so records the opt-out in
+  each new publication receipt.
 
 ## [1.2.0] - 2026-08-08
 

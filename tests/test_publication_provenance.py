@@ -13,6 +13,7 @@ from content_creator.perspectives import (
     PerspectiveRegistry,
 )
 from content_creator.providers import FakeProvider, ProviderRegistry
+from content_creator.publication_lifecycle import PublicationReviewRequired
 from content_creator.publication_provenance import PublicationProvenance
 
 
@@ -38,6 +39,7 @@ def _activate_perspective(project):
                 id="training-001",
                 statement="Training should teach recognition and escalation.",
                 qualifications=["Apply proportionately."],
+                counterpositions=["Rules should always be memorised without exception."],
                 provenance=[
                     PerspectiveProvenance(
                         kind="direct_author_input",
@@ -90,7 +92,10 @@ def test_selected_perspective_receipt_pins_version_entries_and_hashes(project):
     _activate_perspective(project)
     orchestrator = _orchestrator(
         project,
-        extra={"perspective-extractor": [{"candidates": []}]},
+        extra={
+            "perspective-evaluator": [{"findings": []}],
+            "perspective-extractor": [{"candidates": []}],
+        },
     )
     state = orchestrator.start(
         WorkOrder(
@@ -224,3 +229,121 @@ def test_verify_publications_cli_returns_nonzero_for_enforced_finding(project, c
     report = json.loads(capsys.readouterr().out)
     assert report["status"] == "failed"
     assert report["findings"][0]["code"] == "missing_receipt"
+
+
+def test_semantic_findings_pause_publication_until_explicit_author_approval(project):
+    _activate_perspective(project)
+    findings = [
+        {
+            "category": "review_required",
+            "code": "omitted_qualification",
+            "context_id": "legal-training",
+            "entry_id": "training-001",
+            "detail": "The material qualification may be absent.",
+            "confidence": 0.8,
+        },
+        {
+            "category": "review_required",
+            "code": "possible_counterposition",
+            "context_id": "legal-training",
+            "entry_id": "training-001",
+            "detail": "A counterposition may be attributed to the author.",
+            "confidence": 0.7,
+        },
+    ]
+    orchestrator = _orchestrator(
+        project,
+        extra={
+            "perspective-evaluator": [{"findings": findings}],
+            "perspective-extractor": [{"candidates": []}],
+        },
+    )
+    state = orchestrator.start(
+        WorkOrder(
+            request="Explain professional training.",
+            topic="Training",
+            perspective_context="legal-training",
+            pack_options={"length": "50:600"},
+        )
+    )
+
+    with pytest.raises(PublicationReviewRequired) as pending:
+        orchestrator.publish(state.id, filename="reviewed.md")
+
+    assert pending.value.report["review_required_codes"] == [
+        "omitted_qualification",
+        "possible_counterposition",
+    ]
+    assert not (project / "content/general-text/published/reviewed.md").exists()
+    assert not (
+        project / "publication-receipts/content/general-text/published/reviewed.md.receipt.json"
+    ).exists()
+    assert orchestrator.store.load(state.id).status.value == "needs_author"
+
+    published = orchestrator.publish(
+        state.id,
+        filename="reviewed.md",
+        perspective_review_approved_by="Author",
+        perspective_review_notes="Reviewed in context and approved.",
+    )
+    receipt_path = (
+        project / "publication-receipts/content/general-text/published/reviewed.md.receipt.json"
+    )
+    receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+
+    assert published.status.value == "published"
+    assert receipt["semantic_review"]["status"] == "author_approved"
+    assert receipt["semantic_review"]["review_required_codes"] == [
+        "omitted_qualification",
+        "possible_counterposition",
+    ]
+    assert "Reviewed in context" not in json.dumps(receipt)
+    assert "Author" not in json.dumps(receipt)
+    provider = orchestrator.registry.get("anthropic")
+    assert (
+        len([request for request in provider.requests if request.role == "perspective-evaluator"])
+        == 1
+    )
+    assert _required(project).verify()["status"] == "ok"
+
+
+def test_informational_semantic_finding_does_not_block_publication(project):
+    _activate_perspective(project)
+    orchestrator = _orchestrator(
+        project,
+        extra={
+            "perspective-evaluator": [
+                {
+                    "findings": [
+                        {
+                            "category": "informational",
+                            "code": "possible_new_position",
+                            "context_id": "legal-training",
+                            "detail": "A new position may warrant a proposal.",
+                            "confidence": 0.6,
+                        }
+                    ]
+                }
+            ],
+            "perspective-extractor": [{"candidates": []}],
+        },
+    )
+    state = orchestrator.start(
+        WorkOrder(
+            request="Explain professional training.",
+            topic="Training",
+            perspective_context="legal-training",
+            pack_options={"length": "50:600"},
+        )
+    )
+
+    orchestrator.publish(state.id, filename="informational.md")
+    receipt = json.loads(
+        (
+            project
+            / "publication-receipts/content/general-text/published/informational.md.receipt.json"
+        ).read_text(encoding="utf-8")
+    )
+
+    assert receipt["semantic_review"]["status"] == "passed"
+    assert receipt["semantic_review"]["informational_codes"] == ["possible_new_position"]

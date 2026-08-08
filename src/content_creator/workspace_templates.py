@@ -404,6 +404,12 @@ Successful publication writes a privacy-safe receipt under
 content or receipt changes. Treat an enforced finding as a publication
 integrity failure; the verifier is offline and must not invoke a model.
 
+If publication returns `review_required`, present the finding codes and the
+ignored semantic-review artifact. The author may revise the draft or repeat
+publication with `--perspective-review-approved-by "<reviewer>"` after reviewing
+the unchanged draft. Never select this approval for the author; model findings
+may pause publication but cannot approve or reject it.
+
 When durable author feedback arrives after publication, or on a reviewed draft
 that should remain unpublished, use `learn <run-id> --feedback "..."
 --idempotency-key <stable-key>`. This updates only the run's verified voice

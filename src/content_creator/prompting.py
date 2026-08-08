@@ -132,6 +132,7 @@ class PromptAssembler:
                 "critic",
                 "learning-extractor",
                 "perspective-extractor",
+                "perspective-evaluator",
             }
         ):
             for index, selection in enumerate(order.perspective_selections):

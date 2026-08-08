@@ -276,6 +276,7 @@ def test_publication_creates_only_context_scoped_candidate_then_requires_approva
             "writer": [valid_draft()],
             "critic": [passing_critique()],
             "learning-extractor": [{"candidates": []}],
+            "perspective-evaluator": [{"findings": []}],
             "perspective-extractor": [extraction],
         }
     )

@@ -137,7 +137,10 @@ def _add_run_arguments(parser: argparse.ArgumentParser) -> None:
 
 
 def register_publication(subparsers: argparse._SubParsersAction) -> None:
-    """Register the publication.
+    """Register publication, approval, learning, and verification commands.
+
+    Keep the publication boundary options together so review and provenance controls
+    remain visible alongside the destination-writing command.
 
     Args:
         subparsers (argparse._SubParsersAction): The argparse subparser collection
@@ -155,6 +158,11 @@ def register_publication(subparsers: argparse._SubParsersAction) -> None:
     publish.add_argument("--filename")
     publish.add_argument("--feedback")
     publish.add_argument("--diagnostic-decision", choices=["publish-only", "prepare-issue"])
+    publish.add_argument(
+        "--perspective-review-approved-by",
+        help="Record the author reviewer resolving persisted semantic findings",
+    )
+    publish.add_argument("--perspective-review-notes")
     learn = subparsers.add_parser(
         "learn", help="Apply explicit author feedback without publishing content"
     )

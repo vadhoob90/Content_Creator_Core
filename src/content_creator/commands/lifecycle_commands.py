@@ -115,6 +115,8 @@ def publish(context: CommandContext) -> int:
             filename=arguments.filename,
             feedback=arguments.feedback,
             diagnostic_decision=arguments.diagnostic_decision,
+            perspective_review_approved_by=arguments.perspective_review_approved_by,
+            perspective_review_notes=arguments.perspective_review_notes,
         )
     )
     return 0
