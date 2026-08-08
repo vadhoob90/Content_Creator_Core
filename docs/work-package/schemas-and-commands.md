@@ -264,10 +264,16 @@ Authorisation, invalid schema and corrupted provenance are never overridable.
 content-creator voice list
 content-creator voice add-sources example-person --sources additional-urls.txt
 content-creator voice rebuild example-person
-content-creator voice diff example-person --from 1.0.0 --to candidate
+content-creator voice diff example-person
 content-creator voice deactivate example-person \
   --reason "Authorisation withdrawn"
 ```
+
+For an active voice, rebuild preserves approved guidance and `voice diff`
+compares the active version with the candidate by default. Evidence-backed rule
+changes use `--change-set`; intentional replacement uses `--full-regenerate`.
+Both routes still require explicit approval. See
+[Safe voice evolution](../guides/voice-evolution.md).
 
 Deactivation prevents future content runs but preserves old manifests,
 receipts and run snapshots. Reactivation requires a new explicit approval.

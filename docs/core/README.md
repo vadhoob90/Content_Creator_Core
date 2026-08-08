@@ -212,6 +212,8 @@ Changes to voices or perspectives should test:
 
 - lifecycle transitions and idempotency;
 - immutable version resolution and component hashes;
+- candidate replacement between validation and promotion;
+- failure injection at version, receipt, lock, rename, and registry boundaries;
 - unsupported personal claims;
 - perspective isolation and provenance;
 - run-level resolved context; and
@@ -348,13 +350,13 @@ Author workspaces remain on their pinned package until deliberately upgraded.
 Preview the upgrade first:
 
 ```bash
-uv run content-creator --workspace . workspace upgrade --to v1.4.0
+uv run content-creator --workspace . workspace upgrade --to v1.4.1
 ```
 
 Apply the reviewed preview explicitly:
 
 ```bash
-uv run content-creator --workspace . workspace upgrade --to v1.4.0 --apply
+uv run content-creator --workspace . workspace upgrade --to v1.4.1 --apply
 ```
 
 The apply operation updates the package requirement and lockfile, runs doctor,

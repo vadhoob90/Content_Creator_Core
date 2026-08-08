@@ -60,8 +60,12 @@ content-creator voice approve example-person-general \
   --approved-by "Repository Owner"
 ```
 
-Approval makes no model call. It verifies component hashes, creates an approval
-receipt, assigns a stable version, and atomically updates the registry.
+Approval makes no model call. It verifies component hashes, assigns a stable
+version, writes an approval receipt, and writes the registry file atomically.
+Candidate replacement and the complete multi-file promotion are not yet one
+transaction; do not run a voice build or rebuild concurrently with approval.
+This implementation gap is tracked in
+[#73](https://github.com/vadhoob90/Content_Creator_Core/issues/73).
 
 ## Evolve an active voice
 
@@ -74,6 +78,8 @@ content-creator voice add-sources example-person-general \
   --documents "/absolute/path/to/new-writing"
 content-creator voice rebuild example-person-general
 content-creator voice diff example-person-general
+content-creator voice approve example-person-general \
+  --approved-by "Repository Owner"
 ```
 
 Rule changes require an evidence-backed change set. Full regeneration is a

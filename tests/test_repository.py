@@ -86,6 +86,7 @@ def test_readme_is_a_streamlined_operator_journey():
         "[Create a thin content workspace](docs/guides/creating-a-content-workspace.md)" in readme
     )
     assert "[Voice onboarding](docs/guides/voice-onboarding.md)" in readme
+    assert "[Safe voice evolution](docs/guides/voice-evolution.md)" in readme
     assert "[Content Creator Coordinator](docs/guides/content-coordinator.md)" in readme
 
 
@@ -133,7 +134,7 @@ def test_core_development_readme_covers_clone_and_validation():
     assert "git tag -a v1.0.0" in guide
     assert ".github/workflows/release.yml" in guide
     assert "Trusted Publisher registration is a one-time" in guide
-    assert "workspace upgrade --to v1.4.0 --apply" in guide
+    assert "workspace upgrade --to v1.4.1 --apply" in guide
 
 
 def test_work_package_uses_the_repository_cli_name():

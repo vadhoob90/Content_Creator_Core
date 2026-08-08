@@ -29,5 +29,12 @@ Stable failure codes are:
 
 Recovery must remain fail-safe and reversible. Restore corrupt state from a
 reviewed backup or version control; do not invent state or bypass approval
-checkpoints. Atomic persistence and exclusive activation-lock behavior have
-fault-oriented regression tests in the offline suite.
+checkpoints. Atomic persistence applies to individual state files, and exclusive
+activation locks serialize competing approval commands.
+
+Candidate build/staging and the complete version/receipt/registry promotion are
+not yet one transaction. Until
+[#73](https://github.com/vadhoob90/Content_Creator_Core/issues/73) is resolved,
+serialize candidate-changing commands and approval for each voice or perspective
+context. After an overlapping or interrupted promotion, preserve the workspace
+for inspection and do not manually delete numeric versions or edit registries.

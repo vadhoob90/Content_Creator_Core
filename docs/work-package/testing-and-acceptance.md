@@ -95,9 +95,15 @@ Use fixtures and a scripted fake provider.
 - Registry write failure
 - Recovery and retry
 - Concurrent activation lock
+- Candidate replacement between validation and promotion fails closed
+- Partial promotion does not allocate an immutable numeric version
 - Deactivation
 - Attempted use after deactivation
 - Reactivation with a new approval receipt
+
+The candidate-replacement and partial-promotion cases are target acceptance
+coverage, not current guarantees. Their implementation is tracked in
+[#73](https://github.com/vadhoob90/Content_Creator_Core/issues/73).
 
 ### Content use
 

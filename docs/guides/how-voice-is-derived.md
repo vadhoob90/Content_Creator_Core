@@ -457,10 +457,16 @@ Approval makes no model call. It:
 4. assigns a stable version such as `1.0.0`;
 5. copies the candidate into an immutable version directory;
 6. writes an approval receipt; and
-7. atomically updates the active voice registry.
+7. writes the active voice registry file atomically.
 
 The activated version manifest is authoritative for downstream lifecycle
 context. The copied profile cannot downgrade an active version to a candidate.
+
+The individual registry write is atomic, but candidate replacement and the
+complete version/receipt/registry promotion are not yet one filesystem
+transaction. Build or rebuild and approval must run serially for a voice. See
+the [operational concurrency limit](voice-evolution.md#operational-concurrency-limit)
+and [#73](https://github.com/vadhoob90/Content_Creator_Core/issues/73).
 
 Every content run resolves and records a specific voice version. Later profile
 changes create another version rather than silently changing the evidence used

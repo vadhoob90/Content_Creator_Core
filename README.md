@@ -63,7 +63,10 @@ without human approval.
 
 See [Voice onboarding](docs/guides/voice-onboarding.md) for the lifecycle and
 [How voice is derived](docs/guides/how-voice-is-derived.md) for the underlying
-safeguards.
+safeguards. Once a source-derived voice is active, routine rebuilds preserve
+its approved guidance by default. Follow
+[Safe voice evolution](docs/guides/voice-evolution.md) when adding evidence or
+proposing a rule change.
 
 ### 3. Ask for content naturally
 
