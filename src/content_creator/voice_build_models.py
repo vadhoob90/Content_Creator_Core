@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import List, Optional
+from typing import Any, List, Optional
 
 from pydantic import BaseModel, Field
 
@@ -116,3 +116,4 @@ class BuildState:
     patterns: List[VoicePattern] = field(default_factory=list)
     analysis_artifact: Optional[dict] = None
     criticism_artifact: Optional[dict] = None
+    evolution: Any = None

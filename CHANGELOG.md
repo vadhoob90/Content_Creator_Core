@@ -12,6 +12,29 @@ release tag.
 
 ### Changed
 
+## [1.4.0] - 2026-08-08
+
+### Added
+
+- Deterministic active-to-candidate voice evolution deltas with provenance,
+  confidence, baseline version and hash evidence, and evidence-backed change
+  sets for deliberate rule changes.
+- Semantic `voice diff` categories and a separate active-guidance regression
+  evaluation for evolved candidates.
+
+### Changed
+
+- Rebuilding an active voice now preserves approved profile prose, constraints,
+  rubric, and rules by default. Full regeneration is an explicit replacement
+  mode and still requires review and approval.
+
+### Migration
+
+- No stored-data migration is required. Existing manifests remain readable
+  because the evolution fields are optional. Routine active-voice rebuilds now
+  use the safe evolution path; use `--full-regenerate` only when intentionally
+  replacing approved guidance.
+
 ## [1.3.0] - 2026-08-08
 
 ### Added

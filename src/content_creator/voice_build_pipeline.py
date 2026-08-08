@@ -25,6 +25,7 @@ from .voice_build_models import (
     even_sample,
     public_locator,
 )
+from .voice_evolution import VoiceEvolution
 from .voice_profile_renderer import VoiceProfileRenderer
 from .voices import (
     AttributionResult,
@@ -56,21 +57,33 @@ class VoiceBuildPipeline(VoiceProfileRenderer):
         self.runner = runner
         self.provider = provider
 
-    def build(self, order: VoiceWorkOrder) -> VoiceManifest:
+    def build(
+        self,
+        order: VoiceWorkOrder,
+        full_regenerate: bool = False,
+        change_set: Optional[Path] = None,
+    ) -> VoiceManifest:
         """Build the voice build pipeline workflow.
 
         Args:
             order (VoiceWorkOrder): The work order that defines the requested content run.
+            full_regenerate (bool): Explicitly replace active guidance. Defaults to
+                ``False``.
+            change_set (Optional[Path]): Evidence-backed semantic change proposals.
+                Defaults to ``None``.
 
         Returns:
             VoiceManifest: The constructed voice manifest for value.
         """
         state = self._prepare(order)
+        state.evolution = VoiceEvolution(self.root, order.voice_id, full_regenerate, change_set)
         self._collect_sources(state)
         self._analyse_corpus(state)
         self._analyse_patterns(state)
         profile, constraints, voice_rubric = self._write_profile_artifacts(state)
-        evaluation = self._evaluate(state, profile, constraints, voice_rubric)
+        evolved = state.evolution.apply(state.candidate)
+        state.patterns = evolved.patterns
+        evaluation = self._evaluate(state, evolved.profile, evolved.constraints, evolved.rubric)
         manifest = self._write_manifest(state, evaluation)
         self._activate_candidate(state)
         return manifest
@@ -510,6 +523,11 @@ class VoiceBuildPipeline(VoiceProfileRenderer):
                 "matched_register_baseline": "not_supplied",
             },
         }
+        regression = state.evolution.regression_evaluation(state.candidate)
+        evaluation["regression_evaluation"] = regression
+        if not regression["passed"]:
+            cast(List[str], evaluation["hard_failures"]).append("active_voice_regression")
+            evaluation["passed"] = False
         if self.runner and state.patterns:
             self._apply_agent_evaluation(state, evaluation, profile, constraints, voice_rubric)
         RunStore._atomic_text(
@@ -616,6 +634,8 @@ class VoiceBuildPipeline(VoiceProfileRenderer):
             "linguistic_signature": "linguistic-signature.json",
             "evaluation_report": "evaluation-report.json",
         }
+        if state.evolution.delta is not None:
+            components["evolution_delta"] = state.evolution.artifact_name
         if state.analysis_artifact is not None:
             components["analyst_report"] = "analyst-report.json"
         if state.criticism_artifact is not None:
@@ -639,6 +659,10 @@ class VoiceBuildPipeline(VoiceProfileRenderer):
             strategy=VoiceStrategy.SOURCE_DERIVED,
             evidence_status="author-sources",
             perspectives_allowed=True,
+            evolution_mode=state.evolution.mode,
+            baseline_version=state.evolution.baseline_version,
+            baseline_candidate_hash=state.evolution.baseline_candidate_hash,
+            evolution_delta_hash=state.evolution.delta_hash,
         )
         RunStore._atomic_text(state.candidate / "manifest.json", manifest.model_dump_json(indent=2))
         build_report = {

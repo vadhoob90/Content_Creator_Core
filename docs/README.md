@@ -16,6 +16,7 @@ After setup, run `content-creator --workspace . start` to see the next task and
 
 - [Voice onboarding](guides/voice-onboarding.md)
 - [Voice creation](guides/voice-creation.md)
+- [Safely evolve an active voice](guides/voice-evolution.md)
 - [How voice is derived, end to end](guides/how-voice-is-derived.md)
 - [Privacy and authorised sources](guides/privacy-and-sources.md)
 - [Statistical voice evidence and the linguistic framework](guides/linguistic-voice-framework.md)

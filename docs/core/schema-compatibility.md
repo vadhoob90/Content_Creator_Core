@@ -4,7 +4,8 @@ Core treats persisted JSON as a versioned interface. Work orders, run states,
 voice manifests, perspective manifests, and visual manifests write
 `schema_version: "1.0"` and publish deterministic JSON Schemas. Publication
 receipts and prospective-enforcement baselines use the same governed schema
-catalogue.
+catalogue. Voice evolution change sets and deterministic semantic deltas are
+also published through that catalogue.
 
 Inspect the catalogue or export a reviewable bundle offline:
 

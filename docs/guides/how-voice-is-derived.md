@@ -373,6 +373,12 @@ Every candidate receives deterministic evaluation metadata. The baseline
 candidate passes when the corpus is sufficient and at least one pattern exists.
 An insufficient corpus is a hard failure.
 
+When an active voice is evolved, the report also contains a separate
+`regression_evaluation`. It verifies that approved artifacts retain active
+precedence and that no approved pattern disappears without a recorded semantic
+delta. Explicit full replacement is identified separately from ordinary
+evolution.
+
 The report also records:
 
 - whether every pattern cites a source;
@@ -415,6 +421,7 @@ A successful build creates `profiles/<voice-id>/candidate/` containing:
 | `analyst-report.json` | Model-assisted analysis, when used |
 | `critic-report.json` | Independent criticism, when used |
 | `evaluation-report.json` | Build and evaluator results |
+| `voice-evolution.json` | Active-baseline semantic delta, provenance, confidence, and rationale |
 | `manifest.json` | Component paths, hashes, lifecycle status, and uses |
 | `build-report.json` | Candidate hash, source failures, and final build status |
 
@@ -427,6 +434,8 @@ rewriting or rehashing their approved components.
 
 A passing candidate stops at `awaiting_approval`. A non-passing candidate
 remains `built` with its gaps recorded. Neither status is an active voice.
+For an active voice, routine rebuilds preserve approved guidance and record the
+baseline version and candidate hash. See [Safe voice evolution](voice-evolution.md).
 
 ## 13. Human approval and immutable versions
 

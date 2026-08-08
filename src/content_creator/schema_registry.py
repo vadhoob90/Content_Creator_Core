@@ -18,6 +18,7 @@ from .perspectives import PerspectiveManifest
 from .publication_provenance import PublicationBaseline, PublicationReceipt
 from .storage import RunStore
 from .visuals import VisualManifest
+from .voice_evolution import VoiceEvolutionChangeSet, VoiceEvolutionDelta
 from .voices import VoiceManifest
 
 CURRENT_SCHEMA_VERSION = "1.0"
@@ -34,6 +35,8 @@ SCHEMA_MODELS: Dict[str, Type[BaseModel]] = {
     "work-order": WorkOrder,
     "run-state": RunState,
     "voice-manifest": VoiceManifest,
+    "voice-evolution-change-set": VoiceEvolutionChangeSet,
+    "voice-evolution-delta": VoiceEvolutionDelta,
     "perspective-manifest": PerspectiveManifest,
     "perspective-review-decision": PerspectiveReviewDecision,
     "perspective-semantic-artifact": PerspectiveSemanticArtifact,

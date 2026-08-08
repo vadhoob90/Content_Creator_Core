@@ -11,12 +11,17 @@ content-creator status <run-id>
 ## Source or build failure
 
 Correct the URL or document, add sources if necessary, then rebuild. A failed
-build does not activate or replace an existing version.
+build does not activate or replace an existing version, and it leaves the
+previous valid candidate unchanged. When a voice is active, the routine rebuild
+preserves approved guidance by default.
 
 ```bash
 content-creator voice add-sources <voice-id> --sources corrected-urls.txt
 content-creator voice rebuild <voice-id>
 ```
+
+Use `--full-regenerate` only for an intentional full replacement, then inspect
+`content-creator voice diff <voice-id>` before approval.
 
 ## Candidate does not pass evaluation
 

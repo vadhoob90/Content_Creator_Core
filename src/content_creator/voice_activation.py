@@ -9,7 +9,13 @@ from pathlib import Path
 from typing import Protocol
 
 from .storage import RunStore
-from .versioned_artifacts import ActivationLock, hash_file, next_major_version, verify_components
+from .versioned_artifacts import (
+    ActivationLock,
+    hash_file,
+    hash_json,
+    next_major_version,
+    verify_components,
+)
 from .voice_models import (
     VoiceApprovalReceipt,
     VoiceError,
@@ -71,6 +77,7 @@ def activate_candidate(
         existing_receipt = _existing_receipt(voice_root, registry, voice_id, manifest)
         if existing_receipt:
             return existing_receipt
+        _validate_active_baseline(voice_root, registry, voice_id, manifest)
         version, destination = _promote_candidate(voice_root, candidate, manifest)
         receipt = _write_receipt(
             destination, evaluation_path, manifest, approved_by, override_reason, version
@@ -109,6 +116,10 @@ def _validated_candidate(
         raise VoiceError(f"Voice component hash mismatch: {mismatches[0]}")
     if manifest.status not in {VoiceStatus.AWAITING_APPROVAL, VoiceStatus.BUILT}:
         raise VoiceError("Voice candidate is not awaiting approval")
+    if manifest.evolution_delta_hash:
+        delta = json.loads((candidate / "voice-evolution.json").read_text(encoding="utf-8"))
+        if hash_json(delta) != manifest.evolution_delta_hash:
+            raise VoiceError("Voice evolution delta hash mismatch")
     evaluation = json.loads(evaluation_path.read_text(encoding="utf-8"))
     if not evaluation.get("passed"):
         if evaluation.get("hard_failures"):
@@ -116,6 +127,46 @@ def _validated_candidate(
         if not override_reason:
             raise VoiceError("Voice evaluation did not pass")
     return manifest, evaluation_path
+
+
+def _validate_active_baseline(
+    voice_root: Path,
+    registry: dict,
+    voice_id: str,
+    manifest: VoiceManifest,
+) -> None:
+    """Reject approval when the active baseline changed after candidate creation.
+
+    Args:
+        voice_root (Path): Filesystem root for the selected voice.
+        registry (dict): Current voice registry mapping.
+        voice_id (str): Stable selected voice identifier.
+        manifest (VoiceManifest): Candidate manifest containing baseline evidence.
+
+    Returns:
+        None: Baseline consistency is validated without mutation.
+
+    Raises:
+        VoiceError: If an evolution candidate no longer matches the active baseline.
+    """
+    if manifest.evolution_mode not in {"evolve", "full-regenerate"}:
+        return
+    current = registry["profiles"].get(voice_id, {})
+    if current.get("active_version") != manifest.baseline_version:
+        raise VoiceError("Voice evolution candidate has a stale active baseline version")
+    if current.get("candidate_hash") != manifest.baseline_candidate_hash:
+        raise VoiceError("Voice evolution candidate has a stale registry baseline hash")
+    baseline_manifest_path = (
+        voice_root / "versions" / str(manifest.baseline_version) / "manifest.json"
+    )
+    baseline = VoiceManifest.model_validate_json(baseline_manifest_path.read_text(encoding="utf-8"))
+    if baseline.candidate_hash != manifest.baseline_candidate_hash:
+        raise VoiceError("Voice evolution candidate has a stale active baseline hash")
+    mismatches = verify_components(
+        baseline_manifest_path.parent, baseline.components, baseline.component_hashes
+    )
+    if mismatches:
+        raise VoiceError(f"Active baseline component hash mismatch: {mismatches[0]}")
 
 
 def _existing_receipt(

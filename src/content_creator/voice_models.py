@@ -137,6 +137,10 @@ class VoiceManifest(BaseModel):
     evidence_status: str = "author-sources"
     perspectives_allowed: bool = True
     template_id: Optional[str] = None
+    evolution_mode: str = "initial"
+    baseline_version: Optional[str] = None
+    baseline_candidate_hash: Optional[str] = None
+    evolution_delta_hash: Optional[str] = None
 
 
 class VoiceOnboardingRecord(BaseModel):
