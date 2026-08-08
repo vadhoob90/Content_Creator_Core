@@ -38,6 +38,20 @@ jobs:
         run: |
           uv run --frozen --extra dev python scripts/architecture_report.py --check
           uv run --frozen --extra dev python scripts/readability_report.py --check
+      - name: Measure the enforcement harness
+        run: |
+          uv run --frozen --extra dev coverage run \
+            --source=scripts \
+            --data-file=.coverage-harness \
+            -m pytest \
+            tests/test_guardrail_harness.py \
+            tests/test_distribution_harness.py \
+            tests/test_documentation_report.py \
+            tests/test_release_reproducibility.py
+          uv run --frozen --extra dev coverage report \
+            --data-file=.coverage-harness \
+            --fail-under=75 \
+            --show-missing
       - name: Reject malformed patches
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}

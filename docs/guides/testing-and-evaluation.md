@@ -47,5 +47,13 @@ ordinary content changes and publication-triggered learning updates do not
 invoke the expensive harness. Documentation has its own offline command and
 link checks.
 
+The required pull-request gate deliberately stops at deterministic provider
+contracts. It proves routing, context composition, persistence, approval, and
+failure handling without credentials or network access. Live-provider workflows
+remain bounded, credentialed release evidence: they can reveal model-specific
+instruction-following or service behaviour, but their cost and nondeterminism make
+them unsuitable as required change-control checks. A live-provider result never
+replaces the offline route matrix or deterministic safety tests.
+
 Replay proves system behavior, not prose quality. Human assessment is captured
 at publication through the approval event and optional `--feedback`.
