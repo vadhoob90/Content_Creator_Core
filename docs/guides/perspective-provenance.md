@@ -76,7 +76,12 @@ content-creator perspective approve \
 ```
 
 Approval makes no model call. It verifies hashes, creates an immutable version
-and approval receipt, and atomically updates only that context.
+and approval receipt, and writes only that context's registry file atomically.
+Candidate replacement and the complete multi-file promotion are not yet one
+transaction. Run perspective staging and approval serially for the same context;
+do not create, stage a proposal, or retire an entry while approval is in
+progress. Snapshot-safe, transactional promotion is tracked in
+[#73](https://github.com/vadhoob90/Content_Creator_Core/issues/73).
 
 ## Use a perspective
 

@@ -95,4 +95,19 @@ runs the regression evaluation in explicit-replacement mode, and requires human
 approval. It cannot be combined with a change set.
 
 Builds are staged atomically. A failed evolution leaves both the active version
-and the previous valid candidate unchanged.
+and the previous valid candidate unchanged. This guarantee covers candidate
+construction and replacement, not the later multi-file approval transaction.
+
+## Operational concurrency limit
+
+Run `voice rebuild` and `voice approve` serially. Do not start another build or
+rebuild for the same voice while approval is in progress. Approval currently
+validates the mutable `candidate/` directory before taking its activation lock,
+and promotion is written across the version directory, receipt, and registry in
+separate steps. Concurrent candidate replacement or an interruption between
+those writes can therefore leave mixed or partial lifecycle artifacts.
+
+If approval overlaps a rebuild or is interrupted, stop mutating that voice and
+preserve the workspace for inspection. Do not delete a numeric version directory
+or edit the registry by hand. Snapshot-safe, transactional promotion is tracked
+in [#73](https://github.com/vadhoob90/Content_Creator_Core/issues/73).

@@ -23,6 +23,19 @@ content-creator voice rebuild <voice-id>
 Use `--full-regenerate` only for an intentional full replacement, then inspect
 `content-creator voice diff <voice-id>` before approval.
 
+## Approval overlaps candidate staging
+
+Do not run voice build or rebuild concurrently with voice approval. For a
+perspective context, do not create or stage a candidate, stage a proposal, or
+retire an entry while approval is running. Current activation locks serialize
+approvals, but they do not yet serialize candidate replacement with the full
+multi-file promotion.
+
+If commands overlap or approval is interrupted, stop further lifecycle writes
+and preserve the workspace for inspection. Do not delete a numeric version
+directory or edit a registry manually. Track recovery against
+[#73](https://github.com/vadhoob90/Content_Creator_Core/issues/73).
+
 ## Candidate does not pass evaluation
 
 Inspect `profiles/<voice-id>/candidate/evaluation-report.json` and

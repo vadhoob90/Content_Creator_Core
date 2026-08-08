@@ -36,3 +36,11 @@ as stable root-package APIs.
 - Hash and activation mechanics have one authoritative implementation.
 - Domain-specific voice and perspective policy remains explicit.
 - Architecture checks prevent the accepted dependency directions regressing.
+
+## Implementation status
+
+The shared mechanics currently cover hashing, verification, version allocation,
+and approval locks, but not an immutable candidate snapshot or transactional
+multi-file promotion. Voice and perspective operations must serialize candidate
+replacement with approval until the shared lifecycle gap in
+[#73](https://github.com/vadhoob90/Content_Creator_Core/issues/73) is resolved.

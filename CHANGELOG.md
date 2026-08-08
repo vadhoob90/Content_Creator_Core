@@ -12,6 +12,15 @@ release tag.
 
 ### Changed
 
+## [1.4.1] - 2026-08-08
+
+### Changed
+
+- Documentation now distinguishes v1.4.0's atomic candidate-build replacement
+  from the broader activation transaction and records the temporary requirement
+  to serialize candidate staging and approval while
+  [#73](https://github.com/vadhoob90/Content_Creator_Core/issues/73) remains open.
+
 ## [1.4.0] - 2026-08-08
 
 ### Added

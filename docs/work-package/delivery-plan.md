@@ -250,7 +250,7 @@ Dependencies: WP-08.
 
 ## WP-10: Implement deterministic approval and activation
 
-Status: **implemented**
+Status: **implemented with a known transactional gap**
 
 Command:
 
@@ -279,6 +279,12 @@ Acceptance:
 - Failure before commit leaves registry unchanged
 - Content resolver accepts the activated version immediately
 - Deactivated voices are rejected for new runs while historical runs resolve
+
+Current implementation note: individual registry writes are atomic and
+approval commands share a per-voice lock, but candidate replacement does not
+share that lock and multi-file promotion is not one transaction. Serialize
+build and approval until
+[#73](https://github.com/vadhoob90/Content_Creator_Core/issues/73) is resolved.
 
 Dependencies: WP-09.
 

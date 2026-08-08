@@ -102,6 +102,7 @@ work_items:
     acceptance:
       - approval_uses_no_llm
       - approval_is_idempotent
+      # Target contract; the remaining transactional gap is tracked in issue 73.
       - activation_is_atomic
       - active_voice_resolves
       - deactivation_prevents_future_resolution

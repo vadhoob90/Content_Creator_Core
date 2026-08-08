@@ -21,6 +21,12 @@ The proposal is internally coherent:
 - Publication can propose but cannot activate a perspective change
 - The current LinkedIn repository remains the regression baseline
 
+The implementation review predates the candidate-promotion race audit. Registry
+files are replaced atomically, but voice and perspective candidate replacement
+and multi-file promotion are not yet a single transaction. Operators must
+serialize staging and approval while
+[#73](https://github.com/vadhoob90/Content_Creator_Core/issues/73) remains open.
+
 ## Amendments made during final review
 
 ### Simplified creation path
