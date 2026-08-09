@@ -8,6 +8,8 @@ release tag.
 
 ## [Unreleased]
 
+## [1.10.0] - 2026-08-09
+
 ### Added
 
 - Manual, advisory host-level skill-routing trials with repeated-case majority
