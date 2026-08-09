@@ -67,5 +67,32 @@ and report scoring. Host/model observations are supplied explicitly with
 `--observations <json>` and remain advisory; the report records precision,
 recall, false positives, false negatives, and individual failed cases.
 
+Use the repeated-trial runner for a live host or model check:
+
+```bash
+python scripts/skill_routing_live.py \
+  --host codex-desktop \
+  --model-version gpt-example-2026-08 \
+  --trials 3 \
+  -- path/to/reviewed-routing-adapter --adapter-option
+```
+
+The provider-neutral adapter receives a JSON request on standard input for each
+case and trial. It returns exactly one JSON object such as
+`{"activated": true, "skill": "content-creator"}` or
+`{"activated": false}`. Core invokes the adapter without a shell, requires a
+positive odd trial count, computes trial-level precision and recall, records
+strict case majorities and every failed prompt, and stores evidence below
+`reports/skill-routing/<host>/<model-version>/`.
+
+The manually dispatched `Advisory live skill routing` workflow runs the same
+protocol. Configure the reviewed adapter command as a JSON string array in the
+repository variable `SKILL_ROUTING_ADAPTER_JSON`, for example
+`["python", "scripts/local_host_adapter.py"]`. The workflow records the exact
+host and model version and uploads the result tree. Run it before a release,
+after material skill-description changes, or after a significant host/model
+update. It is advisory, credential and cost handling belong to the adapter, and
+it is intentionally neither scheduled nor part of ordinary pull-request CI.
+
 Replay proves system behavior, not prose quality. Human assessment is captured
 at publication through the approval event and optional `--feedback`.

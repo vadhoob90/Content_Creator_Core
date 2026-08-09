@@ -1,0 +1,60 @@
+name: Advisory live skill routing
+
+permissions:
+  contents: read
+
+on:
+  workflow_dispatch:
+    inputs:
+      host:
+        description: Stable host or harness identifier
+        required: true
+        type: string
+      model_version:
+        description: Exact model version under evaluation
+        required: true
+        type: string
+      trials:
+        description: Odd trial count per case
+        required: true
+        default: "3"
+        type: string
+
+jobs:
+  routing:
+    name: Repeated host routing trials
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+        with:
+          version: "0.11.29"
+          python-version: "3.14"
+          enable-cache: true
+      - run: uv sync --frozen --extra dev
+      - name: Require a configured reviewed adapter
+        env:
+          ADAPTER_JSON: ${{ vars.SKILL_ROUTING_ADAPTER_JSON }}
+        run: |
+          test -n "${ADAPTER_JSON}"
+          python -c 'import json, os; value = json.loads(os.environ["ADAPTER_JSON"]); assert isinstance(value, list) and value'
+      - name: Run advisory trials
+        env:
+          ADAPTER_JSON: ${{ vars.SKILL_ROUTING_ADAPTER_JSON }}
+          HOST: ${{ inputs.host }}
+          MODEL_VERSION: ${{ inputs.model_version }}
+          TRIALS: ${{ inputs.trials }}
+        run: |
+          mapfile -t adapter < <(python -c 'import json, os; print("\n".join(json.loads(os.environ["ADAPTER_JSON"])))')
+          uv run --frozen --extra dev python scripts/skill_routing_live.py \
+            --host "${HOST}" \
+            --model-version "${MODEL_VERSION}" \
+            --trials "${TRIALS}" \
+            -- "${adapter[@]}"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: skill-routing-live-results
+          path: reports/skill-routing/
+          if-no-files-found: error

@@ -10,6 +10,10 @@ from content_creator.skill_routing import (
     validate_skill_routing_suite,
     write_skill_routing_report,
 )
+from content_creator.skill_routing_trials import (
+    run_skill_routing_trials,
+    skill_routing_result_path,
+)
 
 
 def test_committed_skill_routing_suite_and_packaged_skills_are_valid():
@@ -187,3 +191,122 @@ def test_skill_routing_scoring_rejects_invalid_observations_and_writes_report(tm
     output = tmp_path / "reports" / "routing.json"
     write_skill_routing_report(output, {"valid": True})
     assert output.read_text(encoding="utf-8") == '{\n  "valid": true\n}\n'
+
+
+def test_repeated_skill_routing_trials_record_metrics_failures_and_majorities():
+    root = Path(__file__).parents[1]
+    suite = load_skill_routing_suite(root / "evals" / "skill-routing.yaml")
+    requests = []
+
+    def fake_adapter(_command, request):
+        import json
+
+        payload = json.loads(request)
+        requests.append(payload)
+        case = next(item for item in suite["cases"] if item["id"] == payload["case"])
+        activated = case["expected_activation"]
+        skill = case.get("expected_skill")
+        if payload["case"] == "content-create-linkedin" and payload["trial"] == 1:
+            skill = "voice-builder"
+        if payload["case"] == "unrelated-code-review" and payload["trial"] == 2:
+            activated = True
+            skill = "content-creator"
+        return json.dumps({"activated": activated, "skill": skill})
+
+    report = run_skill_routing_trials(
+        suite,
+        "codex-desktop",
+        "gpt-test-2026-08",
+        ["reviewed-adapter"],
+        executor=fake_adapter,
+        generated_at="2026-08-09T12:00:00+00:00",
+    )
+
+    assert len(requests) == len(suite["cases"]) * 3
+    assert report["metrics"]["total_trials"] == 24
+    assert report["metrics"]["passed_trials"] == 22
+    assert report["metrics"]["false_positives"] == 1
+    assert report["metrics"]["false_negatives"] == 1
+    assert len(report["failed_prompts"]) == 2
+    assert all(case["majority"]["passed"] for case in report["cases"])
+
+
+@pytest.mark.parametrize("trials", [0, 2, 4])
+def test_repeated_skill_routing_trials_require_positive_odd_count(trials):
+    root = Path(__file__).parents[1]
+    suite = load_skill_routing_suite(root / "evals" / "skill-routing.yaml")
+
+    with pytest.raises(ValueError, match="positive odd integer"):
+        run_skill_routing_trials(suite, "host", "model", ["adapter"], trials)
+
+
+@pytest.mark.parametrize(
+    ("output", "message"),
+    [
+        ("not-json", "must be JSON"),
+        ('{"activated": "yes"}', "requires boolean activated"),
+        ('{"activated": true}', "require a skill"),
+        ('{"activated": false, "skill": "content-creator"}', "must omit skill"),
+        ('{"activated": false, "case": "wrong"}', "wrong trial"),
+    ],
+)
+def test_repeated_skill_routing_trials_reject_invalid_adapter_output(output, message):
+    suite = {
+        "schema_version": "1.0",
+        "instruction_word_budget": 10,
+        "cases": [
+            {
+                "id": "positive-content",
+                "category": "positive",
+                "prompt": "Create content",
+                "expected_activation": True,
+                "expected_skill": "content-creator",
+            },
+            {
+                "id": "positive-voice",
+                "category": "positive",
+                "prompt": "Build voice",
+                "expected_activation": True,
+                "expected_skill": "voice-builder",
+            },
+            {
+                "id": "negative",
+                "category": "negative",
+                "prompt": "Review code",
+                "expected_activation": False,
+            },
+            {
+                "id": "near-miss",
+                "category": "near-miss",
+                "prompt": "Explain voice",
+                "expected_activation": False,
+            },
+        ],
+    }
+
+    with pytest.raises(ValueError, match=message):
+        run_skill_routing_trials(
+            suite, "host", "model", ["adapter"], executor=lambda _command, _request: output
+        )
+
+
+def test_skill_routing_result_path_groups_sanitized_host_and_model():
+    path = skill_routing_result_path(
+        Path("reports"), "Codex Desktop", "gpt/test:latest", "2026-08-09T12:00:00+00:00"
+    )
+
+    assert path == Path("reports/Codex-Desktop/gpt-test-latest/2026-08-09T120000Z.json")
+
+
+def test_live_skill_routing_workflow_is_manual_advisory_and_persists_results():
+    root = Path(__file__).parents[1]
+    workflow = (root / ".github/workflows/skill-routing-live.yml").read_text(encoding="utf-8")
+
+    assert "workflow_dispatch:" in workflow
+    assert "schedule:" not in workflow
+    assert "pull_request:" not in workflow
+    assert "SKILL_ROUTING_ADAPTER_JSON" in workflow
+    assert '--host "${HOST}"' in workflow
+    assert '--model-version "${MODEL_VERSION}"' in workflow
+    assert '--trials "${TRIALS}"' in workflow
+    assert "skill-routing-live-results" in workflow
