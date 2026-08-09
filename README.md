@@ -36,16 +36,7 @@ Core release. To set one up manually, follow
 
 ## How it works
 
-```mermaid
-flowchart LR
-    A["Create an author workspace"] --> B["Choose or build a voice"]
-    B --> C["Approve the voice"]
-    C --> D["Request content naturally"]
-    D --> E["Research, write, and review"]
-    E --> F{"Author decision"}
-    F -->|"Revise"| D
-    F -->|"Approve"| G["Save in the author workspace"]
-```
+![Content Creator Core workflow: create a workspace, build and approve your voice, request content, research and review, then revise or approve before saving](docs/assets/how-content-creator-works-ocean-teal.png)
 
 Persisted files—not chat history—hold workflow state. Core returns content for
 human review and does not publish externally.
