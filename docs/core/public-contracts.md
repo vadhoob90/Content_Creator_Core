@@ -131,3 +131,10 @@ do not make an incompatible change to an existing default backward compatible.
 When classification remains uncertain after checking tests, documentation, and
 known downstream workspaces, perform an explicit compatibility review and use
 the more conservative version increment.
+
+The release classification also determines mutation-test scope. Patch changes
+exercise configured regression-risk modules, minor changes exercise the complete
+configured critical-module set, and major changes require reviewer-approved
+expansion before merge. Critical persistence, recovery, security, provider, or
+publication risk may widen that scope regardless of version increment. See the
+[mutation-testing baseline and decision policy](mutation-testing-baseline.md).
