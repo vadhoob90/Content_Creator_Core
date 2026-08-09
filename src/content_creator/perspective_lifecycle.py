@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import os
 import shutil
 from datetime import UTC, datetime
 from typing import Any
@@ -21,7 +20,9 @@ from .versioned_artifacts import (
     ActivationLock,
     hash_file,
     hash_json,
-    next_major_version,
+    numeric_version_directories,
+    publish_version_snapshot,
+    replace_candidate,
     verify_components,
 )
 from .voices import VoiceRegistry
@@ -49,25 +50,30 @@ def stage_context(
     context_root = registry_service.context_root(context_id)
     staging = context_root / ".candidate-staging"
     candidate = context_root / "candidate"
-    if staging.exists():
-        shutil.rmtree(staging)
-    staging.mkdir(parents=True)
-    _validate_entries(entries)
-    components = _write_candidate_files(registry_service, staging, context_id, entries)
-    component_hashes = {
-        name: hash_file(staging / filename) for name, filename in components.items()
-    }
-    manifest = PerspectiveManifest(
-        owner_voice_id=registry_service.voice_id,
-        context_id=context_id,
-        display_name=display_name or context_id.replace("-", " ").title(),
-        status=PerspectiveStatus.AWAITING_APPROVAL,
-        candidate_hash=hash_json(component_hashes),
-        components=components,
-        component_hashes=component_hashes,
-    )
-    RunStore._atomic_text(staging / "manifest.json", manifest.model_dump_json(indent=2))
-    _replace_candidate(context_root, staging, candidate)
+    with ActivationLock(
+        context_root / ".activation.lock",
+        "Perspective lifecycle operation is already in progress",
+        PerspectiveError,
+    ):
+        if staging.exists():
+            shutil.rmtree(staging)
+        staging.mkdir(parents=True)
+        _validate_entries(entries)
+        components = _write_candidate_files(registry_service, staging, context_id, entries)
+        component_hashes = {
+            name: hash_file(staging / filename) for name, filename in components.items()
+        }
+        manifest = PerspectiveManifest(
+            owner_voice_id=registry_service.voice_id,
+            context_id=context_id,
+            display_name=display_name or context_id.replace("-", " ").title(),
+            status=PerspectiveStatus.AWAITING_APPROVAL,
+            candidate_hash=hash_json(component_hashes),
+            components=components,
+            component_hashes=component_hashes,
+        )
+        RunStore._atomic_text(staging / "manifest.json", manifest.model_dump_json(indent=2))
+        replace_candidate(staging, candidate)
     return manifest
 
 
@@ -146,32 +152,6 @@ def _write_candidate_files(
     }
 
 
-def _replace_candidate(context_root: Any, staging: Any, candidate: Any) -> None:
-    """Return the replace candidate.
-
-    Args:
-        context_root (Any): The context root value passed to replace candidate.
-        staging (Any): The staging value passed to replace candidate.
-        candidate (Any): The candidate artifact under evaluation.
-
-    Returns:
-        None: The callable updates replace candidate state and returns no value.
-    """
-    previous = context_root / ".candidate-previous"
-    if previous.exists():
-        shutil.rmtree(previous)
-    if candidate.exists():
-        os.replace(candidate, previous)
-    try:
-        os.replace(staging, candidate)
-    except Exception:
-        if previous.exists():
-            os.replace(previous, candidate)
-        raise
-    if previous.exists():
-        shutil.rmtree(previous)
-
-
 def activate_context(
     registry_service: Any, context_id: str, approved_by: str
 ) -> PerspectiveApprovalReceipt:
@@ -190,16 +170,19 @@ def activate_context(
     VoiceRegistry(registry_service.root).resolve(registry_service.voice_id)
     context_root = registry_service.context_root(context_id)
     candidate = context_root / "candidate"
-    manifest = _validated_candidate(candidate)
     with ActivationLock(
         context_root / ".activation.lock",
-        "Perspective activation is already in progress",
+        "Perspective lifecycle operation is already in progress",
         PerspectiveError,
     ):
+        manifest = _validated_candidate(candidate)
         registry = registry_service._read()
         existing = _existing_receipt(context_root, registry, context_id, manifest)
         if existing:
             return existing
+        recovered = _recover_published_snapshot(registry_service, context_root, registry, manifest)
+        if recovered:
+            return recovered
         return _promote(registry_service, registry, candidate, manifest, approved_by)
 
 
@@ -252,6 +235,48 @@ def _existing_receipt(
     return PerspectiveApprovalReceipt.model_validate_json(path.read_text(encoding="utf-8"))
 
 
+def _recover_published_snapshot(
+    registry_service: Any,
+    context_root: Any,
+    registry: dict,
+    candidate_manifest: PerspectiveManifest,
+) -> PerspectiveApprovalReceipt | None:
+    """Restore a verified snapshot published before an interrupted registry write.
+
+    Args:
+        registry_service (Any): Perspective registry persistence service.
+        context_root (Any): Filesystem root for the selected context.
+        registry (dict): Current registry state.
+        candidate_manifest (PerspectiveManifest): Validated candidate being retried.
+
+    Returns:
+        PerspectiveApprovalReceipt | None: Recovered receipt, or ``None`` when no
+            matching published snapshot exists.
+
+    Raises:
+        PerspectiveError: If a matching published snapshot is not internally
+            consistent.
+    """
+    existing = registry["contexts"].get(candidate_manifest.context_id, {})
+    if existing.get("candidate_hash") == candidate_manifest.candidate_hash:
+        return None
+    for destination in numeric_version_directories(context_root / "versions"):
+        stored = PerspectiveManifest.model_validate_json(
+            (destination / "manifest.json").read_text(encoding="utf-8")
+        )
+        if stored.candidate_hash != candidate_manifest.candidate_hash:
+            continue
+        if stored.version != destination.name:
+            raise PerspectiveError("Promoted perspective version metadata mismatch")
+        _verify_promoted_snapshot(destination, candidate_manifest)
+        receipt = PerspectiveApprovalReceipt.model_validate_json(
+            (destination / "approval-receipt.json").read_text(encoding="utf-8")
+        )
+        _activate_registry(registry_service, registry, stored, destination.name)
+        return receipt
+    return None
+
+
 def _promote(
     registry_service: Any,
     registry: dict,
@@ -260,6 +285,9 @@ def _promote(
     approved_by: str,
 ) -> PerspectiveApprovalReceipt:
     """Return the promote.
+
+    Build every immutable artifact under a hidden directory, verify the complete
+    snapshot, publish it atomically, and only then expose it through the registry.
 
     Args:
         registry_service (Any): The registry service used for domain lifecycle
@@ -274,29 +302,80 @@ def _promote(
             promote.
     """
     context_root = registry_service.context_root(manifest.context_id)
-    version = next_major_version(context_root / "versions")
-    destination = context_root / "versions" / version
-    shutil.copytree(candidate, destination)
-    manifest.version = version
-    manifest.status = PerspectiveStatus.ACTIVE
-    RunStore._atomic_text(destination / "manifest.json", manifest.model_dump_json(indent=2))
-    receipt = PerspectiveApprovalReceipt(
-        owner_voice_id=registry_service.voice_id,
-        context_id=manifest.context_id,
-        activated_version=version,
-        approved_by=approved_by,
-        approved_at=datetime.now(UTC).isoformat(),
-        candidate_hash=manifest.candidate_hash,
+    active_manifest = manifest.model_copy(deep=True)
+    prepared: dict[str, PerspectiveApprovalReceipt] = {}
+
+    def prepare(staging: Any, version: str) -> None:
+        """Write complete active perspective metadata into the hidden snapshot.
+
+        Args:
+            staging (Any): Hidden snapshot directory being prepared.
+            version (str): Allocated immutable perspective version.
+
+        Returns:
+            None: Active metadata is written in place.
+        """
+        active_manifest.version = version
+        active_manifest.status = PerspectiveStatus.ACTIVE
+        RunStore._atomic_text(staging / "manifest.json", active_manifest.model_dump_json(indent=2))
+        receipt = PerspectiveApprovalReceipt(
+            owner_voice_id=registry_service.voice_id,
+            context_id=active_manifest.context_id,
+            activated_version=version,
+            approved_by=approved_by,
+            approved_at=datetime.now(UTC).isoformat(),
+            candidate_hash=active_manifest.candidate_hash,
+        )
+        RunStore._atomic_text(staging / "approval-receipt.json", receipt.model_dump_json(indent=2))
+        lock = {
+            "owner_voice_id": registry_service.voice_id,
+            "context_id": active_manifest.context_id,
+            "version": version,
+            "candidate_hash": active_manifest.candidate_hash,
+            "component_hashes": active_manifest.component_hashes,
+        }
+        RunStore._atomic_text(staging / "perspective-lock.json", json.dumps(lock, indent=2))
+        prepared["receipt"] = receipt
+
+    def verify(staging: Any) -> None:
+        """Verify prepared perspective metadata before atomic publication.
+
+        Args:
+            staging (Any): Hidden snapshot directory to verify.
+
+        Returns:
+            None: Verification completes without mutation.
+        """
+        _verify_promoted_snapshot(staging, active_manifest)
+
+    version, destination = publish_version_snapshot(
+        candidate, context_root / "versions", prepare, verify
     )
-    RunStore._atomic_text(destination / "approval-receipt.json", receipt.model_dump_json(indent=2))
-    lock = {
-        "owner_voice_id": registry_service.voice_id,
-        "context_id": manifest.context_id,
-        "version": version,
-        "candidate_hash": manifest.candidate_hash,
-        "component_hashes": manifest.component_hashes,
-    }
-    RunStore._atomic_text(destination / "perspective-lock.json", json.dumps(lock, indent=2))
+    try:
+        _activate_registry(registry_service, registry, active_manifest, version)
+    except Exception:
+        shutil.rmtree(destination)
+        raise
+    return prepared["receipt"]
+
+
+def _activate_registry(
+    registry_service: Any,
+    registry: dict,
+    manifest: PerspectiveManifest,
+    version: str,
+) -> None:
+    """Persist the selected perspective snapshot as active.
+
+    Args:
+        registry_service (Any): Perspective registry persistence service.
+        registry (dict): Current registry state.
+        manifest (PerspectiveManifest): Verified active manifest.
+        version (str): Immutable version directory name.
+
+    Returns:
+        None: Registry state is updated atomically.
+    """
     registry["contexts"][manifest.context_id] = {
         "display_name": manifest.display_name,
         "status": PerspectiveStatus.ACTIVE.value,
@@ -304,4 +383,42 @@ def _promote(
         "candidate_hash": manifest.candidate_hash,
     }
     RunStore._atomic_text(registry_service.registry_path, json.dumps(registry, indent=2))
-    return receipt
+
+
+def _verify_promoted_snapshot(destination: Any, manifest: PerspectiveManifest) -> None:
+    """Verify that a prepared perspective version is internally consistent.
+
+    Args:
+        destination (Any): Hidden or published immutable version directory.
+        manifest (PerspectiveManifest): Expected active manifest for the snapshot.
+
+    Returns:
+        None: Verification completes without mutation.
+
+    Raises:
+        PerspectiveError: If components or approval metadata do not match the candidate.
+    """
+    stored = PerspectiveManifest.model_validate_json(
+        (destination / "manifest.json").read_text(encoding="utf-8")
+    )
+    mismatches = verify_components(destination, stored.components, stored.component_hashes)
+    if mismatches:
+        raise PerspectiveError(f"Promoted perspective component hash mismatch: {mismatches[0]}")
+    receipt = PerspectiveApprovalReceipt.model_validate_json(
+        (destination / "approval-receipt.json").read_text(encoding="utf-8")
+    )
+    lock = json.loads((destination / "perspective-lock.json").read_text(encoding="utf-8"))
+    if stored.candidate_hash != manifest.candidate_hash:
+        raise PerspectiveError("Promoted perspective candidate hash mismatch")
+    if stored.status != PerspectiveStatus.ACTIVE:
+        raise PerspectiveError("Promoted perspective version metadata mismatch")
+    if receipt.candidate_hash != manifest.candidate_hash:
+        raise PerspectiveError("Perspective approval receipt candidate hash mismatch")
+    if receipt.activated_version != stored.version:
+        raise PerspectiveError("Perspective approval receipt version mismatch")
+    if lock.get("candidate_hash") != manifest.candidate_hash:
+        raise PerspectiveError("Perspective lock candidate hash mismatch")
+    if lock.get("version") != stored.version:
+        raise PerspectiveError("Perspective lock version mismatch")
+    if lock.get("component_hashes") != manifest.component_hashes:
+        raise PerspectiveError("Perspective lock component hashes do not match the manifest")

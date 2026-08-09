@@ -38,6 +38,8 @@ jobs:
         run: |
           uv run --frozen --extra dev python scripts/architecture_report.py --check
           uv run --frozen --extra dev python scripts/readability_report.py --check
+      - name: Validate packaged skill routing suites
+        run: uv run --frozen --extra dev python scripts/skill_routing_report.py --check
       - name: Measure the enforcement harness
         run: |
           uv run --frozen --extra dev coverage run \

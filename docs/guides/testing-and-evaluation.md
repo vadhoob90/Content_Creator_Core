@@ -55,5 +55,17 @@ instruction-following or service behaviour, but their cost and nondeterminism ma
 them unsuitable as required change-control checks. A live-provider result never
 replaces the offline route matrix or deterministic safety tests.
 
+Packaged-skill routing has a separate deterministic gate:
+
+```bash
+python scripts/skill_routing_report.py --check
+```
+
+It validates positive, negative, and near-miss cases, both packaged skill
+copies, frontmatter, instruction budgets, duplicate or contradictory prompts,
+and report scoring. Host/model observations are supplied explicitly with
+`--observations <json>` and remain advisory; the report records precision,
+recall, false positives, false negatives, and individual failed cases.
+
 Replay proves system behavior, not prose quality. Human assessment is captured
 at publication through the approval event and optional `--feedback`.

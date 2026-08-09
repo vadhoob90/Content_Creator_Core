@@ -84,6 +84,13 @@ life.
   migration test, a deterministic schema export, and compatibility notes.
 - Operational changes require fault-oriented tests for interrupted writes,
   corrupt state, lock ownership, and privacy-safe diagnostic output as relevant.
+- Mutation testing is initially advisory and scheduled rather than a required
+  pull-request check. The locked `mutmut` configuration targets critical
+  quality-gate and versioned-artifact decisions first. Surviving mutants require
+  review as missing tests, equivalent transformations, or documented tool
+  limitations; a score alone must not trigger weak assertions or production-code
+  distortion. Expansion to release- or risk-based blocking requires a separate
+  baseline decision with stable runtime and low-noise waiver handling.
 - Exception handlers must re-raise, return an explicit fallback, record a bounded
   warning or domain event, or otherwise make the degraded outcome observable.
   Bare silent `pass` and `continue` handlers are prohibited. Best-effort
@@ -142,6 +149,7 @@ python scripts/documentation_report.py --check
 pytest --cov=content_creator --cov-report=term-missing --cov-report=json:.coverage-report.json
 python scripts/coverage_report.py .coverage-report.json --check
 content-creator eval
+mutmut run
 git diff --check
 ```
 

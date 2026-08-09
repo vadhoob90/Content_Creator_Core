@@ -16,6 +16,8 @@ from content_creator.perspectives import (
 )
 from content_creator.prompting import PromptAssembler
 from content_creator.providers import FakeProvider, ProviderRegistry
+from content_creator.storage import RunStore
+from content_creator.versioned_artifacts import ActivationLock
 
 
 def _entry(statement, entry_id):
@@ -59,6 +61,71 @@ def test_perspective_activation_is_versioned_idempotent_and_tamper_evident(proje
     profile.write_text("tampered", encoding="utf-8")
     with pytest.raises(PerspectiveError, match="hash mismatch"):
         registry.resolve("legal-training")
+
+
+def test_perspective_candidate_replacement_uses_activation_lock(project):
+    registry = PerspectiveRegistry(project, "default")
+    context_root = registry.context_root("legal-training")
+
+    with ActivationLock(context_root / ".activation.lock", "held"):
+        with pytest.raises(PerspectiveError, match="lifecycle operation"):
+            registry.stage(
+                "legal-training",
+                [_entry("Teach recognition and escalation.", "training-001")],
+            )
+
+    assert not (context_root / "candidate").exists()
+
+
+def test_perspective_registry_failure_removes_new_numeric_version(project, monkeypatch):
+    registry = PerspectiveRegistry(project, "default")
+    context_root = registry.context_root("legal-training")
+    registry.stage(
+        "legal-training",
+        [_entry("Teach recognition and escalation.", "training-001")],
+    )
+    original_atomic_text = RunStore._atomic_text
+
+    def fail_registry(path, content):
+        if path == registry.registry_path:
+            raise OSError("injected registry failure")
+        original_atomic_text(path, content)
+
+    monkeypatch.setattr(RunStore, "_atomic_text", staticmethod(fail_registry))
+
+    with pytest.raises(OSError, match="injected registry failure"):
+        registry.activate("legal-training", "Owner")
+
+    assert not list((context_root / "versions").glob("[0-9]*"))
+    assert (context_root / "candidate" / "manifest.json").is_file()
+
+
+def test_perspective_activation_recovers_snapshot_after_process_interruption(project, monkeypatch):
+    registry = PerspectiveRegistry(project, "default")
+    context_root = registry.context_root("legal-training")
+    registry.stage(
+        "legal-training",
+        [_entry("Teach recognition and escalation.", "training-001")],
+    )
+    original_atomic_text = RunStore._atomic_text
+    interrupted = False
+
+    def interrupt_registry_once(path, content):
+        nonlocal interrupted
+        if path == registry.registry_path and not interrupted:
+            interrupted = True
+            raise SystemExit("injected process interruption")
+        original_atomic_text(path, content)
+
+    monkeypatch.setattr(RunStore, "_atomic_text", staticmethod(interrupt_registry_once))
+
+    with pytest.raises(SystemExit, match="injected process interruption"):
+        registry.activate("legal-training", "Owner")
+    receipt = registry.activate("legal-training", "Owner")
+
+    assert receipt.activated_version == "1.0.0"
+    assert [path.name for path in (context_root / "versions").glob("[0-9]*")] == ["1.0.0"]
+    assert registry.resolve("legal-training")["version"] == "1.0.0"
 
 
 def test_approved_entry_without_provenance_is_rejected(project):

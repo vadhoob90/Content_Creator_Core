@@ -5,6 +5,7 @@ __pycache__/
 .coverage
 .coverage-harness
 .coverage-report.json
+mutants/
 .venv/
 dist/
 build/
