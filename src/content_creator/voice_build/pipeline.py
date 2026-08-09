@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import os
 import shutil
 from pathlib import Path
 from typing import List, Optional, cast
@@ -13,7 +12,7 @@ from ..ingestion import content_hash, is_near_duplicate, normalize_text, read_so
 from ..linguistics import extract_linguistic_features
 from ..runner import AgentRunner, AgentRunOptions
 from ..storage import RunStore
-from ..versioned_artifacts import hash_file, hash_json, publish_candidate
+from ..versioned_artifacts import hash_file, hash_json, publish_candidate, replace_candidate
 from ..voice_evolution import VoiceEvolution
 from ..voices import (
     AttributionResult,
@@ -659,16 +658,4 @@ class VoiceBuildPipeline:
         Returns:
             None: The callable updates activate candidate state and returns no value.
         """
-        previous = state.voice_root / ".candidate-previous"
-        if previous.exists():
-            shutil.rmtree(previous)
-        if state.final_candidate.exists():
-            os.replace(state.final_candidate, previous)
-        try:
-            os.replace(state.candidate, state.final_candidate)
-        except Exception:
-            if previous.exists():
-                os.replace(previous, state.final_candidate)
-            raise
-        if previous.exists():
-            shutil.rmtree(previous)
+        replace_candidate(state.candidate, state.final_candidate)

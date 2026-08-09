@@ -9,6 +9,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import shutil
 from collections.abc import Callable
 from datetime import UTC, datetime
 from pathlib import Path
@@ -56,6 +57,45 @@ def next_major_version(versions_root: Path) -> str:
         if path.is_dir() and path.name.split(".")[0].isdigit()
     ]
     return "{}.0.0".format(max(majors, default=0) + 1)
+
+
+def numeric_version_directories(versions_root: Path) -> list[Path]:
+    """Return published semantic-version directories from newest to oldest.
+
+    Hidden promotion state and unrelated directories are excluded so recovery only
+    considers immutable snapshots that crossed the atomic publication boundary.
+
+    Args:
+        versions_root (Path): Directory containing immutable versions.
+
+    Returns:
+        list[Path]: Numeric semantic-version directories in descending order.
+    """
+
+    def version_key(path: Path) -> tuple[int, int, int]:
+        """Return the numeric sort key for one version directory.
+
+        Args:
+            path (Path): Candidate version directory.
+
+        Returns:
+            tuple[int, int, int]: Numeric semantic-version components, or sentinels
+                for an invalid directory name.
+        """
+        parts = path.name.split(".")
+        if len(parts) != 3 or not all(part.isdigit() for part in parts):
+            return (-1, -1, -1)
+        return (int(parts[0]), int(parts[1]), int(parts[2]))
+
+    return sorted(
+        (
+            path
+            for path in versions_root.glob("*")
+            if path.is_dir() and version_key(path) != (-1, -1, -1)
+        ),
+        key=version_key,
+        reverse=True,
+    )
 
 
 def verify_components(
@@ -106,6 +146,73 @@ def publish_candidate(
         error_type,
     ):
         operation(state)
+
+
+def replace_candidate(staging: Path, candidate: Path) -> None:
+    """Publish a mutable candidate atomically while preserving rollback safety.
+
+    Args:
+        staging (Path): Complete staged candidate directory to publish.
+        candidate (Path): Mutable candidate directory replaced by the staged snapshot.
+
+    Returns:
+        None: The staged directory becomes the candidate in place.
+
+    """
+    previous = candidate.parent / ".candidate-previous"
+    if previous.exists():
+        shutil.rmtree(previous)
+    if candidate.exists():
+        os.replace(candidate, previous)
+    try:
+        os.replace(staging, candidate)
+    except Exception:
+        if previous.exists():
+            os.replace(previous, candidate)
+        raise
+    if previous.exists():
+        shutil.rmtree(previous)
+
+
+def publish_version_snapshot(
+    candidate: Path,
+    versions_root: Path,
+    prepare: Callable[[Path, str], None],
+    verify: Callable[[Path], None],
+) -> tuple[str, Path]:
+    """Publish one complete immutable version through a hidden staging directory.
+
+    The caller must hold the lifecycle lock shared with candidate replacement. The
+    candidate is copied once, domain-specific active metadata is written to the hidden
+    snapshot, and verification runs before the numeric version becomes visible.
+
+    Args:
+        candidate (Path): Validated mutable candidate directory to snapshot.
+        versions_root (Path): Directory containing immutable numeric versions.
+        prepare (Callable[[Path, str], None]): Callback that writes active manifests,
+            receipts, and locks into the hidden snapshot.
+        verify (Callable[[Path], None]): Callback that fails closed unless the prepared
+            snapshot is complete and internally consistent.
+
+    Returns:
+        tuple[str, Path]: Allocated version and atomically published destination.
+
+    """
+    versions_root.mkdir(parents=True, exist_ok=True)
+    version = next_major_version(versions_root)
+    destination = versions_root / version
+    staging = versions_root / f".{version}.promotion-staging"
+    if staging.exists():
+        shutil.rmtree(staging)
+    try:
+        shutil.copytree(candidate, staging)
+        prepare(staging, version)
+        verify(staging)
+        os.replace(staging, destination)
+    finally:
+        if staging.exists():
+            shutil.rmtree(staging)
+    return version, destination
 
 
 class ActivationLock:

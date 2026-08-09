@@ -1,0 +1,39 @@
+schema_version: "1.0"
+instruction_word_budget: 2500
+cases:
+  - id: content-create-linkedin
+    category: positive
+    prompt: Write a LinkedIn post about deterministic quality gates without external research.
+    expected_activation: true
+    expected_skill: content-creator
+  - id: content-resume-run
+    category: positive
+    prompt: Resume my existing content run and show me the reviewed final draft.
+    expected_activation: true
+    expected_skill: content-creator
+  - id: voice-create-authorised
+    category: positive
+    prompt: Build a writing voice from these authorised essays and transcripts.
+    expected_activation: true
+    expected_skill: voice-builder
+  - id: voice-approve-candidate
+    category: positive
+    prompt: Inspect and approve the pending voice candidate for this workspace.
+    expected_activation: true
+    expected_skill: voice-builder
+  - id: explain-quality-gates
+    category: near-miss
+    prompt: Explain what a deterministic quality gate is; do not create content or run a workflow.
+    expected_activation: false
+  - id: explain-writing-voice
+    category: near-miss
+    prompt: What does writing voice mean in literary criticism?
+    expected_activation: false
+  - id: unrelated-code-review
+    category: negative
+    prompt: Review this Python function for an off-by-one error.
+    expected_activation: false
+  - id: unrelated-calendar
+    category: negative
+    prompt: Find a free hour in my calendar tomorrow afternoon.
+    expected_activation: false

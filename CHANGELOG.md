@@ -8,11 +8,17 @@ release tag.
 
 ## [Unreleased]
 
+## [1.9.0] - 2026-08-09
+
 ### Added
 
 - Independent branch-coverage measurement and an 80% risk-driven floor, while
   preserving the existing 88% statement-coverage guarantee and separate route
   matrix evaluation.
+- Deterministic packaged-skill routing fixtures and validation for positive,
+  negative, and near-miss activation cases, with advisory host-observation scoring.
+- A locked, scheduled, advisory mutation-testing baseline for quality-gate and
+  versioned-artifact decisions.
 
 ### Changed
 
@@ -30,6 +36,14 @@ release tag.
 - Voice-evolution semantic actions, diagnostic classification and issue lifecycle,
   upgrade-audit recovery, schema migration, and degraded coordinator guidance are
   covered as the final risk-driven tranche to 80%.
+- Voice and perspective candidate replacement and activation now share lifecycle
+  locks, publish verified immutable snapshots atomically, and recover idempotently
+  when a process stops after snapshot publication but before registry persistence.
+
+### Fixed
+
+- Failed voice and perspective promotions no longer expose incomplete numeric
+  versions or displace the prior active registry entry.
 
 ## [1.8.0] - 2026-08-08
 

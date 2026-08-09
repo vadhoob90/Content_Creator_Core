@@ -13,7 +13,8 @@ from .versioned_artifacts import (
     ActivationLock,
     hash_file,
     hash_json,
-    next_major_version,
+    numeric_version_directories,
+    publish_version_snapshot,
     verify_components,
 )
 from .voice_models import (
@@ -78,11 +79,25 @@ def activate_candidate(
         if existing_receipt:
             return existing_receipt
         _validate_active_baseline(voice_root, registry, voice_id, manifest)
-        version, destination = _promote_candidate(voice_root, candidate, manifest)
-        receipt = _write_receipt(
-            destination, evaluation_path, manifest, approved_by, override_reason, version
+        recovered_receipt = _recover_published_snapshot(
+            registry_service, voice_root, registry, manifest
         )
-        _activate_registry(registry_service, registry, manifest, version)
+        if recovered_receipt:
+            _complete_onboarding(registry_service.root, voice_id)
+            return recovered_receipt
+        version, destination, active_manifest, receipt = _promote_candidate(
+            voice_root,
+            candidate,
+            evaluation_path,
+            manifest,
+            approved_by,
+            override_reason,
+        )
+        try:
+            _activate_registry(registry_service, registry, active_manifest, version)
+        except Exception:
+            shutil.rmtree(destination)
+            raise
         _complete_onboarding(registry_service.root, voice_id)
         return receipt
 
@@ -193,26 +208,151 @@ def _existing_receipt(
     return VoiceApprovalReceipt.model_validate_json(receipt_path.read_text(encoding="utf-8"))
 
 
+def _recover_published_snapshot(
+    registry_service: VoiceRegistryAccess,
+    voice_root: Path,
+    registry: dict,
+    candidate_manifest: VoiceManifest,
+) -> VoiceApprovalReceipt | None:
+    """Restore a verified snapshot published before an interrupted registry write.
+
+    Args:
+        registry_service (VoiceRegistryAccess): Registry persistence service.
+        voice_root (Path): Filesystem root for the selected voice.
+        registry (dict): Current registry state.
+        candidate_manifest (VoiceManifest): Validated candidate being retried.
+
+    Returns:
+        VoiceApprovalReceipt | None: Recovered receipt, or ``None`` when no matching
+            published snapshot exists.
+
+    Raises:
+        VoiceError: If a matching published snapshot is not internally consistent.
+    """
+    existing = registry["profiles"].get(candidate_manifest.id, {})
+    if existing.get("candidate_hash") == candidate_manifest.candidate_hash:
+        return None
+    for destination in numeric_version_directories(voice_root / "versions"):
+        stored = VoiceManifest.model_validate_json(
+            (destination / "manifest.json").read_text(encoding="utf-8")
+        )
+        if stored.candidate_hash != candidate_manifest.candidate_hash:
+            continue
+        if stored.version != destination.name:
+            raise VoiceError("Promoted voice version metadata mismatch")
+        _verify_promoted_snapshot(destination, candidate_manifest)
+        receipt = VoiceApprovalReceipt.model_validate_json(
+            (destination / "approval-receipt.json").read_text(encoding="utf-8")
+        )
+        _activate_registry(registry_service, registry, stored, destination.name)
+        return receipt
+    return None
+
+
 def _promote_candidate(
-    voice_root: Path, candidate: Path, manifest: VoiceManifest
-) -> tuple[str, Path]:
-    """Return the promote candidate.
+    voice_root: Path,
+    candidate: Path,
+    evaluation_path: Path,
+    manifest: VoiceManifest,
+    approved_by: str,
+    override_reason: str | None,
+) -> tuple[str, Path, VoiceManifest, VoiceApprovalReceipt]:
+    """Prepare and atomically publish a complete immutable voice version.
+
+    Build every immutable artifact under a hidden directory, verify the complete
+    snapshot, and expose the numeric version only after all metadata agrees.
 
     Args:
         voice_root (Path): The filesystem path containing the voice root.
         candidate (Path): The candidate artifact under evaluation.
+        evaluation_path (Path): Validated candidate evaluation report.
         manifest (VoiceManifest): The manifest that records the artifact contract.
+        approved_by (str): Reviewer identity recorded in the approval receipt.
+        override_reason (str | None): Accepted quality-risk reason, when present.
 
     Returns:
-        tuple[str, Path]: The resolved filesystem path for promote candidate.
+        tuple[str, Path, VoiceManifest, VoiceApprovalReceipt]: Published version,
+            destination, active manifest, and approval receipt.
     """
-    version = next_major_version(voice_root / "versions")
-    destination = voice_root / "versions" / version
-    shutil.copytree(candidate, destination)
-    manifest.version = version
-    manifest.status = VoiceStatus.ACTIVE
-    RunStore._atomic_text(destination / "manifest.json", manifest.model_dump_json(indent=2))
-    return version, destination
+    active_manifest = manifest.model_copy(deep=True)
+    prepared: dict[str, VoiceApprovalReceipt] = {}
+
+    def prepare(staging: Path, version: str) -> None:
+        """Write complete active voice metadata into the hidden snapshot.
+
+        Args:
+            staging (Path): Hidden snapshot directory being prepared.
+            version (str): Allocated immutable voice version.
+
+        Returns:
+            None: Active metadata is written in place.
+        """
+        active_manifest.version = version
+        active_manifest.status = VoiceStatus.ACTIVE
+        RunStore._atomic_text(staging / "manifest.json", active_manifest.model_dump_json(indent=2))
+        prepared["receipt"] = _write_receipt(
+            staging,
+            evaluation_path,
+            active_manifest,
+            approved_by,
+            override_reason,
+            version,
+        )
+
+    def verify(staging: Path) -> None:
+        """Verify prepared voice metadata before atomic publication.
+
+        Args:
+            staging (Path): Hidden snapshot directory to verify.
+
+        Returns:
+            None: Verification completes without mutation.
+        """
+        _verify_promoted_snapshot(staging, active_manifest)
+
+    version, destination = publish_version_snapshot(
+        candidate, voice_root / "versions", prepare, verify
+    )
+    return version, destination, active_manifest, prepared["receipt"]
+
+
+def _verify_promoted_snapshot(destination: Path, manifest: VoiceManifest) -> None:
+    """Verify that a prepared voice version is internally consistent.
+
+    Args:
+        destination (Path): Hidden or published immutable version directory.
+        manifest (VoiceManifest): Expected active manifest for the snapshot.
+
+    Returns:
+        None: Verification completes without mutation.
+
+    Raises:
+        VoiceError: If components or approval metadata do not match the candidate.
+    """
+    stored = VoiceManifest.model_validate_json(
+        (destination / "manifest.json").read_text(encoding="utf-8")
+    )
+    mismatches = verify_components(destination, stored.components, stored.component_hashes)
+    if mismatches:
+        raise VoiceError(f"Promoted voice component hash mismatch: {mismatches[0]}")
+    receipt = VoiceApprovalReceipt.model_validate_json(
+        (destination / "approval-receipt.json").read_text(encoding="utf-8")
+    )
+    lock = json.loads((destination / "voice-lock.json").read_text(encoding="utf-8"))
+    if stored.candidate_hash != manifest.candidate_hash:
+        raise VoiceError("Promoted voice candidate hash mismatch")
+    if stored.status != VoiceStatus.ACTIVE:
+        raise VoiceError("Promoted voice version metadata mismatch")
+    if receipt.candidate_hash != manifest.candidate_hash:
+        raise VoiceError("Voice approval receipt candidate hash mismatch")
+    if receipt.activated_version != stored.version:
+        raise VoiceError("Voice approval receipt version mismatch")
+    if lock.get("candidate_hash") != manifest.candidate_hash:
+        raise VoiceError("Voice lock candidate hash mismatch")
+    if lock.get("version") != stored.version:
+        raise VoiceError("Voice lock version mismatch")
+    if lock.get("component_hashes") != manifest.component_hashes:
+        raise VoiceError("Voice lock component hashes do not match the manifest")
 
 
 def _write_receipt(

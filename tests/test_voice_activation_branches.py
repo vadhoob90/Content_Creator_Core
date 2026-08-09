@@ -3,10 +3,12 @@ import shutil
 
 import pytest
 
+import content_creator.voice_activation as voice_activation
 from content_creator.cli import main
 from content_creator.versioned_artifacts import hash_file
 from content_creator.voice_activation import _validate_active_baseline, _validated_candidate
 from content_creator.voice_models import VoiceError, VoiceManifest
+from content_creator.voices import VoiceRegistry
 
 
 def _guarded_candidate(project):
@@ -91,6 +93,31 @@ def test_candidate_activation_distinguishes_integrity_failures_from_quality_risk
     manifest, path = _validated_candidate(candidate, "Owner accepts quality risk")
     assert manifest.id == "guarded-person"
     assert path == candidate / "evaluation-report.json"
+
+
+def test_voice_activation_recovers_snapshot_after_process_interruption(project, monkeypatch):
+    candidate, _manifest_data = _guarded_candidate(project)
+    registry = VoiceRegistry(project)
+    original_activate_registry = voice_activation._activate_registry
+    interrupted = False
+
+    def interrupt_registry_once(registry_service, registry_data, manifest, version):
+        nonlocal interrupted
+        if not interrupted:
+            interrupted = True
+            raise SystemExit("injected process interruption")
+        original_activate_registry(registry_service, registry_data, manifest, version)
+
+    monkeypatch.setattr(voice_activation, "_activate_registry", interrupt_registry_once)
+
+    with pytest.raises(SystemExit, match="injected process interruption"):
+        registry.activate("guarded-person", "Owner")
+    receipt = registry.activate("guarded-person", "Owner")
+
+    versions = candidate.parent / "versions"
+    assert receipt.activated_version == "1.0.0"
+    assert [path.name for path in versions.glob("[0-9]*")] == ["1.0.0"]
+    assert registry.resolve("guarded-person")["version"] == "1.0.0"
 
 
 def _evolution_manifest(original):

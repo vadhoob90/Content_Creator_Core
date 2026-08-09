@@ -32,9 +32,10 @@ reviewed backup or version control; do not invent state or bypass approval
 checkpoints. Atomic persistence applies to individual state files, and exclusive
 activation locks serialize competing approval commands.
 
-Candidate build/staging and the complete version/receipt/registry promotion are
-not yet one transaction. Until
-[#73](https://github.com/vadhoob90/Content_Creator_Core/issues/73) is resolved,
-serialize candidate-changing commands and approval for each voice or perspective
-context. After an overlapping or interrupted promotion, preserve the workspace
-for inspection and do not manually delete numeric versions or edit registries.
+Candidate replacement and activation share a per-voice or per-perspective lock.
+Activation prepares manifests, receipts, and locks under a hidden directory,
+verifies the complete snapshot, and exposes the numeric version with one atomic
+rename before updating the registry. A normal persistence failure removes the new
+snapshot and preserves the candidate and prior active registry entry. If the
+process stops after the rename but before the registry write, repeating approval
+verifies and reconnects that same version instead of allocating another one.

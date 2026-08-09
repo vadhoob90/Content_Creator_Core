@@ -4,6 +4,11 @@ These are the blocking and review guardrails for reusable Core code. Start here
 before changing structure; follow the linked specialist policy when a change
 affects a public contract, persisted data, operations, or a release.
 
+The current seven-module responsibility and dependency decisions are recorded
+in the [hotspot cohesion review](hotspot-cohesion-review.md). Mutation evidence
+used to prioritise decision paths is recorded in the
+[mutation-testing baseline](mutation-testing-baseline.md).
+
 ## Module responsibility and size
 
 - `content_creator.cli` is a compatibility façade and remains at most 100 lines.
