@@ -8,6 +8,12 @@ release tag.
 
 ## [Unreleased]
 
+### Added
+
+- Manual, advisory host-level skill-routing trials with repeated-case majority
+  decisions, precision and recall metrics, failed-prompt evidence, and results
+  grouped by host and model version.
+
 ## [1.9.0] - 2026-08-09
 
 ### Added
