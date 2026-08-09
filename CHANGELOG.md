@@ -13,6 +13,8 @@ release tag.
 - Manual, advisory host-level skill-routing trials with repeated-case majority
   decisions, precision and recall metrics, failed-prompt evidence, and results
   grouped by host and model version.
+- Risk- and release-aware mutation planning for pull requests, with validated
+  survivor decisions and targeted advisory execution for critical modules.
 
 ## [1.9.0] - 2026-08-09
 

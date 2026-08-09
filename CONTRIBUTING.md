@@ -46,6 +46,10 @@ applicable guidance and documentation are updated in the same pull request.
    cross-file-inheritance signals; they prompt judgment and do not fail CI.
 6. Update the module map, extension example, ADR, and compatibility notes when
    the normal reading path or a supported seam changes.
+7. Classify semantic-release impact and critical-path risk. Run the mutation
+   scope selected by the
+   [mutation-testing policy](docs/core/mutation-testing-baseline.md), and record
+   every accepted survivor with an owner, expiry, rationale, and follow-up.
 
 Worked provider, lifecycle-stage, and content-pack paths are linked from
 [Extending Core](docs/guides/extending-core.md).
