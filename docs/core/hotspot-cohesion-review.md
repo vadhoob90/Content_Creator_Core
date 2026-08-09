@@ -1,6 +1,6 @@
 # Hotspot cohesion review
 
-This record begins issue #94 with a reproducible current-state baseline. Counts
+This record completes issue #94 with a reproducible before-and-after review. Counts
 come from `scripts/readability_report.py`; dependencies come from
 `scripts/architecture_report.py --json`. Import count is a navigation signal,
 not proof that a module should be split.
@@ -88,3 +88,49 @@ Each slice must reduce the policies or side effects a reader tracks, preserve
 public imports and persisted formats, pass the full gate, and record why any
 remaining density is cohesive. Stop when an extraction would add forwarding
 layers without an independently testable domain responsibility.
+
+## Implemented slices
+
+Two independent policy seams were extracted without changing the CLI, package
+exports, schemas, or persisted artifacts:
+
+- `coordinator_policy` now owns state-to-action routing and workspace
+  recommendations. `ContentCoordinator` remains the stable filesystem-facing
+  façade and retains its private callable hooks for compatibility with existing
+  tests and integrations.
+- `voice_ml.reliability` now owns corpus thresholds, balance assessment,
+  preflight summaries, and fail/confirmation results. Optional ML imports,
+  feature preparation, fitting, evaluation, and artifact persistence remain in
+  `voice_ml.training`.
+
+The existing characterisation suites exercise every coordinator recommendation
+branch, lifecycle action route, and all three ML reliability outcomes. The
+extracted functions have no filesystem, provider, or optional-dependency access.
+
+## Final architecture review
+
+| Hotspot | Before | After | Final decision and dependency rationale |
+| --- | ---: | ---: | --- |
+| `coordinator` | 487 | 294 | Extract policy. The façade reads workspace state; the new module depends only on coordinator/domain models and does not import the façade. |
+| `voice_ml.training` | 492 | 379 | Extract policy. Reliability is independently testable and points inward to no training or optional ML dependency. |
+| `voice_evolution` | 500 | 500 | Retain for now. Proposal application, evidence authorization, delta construction, and staged writes form one fail-closed candidate transaction; moving helpers alone would create a stateful forwarding layer. Reassess if a second consumer needs delta policy. |
+| `orchestration_support` | 496 | 496 | Retain private runtime collaborator. It has one importer and owns the ordered draft/review/research transaction; splitting by step would expose partially valid lifecycle state. |
+| `orchestrator` | 479 | 479 | Retain stable façade. Seven production importers use this lifecycle boundary; its work is delegated already, and another façade would increase navigation without isolating policy. |
+| `voice_build.pipeline` | 459 | 459 | Retain package orchestrator. Corpus acquisition (`voice_build.corpus`), models, and rendering are already extracted; remaining ordering, cleanup, and candidate assembly are one transaction. |
+| `publication_provenance` | 461 | 461 | Retain fail-closed verifier. Domain checks share resolved workspace paths, registries, and one finding/report contract; extraction would either duplicate containment checks or pass a broad mutable context. Reassess when a verifier gains a second caller. |
+
+The two selected modules are now below the 400-line focused-review threshold.
+Every remaining hotspot above 400 has an explicit cohesion and dependency-
+direction justification, rather than a size-only exemption.
+
+## Transaction boundaries
+
+- Content runs: `orchestrator` is the public boundary;
+  `orchestration_support` owns ordered runtime steps and only returns valid
+  persisted lifecycle states.
+- Voice candidates: `voice_build.pipeline` owns acquisition through isolated
+  candidate assembly; `VoiceEvolution` applies evidence and writes its delta
+  inside that staging boundary.
+- Publication verification: `PublicationProvenance` resolves workspace-local
+  evidence and aggregates one deterministic report; callers never perform a
+  partial domain verification as a substitute for the complete check.

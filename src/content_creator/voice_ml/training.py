@@ -14,6 +14,11 @@ from ..linguistics import extract_linguistic_features
 from ..storage import RunStore, StorageError
 from ..voices import VoiceRegistry
 from .dependencies import require_sklearn
+from .reliability import (
+    blocked_training_result as _blocked_training_result,
+)
+from .reliability import training_preflight as _training_preflight
+from .reliability import training_reliability
 
 ML_FRAMEWORK = "regularised-logistic-regression-stylometry"
 ML_FRAMEWORK_VERSION = "1.0"
@@ -54,12 +59,6 @@ class TrainingCorpus:
     comparison_words: int
     comparison_audit: Dict[str, Any]
     reliability: Dict[str, Any]
-
-
-HARD_MINIMUM_DOCUMENTS_PER_CLASS = 10
-HARD_MINIMUM_WORDS_PER_CLASS = 5000
-RELIABLE_MINIMUM_DOCUMENTS_PER_CLASS = 40
-RELIABLE_MINIMUM_WORDS_PER_CLASS = 20000
 
 
 def _signature_path(root: Path, resolved: Dict[str, Any]) -> Path:
@@ -252,86 +251,6 @@ def _comparison_rows(
     return rows, words, {"skipped": skipped, "content_hashes": sorted(hashes)}
 
 
-def training_reliability(
-    author_documents: int,
-    author_words: int,
-    comparison_documents: int,
-    comparison_words: int,
-) -> Dict[str, Any]:
-    """Return the training reliability.
-
-    Assess corpus balance, sample volume, and class representation to determine whether
-    model training is statistically credible.
-
-    Args:
-        author_documents (int): The author documents value that controls training
-            reliability.
-        author_words (int): The author words value that controls training reliability.
-        comparison_documents (int): The comparison documents value that controls
-            training reliability.
-        comparison_words (int): The comparison words value that controls training
-            reliability.
-
-    Returns:
-        Dict[str, Any]: The structured resulting data for training reliability.
-    """
-    hard_failures = []
-    warnings = []
-    for label, documents, words in (
-        ("author", author_documents, author_words),
-        ("comparison", comparison_documents, comparison_words),
-    ):
-        if documents < HARD_MINIMUM_DOCUMENTS_PER_CLASS:
-            hard_failures.append(
-                "{} corpus has {} documents; at least {} are required to train.".format(
-                    label, documents, HARD_MINIMUM_DOCUMENTS_PER_CLASS
-                )
-            )
-        elif documents < RELIABLE_MINIMUM_DOCUMENTS_PER_CLASS:
-            warnings.append(
-                "{} corpus has {} documents; {} are recommended for a reliable model.".format(
-                    label, documents, RELIABLE_MINIMUM_DOCUMENTS_PER_CLASS
-                )
-            )
-        if words < HARD_MINIMUM_WORDS_PER_CLASS:
-            hard_failures.append(
-                "{} corpus has {} words; at least {} are required to train.".format(
-                    label, words, HARD_MINIMUM_WORDS_PER_CLASS
-                )
-            )
-        elif words < RELIABLE_MINIMUM_WORDS_PER_CLASS:
-            warnings.append(
-                "{} corpus has {} words; {} are recommended for a reliable model.".format(
-                    label, words, RELIABLE_MINIMUM_WORDS_PER_CLASS
-                )
-            )
-    smaller = min(author_documents, comparison_documents)
-    larger = max(author_documents, comparison_documents)
-    if smaller and larger / smaller > 2:
-        warnings.append(
-            "The class sizes differ by more than 2:1; use a better-matched comparison corpus."
-        )
-    if hard_failures:
-        status = "insufficient_data"
-    elif warnings:
-        status = "low_confidence"
-    else:
-        status = "reliable"
-    return {
-        "status": status,
-        "can_train": not hard_failures,
-        "requires_low_confidence_acceptance": bool(warnings and not hard_failures),
-        "hard_failures": hard_failures,
-        "warnings": warnings,
-        "thresholds": {
-            "hard_minimum_documents_per_class": HARD_MINIMUM_DOCUMENTS_PER_CLASS,
-            "hard_minimum_words_per_class": HARD_MINIMUM_WORDS_PER_CLASS,
-            "reliable_minimum_documents_per_class": (RELIABLE_MINIMUM_DOCUMENTS_PER_CLASS),
-            "reliable_minimum_words_per_class": RELIABLE_MINIMUM_WORDS_PER_CLASS,
-        },
-    }
-
-
 def train_voice_ml_model(
     root: Path,
     voice_id: str,
@@ -420,88 +339,6 @@ def train_voice_ml_model(
             "voice with --enable --method ml after reviewing the evaluation."
         ),
     }
-
-
-def _training_preflight(
-    author_rows: List[List[float]],
-    author_words: int,
-    comparison_rows: List[List[float]],
-    comparison_words: int,
-    comparison_audit: Dict[str, Any],
-    reliability: Dict[str, Any],
-) -> Dict[str, Any]:
-    """Return the training preflight.
-
-    Args:
-        author_rows (List[List[float]]): The author rows collection consumed while
-            training preflight.
-        author_words (int): The author words value that controls training preflight.
-        comparison_rows (List[List[float]]): The comparison rows collection consumed
-            while training preflight.
-        comparison_words (int): The comparison words value that controls training
-            preflight.
-        comparison_audit (Dict[str, Any]): The comparison audit collection consumed
-            while training preflight.
-        reliability (Dict[str, Any]): The reliability collection consumed while training
-            preflight.
-
-    Returns:
-        Dict[str, Any]: The structured resulting data for training preflight.
-    """
-    return {
-        "author": {"documents": len(author_rows), "weighted_words": author_words},
-        "comparison": {
-            "documents": len(comparison_rows),
-            "words": comparison_words,
-            "skipped": comparison_audit["skipped"],
-        },
-        "reliability": reliability,
-    }
-
-
-def _blocked_training_result(
-    voice_id: str,
-    voice_version: str,
-    preflight: Dict[str, Any],
-    reliability: Dict[str, Any],
-    accept_low_confidence: bool,
-) -> Optional[Dict[str, Any]]:
-    """Return the blocked training result.
-
-    Args:
-        voice_id (str): The stable identifier for the selected voice.
-        voice_version (str): The immutable version of the selected voice profile.
-        preflight (Dict[str, Any]): The preflight collection consumed while blocked
-            training result.
-        reliability (Dict[str, Any]): The reliability collection consumed while blocked
-            training result.
-        accept_low_confidence (bool): Whether accept low confidence behavior is enabled.
-
-    Returns:
-        Optional[Dict[str, Any]]: The resulting blocked training result when available;
-            otherwise ``None``.
-    """
-    if not reliability["can_train"]:
-        return {
-            "status": "insufficient_data",
-            "trained": False,
-            "voice_id": voice_id,
-            "voice_version": voice_version,
-            "preflight": preflight,
-        }
-    if reliability["requires_low_confidence_acceptance"] and not accept_low_confidence:
-        return {
-            "status": "warning_confirmation_required",
-            "trained": False,
-            "voice_id": voice_id,
-            "voice_version": voice_version,
-            "preflight": preflight,
-            "next_step": (
-                "Add more independent matched documents, or repeat with "
-                "--accept-low-confidence after reviewing the warnings."
-            ),
-        }
-    return None
 
 
 def _train_classifier(

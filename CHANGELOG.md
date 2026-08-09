@@ -16,6 +16,12 @@ release tag.
 - Risk- and release-aware mutation planning for pull requests, with validated
   survivor decisions and targeted advisory execution for critical modules.
 
+### Changed
+
+- Coordinator action/recommendation policy and voice-ML reliability/preflight
+  policy now live in focused, side-effect-free modules while their existing
+  façades and public imports remain compatible.
+
 ## [1.9.0] - 2026-08-09
 
 ### Added
