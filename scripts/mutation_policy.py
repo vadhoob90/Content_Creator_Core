@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+from collections.abc import Sequence
 from pathlib import Path
 from typing import cast
 
@@ -33,14 +34,14 @@ def _write_github_output(path: Path, patterns: tuple[str, ...], required: bool) 
         output.write("\nMUTATION_PATTERNS\n")
 
 
-def main() -> int:
+def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--changed-files", type=Path)
     parser.add_argument("--event", type=Path)
     parser.add_argument("--impact", choices=("none", "patch", "minor", "major"))
     parser.add_argument("--waivers", type=Path, default=Path(".github/mutation-waivers.yaml"))
     parser.add_argument("--github-output", type=Path)
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
 
     errors = validate_waivers(args.waivers)
     if errors:
