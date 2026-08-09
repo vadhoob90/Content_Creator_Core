@@ -1,3 +1,5 @@
+![Content Creator Core: your voice, amplified through the Core](docs/assets/content-creator-core-banner-broadcast.png)
+
 # Content Creator
 
 Content Creator helps people produce consistent, reviewable content without
