@@ -6,7 +6,6 @@ import pytest
 import content_creator.voice_activation as voice_activation
 from content_creator.cli import main
 from content_creator.versioned_artifacts import hash_file
-from content_creator.voice_activation import _validate_active_baseline, _validated_candidate
 from content_creator.voice_models import VoiceError, VoiceManifest
 from content_creator.voices import VoiceRegistry
 
@@ -60,24 +59,24 @@ def test_candidate_activation_fails_closed_on_invalid_candidate_state(project):
 
     manifest_path.rename(candidate / "manifest.backup")
     with pytest.raises(VoiceError, match="has not been built"):
-        _validated_candidate(candidate, None)
+        voice_activation._validated_candidate(candidate, None)
     (candidate / "manifest.backup").rename(manifest_path)
 
     unauthorised = dict(original)
     unauthorised["authorisation"] = dict(original["authorisation"], confirmed=False)
     manifest_path.write_text(json.dumps(unauthorised), encoding="utf-8")
     with pytest.raises(VoiceError, match="authorisation has not been confirmed"):
-        _validated_candidate(candidate, None)
+        voice_activation._validated_candidate(candidate, None)
 
     manifest_path.write_text(json.dumps(dict(original, status="active")), encoding="utf-8")
     with pytest.raises(VoiceError, match="not awaiting approval"):
-        _validated_candidate(candidate, None)
+        voice_activation._validated_candidate(candidate, None)
 
     stale_delta = dict(original, evolution_delta_hash="0" * 64)
     manifest_path.write_text(json.dumps(stale_delta), encoding="utf-8")
     (candidate / "voice-evolution.json").write_text("{}", encoding="utf-8")
     with pytest.raises(VoiceError, match="evolution delta hash mismatch"):
-        _validated_candidate(candidate, None)
+        voice_activation._validated_candidate(candidate, None)
 
 
 def test_candidate_activation_distinguishes_integrity_failures_from_quality_risk(project):
@@ -85,12 +84,12 @@ def test_candidate_activation_distinguishes_integrity_failures_from_quality_risk
 
     _write_failed_evaluation(candidate, manifest_data, ["source integrity failed"])
     with pytest.raises(VoiceError, match="non-overridable integrity failures"):
-        _validated_candidate(candidate, "Owner accepts quality risk")
+        voice_activation._validated_candidate(candidate, "Owner accepts quality risk")
 
     _write_failed_evaluation(candidate, manifest_data, [])
     with pytest.raises(VoiceError, match="evaluation did not pass"):
-        _validated_candidate(candidate, None)
-    manifest, path = _validated_candidate(candidate, "Owner accepts quality risk")
+        voice_activation._validated_candidate(candidate, None)
+    manifest, path = voice_activation._validated_candidate(candidate, "Owner accepts quality risk")
     assert manifest.id == "guarded-person"
     assert path == candidate / "evaluation-report.json"
 
@@ -147,7 +146,9 @@ def test_evolution_activation_rejects_stale_registry_baselines(project, registry
     registry = {"profiles": {"guarded-person": registry_entry}}
 
     with pytest.raises(VoiceError, match=message):
-        _validate_active_baseline(candidate.parent, registry, "guarded-person", manifest)
+        voice_activation._validate_active_baseline(
+            candidate.parent, registry, "guarded-person", manifest
+        )
 
 
 @pytest.mark.parametrize("tamper", ["manifest", "component"])
@@ -174,4 +175,4 @@ def test_evolution_activation_rejects_tampered_immutable_baseline(project, tampe
         message = "Active baseline component hash mismatch"
 
     with pytest.raises(VoiceError, match=message):
-        _validate_active_baseline(voice_root, registry, "guarded-person", manifest)
+        voice_activation._validate_active_baseline(voice_root, registry, "guarded-person", manifest)
