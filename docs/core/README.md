@@ -49,6 +49,8 @@ src/content_creator/
 ├── operations.py         privacy-safe support evidence and recovery inspection
 ├── orchestrator.py       public workflow and checkpoint application service
 ├── orchestration_support.py composed runtime services used by orchestration
+├── coordinator.py        workspace status and capability façade
+├── coordinator_policy.py pure lifecycle-action and recommendation decisions
 ├── stages.py             replaceable research and draft-review stages
 ├── capabilities.py       optional visual and voice-scoring seam
 ├── versioned_artifacts.py shared immutable-artifact mechanics
@@ -58,7 +60,7 @@ src/content_creator/
 ├── voice_build/          corpus policy, models, rendering, and pipeline execution
 ├── linguistics.py        deterministic voice measurements and statistics
 ├── voice_assessment.py   advisory draft-to-voice scoring
-├── voice_ml/             stable façade plus ML dependencies, training, and inference
+├── voice_ml/             stable façade plus reliability, training, and inference
 ├── perspectives.py       perspective registry compatibility façade
 ├── perspective_support.py perspective contracts, catalogue, and resolution
 ├── diagnostics/          runtime evidence, sanitisation, and support candidates

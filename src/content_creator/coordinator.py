@@ -14,8 +14,8 @@ from .coordinator_models import ProviderStatus as ProviderStatus
 from .coordinator_models import RunSummary as RunSummary
 from .coordinator_models import VoiceStatus as VoiceStatus
 from .coordinator_models import WorkspaceSnapshot as WorkspaceSnapshot
-from .coordinator_models import action as coordinator_action
 from .coordinator_models import operation as coordinator_operation
+from .coordinator_policy import actions_for_state, recommend_action
 from .domain import RunState, RunStatus
 from .health import WorkspaceHealth
 from .packs import PackRegistry
@@ -30,8 +30,9 @@ logger = logging.getLogger(__name__)
 class ContentCoordinator:
     """Represent the content coordinator contract."""
 
-    _action = staticmethod(coordinator_action)
     _operation = staticmethod(coordinator_operation)
+    _actions_for_state = staticmethod(actions_for_state)
+    _recommend = staticmethod(recommend_action)
 
     def __init__(self, root: Path):
         """Initialize the content coordinator with its required state and collaborators.
@@ -237,200 +238,6 @@ class ContentCoordinator:
             "actions": [item.model_dump(mode="json") for item in actions],
         }
 
-    def _actions_for_state(self, state: RunState, run_id: str) -> List[CoordinatorAction]:
-        """Return the actions for state.
-
-        Args:
-            state (RunState): The persisted lifecycle state to inspect or update.
-            run_id (str): The stable identifier for the content run.
-
-        Returns:
-            List[CoordinatorAction]: The resulting actions for state values in their
-                documented order.
-        """
-        routes = {
-            RunStatus.AWAITING_RESEARCH_APPROVAL: self._research_actions,
-            RunStatus.READY: self._reviewed_actions,
-            RunStatus.NEEDS_AUTHOR: self._reviewed_actions,
-            RunStatus.PUBLISHED: self._published_actions,
-            RunStatus.FAILED: self._failed_actions,
-        }
-        handler = routes.get(state.status, self._fallback_actions)
-        return handler(state, run_id)
-
-    def _research_actions(self, _state: RunState, run_id: str) -> List[CoordinatorAction]:
-        """Return the research actions.
-
-        Args:
-            _state (RunState): The intentionally unused lifecycle state required by the
-                action-handler contract.
-            run_id (str): The stable identifier for the content run.
-
-        Returns:
-            List[CoordinatorAction]: The resulting research actions values in their
-                documented order.
-        """
-        return [
-            self._action("review-research", "Review the research brief", artifact="research.json"),
-            self._action(
-                "approve-research",
-                "Approve the research and resume",
-                ["approve-research", run_id],
-                mutates=True,
-                confirmation=True,
-            ),
-            self._action(
-                "reject-research",
-                "Reject the research and stop",
-                ["reject-research", run_id],
-                mutates=True,
-                confirmation=True,
-            ),
-        ]
-
-    def _reviewed_actions(self, state: RunState, run_id: str) -> List[CoordinatorAction]:
-        """Return the reviewed actions.
-
-        Args:
-            state (RunState): The persisted lifecycle state to inspect or update.
-            run_id (str): The stable identifier for the content run.
-
-        Returns:
-            List[CoordinatorAction]: The resulting reviewed actions values in their
-                documented order.
-        """
-        actions = []
-        if state.final_draft_path:
-            actions.append(
-                self._action(
-                    "review-final", "Review the current draft", artifact=state.final_draft_path
-                )
-            )
-        if state.pending_support_count:
-            actions.extend(self._diagnostic_publish_actions(state, run_id))
-        elif state.status == RunStatus.READY:
-            actions.append(
-                self._action(
-                    "publish-local",
-                    "Move the approved draft into the repository",
-                    ["publish", run_id],
-                    mutates=True,
-                    confirmation=True,
-                )
-            )
-        else:
-            actions.append(
-                self._action(
-                    "provide-author-direction", "Provide author direction before another run"
-                )
-            )
-        return actions
-
-    def _diagnostic_publish_actions(self, state: RunState, run_id: str) -> List[CoordinatorAction]:
-        """Return the diagnostic publish actions.
-
-        Args:
-            state (RunState): The persisted lifecycle state to inspect or update.
-            run_id (str): The stable identifier for the content run.
-
-        Returns:
-            List[CoordinatorAction]: The resulting diagnostic publish actions values in
-                their documented order.
-        """
-        return [
-            self._action(
-                "review-support-candidate",
-                "Review recovered Core issues before publication",
-                artifact=state.support_candidate_path,
-            ),
-            self._action(
-                "publish-only",
-                "Publish without preparing a Core issue",
-                ["publish", run_id, "--diagnostic-decision", "publish-only"],
-                mutates=True,
-                confirmation=True,
-            ),
-            self._action(
-                "publish-and-prepare-issue",
-                "Publish and prepare the Core issue for host submission",
-                ["publish", run_id, "--diagnostic-decision", "prepare-issue"],
-                mutates=True,
-                confirmation=True,
-            ),
-        ]
-
-    def _published_actions(self, state: RunState, _run_id: str) -> List[CoordinatorAction]:
-        """Return the published actions.
-
-        Args:
-            state (RunState): The persisted lifecycle state to inspect or update.
-            _run_id (str): The intentionally unused run identifier required by the
-                action-handler contract.
-
-        Returns:
-            List[CoordinatorAction]: The resulting published actions values in their
-                documented order.
-        """
-        actions = [
-            self._action(
-                "review-publication",
-                "Inspect the repository publication",
-                artifact=state.published_path,
-            )
-        ]
-        if state.pending_support_count:
-            actions.append(
-                self._action(
-                    "review-support-candidate",
-                    "Review a Core issue discovered during publication",
-                    artifact=state.support_candidate_path,
-                )
-            )
-        return actions
-
-    def _failed_actions(self, state: RunState, _run_id: str) -> List[CoordinatorAction]:
-        """Return the failed actions.
-
-        Args:
-            state (RunState): The persisted lifecycle state to inspect or update.
-            _run_id (str): The intentionally unused run identifier required by the
-                action-handler contract.
-
-        Returns:
-            List[CoordinatorAction]: The resulting failed actions values in their documented
-                order.
-        """
-        actions = [
-            self._action(
-                "inspect-failure", "Inspect the persisted error before deciding whether to retry"
-            )
-        ]
-        if state.pending_support_count:
-            actions.append(
-                self._action(
-                    "review-support-candidate",
-                    "Review the fatal Core diagnostic",
-                    artifact=state.support_candidate_path,
-                )
-            )
-        return actions
-
-    def _fallback_actions(self, _state: RunState, run_id: str) -> List[CoordinatorAction]:
-        """Return the fallback actions.
-
-        Args:
-            _state (RunState): The intentionally unused lifecycle state required by the
-                action-handler contract.
-            run_id (str): The stable identifier for the content run.
-
-        Returns:
-            List[CoordinatorAction]: The resulting fallback actions values in their
-                documented order.
-        """
-        return [
-            self._action("inspect-status", "Inspect the persisted run state", ["status", run_id])
-        ]
-
     def _run_summaries(self, limit: int) -> List[RunSummary]:
         """Run the summaries.
 
@@ -553,91 +360,6 @@ class ContentCoordinator:
             name=provider,
             status="available" if shutil.which(executable) else "unavailable",
             detail=executable,
-        )
-
-    @staticmethod
-    def _recommend(snapshot: WorkspaceSnapshot) -> CoordinatorAction:
-        """Return the recommend.
-
-        Derive the next safe author action from workspace health, lifecycle status, pending
-        approvals, and available capabilities.
-
-        Args:
-            snapshot (WorkspaceSnapshot): The snapshot value passed to recommend.
-
-        Returns:
-            CoordinatorAction: The resulting coordinator action for recommend.
-        """
-        if not snapshot.is_workspace:
-            return CoordinatorAction(
-                id="create-workspace",
-                label="Create an author-owned content workspace",
-                command=[
-                    "workspace",
-                    "create",
-                    "<directory>",
-                    "--author-name",
-                    "<author-name>",
-                ],
-                mutates_workspace=True,
-            )
-        for run in snapshot.runs:
-            if run.status == RunStatus.AWAITING_RESEARCH_APPROVAL.value:
-                return CoordinatorAction(
-                    id="review-research",
-                    label="Review the interrupted run's research checkpoint",
-                    command=["coordinator", "next-actions", run.run_id],
-                )
-            if run.status in {RunStatus.READY.value, RunStatus.NEEDS_AUTHOR.value}:
-                return CoordinatorAction(
-                    id="review-draft",
-                    label="Review the completed draft and its next actions",
-                    command=["coordinator", "next-actions", run.run_id],
-                )
-        undecided = next(
-            (voice for voice in snapshot.voices if voice.onboarding_status == "undecided"),
-            None,
-        )
-        if undecided:
-            return CoordinatorAction(
-                id="choose-voice-route",
-                label=(
-                    "Choose source-derived voice or Clear Professional Starter for {}".format(
-                        undecided.display_name
-                    )
-                ),
-                command=["voice", "status", undecided.voice_id],
-            )
-        candidate = next(
-            (voice for voice in snapshot.voices if voice.candidate_decision == "pending"),
-            None,
-        )
-        if candidate:
-            return CoordinatorAction(
-                id="review-voice-candidate",
-                label="Review the pending voice candidate",
-                command=["personalisation", "show"],
-            )
-        if snapshot.provider_status.status in {
-            "not-selected",
-            "missing-credentials",
-            "unavailable",
-        }:
-            return CoordinatorAction(
-                id="select-provider",
-                label="Select and verify a model provider",
-                command=["provider", "--help"],
-            )
-        if not snapshot.active_voice_ids:
-            return CoordinatorAction(
-                id="create-voice",
-                label="Create or activate a voice",
-                command=["voice", "--help"],
-            )
-        return CoordinatorAction(
-            id="create-content",
-            label="Describe the content you want to create",
-            command=["start", "<request>"],
         )
 
     def _artifacts(self, run_id: str) -> List[str]:
