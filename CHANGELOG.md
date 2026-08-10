@@ -8,6 +8,8 @@ release tag.
 
 ## [Unreleased]
 
+## [1.10.1] - 2026-08-10
+
 ### Fixed
 
 - Anthropic structured output now normalizes supported schemas, avoids grammar
