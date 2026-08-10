@@ -46,6 +46,23 @@ operation. Provider-specific structured-output and search syntax remains inside
 Direct API credentials come from `OPENAI_API_KEY` or `ANTHROPIC_API_KEY`. Do not
 place credentials in YAML. Core deliberately ships without a provider default.
 
+Anthropic research uses `web_search_20260318` by default. A compatible proxy or
+gateway that exposes an older Anthropic web-search tool can select one of the
+documented tool versions in workspace `config/models.yaml`:
+
+```yaml
+providers:
+  anthropic:
+    web_search_tool: web_search_20250305
+```
+
+Core accepts `web_search_20250305`, `web_search_20260209`, and
+`web_search_20260318` and rejects other identifiers before making a request.
+This setting changes only the Anthropic server-side tool payload; model
+capability selection and the `--research none` route are unchanged. See
+Anthropic's [web-search tool reference](https://platform.claude.com/docs/en/agents-and-tools/tool-use/web-search-tool)
+for the behavior and availability of each version.
+
 For Anthropic models deployed through Microsoft Foundry, use the Foundry-specific
 SDK configuration:
 

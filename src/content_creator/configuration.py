@@ -21,6 +21,12 @@ class ConfigurationError(ValueError):
 class Configuration:
     """Represent a configuration."""
 
+    _ANTHROPIC_WEB_SEARCH_TOOLS = {
+        "web_search_20250305",
+        "web_search_20260209",
+        "web_search_20260318",
+    }
+
     def __init__(self, root: Path, model_config: Optional[Path] = None):
         """Initialize the configuration with its required state and collaborators.
 
@@ -94,6 +100,27 @@ class Configuration:
             int: The resulting numeric value for max output tokens.
         """
         return int(self.models["defaults"].get("max_output_tokens", 6000))
+
+    @property
+    def anthropic_web_search_tool(self) -> str:
+        """Return the configured Anthropic server-side web-search tool version.
+
+        Returns:
+            str: An Anthropic web-search tool identifier supported by Core.
+
+        Raises:
+            ConfigurationError: If the configured tool identifier is unsupported.
+        """
+        configured = self.models["providers"]["anthropic"].get(
+            "web_search_tool", "web_search_20260318"
+        )
+        if configured not in self._ANTHROPIC_WEB_SEARCH_TOOLS:
+            raise ConfigurationError(
+                "providers.anthropic.web_search_tool must be one of: {}".format(
+                    ", ".join(sorted(self._ANTHROPIC_WEB_SEARCH_TOOLS))
+                )
+            )
+        return str(configured)
 
     def selection(
         self,

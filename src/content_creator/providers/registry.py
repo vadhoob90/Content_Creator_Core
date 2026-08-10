@@ -62,7 +62,12 @@ class ProviderRegistry:
         elif name == "anthropic":
             from .anthropic import AnthropicProvider
 
-            provider = AnthropicProvider()
+            options = {}
+            if self.root is not None and (self.root / "config" / "models.yaml").exists():
+                from ..configuration import Configuration
+
+                options["web_search_tool"] = Configuration(self.root).anthropic_web_search_tool
+            provider = AnthropicProvider(**options)
         elif name == "bedrock":
             from .bedrock import BedrockProvider
 

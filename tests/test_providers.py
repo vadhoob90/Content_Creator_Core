@@ -2,6 +2,7 @@ import builtins
 from types import SimpleNamespace
 
 import pytest
+import yaml
 
 from content_creator.domain import ModelRequest, ModelSelection
 from content_creator.providers.anthropic import AnthropicProvider
@@ -71,6 +72,28 @@ def test_anthropic_adapter_translates_normalized_request():
     assert capture.kwargs["output_config"]["format"]["type"] == "json_schema"
     assert capture.kwargs["tools"][0]["name"] == "web_search"
     assert result.text == '{"ok":true}'
+
+
+@pytest.mark.usefixtures("anthropic_sdk_stub")
+def test_anthropic_adapter_uses_configured_web_search_tool():
+    response = SimpleNamespace(
+        content=[SimpleNamespace(type="text", text="researched")],
+        stop_reason="end_turn",
+        usage=None,
+    )
+    capture = Capture(response)
+
+    AnthropicProvider(
+        SimpleNamespace(messages=capture),
+        web_search_tool="web_search_20250305",
+    ).generate(request("anthropic", structured=False))
+
+    assert capture.kwargs["tools"] == [{"type": "web_search_20250305", "name": "web_search"}]
+
+
+def test_anthropic_adapter_rejects_unknown_web_search_tool():
+    with pytest.raises(ProviderError, match="Unsupported Anthropic web-search tool"):
+        AnthropicProvider(object(), web_search_tool="web_search_latest")
 
 
 def test_openai_incomplete_response_fails_closed():
@@ -238,6 +261,24 @@ def test_registry_lazily_constructs_and_caches_supported_providers(
         assert constructed == [{"root": tmp_path}]
     else:
         assert constructed == [{}]
+
+
+def test_registry_applies_workspace_anthropic_web_search_tool(project, monkeypatch):
+    path = project / "config" / "models.yaml"
+    data = yaml.safe_load(path.read_text(encoding="utf-8"))
+    data["providers"]["anthropic"]["web_search_tool"] = "web_search_20250305"
+    path.write_text(yaml.safe_dump(data), encoding="utf-8")
+    constructed = []
+
+    def construct(**kwargs):
+        constructed.append(kwargs)
+        return FakeProvider({})
+
+    monkeypatch.setattr("content_creator.providers.anthropic.AnthropicProvider", construct)
+
+    ProviderRegistry(root=project).get("anthropic")
+
+    assert constructed == [{"web_search_tool": "web_search_20250305"}]
 
 
 @pytest.mark.parametrize(

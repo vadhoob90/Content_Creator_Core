@@ -45,6 +45,25 @@ def test_model_selector_fails_closed_when_capability_is_missing(project):
         raise AssertionError("Expected ConfigurationError")
 
 
+def test_anthropic_web_search_tool_can_target_an_older_gateway(project):
+    path = project / "config" / "models.yaml"
+    data = yaml.safe_load(path.read_text(encoding="utf-8"))
+    data["providers"]["anthropic"]["web_search_tool"] = "web_search_20250305"
+    path.write_text(yaml.safe_dump(data), encoding="utf-8")
+
+    assert Configuration(project).anthropic_web_search_tool == "web_search_20250305"
+
+
+def test_anthropic_web_search_tool_rejects_unknown_versions(project):
+    path = project / "config" / "models.yaml"
+    data = yaml.safe_load(path.read_text(encoding="utf-8"))
+    data["providers"]["anthropic"]["web_search_tool"] = "web_search_latest"
+    path.write_text(yaml.safe_dump(data), encoding="utf-8")
+
+    with pytest.raises(ConfigurationError, match="anthropic.web_search_tool"):
+        _ = Configuration(project).anthropic_web_search_tool
+
+
 def test_bedrock_model_profiles_support_structured_work_but_not_live_search(project):
     configuration = Configuration(project)
 
