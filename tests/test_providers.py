@@ -55,6 +55,7 @@ def test_openai_adapter_translates_normalized_request():
     assert result.text == '{"ok":true}'
 
 
+@pytest.mark.usefixtures("anthropic_sdk_stub")
 def test_anthropic_adapter_translates_normalized_request():
     response = SimpleNamespace(
         content=[SimpleNamespace(type="text", text='{"ok":true}')],

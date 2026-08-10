@@ -8,6 +8,16 @@ release tag.
 
 ## [Unreleased]
 
+### Fixed
+
+- Anthropic structured output now normalizes supported schemas, avoids grammar
+  mode for open mappings and schemas above documented complexity limits, and
+  retries unexpected grammar-compilation failures once with downstream-validated
+  prompt JSON.
+- Microsoft Foundry Anthropic endpoints now use the SDK's `AnthropicFoundry`
+  client, including compatibility with canonical Foundry URLs supplied through
+  `ANTHROPIC_BASE_URL`.
+
 ## [1.10.0] - 2026-08-09
 
 ### Added

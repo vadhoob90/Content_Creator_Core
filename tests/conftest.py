@@ -1,10 +1,49 @@
+import copy
 import shutil
+import sys
 from pathlib import Path
+from types import ModuleType
 
 import pytest
 import yaml
 
 REPO = Path(__file__).resolve().parents[1]
+
+
+@pytest.fixture
+def anthropic_sdk_stub(monkeypatch):
+    module = ModuleType("anthropic")
+
+    def transform_schema(schema):
+        transformed = copy.deepcopy(schema)
+
+        def visit(value):
+            if isinstance(value, list):
+                for item in value:
+                    visit(item)
+                return
+            if not isinstance(value, dict):
+                return
+            if value.get("type") == "object":
+                value["additionalProperties"] = False
+            constraints = []
+            for name in ("minimum", "maximum"):
+                if name in value:
+                    constraints.append("{}: {}".format(name, value.pop(name)))
+            if constraints:
+                description = str(value.get("description", "")).strip()
+                value["description"] = "; ".join(filter(None, [description, *constraints]))
+            for item in value.values():
+                visit(item)
+
+        visit(transformed)
+        return transformed
+
+    module.transform_schema = transform_schema
+    module.Anthropic = object
+    module.AnthropicFoundry = object
+    monkeypatch.setitem(sys.modules, "anthropic", module)
+    return module
 
 
 @pytest.fixture
