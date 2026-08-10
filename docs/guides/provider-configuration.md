@@ -45,6 +45,22 @@ operation. Provider-specific structured-output and search syntax remains inside
 API credentials come from `OPENAI_API_KEY` or `ANTHROPIC_API_KEY`. Do not place
 credentials in YAML. Core deliberately ships without a provider default.
 
+For Anthropic models deployed through Microsoft Foundry, use the Foundry-specific
+SDK configuration:
+
+```bash
+export ANTHROPIC_FOUNDRY_RESOURCE=<foundry-resource-name>
+export ANTHROPIC_FOUNDRY_API_KEY=<foundry-api-key>
+```
+
+Alternatively, set `ANTHROPIC_FOUNDRY_BASE_URL` to the complete Foundry Anthropic
+endpoint. Core also recognizes a canonical
+`https://<resource>.services.ai.azure.com/anthropic` endpoint supplied through
+`ANTHROPIC_BASE_URL` and accepts `ANTHROPIC_API_KEY` as its compatibility key.
+Foundry model values are deployment names rather than public Anthropic model IDs;
+place a reviewed complete model catalogue at workspace `config/models.yaml` when
+the packaged candidates do not match the deployed names.
+
 Persist a deliberate workspace choice:
 
 ```bash
@@ -71,6 +87,14 @@ Codex CLI strict structured output is used when a contract fits OpenAI's strict
 JSON Schema subset. Contracts containing open-ended mappings are supplied as
 schema instructions and validated by the existing downstream Pydantic
 contract. Invalid output still fails closed.
+
+The Anthropic adapter applies the SDK's supported schema transformation before
+using grammar mode. Open-ended mappings and schemas above Anthropic's documented
+optional-parameter or union-parameter limits use schema-in-prompt JSON instead,
+with the same downstream Pydantic validation. If Anthropic rejects a smaller
+schema because of an internal grammar limit or compilation timeout, Core makes
+one bounded prompt-JSON retry. Other provider failures are not retried by this
+fallback.
 
 ### Native setup
 
