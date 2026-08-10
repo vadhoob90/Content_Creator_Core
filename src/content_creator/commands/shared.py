@@ -7,7 +7,7 @@ import json
 from pathlib import Path
 from typing import Any, Optional
 
-PROVIDERS = ["anthropic", "openai", "codex-native", "claude-native"]
+PROVIDERS = ["anthropic", "bedrock", "openai", "codex-native", "claude-native"]
 
 
 class AuthorHelpFormatter(argparse.HelpFormatter):

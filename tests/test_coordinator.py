@@ -70,6 +70,20 @@ def test_coordinator_context_surfaces_latest_upgrade_audit(project):
     assert context["latest_upgrade_compatibility"] == report
 
 
+def test_coordinator_reports_bedrock_credential_chain_status(project, monkeypatch):
+    (project / "content-creator.yaml").write_text(
+        yaml.safe_dump({"provider": {"default": "bedrock"}}),
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("AWS_PROFILE", "content-author")
+
+    status = ContentCoordinator(project)._provider_status()
+
+    assert status.name == "bedrock"
+    assert status.status == "configured"
+    assert status.detail == "AWS credential chain"
+
+
 def test_coordinator_next_actions_come_from_persisted_state(project):
     store = RunStore(project)
     state = RunState(

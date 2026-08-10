@@ -34,6 +34,20 @@ providers:
         candidates:
           - model: claude-opus-5
             capabilities: [structured_output, web_search]
+  bedrock:
+    profiles:
+      fast:
+        candidates:
+          - model: global.anthropic.claude-haiku-4-5-20251001-v1:0
+            capabilities: [structured_output]
+      balanced:
+        candidates:
+          - model: global.anthropic.claude-sonnet-5
+            capabilities: [structured_output]
+      deep:
+        candidates:
+          - model: global.anthropic.claude-opus-5
+            capabilities: [structured_output]
   codex-native:
     profiles:
       fast:

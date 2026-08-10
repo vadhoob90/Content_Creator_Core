@@ -119,6 +119,43 @@ def test_provider_select_persists_workspace_choice(project, capsys):
     assert configuration["provider"]["default"] == "codex-native"
 
 
+def test_provider_select_accepts_bedrock(project, capsys):
+    assert main(["--root", str(project), "provider", "select", "bedrock"]) == 0
+    output = json.loads(capsys.readouterr().out)
+    configuration = yaml.safe_load((project / "content-creator.yaml").read_text(encoding="utf-8"))
+
+    assert output["provider"] == "bedrock"
+    assert configuration["provider"]["default"] == "bedrock"
+
+
+def test_provider_verify_uses_bedrock_offline_verification(project, capsys, monkeypatch):
+    class VerifiedBedrock:
+        def verify(self):
+            return {"authentication": "shared-credentials-file", "region": "eu-west-2"}
+
+    monkeypatch.setattr(
+        "content_creator.commands.provider.ProviderRegistry.get",
+        lambda self, name: VerifiedBedrock(),
+    )
+
+    assert main(["--root", str(project), "provider", "verify", "bedrock"]) == 0
+    output = json.loads(capsys.readouterr().out)
+
+    assert output == {
+        "provider": "bedrock",
+        "configured": True,
+        "authentication": "shared-credentials-file",
+        "region": "eu-west-2",
+    }
+
+
+def test_plan_accepts_bedrock_without_making_a_live_request(capsys):
+    assert main(["plan", "Write a short post without research", "--provider", "bedrock"]) == 0
+    output = json.loads(capsys.readouterr().out)
+
+    assert output["provider"] == "bedrock"
+
+
 def test_agent_scaffold_preserves_repository_customisation(tmp_path, capsys):
     agents = tmp_path / "agents"
     agents.mkdir()

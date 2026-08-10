@@ -68,7 +68,7 @@ content-creator run "<request>" \
 ```
 
 Execution choice changes only
-`--provider anthropic|openai|codex-native|claude-native`. Do not rewrite the
+`--provider anthropic|bedrock|openai|codex-native|claude-native`. Do not rewrite the
 author's request for a provider. Native modes require a subscription login and
 must never fall back to API-key billing. When working interactively in Codex
 and the author has not selected a provider, prefer `codex-native`.

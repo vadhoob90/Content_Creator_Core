@@ -37,13 +37,14 @@ credentials and consumes the relevant product subscription allowance.
 
 - `openai` uses the Responses API
 - `anthropic` uses the Messages API
+- `bedrock` uses the Anthropic Messages API through Amazon Bedrock Runtime
 
 Use API mode for CI, headless automation, explicit metering, or service-account
 operation. Provider-specific structured-output and search syntax remains inside
 `src/content_creator/providers/`.
 
-API credentials come from `OPENAI_API_KEY` or `ANTHROPIC_API_KEY`. Do not place
-credentials in YAML. Core deliberately ships without a provider default.
+Direct API credentials come from `OPENAI_API_KEY` or `ANTHROPIC_API_KEY`. Do not
+place credentials in YAML. Core deliberately ships without a provider default.
 
 For Anthropic models deployed through Microsoft Foundry, use the Foundry-specific
 SDK configuration:
@@ -61,6 +62,40 @@ Foundry model values are deployment names rather than public Anthropic model IDs
 place a reviewed complete model catalogue at workspace `config/models.yaml` when
 the packaged candidates do not match the deployed names.
 
+### Amazon Bedrock setup
+
+Install the Bedrock extra, then use the normal AWS credential chain:
+
+```bash
+python -m pip install -e ".[bedrock]"
+export AWS_PROFILE=<profile-name>
+export AWS_REGION=<region>
+content-creator provider select bedrock
+content-creator provider verify bedrock
+```
+
+Environment credentials, workload identity, container credentials, and
+`AWS_BEARER_TOKEN_BEDROCK` are also accepted by the SDK. `provider verify`
+resolves credentials locally and reports only the authentication method and
+region; it does not print secrets or make a model request.
+
+The packaged Bedrock profiles use global cross-Region inference IDs for Claude
+Haiku 4.5, Sonnet 5, and Opus 5. Replace them in the workspace
+`config/models.yaml` when an account requires a geography-specific inference
+profile, direct model ID, provisioned model ARN, or different approved model.
+
+Bedrock Runtime does not expose Claude's server-side web-search tool. Core marks
+that capability unavailable and fails during deterministic model selection for
+a live-search route. Choose no research or supply an approved research brief
+instead. Structured contracts use schema-in-prompt JSON followed by the same
+downstream Pydantic validation used by Core's other bounded fallbacks.
+
+See the official [Claude on Amazon Bedrock
+guide](https://platform.claude.com/docs/en/build-with-claude/claude-in-amazon-bedrock)
+and [AWS model ID
+guidance](https://docs.aws.amazon.com/bedrock/latest/userguide/foundation-models-reference.html)
+for current regions, access requirements, and model identifiers.
+
 Persist a deliberate workspace choice:
 
 ```bash
@@ -69,7 +104,8 @@ content-creator provider select codex-native
 
 This writes `provider.default` to `content-creator.yaml`. Alternatively, pass
 `--provider` for one command or set `CONTENT_CREATOR_PROVIDER` to `openai`,
-`anthropic`, `codex-native`, or `claude-native` for a temporary shell override.
+`anthropic`, `bedrock`, `codex-native`, or `claude-native` for a temporary shell
+override.
 If none is supplied, Core exits cleanly rather than choosing a potentially
 metered provider.
 
@@ -125,6 +161,7 @@ official guidance:
 
 - [OpenAI model guidance](https://developers.openai.com/api/docs/guides/latest-model)
 - [Anthropic models overview](https://platform.claude.com/docs/en/about-claude/models/overview)
+- [Claude on Amazon Bedrock](https://platform.claude.com/docs/en/build-with-claude/claude-in-amazon-bedrock)
 
 To add another provider:
 

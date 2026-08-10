@@ -256,6 +256,20 @@ export OPENAI_API_KEY="<key>"
 content-creator provider verify openai
 ```
 
+Amazon Bedrock uses the `bedrock` extra and the standard AWS credential chain:
+
+```bash
+python -m pip install -e ".[bedrock,dev]"
+export AWS_PROFILE=<profile-name>
+export AWS_REGION=<region>
+content-creator provider select bedrock
+content-creator provider verify bedrock
+```
+
+Bedrock routes support structured writing and review through downstream-validated
+JSON fallback. They deliberately reject live web-search requests because Bedrock
+Runtime does not expose Claude's server-side web-search tool.
+
 Core deliberately ships without a provider default. Select one in
 `content-creator.yaml`, pass `--provider`, or set
 `CONTENT_CREATOR_PROVIDER` for a temporary shell override. This prevents a

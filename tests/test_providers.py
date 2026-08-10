@@ -209,6 +209,7 @@ def test_registry_rejects_unknown_provider_without_mutation():
     [
         ("openai", "content_creator.providers.openai", "OpenAIProvider"),
         ("anthropic", "content_creator.providers.anthropic", "AnthropicProvider"),
+        ("bedrock", "content_creator.providers.bedrock", "BedrockProvider"),
         ("codex-native", "content_creator.providers.codex_native", "CodexNativeProvider"),
         ("claude-native", "content_creator.providers.claude_native", "ClaudeNativeProvider"),
     ],

@@ -64,7 +64,13 @@ Verify the credential and configured adapter:
 ```bash
 content-creator provider verify openai
 content-creator provider verify anthropic
+content-creator provider verify bedrock
 ```
+
+For Bedrock, confirm that `AWS_REGION` is set and that the AWS SDK can resolve
+credentials from `AWS_PROFILE`, environment credentials, workload identity,
+container credentials, or `AWS_BEARER_TOKEN_BEDROCK`. A live-search route is not
+supported by Bedrock; choose no research or provide an approved research brief.
 
 Persisted run artifacts remain available for diagnosis. Repeat only the
 documented deterministic recovery command; do not edit state or registries by

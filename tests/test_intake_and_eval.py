@@ -1,7 +1,10 @@
+from types import SimpleNamespace
+
+import content_creator.evaluation as evaluation
 from content_creator.cli import main
 from content_creator.configuration import Configuration
-from content_creator.domain import PlanningDecision
-from content_creator.evaluation import run_replay_suite
+from content_creator.domain import PlanningDecision, RunStatus
+from content_creator.evaluation import run_live_suite, run_replay_suite
 from content_creator.intake import BriefingAgent, ClarificationRequired
 from content_creator.prompting import PromptAssembler
 from content_creator.providers import FakeProvider, ProviderRegistry
@@ -26,6 +29,43 @@ def test_replay_harness_runs_both_provider_contracts(project):
     assert report["total"] == 14
     assert report["passed"] == 14
     assert (project / ".eval-results" / "route-matrix.json").exists()
+
+
+def test_bedrock_live_eval_uses_supplied_research_for_the_search_case(project, monkeypatch):
+    orders = []
+
+    class Store:
+        def read_artifact(self, run_id, name):
+            del run_id, name
+            return "[]"
+
+        def run_dir(self, run_id):
+            directory = project / "runs" / run_id
+            directory.mkdir(parents=True, exist_ok=True)
+            return directory
+
+    class OfflineOrchestrator:
+        def __init__(self, root, max_revisions):
+            del root, max_revisions
+            self.store = Store()
+
+        def start(self, order):
+            orders.append(order)
+            return SimpleNamespace(
+                id="live-{}".format(len(orders)),
+                status=RunStatus.READY,
+                revision=0,
+            )
+
+    monkeypatch.setattr(evaluation, "Orchestrator", OfflineOrchestrator)
+
+    report = run_live_suite(project, ["bedrock"])
+
+    assert report["total"] == 2
+    assert report["passed"] == 2
+    researched = next(order for order in orders if order.research_depth.value == "deep")
+    assert researched.research_source.value == "supplied"
+    assert researched.supplied_research_path.endswith("bedrock-live-research.json")
 
 
 def test_ambiguous_intake_can_request_clarification(project):

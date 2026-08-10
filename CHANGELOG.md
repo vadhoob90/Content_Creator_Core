@@ -8,6 +8,13 @@ release tag.
 
 ## [Unreleased]
 
+### Added
+
+- Amazon Bedrock is now a first-class provider backed by the Anthropic SDK's
+  `AnthropicBedrock` client, standard AWS credential resolution, packaged model
+  profiles, offline credential verification, and bounded structured-output
+  fallback.
+
 ## [1.10.1] - 2026-08-10
 
 ### Fixed

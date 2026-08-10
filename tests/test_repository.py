@@ -185,3 +185,14 @@ def test_release_workflow_is_tag_driven_and_uses_trusted_publishing():
     assert "pypa/gh-action-pypi-publish@" in workflow
     assert "password:" not in workflow
     assert "scripts/validate_distribution.py" in workflow
+
+
+def test_live_provider_workflow_supports_bedrock_credentials():
+    workflow = (ROOT / ".github" / "workflows" / "live-provider-eval.yml").read_text(
+        encoding="utf-8"
+    )
+
+    assert "          - bedrock" in workflow
+    assert "AWS_BEARER_TOKEN_BEDROCK" in workflow
+    assert "AWS_ACCESS_KEY_ID" in workflow
+    assert "ProviderRegistry().get('bedrock').verify()" in workflow

@@ -31,6 +31,8 @@ DOCUMENTED_COMMANDS = [
     ["start", "Write a useful article"],
     ["advanced"],
     ["provider", "verify", "openai"],
+    ["provider", "select", "bedrock"],
+    ["provider", "verify", "bedrock"],
     ["provider", "select", "codex-native"],
     ["provider", "verify", "codex-native"],
     ["provider", "verify", "claude-native"],
