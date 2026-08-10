@@ -8,6 +8,8 @@ release tag.
 
 ## [Unreleased]
 
+## [1.11.0] - 2026-08-10
+
 ### Added
 
 - Amazon Bedrock is now a first-class provider backed by the Anthropic SDK's
