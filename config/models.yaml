@@ -21,6 +21,7 @@ providers:
             reasoning_effort: high
             capabilities: [structured_output, web_search]
   anthropic:
+    web_search_tool: web_search_20260318
     profiles:
       fast:
         candidates:

@@ -23,20 +23,33 @@ class AnthropicProvider(Provider):
         "compiled grammar is too large",
         "grammar compilation timed out",
     )
+    _WEB_SEARCH_TOOLS = {
+        "web_search_20250305",
+        "web_search_20260209",
+        "web_search_20260318",
+    }
 
-    def __init__(self, client: Any = None):
+    def __init__(self, client: Any = None, web_search_tool: str = "web_search_20260318"):
         """Initialize the Anthropic provider with an injected or default client.
 
         Args:
             client (Any): The client value passed to init. Defaults to ``None``.
+            web_search_tool (str): Anthropic server-side web-search tool identifier.
+                Defaults to ``web_search_20260318``.
 
         Returns:
             None: The instance is initialized in place and no value is returned.
 
+        Raises:
+            ProviderError: If the configured web-search tool identifier is unsupported.
+
         """
         if client is None:
             client = self._default_client()
+        if web_search_tool not in self._WEB_SEARCH_TOOLS:
+            raise ProviderError("Unsupported Anthropic web-search tool: {}".format(web_search_tool))
         self.client = client
+        self.web_search_tool = web_search_tool
 
     @classmethod
     def _default_client(cls) -> Any:
@@ -290,7 +303,7 @@ class AnthropicProvider(Provider):
             else:
                 kwargs = self._prompt_json_kwargs(kwargs, request.output_schema)
         if "web_search" in request.tools:
-            kwargs["tools"] = [{"type": "web_search_20260318", "name": "web_search"}]
+            kwargs["tools"] = [{"type": self.web_search_tool, "name": "web_search"}]
 
         response = self._create_message(kwargs, request.output_schema)
         if getattr(response, "stop_reason", None) == "max_tokens":
