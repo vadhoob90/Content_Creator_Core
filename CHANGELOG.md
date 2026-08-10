@@ -8,6 +8,15 @@ release tag.
 
 ## [Unreleased]
 
+## [1.12.0] - 2026-08-10
+
+### Added
+
+- Anthropic API research can now select `web_search_20250305`,
+  `web_search_20260209`, or `web_search_20260318` in `config/models.yaml`,
+  allowing managed proxies and gateways to use the web-search tool version
+  they expose while preserving the current default.
+
 ## [1.11.0] - 2026-08-10
 
 ### Added
