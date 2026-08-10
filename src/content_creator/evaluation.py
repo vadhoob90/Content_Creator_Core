@@ -168,10 +168,12 @@ def run_replay_suite(root: Path, providers: Iterable[str]) -> Dict:
 
 
 def run_live_suite(root: Path, providers: Iterable[str]) -> Dict:
-    """Run two bounded flagship cases against real provider adapters.
+    """Run bounded flagship cases against real provider adapters.
 
     Execute bounded live-provider cases, capture their outcomes, and preserve the same
-    evaluation contract used by replay mode.
+    evaluation contract used by replay mode. Bedrock receives the committed research
+    fixture for the research-backed case because Bedrock Runtime does not expose Claude's
+    server-side web-search tool.
 
     Args:
         root (Path): The workspace root directory.
@@ -195,6 +197,11 @@ def run_live_suite(root: Path, providers: Iterable[str]) -> Dict:
                 research_source=case["research_source"],
                 provider=provider_name,
             )
+            if provider_name == "bedrock" and order.research_source == ResearchSource.AGENT:
+                research_path = root / ".eval-results" / "bedrock-live-research.json"
+                RunStore._atomic_text(research_path, json.dumps(_research(), indent=2))
+                order.research_source = ResearchSource.SUPPLIED
+                order.supplied_research_path = str(research_path)
             orchestrator = Orchestrator(root, max_revisions=2)
             state = orchestrator.start(order)
             if state.status == RunStatus.AWAITING_RESEARCH_APPROVAL:
@@ -212,6 +219,7 @@ def run_live_suite(root: Path, providers: Iterable[str]) -> Dict:
                 {
                     "case": case["id"],
                     "provider": provider_name,
+                    "research_source": order.research_source.value,
                     "status": state.status.value,
                     "passed": state.status == RunStatus.READY,
                     "run_id": state.id,

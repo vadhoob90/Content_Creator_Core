@@ -63,6 +63,10 @@ class ProviderRegistry:
             from .anthropic import AnthropicProvider
 
             provider = AnthropicProvider()
+        elif name == "bedrock":
+            from .bedrock import BedrockProvider
+
+            provider = BedrockProvider()
         elif name == "codex-native":
             from .codex_native import CodexNativeProvider
 

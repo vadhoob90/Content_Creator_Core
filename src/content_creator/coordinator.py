@@ -355,6 +355,19 @@ class ContentCoordinator:
                 status="configured" if configured else "missing-credentials",
                 detail=variable,
             )
+        if provider == "bedrock":
+            credential_hint = bool(
+                os.getenv("AWS_BEARER_TOKEN_BEDROCK")
+                or os.getenv("AWS_PROFILE")
+                or (os.getenv("AWS_ACCESS_KEY_ID") and os.getenv("AWS_SECRET_ACCESS_KEY"))
+                or os.getenv("AWS_WEB_IDENTITY_TOKEN_FILE")
+                or os.getenv("AWS_CONTAINER_CREDENTIALS_RELATIVE_URI")
+            )
+            return ProviderStatus(
+                name=provider,
+                status="configured" if credential_hint else "verify-required",
+                detail="AWS credential chain",
+            )
         executable = "codex" if provider == "codex-native" else "claude"
         return ProviderStatus(
             name=provider,

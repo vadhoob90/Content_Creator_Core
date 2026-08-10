@@ -15,6 +15,7 @@ class AnthropicProvider(Provider):
     """Generate content through the Anthropic API."""
 
     name = "anthropic"
+    _REQUEST_LABEL = "Anthropic"
     _MAX_OPTIONAL_PARAMETERS = 24
     _MAX_UNION_PARAMETERS = 16
     _COMPLEXITY_ERRORS = (
@@ -245,13 +246,17 @@ class AnthropicProvider(Provider):
             return self.client.messages.create(**kwargs)
         except Exception as exc:
             if not schema or "output_config" not in kwargs or not self._is_complexity_error(exc):
-                raise ProviderError("Anthropic request failed: {}".format(exc)) from exc
+                raise ProviderError(
+                    "{} request failed: {}".format(self._REQUEST_LABEL, exc)
+                ) from exc
         fallback = self._prompt_json_kwargs(kwargs, schema)
         try:
             return self.client.messages.create(**fallback)
         except Exception as exc:
             raise ProviderError(
-                "Anthropic prompt-based structured-output fallback failed: {}".format(exc)
+                "{} prompt-based structured-output fallback failed: {}".format(
+                    self._REQUEST_LABEL, exc
+                )
             ) from exc
 
     def generate(self, request: ModelRequest) -> ModelResponse:

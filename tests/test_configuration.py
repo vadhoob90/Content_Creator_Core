@@ -45,6 +45,25 @@ def test_model_selector_fails_closed_when_capability_is_missing(project):
         raise AssertionError("Expected ConfigurationError")
 
 
+def test_bedrock_model_profiles_support_structured_work_but_not_live_search(project):
+    configuration = Configuration(project)
+
+    selected = configuration.selection(
+        "writer-post",
+        provider="bedrock",
+        required_capabilities={"structured_output"},
+    )
+
+    assert selected.model == "global.anthropic.claude-sonnet-5"
+    assert selected.capabilities == ["structured_output"]
+    with pytest.raises(ConfigurationError, match="web_search"):
+        configuration.selection(
+            "researcher-light",
+            provider="bedrock",
+            required_capabilities={"structured_output", "web_search"},
+        )
+
+
 def test_configuration_reader_rejects_missing_and_non_mapping_yaml(tmp_path):
     with pytest.raises(ConfigurationError, match="Missing configuration"):
         Configuration._read_yaml(tmp_path / "missing.yaml")
