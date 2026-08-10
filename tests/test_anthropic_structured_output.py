@@ -6,6 +6,8 @@ from content_creator.domain import ModelRequest, ModelSelection, PlanningDecisio
 from content_creator.providers.anthropic import AnthropicProvider
 from content_creator.providers.base import ProviderError
 
+pytestmark = pytest.mark.usefixtures("anthropic_sdk_stub")
+
 
 def model_request(schema):
     return ModelRequest(
