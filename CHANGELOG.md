@@ -8,6 +8,38 @@ release tag.
 
 ## [Unreleased]
 
+## [1.13.0] - 2026-08-11
+
+### Added
+
+- Natural-language requests such as “create an image for this article” now
+  route through the packaged Content Creator skill into an explicit visual
+  invocation artifact, reusable-component resolution, rendering, validation,
+  critique, selection, approval, and publication lifecycle.
+- A public, versioned `VisualComponentRegistry` discovers compatible contracts,
+  layouts, renderers, validators, and previews from the installed pinned Core
+  package and records their immutable references in visual manifests and assets.
+- Core now ships a credential-free deterministic SVG renderer and the supported
+  `visual components` and `visual render` CLI operations, including named
+  variants, revisions, workspace brand tokens, and actionable failure output.
+- LinkedIn packs now declare article-cover, link-preview, portrait-feed, and
+  square-feed roles, including 1920 × 1080 article covers and 1200 × 627 link
+  previews.
+
+### Changed
+
+- Pack inheritance now deep-merges visual capabilities and named roles so a
+  downstream pack can extend Core visual support without copying resources or
+  unintentionally resetting inherited support.
+- The Core README now presents governed visual creation as a first-class
+  workflow rather than an optional feature footnote.
+
+### Migration
+
+- No stored-data migration is required. New component and variant fields are
+  optional when older visual manifests are read, and text-only packs remain
+  visual-disabled by default.
+
 ## [1.12.0] - 2026-08-10
 
 ### Added

@@ -11,6 +11,11 @@ cases:
     prompt: Resume my existing content run and show me the reviewed final draft.
     expected_activation: true
     expected_skill: content-creator
+  - id: content-create-image
+    category: positive
+    prompt: Create an image for this reviewed LinkedIn article.
+    expected_activation: true
+    expected_skill: content-creator
   - id: voice-create-authorised
     category: positive
     prompt: Build a writing voice from these authorised essays and transcripts.

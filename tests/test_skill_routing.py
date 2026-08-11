@@ -22,6 +22,8 @@ def test_committed_skill_routing_suite_and_packaged_skills_are_valid():
 
     assert validate_skill_routing_suite(suite) == []
     assert validate_packaged_skills(root, suite["instruction_word_budget"]) == []
+    image_case = next(case for case in suite["cases"] if case["id"] == "content-create-image")
+    assert image_case["expected_skill"] == "content-creator"
 
 
 def test_skill_routing_validation_rejects_duplicates_and_missing_coverage():
@@ -223,8 +225,8 @@ def test_repeated_skill_routing_trials_record_metrics_failures_and_majorities():
     )
 
     assert len(requests) == len(suite["cases"]) * 3
-    assert report["metrics"]["total_trials"] == 24
-    assert report["metrics"]["passed_trials"] == 22
+    assert report["metrics"]["total_trials"] == len(suite["cases"]) * 3
+    assert report["metrics"]["passed_trials"] == len(suite["cases"]) * 3 - 2
     assert report["metrics"]["false_positives"] == 1
     assert report["metrics"]["false_negatives"] == 1
     assert len(report["failed_prompts"]) == 2

@@ -32,6 +32,20 @@ Use the [content-pack authoring guide](content-pack-authoring.md) for the worked
 CLI flow, manifest rules, validation, replay cases, and isolation test. Packs
 own channel semantics and cannot select providers or weaken integrity gates.
 
+## Add a visual adapter or component source
+
+Use `VisualAdapter` for renderer execution and `VisualComponentRegistry` for
+versioned discovery. A host registry can contain provider-specific components,
+but every resolved component needs stable identity, compatibility, and
+provenance metadata so `VisualRequestWorkflow` can persist the exact selection.
+Keep credentials in the host adapter. Packs own roles, dimensions, formats,
+safe areas, crops, and destinations; workspaces own author brand tokens.
+
+Do not bypass `VisualRequestWorkflow` for natural-language image requests. It
+records the routing decision, resolves installed components, creates or reuses
+the brief, renders named variants, validates them, and leaves critique,
+selection, approval, and publication as explicit checkpoints.
+
 ## Prove a reusable seam
 
 Use `examples/contrib/` for a small experiment before adding a protocol,

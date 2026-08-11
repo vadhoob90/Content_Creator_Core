@@ -97,6 +97,37 @@ class CropProfile(BaseModel):
     protected_roles: List[str] = Field(default_factory=lambda: ["headline"])
 
 
+class VisualRoleProfile(BaseModel):
+    """Represent one pack-owned publication role for visual output."""
+
+    aspect_ratio: str
+    recommended_width: int = Field(gt=0)
+    recommended_height: int = Field(gt=0)
+    formats: List[str] = Field(min_length=1)
+    safe_area_profiles: List[str] = Field(default_factory=list)
+    crop_profiles: List[str] = Field(default_factory=list)
+
+    @field_validator("aspect_ratio")
+    @classmethod
+    def validate_ratio(cls, value: str) -> str:
+        """Validate a role aspect ratio.
+
+        Args:
+            value (str): Positive ``WIDTH:HEIGHT`` ratio, including decimal values.
+
+        Returns:
+            str: Validated ratio text.
+
+        Raises:
+            ValueError: If the ratio does not use positive numeric values.
+        """
+        if not re.fullmatch(
+            r"(?:[1-9]\d*(?:\.\d+)?|0\.\d*[1-9]\d*):(?:[1-9]\d*(?:\.\d+)?|0\.\d*[1-9]\d*)", value
+        ):
+            raise ValueError("Aspect ratios must use positive WIDTH:HEIGHT values")
+        return value
+
+
 class VisualPackProfile(BaseModel):
     """Represent a visual pack profile."""
 
@@ -111,6 +142,8 @@ class VisualPackProfile(BaseModel):
     require_alt_text: bool = True
     require_provenance: bool = True
     destination: Optional[str] = None
+    default_role: Optional[str] = None
+    roles: Dict[str, VisualRoleProfile] = Field(default_factory=dict)
 
     @field_validator("aspect_ratios")
     @classmethod
@@ -127,7 +160,10 @@ class VisualPackProfile(BaseModel):
             ValueError: If an input value violates the supported domain constraints.
         """
         for value in values:
-            if not re.fullmatch(r"[1-9]\d*:[1-9]\d*", value):
+            if not re.fullmatch(
+                r"(?:[1-9]\d*(?:\.\d+)?|0\.\d*[1-9]\d*):(?:[1-9]\d*(?:\.\d+)?|0\.\d*[1-9]\d*)",
+                value,
+            ):
                 raise ValueError("Aspect ratios must use positive WIDTH:HEIGHT values")
         return values
 
@@ -147,7 +183,64 @@ class VisualPackProfile(BaseModel):
             raise ValueError("A supported visual profile needs an execution class")
         if self.supported and not self.destination:
             raise ValueError("A supported visual profile needs a publication destination")
+        if self.default_role and self.default_role not in self.roles:
+            raise ValueError("The default visual role must be declared in roles")
+        for role in self.roles.values():
+            if role.aspect_ratio not in self.aspect_ratios:
+                self.aspect_ratios.append(role.aspect_ratio)
+            self.formats = list(dict.fromkeys(self.formats + role.formats))
         return self
+
+    def role(self, role_id: Optional[str] = None) -> VisualRoleProfile:
+        """Resolve one named role or the backward-compatible aggregate profile.
+
+        Args:
+            role_id (Optional[str]): Requested visual role. Defaults to ``None``.
+
+        Returns:
+            VisualRoleProfile: Resolved pack-owned output requirements.
+
+        Raises:
+            VisualError: If the requested or default role is unavailable.
+        """
+        selected = role_id or self.default_role
+        if selected:
+            try:
+                return self.roles[selected]
+            except KeyError as exc:
+                message = (
+                    "The selected content pack does not support visual role '{}' (available: {})"
+                )
+                raise VisualError(
+                    message.format(selected, ", ".join(sorted(self.roles)) or "none")
+                ) from exc
+        if self.roles:
+            raise VisualError("The selected content pack has no default visual role")
+        if not self.aspect_ratios or not self.formats:
+            raise VisualError("The selected content pack has no usable visual output profile")
+        width, height = _recommended_dimensions(self.aspect_ratios[0])
+        return VisualRoleProfile(
+            aspect_ratio=self.aspect_ratios[0],
+            recommended_width=width,
+            recommended_height=height,
+            formats=self.formats,
+            safe_area_profiles=[item.id for item in self.safe_areas],
+            crop_profiles=[item.id for item in self.crop_profiles],
+        )
+
+
+def _recommended_dimensions(ratio: str) -> tuple[int, int]:
+    """Return bounded fallback dimensions derived from a ratio.
+
+    Args:
+        ratio (str): Positive ``WIDTH:HEIGHT`` ratio.
+
+    Returns:
+        tuple[int, int]: Width and height suitable for a legacy aggregate profile.
+    """
+    width, height = (float(part) for part in ratio.split(":"))
+    scale = 1200 / width
+    return 1200, max(1, round(height * scale))
 
 
 class VisualSource(BaseModel):
@@ -162,6 +255,15 @@ class VisualSource(BaseModel):
     licence: Optional[str] = None
 
 
+class VisualComponentRef(BaseModel):
+    """Represent one immutable reusable visual component reference."""
+
+    id: str
+    version: str
+    kind: str
+    provenance: str
+
+
 class VisualBrief(BaseModel):
     """Represent a visual brief."""
 
@@ -171,8 +273,11 @@ class VisualBrief(BaseModel):
     content_connection: str
     exact_copy: List[str] = Field(default_factory=list)
     platform_profile: str
+    role: Optional[str] = None
     aspect_ratios: List[str] = Field(min_length=1)
     output_formats: List[str] = Field(min_length=1)
+    output_width: Optional[int] = Field(default=None, gt=0)
+    output_height: Optional[int] = Field(default=None, gt=0)
     safe_area_profiles: List[str] = Field(default_factory=list)
     crop_profiles: List[str] = Field(default_factory=list)
     hierarchy: List[str] = Field(default_factory=list)
@@ -180,6 +285,8 @@ class VisualBrief(BaseModel):
     revision_invariants: List[str] = Field(default_factory=list)
     sources: List[VisualSource] = Field(default_factory=list)
     alt_text: str
+    brand_tokens: Dict[str, str] = Field(default_factory=dict)
+    components: List[VisualComponentRef] = Field(default_factory=list)
     preferred_execution_class: Optional[ExecutionClass] = None
     preferred_adapter: Optional[str] = None
     author_approval: VisualApprovalStatus = VisualApprovalStatus.DRAFT
@@ -249,6 +356,7 @@ class VisualAsset(BaseModel):
     asset_id: str = Field(default_factory=lambda: uuid4().hex[:12])
     parent_asset_id: Optional[str] = None
     revision: int = Field(default=1, ge=1)
+    variant_name: Optional[str] = None
     execution_class: ExecutionClass
     adapter: str
     provider: Optional[str] = None
@@ -266,6 +374,7 @@ class VisualAsset(BaseModel):
     extracted_copy: Optional[List[str]] = None
     content_boxes: List[BoundingBox] = Field(default_factory=list)
     metadata: Dict[str, Any] = Field(default_factory=dict)
+    components: List[VisualComponentRef] = Field(default_factory=list)
     validation: Optional[VisualValidation] = None
     critique: Optional[VisualCritique] = None
     status: VisualApprovalStatus = VisualApprovalStatus.DRAFT
@@ -278,6 +387,7 @@ class VisualManifest(BaseModel):
     schema_version: str = "1.0"
     run_id: str
     assets: List[VisualAsset] = Field(default_factory=list)
+    components: List[VisualComponentRef] = Field(default_factory=list)
     selected_asset_id: Optional[str] = None
     published_path: Optional[str] = None
     updated_at: str = Field(default_factory=lambda: utc_now().isoformat())

@@ -67,6 +67,7 @@ from .visual_contracts import (
 from .visual_contracts import (
     VisualValidation as VisualValidation,
 )
+from .visual_rendering import default_visual_adapters
 
 
 class VisualWorkflow:
@@ -85,7 +86,7 @@ class VisualWorkflow:
         """
         self.root = root.resolve()
         self.store = RunStore(self.root)
-        self.adapters = adapter_registry or VisualAdapterRegistry()
+        self.adapters = adapter_registry or default_visual_adapters()
 
     def create_brief(self, brief: VisualBrief, profile: VisualPackProfile) -> VisualBrief:
         """Create the brief.
@@ -123,7 +124,7 @@ class VisualWorkflow:
         for directory in ("concepts", "revisions", "selected", "previews"):
             (visuals / directory).mkdir(parents=True, exist_ok=True)
         self.store.write_artifact(brief.run_id, "visual_brief.json", brief)
-        self._save_manifest(VisualManifest(run_id=brief.run_id))
+        self._save_manifest(VisualManifest(run_id=brief.run_id, components=brief.components))
         return brief
 
     def execute(
@@ -131,6 +132,7 @@ class VisualWorkflow:
         run_id: str,
         adapter_name: Optional[str] = None,
         parent_asset_id: Optional[str] = None,
+        variant_name: Optional[str] = None,
     ) -> VisualAsset:
         """Execute the visual workflow workflow.
 
@@ -143,6 +145,7 @@ class VisualWorkflow:
                 Defaults to ``None``.
             parent_asset_id (Optional[str]): The stable identifier for the parent asset.
                 Defaults to ``None``.
+            variant_name (Optional[str]): Stable review variant label. Defaults to ``None``.
 
         Returns:
             VisualAsset: The resulting visual asset for execute.
@@ -164,6 +167,7 @@ class VisualWorkflow:
             asset_id=asset_id,
             parent_asset_id=parent.asset_id if parent else None,
             revision=revision,
+            variant_name=variant_name,
             execution_class=adapter.execution_class,
             adapter=adapter.name,
             provider=str(output.metadata.get("provider") or "") or None,
@@ -181,6 +185,7 @@ class VisualWorkflow:
             extracted_copy=output.extracted_copy,
             content_boxes=output.content_boxes,
             metadata=output.metadata,
+            components=manifest.components,
         )
         manifest.assets.append(asset)
         self._save_manifest(manifest)
@@ -242,7 +247,9 @@ class VisualWorkflow:
             None: The callable updates asset basics state and returns no value.
         """
         ratio = self._ratio(asset.width, asset.height)
-        if ratio not in profile.aspect_ratios:
+        if not any(
+            self._ratio_matches(asset.width, asset.height, item) for item in profile.aspect_ratios
+        ):
             diagnostics.append(self._error("unsupported-aspect-ratio", ratio))
         if asset.format not in [value.lower().lstrip(".") for value in profile.formats]:
             diagnostics.append(self._error("unsupported-format", asset.format))
@@ -543,6 +550,19 @@ class VisualWorkflow:
             raise VisualError("Run has no visual manifest")
         return VisualManifest.model_validate_json(path.read_text(encoding="utf-8"))
 
+    def asset(self, run_id: str, asset_id: str) -> VisualAsset:
+        """Return one persisted visual asset with its latest lifecycle evidence.
+
+        Args:
+            run_id (str): Stable content run identifier.
+            asset_id (str): Stable visual asset identifier.
+
+        Returns:
+            VisualAsset: Current persisted asset state.
+
+        """
+        return self._asset(self._load_manifest(run_id), asset_id)
+
     def _save_manifest(self, manifest: VisualManifest) -> None:
         """Save the manifest.
 
@@ -589,6 +609,22 @@ class VisualWorkflow:
 
         divisor = gcd(width, height)
         return "{}:{}".format(width // divisor, height // divisor)
+
+    @staticmethod
+    def _ratio_matches(width: int, height: int, expected: str) -> bool:
+        """Return whether dimensions match a declared ratio within rounding tolerance.
+
+        Args:
+            width (int): Rendered width in pixels.
+            height (int): Rendered height in pixels.
+            expected (str): Pack ratio in positive ``WIDTH:HEIGHT`` form.
+
+        Returns:
+            bool: Whether the rendered and declared ratios differ by at most 0.5 percent.
+        """
+        expected_width, expected_height = (float(part) for part in expected.split(":"))
+        expected_value = expected_width / expected_height
+        return abs((width / height) - expected_value) / expected_value <= 0.005
 
     @staticmethod
     def _normalise_copy(lines: List[str]) -> List[str]:

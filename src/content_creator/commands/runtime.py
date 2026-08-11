@@ -19,6 +19,7 @@ from ..publication_provenance import PublicationProvenanceError
 from ..runner import AgentOutputError
 from ..storage import StorageError
 from ..upgrade import WorkspaceUpgradeError
+from ..visuals import VisualError
 from ..voice_ml import MLDependencyError
 from . import dispatch
 from .parser import build_parser as build_parser
@@ -54,6 +55,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         MLDependencyError,
         StorageError,
         WorkspaceUpgradeError,
+        VisualError,
     ) as exc:
         result = {
             "status": "error",

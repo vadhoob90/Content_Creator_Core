@@ -89,10 +89,32 @@ required research and review route, and preserves the work for author review.
 See [Content Creator Coordinator](docs/guides/content-coordinator.md) for
 conversational and terminal use.
 
+### 4. Create governed visuals from natural language
+
+Visual creation is a first-class Core workflow. After a post or article is
+reviewable, ask your coding assistant:
+
+> Create an image for this article.
+
+The Content Creator skill resolves the active run and its pinned Core version,
+finds compatible reusable layouts, renderers, validators, and preview
+components from Core, and combines them with the content pack's platform role
+and optional workspace-owned brand tokens. Core ships a deterministic SVG
+renderer, so this path works without image-provider credentials; hosts can
+also register generative adapters through the same provider-neutral contract.
+
+Every brief, component version, named variant, validation result, critique,
+revision, selection, and approval remains under the content run. Only the
+author-approved asset can enter repository publication. LinkedIn packs include
+article-cover, link-preview, portrait-feed, and square-feed roles where
+applicable.
+
+See [Governed visual workflows](docs/guides/visual-assets.md) for the natural
+language route, reusable-component API, CLI commands, brand tokens, and
+approval lifecycle.
+
 ## Optional features to explore
 
-- [Visual asset packs](docs/guides/visual-assets.md) add reviewable visuals to
-  supported content workflows.
 - [Statistical voice scoring](docs/guides/linguistic-voice-framework.md) extends
   voice review with optional analysis.
 

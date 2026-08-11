@@ -11,9 +11,28 @@
     "required": false,
     "execution_classes": ["deterministic", "generative"],
     "aspect_ratios": ["1:1", "4:5"],
-    "formats": ["png", "jpg", "webp"],
+    "formats": ["svg", "png", "jpg", "webp"],
     "max_file_size_bytes": 8388608,
     "destination": "content/linkedin-post/visuals",
+    "default_role": "portrait-feed",
+    "roles": {
+      "portrait-feed": {
+        "aspect_ratio": "4:5",
+        "recommended_width": 1200,
+        "recommended_height": 1500,
+        "formats": ["svg", "png", "jpg", "webp"],
+        "safe_area_profiles": ["feed"],
+        "crop_profiles": ["composer-thumbnail"]
+      },
+      "square-feed": {
+        "aspect_ratio": "1:1",
+        "recommended_width": 1200,
+        "recommended_height": 1200,
+        "formats": ["svg", "png", "jpg", "webp"],
+        "safe_area_profiles": ["feed"],
+        "crop_profiles": ["composer-thumbnail"]
+      }
+    },
     "safe_areas": [
       {
         "id": "feed",

@@ -1,8 +1,16 @@
+import json
+
 import pytest
 
+from content_creator.cli import main
 from content_creator.domain import RoutePlan, RunState, RunStatus, WorkOrder
 from content_creator.packs import PackRegistry
 from content_creator.storage import RunStore
+from content_creator.visual_components import (
+    VisualComponentKind,
+    VisualComponentRegistry,
+)
+from content_creator.visual_requests import VisualRenderRequest, VisualRequestWorkflow
 from content_creator.visuals import (
     BoundingBox,
     ExecutionClass,
@@ -100,6 +108,169 @@ def test_pack_declares_provider_independent_visual_capabilities(project):
     ]
     assert profile.aspect_ratios == ["1:1", "4:5"]
     assert profile.destination == "content/linkedin-post/visuals"
+
+
+def test_core_components_are_versioned_resolvable_and_installed_with_core():
+    registry = VisualComponentRegistry.from_core()
+
+    components = registry.resolve(
+        role="article-cover",
+        execution_class=ExecutionClass.DETERMINISTIC,
+        output_format="svg",
+        aspect_ratio="16:9",
+    )
+
+    assert {item.kind for item in components} >= {
+        VisualComponentKind.CONTRACT,
+        VisualComponentKind.LAYOUT,
+        VisualComponentKind.RENDERER,
+        VisualComponentKind.VALIDATOR,
+    }
+    assert all(item.version and item.provenance == "content-creator-core" for item in components)
+
+
+def test_natural_language_visual_request_renders_and_records_component_provenance(project):
+    state = reviewed_run(project, pack="linkedin-article")
+    profile = PackRegistry(project).resolve("linkedin-article").visuals
+    (project / "visual-brand.json").write_text(
+        json.dumps(
+            {
+                "background": "#112233",
+                "accent": "#ABCDEF",
+                "font_family": "Inter",
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    result = VisualRequestWorkflow(project).render(
+        profile=profile,
+        request=VisualRenderRequest(
+            run_id=state.id,
+            pack_id="linkedin-article",
+            pack_version="1.0.0",
+            request="Create an image for this article.",
+            role="article-cover",
+            variants=2,
+        ),
+    )
+
+    manifest = json.loads(
+        (project / "runs" / state.id / "visuals" / "manifest.json").read_text(encoding="utf-8")
+    )
+    invocation = json.loads(
+        (project / "runs" / state.id / "visuals" / "invocation.json").read_text(encoding="utf-8")
+    )
+
+    assert [asset.variant_name for asset in result.assets] == ["concept-1", "concept-2"]
+    assert all(asset.validation and asset.validation.passed for asset in result.assets)
+    assert all(asset.format == "svg" for asset in result.assets)
+    assert all(
+        (project / "runs" / state.id / asset.relative_path).exists() for asset in result.assets
+    )
+    rendered_svg = (project / "runs" / state.id / result.assets[0].relative_path).read_text(
+        encoding="utf-8"
+    )
+    assert "#112233" in rendered_svg
+    assert "#ABCDEF" in rendered_svg
+    assert "Inter" in rendered_svg
+    assert {item["id"] for item in manifest["components"]} >= {
+        "core.visual-brief-contract",
+        "core.editorial-card-layout",
+        "core.deterministic-svg-renderer",
+    }
+    assert manifest["assets"][0]["components"] == manifest["components"]
+    assert invocation["decision"] == "visual-workflow"
+    assert invocation["request"] == "Create an image for this article."
+    assert invocation["role"] == "article-cover"
+
+
+def test_visual_request_reports_unsupported_role_and_pack_support(project):
+    article = reviewed_run(project, pack="linkedin-article")
+    article_pack = PackRegistry(project).resolve("linkedin-article")
+    with pytest.raises(VisualError, match="does not support visual role 'banner'"):
+        VisualRequestWorkflow(project).render(
+            profile=article_pack.visuals,
+            request=VisualRenderRequest(
+                run_id=article.id,
+                pack_id=article_pack.id,
+                pack_version=article_pack.version,
+                request="Create an image for this article.",
+                role="banner",
+            ),
+        )
+
+    text = reviewed_run(project, pack="general-text")
+    text_pack = PackRegistry(project).resolve("general-text")
+    with pytest.raises(VisualError, match="does not support visual assets"):
+        VisualRequestWorkflow(project).render(
+            profile=text_pack.visuals,
+            request=VisualRenderRequest(
+                run_id=text.id,
+                pack_id=text_pack.id,
+                pack_version=text_pack.version,
+                request="Create an image for this text.",
+            ),
+        )
+
+
+def test_visual_cli_lists_components_and_renders_a_review_variant(project, capsys):
+    state = reviewed_run(project, pack="linkedin-article")
+
+    assert (
+        main(
+            [
+                "--root",
+                str(project),
+                "visual",
+                "components",
+                state.id,
+                "--role",
+                "article-cover",
+            ]
+        )
+        == 0
+    )
+    components = json.loads(capsys.readouterr().out)
+    assert "core.deterministic-svg-renderer" in {item["id"] for item in components}
+
+    assert (
+        main(
+            [
+                "--root",
+                str(project),
+                "visual",
+                "render",
+                state.id,
+                "--role",
+                "article-cover",
+                "--request",
+                "Create an image for this article.",
+            ]
+        )
+        == 0
+    )
+    rendered = json.loads(capsys.readouterr().out)
+    assert rendered["assets"][0]["format"] == "svg"
+    assert rendered["assets"][0]["validation"]["passed"] is True
+
+    assert (
+        main(
+            [
+                "--root",
+                str(project),
+                "visual",
+                "render",
+                state.id,
+                "--role",
+                "banner",
+            ]
+        )
+        == 8
+    )
+    error = json.loads(capsys.readouterr().out)
+    assert error["error_type"] == "VisualError"
+    assert "available: article-cover" in error["error"]
 
 
 def test_visual_lifecycle_persists_lineage_and_publishes_only_approved_asset(project):

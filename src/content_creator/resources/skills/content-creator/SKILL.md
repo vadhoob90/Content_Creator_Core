@@ -1,6 +1,6 @@
 ---
 name: content-creator
-description: Plan, research, draft, review, publish, and learn from content using the repository's provider-neutral workflow, including optional context-isolated author perspectives. Use for LinkedIn posts or articles, generic content runs, research checkpoints, revisions, run status, perspective creation or approval, repository publication, publication-triggered voice learning, and perspective proposals.
+description: Plan, research, draft, review, create governed images, publish, and learn from content using the repository's provider-neutral workflow, including optional context-isolated author perspectives. Use for LinkedIn posts or articles, image requests for active content, generic content runs, research checkpoints, revisions, run status, perspective creation or approval, repository publication, publication-triggered voice learning, and perspective proposals.
 ---
 
 # Content Creator
@@ -76,6 +76,29 @@ and the author has not selected a provider, prefer `codex-native`.
 Resolve only active voices. Preserve the exact pack and voice version written
 to `runs/<run-id>/resolved-context.json`. Use `$voice-builder` when the user
 asks to create, approve, deactivate, or otherwise manage a voice.
+
+## Create a visual for reviewed content
+
+Treat “create an image for this post/article” as an invocation of Core's visual
+workflow, not as permission to use an untracked host image tool. Run `start` to
+resolve workspace state, then use `coordinator next-actions <run-id>` when an
+active run is known. If more than one reviewed run could be meant, ask the
+author which run; do not guess. Preserve the author's exact request:
+
+```bash
+content-creator --workspace . visual components <run-id> [--role <role>]
+content-creator --workspace . visual render <run-id> \
+  --request "<exact author request>" [--role <role>] [--variants 2]
+```
+
+Core resolves reusable components from the installed pinned package, combines
+pack-owned role requirements with optional workspace-owned
+`visual-brand.json` tokens, renders named variants, validates them, and records
+the routing decision and component versions under `runs/<run-id>/visuals/`.
+Present variants for critique, selection, and explicit approval. Never bypass
+the visual lifecycle when a pack, role, component, or adapter is unavailable;
+surface Core's diagnostic and offer only supported roles returned by
+`visual components`.
 
 ## Manage optional perspectives
 
