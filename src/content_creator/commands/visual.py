@@ -9,6 +9,7 @@ from typing import Any, Callable
 
 from ..packs import PackRegistry
 from ..storage import RunStore
+from ..visual_requests import VisualRenderRequest, VisualRequestWorkflow
 from ..visuals import VisualBrief, VisualCritique, VisualWorkflow
 
 
@@ -34,12 +35,29 @@ def register(subparsers: Any) -> None:
     critique.add_argument("run_id")
     critique.add_argument("asset_id")
     critique.add_argument("critique_file")
+    components = commands.add_parser(
+        "components", help="List compatible reusable Core visual components"
+    )
+    components.add_argument("run_id")
+    components.add_argument("--role")
+    render = commands.add_parser("render", help="Render validated visual review variants")
+    render.add_argument("run_id")
+    render.add_argument("--role")
+    render.add_argument("--request", default="Create an image for this content.")
+    render.add_argument("--variants", type=int, default=1)
+    render.add_argument("--adapter")
+    render.add_argument("--parent-asset-id")
+    render.add_argument("--objective")
+    render.add_argument("--alt-text")
     commands.add_parser("publish").add_argument("run_id")
     commands.add_parser("show").add_argument("run_id")
 
 
 def run(root: Path, args: argparse.Namespace, emit: Callable[[Any], None]) -> int:
     """Run the visual workflow.
+
+    Resolve the persisted content pack once, then dispatch the requested command
+    through either the established asset lifecycle or the component-aware request path.
 
     Args:
         root (Path): The workspace root directory.
@@ -52,11 +70,8 @@ def run(root: Path, args: argparse.Namespace, emit: Callable[[Any], None]) -> in
     workflow = VisualWorkflow(root)
     store = RunStore(root)
     state = store.load(args.run_id)
-    profile = (
-        PackRegistry(root)
-        .resolve(state.work_order.content_pack, state.work_order.pack_options)
-        .visuals
-    )
+    pack = PackRegistry(root).resolve(state.work_order.content_pack, state.work_order.pack_options)
+    profile = pack.visuals
     if args.visual_command == "brief":
         payload = json.loads(Path(args.brief_file).read_text(encoding="utf-8"))
         payload["run_id"] = args.run_id
@@ -77,6 +92,31 @@ def run(root: Path, args: argparse.Namespace, emit: Callable[[Any], None]) -> in
     elif args.visual_command == "publish":
         target = workflow.publish(args.run_id, profile)
         emit({"published_path": str(target.relative_to(root)) if target else None})
+    elif args.visual_command == "components":
+        emit(
+            [
+                component.model_dump(mode="json")
+                for component in VisualRequestWorkflow(root).components(profile, args.role)
+            ]
+        )
+    elif args.visual_command == "render":
+        emit(
+            VisualRequestWorkflow(root).render(
+                profile=profile,
+                request=VisualRenderRequest(
+                    run_id=args.run_id,
+                    pack_id=pack.id,
+                    pack_version=pack.version,
+                    request=args.request,
+                    role=args.role,
+                    variants=args.variants,
+                    adapter_name=args.adapter,
+                    parent_asset_id=args.parent_asset_id,
+                    objective=args.objective,
+                    alt_text=args.alt_text,
+                ),
+            )
+        )
     else:
         emit(json.loads(store.read_artifact(args.run_id, "visuals/manifest.json")))
     return 0

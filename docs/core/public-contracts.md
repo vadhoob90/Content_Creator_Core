@@ -69,6 +69,11 @@ verification.
 ### Extension contracts
 
 Provider and visual adapter contracts are supported substitution points.
+`VisualComponentRegistry`, `VisualRenderRequest`, `VisualRequestWorkflow`, and
+`EditorialSvgRenderer` are additive root exports for installed-component
+discovery, governed request execution, and credential-free deterministic
+rendering. Component references persisted by the request workflow are immutable
+provenance records.
 Workflow stages and `RunCapabilities` are internal composition seams: they are
 covered by architecture tests but become public only if deliberately exported
 and documented in a future release.

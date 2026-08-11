@@ -9,7 +9,7 @@ from typing import Any, Dict, List, Optional
 from pydantic import BaseModel, Field
 
 from .resource_paths import ResourceResolver
-from .visuals import VisualPackProfile
+from .visual_contracts import VisualPackProfile
 
 
 class PackError(ValueError):
@@ -193,10 +193,13 @@ class PackRegistry:
         data = chain[-1].model_dump()
         for child in reversed(chain[:-1]):
             child_data = child.model_dump(exclude_unset=True)
-            for mapping in ("defaults", "prompts", "statistical_voice_score", "visuals"):
+            for mapping in ("defaults", "prompts", "statistical_voice_score"):
                 merged = dict(data.get(mapping, {}))
                 merged.update(child_data.get(mapping, {}))
                 child_data[mapping] = merged
+            child_data["visuals"] = self._merge_visuals(
+                data.get("visuals", {}), child_data.get("visuals", {})
+            )
             for sequence in ("rubrics", "validators"):
                 child_data[sequence] = list(
                     dict.fromkeys(data.get(sequence, []) + child_data.get(sequence, []))
@@ -209,6 +212,34 @@ class PackRegistry:
             )
             data.update(child_data)
         return data
+
+    @staticmethod
+    def _merge_visuals(base: Dict[str, Any], child: Dict[str, Any]) -> Dict[str, Any]:
+        """Return a child visual profile merged without model defaults.
+
+        Args:
+            base (Dict[str, Any]): Fully resolved base visual profile.
+            child (Dict[str, Any]): Explicitly declared child visual fields.
+
+        Returns:
+            Dict[str, Any]: Inherited profile with additive capabilities and roles.
+        """
+        merged = deepcopy(base)
+        for key, value in child.items():
+            if key == "roles":
+                roles = deepcopy(merged.get("roles", {}))
+                for role_id, role in value.items():
+                    roles[role_id] = {**roles.get(role_id, {}), **role}
+                merged["roles"] = roles
+            elif key in {"execution_classes", "aspect_ratios", "formats"}:
+                merged[key] = list(dict.fromkeys(merged.get(key, []) + value))
+            elif key in {"safe_areas", "crop_profiles"}:
+                records = {item["id"]: item for item in merged.get(key, [])}
+                records.update({item["id"]: item for item in value})
+                merged[key] = list(records.values())
+            else:
+                merged[key] = value
+        return merged
 
     @staticmethod
     def _apply_overrides(data: Dict[str, Any], overrides: Optional[Dict[str, Any]]) -> None:

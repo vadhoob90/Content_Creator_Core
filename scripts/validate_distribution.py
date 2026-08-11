@@ -22,6 +22,7 @@ REQUIRED_WHEEL_FILES = {
     "content_creator/resources/rubrics/core.yaml",
     "content_creator/resources/skills/content-creator/SKILL.md",
     "content_creator/resources/skills/voice-builder/SKILL.md",
+    "content_creator/resources/visuals/components.json",
 }
 
 

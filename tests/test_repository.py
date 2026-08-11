@@ -71,11 +71,12 @@ def test_readme_is_a_streamlined_operator_journey():
     assert "### 1. Create an author workspace" in readme
     assert "### 2. Choose a voice route" in readme
     assert "### 3. Ask for content naturally" in readme
+    assert "### 4. Create governed visuals from natural language" in readme
     workflow_visual = "docs/assets/how-content-creator-works-ocean-teal.png"
     assert readme.count(workflow_visual) == 1
     assert (ROOT / workflow_visual).is_file()
     assert "Optional features to explore" in readme
-    assert "[Visual asset packs](docs/guides/visual-assets.md)" in readme
+    assert "[Governed visual workflows](docs/guides/visual-assets.md)" in readme
     assert "[Statistical voice scoring](docs/guides/linguistic-voice-framework.md)" in readme
     assert "statistical_voice_score" not in readme
     assert "deterministic distribution comparison" not in readme
@@ -136,7 +137,7 @@ def test_core_development_readme_covers_clone_and_validation():
     assert "git tag -a v1.0.0" in guide
     assert ".github/workflows/release.yml" in guide
     assert "Trusted Publisher registration is a one-time" in guide
-    assert "workspace upgrade --to v1.12.0 --apply" in guide
+    assert "workspace upgrade --to v1.13.0 --apply" in guide
 
 
 def test_work_package_uses_the_repository_cli_name():

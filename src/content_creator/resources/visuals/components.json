@@ -1,0 +1,61 @@
+{
+  "schema_version": "1.0",
+  "components": [
+    {
+      "id": "core.visual-brief-contract",
+      "version": "1.0.0",
+      "kind": "contract",
+      "supported_roles": ["*"],
+      "required_inputs": ["reviewed-content", "pack-profile", "alt-text"],
+      "produced_outputs": ["visual-brief"],
+      "provenance": "content-creator-core",
+      "compatibility": {"core": ">=1.13,<2"}
+    },
+    {
+      "id": "core.editorial-card-layout",
+      "version": "1.0.0",
+      "kind": "layout",
+      "supported_roles": ["article-cover", "link-preview", "portrait-feed", "square-feed"],
+      "execution_classes": ["deterministic"],
+      "formats": ["svg"],
+      "aspect_ratios": ["16:9", "1.91:1", "4:5", "1:1"],
+      "required_inputs": ["headline", "brand-tokens"],
+      "produced_outputs": ["layout-tree"],
+      "provenance": "content-creator-core",
+      "compatibility": {"core": ">=1.13,<2"}
+    },
+    {
+      "id": "core.deterministic-svg-renderer",
+      "version": "1.0.0",
+      "kind": "renderer",
+      "supported_roles": ["article-cover", "link-preview", "portrait-feed", "square-feed"],
+      "execution_classes": ["deterministic"],
+      "formats": ["svg"],
+      "aspect_ratios": ["16:9", "1.91:1", "4:5", "1:1"],
+      "required_inputs": ["visual-brief", "layout-tree"],
+      "produced_outputs": ["visual-asset"],
+      "provenance": "content-creator-core",
+      "compatibility": {"core": ">=1.13,<2"}
+    },
+    {
+      "id": "core.pack-profile-validator",
+      "version": "1.0.0",
+      "kind": "validator",
+      "supported_roles": ["*"],
+      "required_inputs": ["visual-asset", "pack-profile"],
+      "produced_outputs": ["visual-validation"],
+      "provenance": "content-creator-core",
+      "compatibility": {"core": ">=1.13,<2"}
+    },
+    {
+      "id": "core.lifecycle-preview",
+      "version": "1.0.0",
+      "kind": "preview",
+      "supported_roles": ["*"],
+      "required_inputs": ["visual-asset"],
+      "produced_outputs": ["review-preview"],
+      "provenance": "content-creator-core",
+      "compatibility": {"core": ">=1.13,<2"}
+    }
+  ]
+}

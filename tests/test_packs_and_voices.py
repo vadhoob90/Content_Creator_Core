@@ -172,6 +172,85 @@ def test_child_pack_preserves_integrity_validators(project):
     assert set(base.integrity_validators) <= set(child.integrity_validators)
 
 
+def test_child_pack_inherits_and_extends_visual_profile(project):
+    base_dir = project / "packs" / "visual-base"
+    child_dir = project / "packs" / "visual-child"
+    base_dir.mkdir()
+    child_dir.mkdir()
+    (base_dir / "pack.json").write_text(
+        json.dumps(
+            {
+                "id": "visual-base",
+                "version": "1.0.0",
+                "format": "article",
+                "destination": "content/visual-base/published",
+                "visuals": {
+                    "supported": True,
+                    "execution_classes": ["deterministic"],
+                    "aspect_ratios": ["16:9"],
+                    "formats": ["svg"],
+                    "destination": "content/visual-base/visuals",
+                    "default_role": "cover",
+                    "roles": {
+                        "cover": {
+                            "aspect_ratio": "16:9",
+                            "recommended_width": 1920,
+                            "recommended_height": 1080,
+                            "formats": ["svg"],
+                        }
+                    },
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+    (child_dir / "pack.json").write_text(
+        json.dumps(
+            {
+                "id": "visual-child",
+                "version": "1.0.0",
+                "extends": "visual-base",
+                "format": "article",
+                "destination": "content/visual-child/published",
+                "visuals": {
+                    "destination": "content/visual-child/visuals",
+                    "roles": {
+                        "preview": {
+                            "aspect_ratio": "1.91:1",
+                            "recommended_width": 1200,
+                            "recommended_height": 627,
+                            "formats": ["svg"],
+                        }
+                    },
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    resolved = PackRegistry(project).resolve("visual-child")
+
+    assert resolved.visuals.supported is True
+    assert set(resolved.visuals.roles) == {"cover", "preview"}
+    assert resolved.visuals.destination == "content/visual-child/visuals"
+
+
+def test_linkedin_article_declares_cover_and_preview_roles(project):
+    profile = PackRegistry(project).resolve("linkedin-article").visuals
+
+    assert profile.default_role == "article-cover"
+    assert profile.roles["article-cover"].aspect_ratio == "16:9"
+    assert (
+        profile.roles["article-cover"].recommended_width,
+        profile.roles["article-cover"].recommended_height,
+    ) == (1920, 1080)
+    assert profile.roles["link-preview"].aspect_ratio == "1.91:1"
+    assert (
+        profile.roles["link-preview"].recommended_width,
+        profile.roles["link-preview"].recommended_height,
+    ) == (1200, 627)
+
+
 def test_optional_validator_is_applied_only_when_selected(project):
     registry = PackRegistry(project)
     general = registry.resolve("general-text", {"length": "1:20"})

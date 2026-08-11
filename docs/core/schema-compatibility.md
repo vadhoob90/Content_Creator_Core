@@ -35,6 +35,11 @@ Adding an optional field is normally backward compatible. Removing or
 renaming a field, changing its meaning, narrowing valid values, or changing a
 default requires a migration and explicit compatibility review.
 
+Visual manifests written from Core 1.13 add optional component references and
+variant names while retaining schema version `1.0`. Older manifests read with
+empty component lists and unnamed assets; their next explicit visual render can
+backfill current installed-component references without changing prior assets.
+
 The authoritative catalogue lives in `content_creator.schema_registry`.
 Pydantic models remain the single source of truth; exported schemas are build
 artifacts and must not be edited by hand.
