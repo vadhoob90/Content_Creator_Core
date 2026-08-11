@@ -8,6 +8,40 @@ release tag.
 
 ## [Unreleased]
 
+## [1.14.0] - 2026-08-11
+
+### Added
+
+- The CLI now exposes `content-creator --version`, workspace creation reports
+  the running Core version and requested immutable ref, and `doctor` reports
+  both the running version and the workspace's exact registry pin.
+- Release automation now rejects stale Core versions in active installation,
+  workspace-generation, and upgrade documentation before publishing.
+- Generated onboarding steps and the workspace guide now signpost uv's
+  `--native-tls` recovery path for corporate TLS interception.
+
+### Fixed
+
+- Natural-language planning now resolves an omitted voice to the workspace's
+  configured default, and `start` and `run` preserve the same resolved order.
+- Explicit phrases such as “No external research is required” remain on the
+  no-research route instead of being misclassified as light research.
+- Claude subscription generation no longer passes `--bare`, matching the
+  authentication mode verified by `claude auth status`.
+- Native CLI output is decoded explicitly as UTF-8, preserving punctuation and
+  other non-ASCII text in provider errors and final drafts on Windows.
+- Writer output is explicitly requested without a whole-document Markdown
+  fence and deterministically normalized before critique and final persistence.
+- `advanced --help` now exposes the advanced command catalogue, while essential
+  generated-workspace commands such as `coordinator` are visible in top-level
+  usage.
+
+### Migration
+
+- Existing author workspaces remain on their immutable Core pins. Preview and
+  apply an intentional upgrade with `workspace upgrade --to v1.14.0` and
+  `workspace upgrade --to v1.14.0 --apply`.
+
 ## [1.13.0] - 2026-08-11
 
 ### Added

@@ -11,7 +11,11 @@ from content_creator.domain import (
     WorkOrder,
 )
 from content_creator.quality import evaluate_quality
-from content_creator.validation import validate_draft, validate_research_brief
+from content_creator.validation import (
+    normalize_publishable_markdown,
+    validate_draft,
+    validate_research_brief,
+)
 
 
 def test_quality_gate_recomputes_weighted_score(project):
@@ -176,6 +180,33 @@ def test_banned_phrase_validator_normalises_string_and_ignores_invalid_configura
         "A single forbidden phrase appears.", string_order, ["banned-phrase"]
     ) == ["Banned phrase: single forbidden phrase"]
     assert validate_draft("Safe text.", invalid_order, ["banned-phrase"]) == []
+
+
+@pytest.mark.parametrize(
+    ("draft", "expected"),
+    [
+        ("```markdown\nPublishable copy.\n```", "Publishable copy."),
+        ("```md\nPublishable copy.\n```", "Publishable copy."),
+        ("```\nPublishable copy.\n```", "Publishable copy."),
+        ("```markdown\nPublishable copy.", "Publishable copy."),
+    ],
+)
+def test_publishable_markdown_normalization_removes_document_wrapper(draft, expected):
+    assert normalize_publishable_markdown(draft) == expected
+
+
+def test_publishable_markdown_normalization_preserves_internal_code_fences():
+    draft = "An example follows.\n\n```python\nprint('safe')\n```\n\nContinue reading."
+
+    assert normalize_publishable_markdown(draft) == draft
+
+
+def test_draft_validation_rejects_a_residual_document_fence():
+    order = WorkOrder(request="write", topic="topic")
+
+    assert "Draft must not be wrapped in a Markdown code fence" in validate_draft(
+        "```markdown\nDraft\n```", order
+    )
 
 
 @pytest.mark.parametrize("citation_style", ["inline-links", "unsupported-style"])

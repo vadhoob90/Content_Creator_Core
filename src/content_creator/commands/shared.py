@@ -8,6 +8,12 @@ from pathlib import Path
 from typing import Any, Optional
 
 PROVIDERS = ["anthropic", "bedrock", "openai", "codex-native", "claude-native"]
+ADVANCED_HELP = (
+    "Advanced commands:\n"
+    "  init, agents, provider, plan, coordinator (including next-actions),\n"
+    "  pack, packs, voice, perspective, approve-research, reject-research, eval\n\n"
+    "Use: content-creator <command> --help"
+)
 
 
 class AuthorHelpFormatter(argparse.HelpFormatter):

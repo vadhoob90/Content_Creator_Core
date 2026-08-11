@@ -36,7 +36,7 @@ from .revision import RevisionLifecycle
 from .runner import AgentRunner, AgentRunOptions
 from .stages import CallableDraftReviewStage, CallableResearchStage, LifecycleStages
 from .storage import IdempotencyError, StorageError
-from .validation import validate_draft, validate_research_brief
+from .validation import normalize_publishable_markdown, validate_draft, validate_research_brief
 from .voice_evaluation import evaluate_voice_output
 
 
@@ -421,7 +421,8 @@ class OrchestrationRuntime:
             role_key=f"writer-{state.work_order.format}",
             instruction=(
                 "Write or revise the piece. Address the prior critique, but preserve "
-                "the author's intent. Return only publishable Markdown."
+                "the author's intent. Return only publishable Markdown. Do not wrap the "
+                "complete draft in a Markdown code fence."
             ),
             payload=self._draft_payload(
                 state.work_order, brief, previous_critique, revision_context
@@ -433,6 +434,7 @@ class OrchestrationRuntime:
                 phase=f"draft-{revision:02d}",
             ),
         )
+        draft = normalize_publishable_markdown(draft)
         self.store.write_artifact(state.id, f"draft-{revision:02d}.md", draft)
         validation_errors, statistical_score = self._validate_revision(state, pack, draft, revision)
         critique = self._critique_revision(

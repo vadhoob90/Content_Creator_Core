@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import argparse
 
-from .shared import PROVIDERS
+from .shared import ADVANCED_HELP, PROVIDERS
 
 
 def register_coordinator(subparsers: argparse._SubParsersAction) -> None:
@@ -105,7 +105,7 @@ def _add_run_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--brief", help="JSON or YAML content brief")
     parser.add_argument("--topic")
     parser.add_argument("--pack")
-    parser.add_argument("--voice", default="default")
+    parser.add_argument("--voice")
     parser.add_argument("--voice-version")
     parser.add_argument("--perspective-context", action="append", default=[])
     parser.add_argument("--perspective-version")
@@ -216,4 +216,5 @@ def register_evaluation(subparsers: argparse._SubParsersAction) -> None:
     subparsers.add_parser(
         "advanced",
         help="Show lifecycle, automation, and administration command families",
+        description=ADVANCED_HELP,
     )

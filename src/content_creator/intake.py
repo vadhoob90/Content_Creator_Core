@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from typing import List, Optional
 
 from .domain import (
@@ -65,7 +66,14 @@ class BriefingAgent:
         content_format = "article" if "article" in lowered else "post"
 
         explicit_none = any(
-            phrase in lowered for phrase in ("no research", "without research", "do not research")
+            re.search(pattern, lowered)
+            for pattern in (
+                r"\bno\s+(?:external\s+)?research\b",
+                r"\bwithout\s+(?:external\s+)?research\b",
+                r"\bdo(?:n't|\s+not)\s+(?:conduct\s+|perform\s+|use\s+)?(?:external\s+)?research\b",
+                r"\b(?:external\s+)?research\s+(?:is\s+)?not\s+(?:needed|required|necessary)\b",
+                r"\b(?:external\s+)?research\s+isn't\s+(?:needed|required|necessary)\b",
+            )
         )
         explicit_deep = any(
             phrase in lowered

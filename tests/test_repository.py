@@ -1,5 +1,9 @@
 import json
+import subprocess
+import sys
 from pathlib import Path
+
+from content_creator.version import VERSION
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -137,7 +141,7 @@ def test_core_development_readme_covers_clone_and_validation():
     assert "git tag -a v1.0.0" in guide
     assert ".github/workflows/release.yml" in guide
     assert "Trusted Publisher registration is a one-time" in guide
-    assert "workspace upgrade --to v1.13.0 --apply" in guide
+    assert "workspace upgrade --to v{} --apply".format(VERSION) in guide
 
 
 def test_work_package_uses_the_repository_cli_name():
@@ -186,6 +190,19 @@ def test_release_workflow_is_tag_driven_and_uses_trusted_publishing():
     assert "pypa/gh-action-pypi-publish@" in workflow
     assert "password:" not in workflow
     assert "scripts/validate_distribution.py" in workflow
+    assert "scripts/validate_release_references.py" in workflow
+
+
+def test_active_release_references_match_package_version():
+    completed = subprocess.run(
+        [sys.executable, str(ROOT / "scripts" / "validate_release_references.py")],
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+
+    assert completed.returncode == 0, completed.stderr
+    assert "match content-creator {}".format(VERSION) in completed.stdout
 
 
 def test_live_provider_workflow_supports_bedrock_credentials():

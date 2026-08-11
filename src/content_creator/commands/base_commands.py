@@ -14,6 +14,7 @@ from . import provider as provider_commands
 from . import schema as schema_commands
 from . import visual as visual_commands
 from .context import CommandContext
+from .shared import ADVANCED_HELP
 
 CommandHandler = Callable[[CommandContext], int]
 
@@ -28,12 +29,7 @@ def show_advanced(_context: CommandContext) -> int:
     Returns:
         int: The resulting numeric value for show advanced.
     """
-    print(
-        "Advanced commands:\n"
-        "  init, agents, provider, plan, coordinator, pack, packs, voice,\n"
-        "  perspective, approve-research, reject-research, eval\n\n"
-        "Use: content-creator <command> --help"
-    )
+    print(ADVANCED_HELP)
     return 0
 
 

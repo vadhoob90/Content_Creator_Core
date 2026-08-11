@@ -6,6 +6,7 @@ import yaml
 import content_creator.cli as cli
 from content_creator.cli import main
 from content_creator.configuration import ConfigurationError
+from content_creator.version import VERSION
 
 
 def test_doctor_validates_repository(capsys):
@@ -13,6 +14,7 @@ def test_doctor_validates_repository(capsys):
     output = json.loads(capsys.readouterr().out)
 
     assert output["status"] == "ok"
+    assert output["core_version"] == VERSION
     assert output["checks"]["content_packs"] == [
         "general-text",
         "linkedin-article",
@@ -30,6 +32,7 @@ def test_default_help_is_calm_and_advanced_commands_remain_discoverable(capsys):
     assert "start" in help_text
     assert "overview" in help_text
     assert "personalisation" in help_text
+    assert "coordinator" in help_text
     assert "==SUPPRESS==" not in help_text
     assert "voice               " not in help_text
 
@@ -37,7 +40,39 @@ def test_default_help_is_calm_and_advanced_commands_remain_discoverable(capsys):
     advanced = capsys.readouterr().out
     assert "voice" in advanced
     assert "coordinator" in advanced
+    with pytest.raises(SystemExit) as advanced_help_result:
+        parser.parse_args(["advanced", "--help"])
+    assert advanced_help_result.value.code == 0
+    advanced_help = capsys.readouterr().out
+    assert "coordinator" in advanced_help
+    assert "next-actions" in advanced_help.replace("\n", "")
     assert parser.parse_args(["voice", "list"]).command == "voice"
+
+
+def test_cli_reports_running_core_version(capsys):
+    parser = cli.build_parser()
+
+    with pytest.raises(SystemExit) as result:
+        parser.parse_args(["--version"])
+
+    assert result.value.code == 0
+    assert capsys.readouterr().out.strip() == "content-creator {}".format(VERSION)
+
+
+def test_doctor_warns_when_workspace_pin_differs_from_running_core(project, capsys):
+    (project / "pyproject.toml").write_text(
+        '[project]\nname = "test-workspace"\nversion = "0.1.0"\n'
+        'dependencies = ["content-creator==0.16.0"]\n',
+        encoding="utf-8",
+    )
+
+    assert main(["--root", str(project), "doctor"]) == 0
+    output = json.loads(capsys.readouterr().out)
+
+    assert output["workspace_core_version"] == "0.16.0"
+    assert output["core_version"] == VERSION
+    assert "content-creator==0.16.0" in output["warnings"][0]
+    assert "workspace upgrade --to v{}".format(VERSION) in output["warnings"][0]
 
 
 def test_plan_reports_provider_neutral_work_order(capsys):

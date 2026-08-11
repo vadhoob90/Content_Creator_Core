@@ -11,6 +11,7 @@ from typing import Any, Dict, Optional
 from .domain import Critique, ResearchBrief, RunEvent, RunState, RunStatus
 from .quality import evaluate_quality
 from .storage import IdempotencyError, RunStore, StorageError
+from .validation import normalize_publishable_markdown
 
 
 class RevisionLifecycle:
@@ -249,7 +250,7 @@ class RevisionLifecycle:
         Returns:
             tuple[str, Any]: Normalised draft and refreshed quality decision.
         """
-        revised = draft.rstrip() + "\n"
+        revised = normalize_publishable_markdown(draft).rstrip() + "\n"
         self.workflow.store.write_artifact(state.id, f"draft-{revision:02d}.md", revised)
         errors, score = self.workflow._validate_revision(state, pack, revised, revision)
         critique = self.workflow._critique_revision(

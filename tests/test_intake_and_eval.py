@@ -1,14 +1,18 @@
 from types import SimpleNamespace
 
+import pytest
+
 import content_creator.evaluation as evaluation
 from content_creator.cli import main
 from content_creator.configuration import Configuration
-from content_creator.domain import PlanningDecision, RunStatus
+from content_creator.domain import PlanningDecision, RunStatus, WorkOrder
 from content_creator.evaluation import run_live_suite, run_replay_suite
 from content_creator.intake import BriefingAgent, ClarificationRequired
+from content_creator.packs import PackRegistry
 from content_creator.prompting import PromptAssembler
 from content_creator.providers import FakeProvider, ProviderRegistry
 from content_creator.runner import AgentRunner
+from content_creator.work_order_resolution import resolve_workspace_defaults
 
 
 def test_explicit_intake_does_not_need_model():
@@ -22,6 +26,50 @@ def test_no_research_is_respected():
     order = BriefingAgent().plan("Write a post without research")
     assert order.research_depth.value == "none"
     assert order.research_source.value == "none"
+
+
+@pytest.mark.parametrize(
+    "prompt",
+    [
+        "Write a post. No external research is required.",
+        "Write a post; external research is not needed.",
+        "Write a post without external research.",
+        "Write a post and do not conduct external research.",
+        "Write a post; research isn't necessary.",
+    ],
+)
+def test_no_external_research_phrases_are_respected(prompt):
+    order = BriefingAgent().plan(prompt)
+
+    assert order.research_depth.value == "none"
+    assert order.research_source.value == "none"
+
+
+def test_workspace_defaults_resolve_only_implicit_voice_and_pack(project):
+    order = resolve_workspace_defaults(
+        WorkOrder(request="Write", topic="Topic"),
+        {"default_voice": "author-general", "default_pack": "linkedin-post"},
+        PackRegistry(project),
+    )
+
+    assert order.voice_id == "author-general"
+    assert order.content_pack == "linkedin-post"
+    assert order.format == "post"
+
+    explicit = resolve_workspace_defaults(
+        WorkOrder(
+            request="Write",
+            topic="Topic",
+            voice_id="campaign-voice",
+            content_pack="linkedin-article",
+            format="article",
+        ),
+        {"default_voice": "author-general", "default_pack": "linkedin-post"},
+        PackRegistry(project),
+    )
+    assert explicit.voice_id == "campaign-voice"
+    assert explicit.content_pack == "linkedin-article"
+    assert explicit.format == "article"
 
 
 def test_replay_harness_runs_both_provider_contracts(project):

@@ -9,10 +9,10 @@ material owned by that workspace.
 
 ## Install Core
 
-Install the immutable `v1.13.0` release:
+Install the immutable `v1.14.0` release:
 
 ```bash
-uv tool install content-creator==1.13.0
+uv tool install content-creator==1.14.0
 ```
 
 ## Generate the repository
@@ -27,7 +27,7 @@ content-creator workspace create Content_Creator_Alice \
   --voice-label "Alice — General" \
   --pack linkedin-post \
   --pack linkedin-article \
-  --core-ref v1.13.0
+  --core-ref v1.14.0
 ```
 
 Without `--pack`, the command enables `general-text`.
@@ -59,7 +59,7 @@ Relative destinations are resolved from the current directory. When the global
 `--workspace` option is supplied, it acts as the base directory.
 
 The generated main README names both the immutable Core revision and the exact
-dependency declaration (for example, `content-creator==1.13.0`). That small
+dependency declaration (for example, `content-creator==1.14.0`). That small
 section is marked as generator-owned so a later `workspace upgrade --apply`
 can refresh it without replacing the rest of the workspace's README.
 
@@ -151,6 +151,16 @@ uv sync --dev
 uv run content-creator --workspace . doctor
 uv run pytest
 ```
+
+If a corporate TLS-intercepting proxy causes uv to report `UnknownIssuer`, retry
+the sync with the operating system certificate store:
+
+```bash
+uv sync --dev --native-tls
+```
+
+The generator includes this recovery command in its machine-readable next
+steps so a first-time author does not have to infer it from a failed install.
 
 The generated README begins with an author checkpoint. The author chooses
 whether to derive a voice from previous writing or begin with the neutral Clear

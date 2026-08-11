@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 
+from ..version import VERSION
 from . import (
     context_commands,
     operations,
@@ -33,13 +34,14 @@ def build_parser() -> argparse.ArgumentParser:
         argparse.ArgumentParser: The constructed argument parser for parser.
     """
     parser = argparse.ArgumentParser(prog="content-creator", formatter_class=AuthorHelpFormatter)
+    parser.add_argument("--version", action="version", version="%(prog)s {}".format(VERSION))
     parser.add_argument("--root", "--workspace", dest="root")
     subparsers = parser.add_subparsers(
         dest="command",
         required=True,
         metavar=(
             "{start,overview,personalisation,context,workspace,doctor,run,status,submission,publish,learn,"
-            "verify-publications,diagnostics,advanced}"
+            "revise,verify-publications,diagnostics,visual,coordinator,schema,operations,advanced}"
         ),
     )
     schema.register(subparsers)

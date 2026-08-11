@@ -6,6 +6,7 @@ from pathlib import Path
 
 import yaml
 
+from ..configuration import Configuration
 from ..domain import (
     AuthorContribution,
     PerspectiveMode,
@@ -16,6 +17,7 @@ from ..domain import (
 )
 from ..intake import ClarificationRequired
 from ..packs import PackRegistry
+from ..work_order_resolution import resolve_workspace_defaults
 from .context import CommandContext
 
 
@@ -35,7 +37,7 @@ def _brief_order(context: CommandContext) -> WorkOrder:
     brief_fields.setdefault("research_source", research.get("source", "none"))
     order = WorkOrder.model_validate(brief_fields)
     order.provider = arguments.provider or order.provider
-    order.voice_id = arguments.voice if arguments.voice != "default" else order.voice_id
+    order.voice_id = arguments.voice or order.voice_id
     order.voice_version = arguments.voice_version or order.voice_version
     return order
 
@@ -76,8 +78,8 @@ def _explicit_order(context: CommandContext) -> WorkOrder:
     return WorkOrder(
         request=arguments.request,
         topic=arguments.topic or arguments.request,
-        content_pack=arguments.pack,
-        voice_id=arguments.voice,
+        content_pack=arguments.pack or "general-text",
+        voice_id=arguments.voice or "default",
         voice_version=arguments.voice_version,
         format=content_format or "text",
         research_depth=depth,
@@ -111,8 +113,10 @@ def _planned_order(context: CommandContext) -> WorkOrder | None:
     except ClarificationRequired as error:
         context.emit({"needs_clarification": True, "questions": error.questions})
         return None
-    order.voice_id = arguments.voice
-    order.voice_version = arguments.voice_version
+    if arguments.voice:
+        order.voice_id = arguments.voice
+    if arguments.voice_version:
+        order.voice_version = arguments.voice_version
     return order
 
 
@@ -126,11 +130,20 @@ def _build_order(context: CommandContext) -> WorkOrder | None:
         WorkOrder | None: The constructed order when available; otherwise ``None``.
     """
     arguments = context.arguments
+    order: WorkOrder | None
     if arguments.brief:
-        return _brief_order(context)
-    if arguments.pack or arguments.format or arguments.research or arguments.research_source:
-        return _explicit_order(context)
-    return _planned_order(context)
+        order = _brief_order(context)
+    elif arguments.pack or arguments.format or arguments.research or arguments.research_source:
+        order = _explicit_order(context)
+    else:
+        order = _planned_order(context)
+    if order is None:
+        return None
+    return resolve_workspace_defaults(
+        order,
+        Configuration(context.root).coordinator_policy,
+        PackRegistry(context.root),
+    )
 
 
 def _apply_perspective(order: WorkOrder, context: CommandContext) -> None:

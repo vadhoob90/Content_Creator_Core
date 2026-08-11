@@ -92,6 +92,8 @@ class NativeCliProvider(Provider):
                 command,
                 input=input_text,
                 text=True,
+                encoding="utf-8",
+                errors="replace",
                 capture_output=True,
                 cwd=str(cwd or self.root),
                 env=self._environment(),

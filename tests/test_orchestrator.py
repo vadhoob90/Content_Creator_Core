@@ -199,6 +199,33 @@ def test_revision_limit_preserves_latest_draft(project):
     assert (project / state.final_draft_path).exists()
 
 
+def test_writer_document_fence_is_removed_before_review_and_final_persistence(project):
+    fenced = "```markdown\n{}\n```".format(valid_draft())
+    fake = FakeProvider(
+        {
+            "writer": [fenced],
+            "critic": [passing_critique()],
+        }
+    )
+    orchestrator = Orchestrator(project, registry=ProviderRegistry({"anthropic": fake}))
+
+    state = orchestrator.start(
+        WorkOrder(
+            request="write",
+            topic="topic",
+            content_pack="linkedin-post",
+            format="post",
+        )
+    )
+
+    final = (project / state.final_draft_path).read_text(encoding="utf-8")
+    critic_request = next(request for request in fake.requests if request.role == "critic")
+    assert state.status == RunStatus.READY
+    assert not final.lstrip().startswith("```")
+    assert "```markdown" not in critic_request.user
+    assert "A useful writing system" in final
+
+
 def test_post_gate_author_revision_refreshes_checks_and_is_idempotent(project):
     original = valid_draft()
     edited = original.replace("useful writing system", "reviewed writing system", 1)

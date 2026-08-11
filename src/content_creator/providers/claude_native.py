@@ -112,7 +112,6 @@ class ClaudeNativeProvider(NativeCliProvider):
             command = [
                 self.executable,
                 "-p",
-                "--bare",
                 "--output-format",
                 "json",
                 "--model",
