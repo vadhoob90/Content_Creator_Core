@@ -42,6 +42,8 @@ jobs:
           package_version="$(uv run --frozen --all-extras python -c 'from pathlib import Path; scope = {}; exec(Path("src/content_creator/version.py").read_text(), scope); print(scope["VERSION"])')"
           test "v${package_version}" = "${GITHUB_REF_NAME}"
           echo "PACKAGE_VERSION=${package_version}" >> "${GITHUB_ENV}"
+      - name: Verify active release references match package version
+        run: uv run --frozen --all-extras python scripts/validate_release_references.py
       - name: Build wheel and source distribution
         run: |
           export SOURCE_DATE_EPOCH="$(git log -1 --pretty=%ct)"

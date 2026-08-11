@@ -7,6 +7,57 @@ from typing import List, Optional
 
 from .domain import ResearchBrief, ResearchDepth, WorkOrder
 
+_DOCUMENT_FENCE = re.compile(r"^```(?:markdown|md)?\s*$", re.IGNORECASE)
+
+
+def normalize_publishable_markdown(draft: str) -> str:
+    """Remove a model-added fence around a publishable Markdown document.
+
+    Internal code fences are preserved. A leading Markdown wrapper is removed even
+    when the model omitted its closing fence so malformed wrapper syntax cannot reach
+    the final draft.
+
+    Args:
+        draft (str): Model- or author-supplied Markdown.
+
+    Returns:
+        str: Normalized publishable Markdown.
+    """
+    lines = draft.strip().splitlines()
+    if not lines or not _DOCUMENT_FENCE.fullmatch(lines[0].strip()):
+        return draft.strip()
+    lines = lines[1:]
+    if lines and lines[-1].strip() == "```":
+        lines = lines[:-1]
+    return "\n".join(lines).strip()
+
+
+def has_document_fence(draft: str) -> bool:
+    """Return whether the complete draft begins with a Markdown wrapper fence.
+
+    Args:
+        draft (str): Markdown draft to inspect.
+
+    Returns:
+        bool: Whether a whole-document Markdown fence starts the draft.
+    """
+    lines = draft.strip().splitlines()
+    return bool(lines and _DOCUMENT_FENCE.fullmatch(lines[0].strip()))
+
+
+def _document_fence_errors(draft: str) -> List[str]:
+    """Return deterministic errors for non-publishable document wrappers.
+
+    Args:
+        draft (str): Markdown draft to inspect.
+
+    Returns:
+        List[str]: Validation errors for a whole-document wrapper.
+    """
+    if has_document_fence(draft):
+        return ["Draft must not be wrapped in a Markdown code fence"]
+    return []
+
 
 def validate_draft(
     draft: str, order: WorkOrder, validators: Optional[List[str]] = None
@@ -25,7 +76,7 @@ def validate_draft(
     Returns:
         List[str]: The validated draft values in their documented order.
     """
-    errors = []
+    errors = _document_fence_errors(draft)
     enabled = set(
         validators
         or [

@@ -32,6 +32,7 @@ from .stages import LifecycleStages as LifecycleStages
 from .storage import RunStore, StorageError, slugify
 from .versioned_artifacts import hash_file
 from .voices import VoiceRegistry
+from .work_order_resolution import resolve_workspace_defaults
 
 logger = logging.getLogger(__name__)
 
@@ -171,7 +172,12 @@ class Orchestrator:
         Returns:
             WorkOrder: The planned work order for request.
         """
-        return self.intake.plan(request, provider=provider)
+        order = self.intake.plan(request, provider=provider)
+        return resolve_workspace_defaults(
+            order,
+            self.configuration.coordinator_policy,
+            self.packs,
+        )
 
     def start(
         self,

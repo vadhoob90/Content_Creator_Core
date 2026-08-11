@@ -13,6 +13,7 @@ from .agent_resources import STANDARD_TEMPLATE
 from .domain import utc_now
 from .packs import PackRegistry
 from .storage import RunStore, slugify
+from .version import VERSION
 from .workspace_context_templates import RUNTIME_CONTEXT_TEMPLATE
 from .workspace_templates import (
     LEARNINGS_README_TEMPLATE,
@@ -364,6 +365,8 @@ def _result(
         "voice_id": identity.voice_id,
         "voice_label": identity.voice_label,
         "packs": identity.packs,
+        "core_version": VERSION,
+        "core_ref": request.core_ref,
         "core_dependency": identity.dependency,
         "perspective_mode": request.perspective_mode,
         "created": sorted(dict.fromkeys(created)),
@@ -371,6 +374,7 @@ def _result(
         "next_steps": [
             f"cd {root}",
             "uv sync --dev",
+            "If uv reports UnknownIssuer, retry: uv sync --dev --native-tls",
             "uv run content-creator --workspace . doctor",
             "Open the README and choose the source-derived or starter voice "
             f"route for {identity.voice_id}.",

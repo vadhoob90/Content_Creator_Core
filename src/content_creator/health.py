@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import re
+import tomllib
 from pathlib import Path
 from typing import Any, Dict
 
@@ -9,6 +11,9 @@ from .agent_resources import AgentWorkspace
 from .configuration import Configuration
 from .packs import PackRegistry
 from .resource_paths import ResourceResolver
+from .version import VERSION
+
+_CORE_PIN = re.compile(r"^content-creator==(?P<version>\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?)$")
 
 
 class WorkspaceHealth:
@@ -35,6 +40,7 @@ class WorkspaceHealth:
         packs = PackRegistry(self.root).list()
         resources = ResourceResolver(self.root)
         repository_agents = AgentWorkspace(self.root).status()
+        workspace_pin = self._workspace_core_pin()
         checks = {
             "model_catalogue": bool(configuration.models),
             "content_packs": [pack.id for pack in packs],
@@ -49,4 +55,36 @@ class WorkspaceHealth:
             and checks["route_cases"]
             and repository_agents["complete"]
         )
-        return {"status": "ok" if healthy else "error", "checks": checks}
+        warnings = []
+        if workspace_pin and workspace_pin != VERSION:
+            warnings.append(
+                "Workspace pins content-creator=={} but this command is running Core {}. "
+                "Use the workspace environment or preview an intentional upgrade with "
+                "'workspace upgrade --to v{}'.".format(workspace_pin, VERSION, VERSION)
+            )
+        return {
+            "status": "ok" if healthy else "error",
+            "core_version": VERSION,
+            "workspace_core_version": workspace_pin,
+            "warnings": warnings,
+            "checks": checks,
+        }
+
+    def _workspace_core_pin(self) -> str | None:
+        """Return the exact registry pin declared by the workspace, when present.
+
+        Returns:
+            str | None: Exact semantic version pin, or ``None`` when not declared.
+        """
+        pyproject = self.root / "pyproject.toml"
+        if not pyproject.is_file():
+            return None
+        try:
+            project = tomllib.loads(pyproject.read_text(encoding="utf-8")).get("project", {})
+        except (OSError, tomllib.TOMLDecodeError):
+            return None
+        for dependency in project.get("dependencies", []):
+            match = _CORE_PIN.fullmatch(str(dependency).strip())
+            if match:
+                return match.group("version")
+        return None

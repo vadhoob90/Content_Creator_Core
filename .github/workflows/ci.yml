@@ -51,6 +51,7 @@ jobs:
             tests/test_coverage_report.py \
             tests/test_documentation_report.py \
             tests/test_mutation_policy.py \
+            tests/test_release_references.py \
             tests/test_release_reproducibility.py
           uv run --frozen --extra dev coverage report \
             --data-file=.coverage-harness \

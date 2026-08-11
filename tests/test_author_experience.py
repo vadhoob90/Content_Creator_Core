@@ -1,5 +1,7 @@
 import json
 
+import yaml
+
 import content_creator.cli as cli
 from content_creator.cli import main
 from content_creator.domain import RoutePlan, RunState, RunStatus, WorkOrder
@@ -91,3 +93,48 @@ def test_start_request_proposes_work_without_mutating(project, capsys, monkeypat
     assert result["mutates_workspace"] is False
     assert result["work_order"]["content_pack"] == "linkedin-post"
     assert result["approval_points"][-1] == "repository-local publication"
+
+
+def test_start_and_run_share_workspace_voice_and_no_research_resolution(
+    project, capsys, monkeypatch
+):
+    configuration_path = project / "content-creator.yaml"
+    configuration = {
+        "coordinator": {
+            "default_voice": "test-general",
+            "default_pack": "general-text",
+        }
+    }
+    configuration_path.write_text(
+        yaml.safe_dump(configuration, sort_keys=False),
+        encoding="utf-8",
+    )
+
+    request = (
+        "Write a short LinkedIn post explaining why calculus matters. "
+        "No external research is required."
+    )
+    assert main(["--root", str(project), "start", request, "--json"]) == 0
+    proposed = json.loads(capsys.readouterr().out)["work_order"]
+
+    class FakeOrchestrator:
+        def __init__(self, root):
+            from content_creator.orchestrator import Orchestrator
+
+            self.delegate = Orchestrator(root)
+            self.runner = self.delegate.runner
+
+        def plan_request(self, request, provider=None):
+            return self.delegate.plan_request(request, provider)
+
+        def start(self, order):
+            return order
+
+    monkeypatch.setattr(cli, "Orchestrator", FakeOrchestrator)
+    assert main(["--root", str(project), "run", request]) == 0
+    executed = json.loads(capsys.readouterr().out)
+
+    for order in (proposed, executed):
+        assert order["voice_id"] == "test-general"
+        assert order["research_depth"] == "none"
+        assert order["research_source"] == "none"

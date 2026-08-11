@@ -160,6 +160,9 @@ def test_claude_native_uses_subscription_auth_and_structured_output(monkeypatch,
     assert command[command.index("--tools") + 1] == "WebSearch,WebFetch"
     assert kwargs["env"].get("ANTHROPIC_API_KEY") is None
     assert kwargs["env"].get("ANTHROPIC_AUTH_TOKEN") is None
+    assert kwargs["encoding"] == "utf-8"
+    assert kwargs["errors"] == "replace"
+    assert "--bare" not in command
     assert result.text == '{"answer": "done"}'
     assert result.raw_id == "session-1"
     assert provider.verify() == {
@@ -275,3 +278,23 @@ def test_native_provider_bounds_large_failure_detail(tmp_path):
     assert "diagnostic-tail" in rendered
     assert "\n…\n" in rendered
     assert len(rendered) < len(detail)
+
+
+def test_native_provider_requests_utf8_for_unicode_output(tmp_path):
+    calls = []
+
+    def succeed(command, **kwargs):
+        calls.append(kwargs)
+        return subprocess.CompletedProcess(command, 0, "Middle dot · and em dash —", "")
+
+    provider = ExampleNativeProvider(
+        root=tmp_path,
+        executable="/fake/example",
+        command_runner=succeed,
+    )
+
+    result = provider._run([provider.executable])
+
+    assert result.stdout == "Middle dot · and em dash —"
+    assert calls[0]["encoding"] == "utf-8"
+    assert calls[0]["errors"] == "replace"

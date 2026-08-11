@@ -4,6 +4,7 @@ import pytest
 import yaml
 
 from content_creator.cli import main
+from content_creator.version import VERSION
 from content_creator.voices import VoiceError, VoiceRegistry
 
 
@@ -35,12 +36,7 @@ def test_workspace_create_generates_complete_thin_repository(tmp_path, capsys):
     assert main(_create_arguments(destination)) == 0
     result = json.loads(capsys.readouterr().out)
 
-    assert result["status"] == "ok"
-    assert result["voice_id"] == "alice-general"
-    assert result["packs"] == ["linkedin-post", "linkedin-article"]
-    assert result["core_dependency"] == "content-creator==0.4.0"
-    assert "content-creator.yaml" in result["created"]
-    assert "profiles/registry.json" in result["created"]
+    _assert_workspace_result(result)
 
     expected = {
         "README.md",
@@ -109,6 +105,18 @@ def test_workspace_create_generates_complete_thin_repository(tmp_path, capsys):
     _assert_author_navigation(destination, readme)
 
     _assert_generated_workspace_runs(destination, capsys)
+
+
+def _assert_workspace_result(result):
+    assert result["status"] == "ok"
+    assert result["voice_id"] == "alice-general"
+    assert result["packs"] == ["linkedin-post", "linkedin-article"]
+    assert result["core_version"] == VERSION
+    assert result["core_ref"] == "v0.4.0"
+    assert result["core_dependency"] == "content-creator==0.4.0"
+    assert any("--native-tls" in step for step in result["next_steps"])
+    assert "content-creator.yaml" in result["created"]
+    assert "profiles/registry.json" in result["created"]
 
 
 def _assert_author_navigation(destination, readme):
