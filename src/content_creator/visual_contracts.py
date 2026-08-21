@@ -264,6 +264,16 @@ class VisualComponentRef(BaseModel):
     provenance: str
 
 
+class VisualLockedAssetRef(BaseModel):
+    """Represent an exact workspace-owned brand asset pinned by immutable hash."""
+
+    id: str
+    path: str
+    role: str = "brand-mark"
+    sha256: str
+    mime_type: str
+
+
 class VisualBrief(BaseModel):
     """Represent a visual brief."""
 
@@ -286,6 +296,8 @@ class VisualBrief(BaseModel):
     sources: List[VisualSource] = Field(default_factory=list)
     alt_text: str
     brand_tokens: Dict[str, str] = Field(default_factory=dict)
+    locked_assets: List[VisualLockedAssetRef] = Field(default_factory=list)
+    visual_preferences: List[str] = Field(default_factory=list)
     components: List[VisualComponentRef] = Field(default_factory=list)
     preferred_execution_class: Optional[ExecutionClass] = None
     preferred_adapter: Optional[str] = None
@@ -350,6 +362,17 @@ class VisualCritique(BaseModel):
     created_at: str = Field(default_factory=lambda: utc_now().isoformat())
 
 
+class VisualDecision(BaseModel):
+    """Record the selected asset and author-governed approval state."""
+
+    schema_version: str = "1.0"
+    run_id: str
+    selected_asset_id: str
+    decision: str
+    approval_state: VisualApprovalStatus
+    decided_at: str = Field(default_factory=lambda: utc_now().isoformat())
+
+
 class VisualAsset(BaseModel):
     """Represent a visual asset."""
 
@@ -357,6 +380,7 @@ class VisualAsset(BaseModel):
     parent_asset_id: Optional[str] = None
     revision: int = Field(default=1, ge=1)
     variant_name: Optional[str] = None
+    role: Optional[str] = None
     execution_class: ExecutionClass
     adapter: str
     provider: Optional[str] = None

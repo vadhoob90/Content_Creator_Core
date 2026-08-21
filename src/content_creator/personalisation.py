@@ -143,10 +143,15 @@ class PersonalisationInspector:
                         self.root / "profiles" / voice_id / "learnings" / "memory.json",
                         "voice",
                     ),
+                    "visual_preferences": self._learning_scope(
+                        self.root / "profiles" / voice_id / "visual-learnings" / "memory.json",
+                        "visual",
+                    ),
                     "perspectives": self._perspectives(voice_id),
                     "paths": {
                         "voice": f"profiles/{voice_id}/",
                         "learnings": f"profiles/{voice_id}/learnings/memory.json",
+                        "visual_preferences": (f"profiles/{voice_id}/visual-learnings/memory.json"),
                         "perspectives": f"profiles/{voice_id}/perspectives/",
                     },
                 }
@@ -382,6 +387,7 @@ def render_personalisation(report: dict[str, Any]) -> str:
             lines.append("  Valid action: content-creator " + " ".join(action))
         lines.append(f"- Rejected candidates: {len(voice['rejections'])}")
         _append_learning_lines(lines, voice["learnings"], "Voice-specific")
+        _append_learning_lines(lines, voice["visual_preferences"], "Visual preferences")
         approved = voice["perspectives"]["approved"]
         pending = voice["perspectives"]["pending"]
         lines.append(

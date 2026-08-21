@@ -109,6 +109,9 @@ def publish(context: CommandContext) -> int:
         int: The resulting numeric value for publish.
     """
     arguments = context.arguments
+    if arguments.retry_pending:
+        context.emit(context.orchestrator.retry_pending_learning(arguments.run_id))
+        return 0
     context.emit(
         context.orchestrator.publish(
             arguments.run_id,
@@ -159,7 +162,12 @@ def verify_publications(context: CommandContext) -> int:
             )
         )
         return 0
-    report = context.orchestrator.publications.verify()
+    report = context.orchestrator.publications.verify(
+        run_id=arguments.run_id,
+        artifact_path=arguments.artifact,
+        receipt_path=arguments.receipt,
+        new_only=arguments.new_only,
+    )
     context.emit(report)
     return 1 if report["status"] == "failed" else 0
 

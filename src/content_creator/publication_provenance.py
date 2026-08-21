@@ -14,6 +14,7 @@ from .packs import PackRegistry
 from .perspective_evaluation import evaluate_perspective_output
 from .perspective_semantic_review import SemanticReviewReceipt
 from .perspectives import PerspectiveEntryStatus, PerspectiveRegistry
+from .publication_package_receipts import PublicationPackageReceipts
 from .publication_receipt_models import (
     PerspectiveEvaluationReceipt,
     PerspectiveReceipt,
@@ -21,7 +22,7 @@ from .publication_receipt_models import (
     PublicationBaselineEntry,
     PublicationReceipt,
 )
-from .storage import RunStore
+from .storage import RunStore, StorageError
 from .versioned_artifacts import hash_file, hash_json
 from .voices import VoiceRegistry
 
@@ -65,6 +66,7 @@ class PublicationProvenance:
         self.policy = policy
         self.receipts_root = self._within_root(str(policy["receipts_directory"]))
         self.baseline_path = self.receipts_root / "baseline.json"
+        self.packages = PublicationPackageReceipts(self.root, self.receipts_root)
 
     def evaluate(self, state: RunState, draft: str) -> Dict[str, Any]:
         """Evaluate the exact bytes proposed for publication.
@@ -129,6 +131,7 @@ class PublicationProvenance:
         receipt = PublicationReceipt(
             artifact_path=relative_target,
             artifact_hash=hash_file(target),
+            artifacts=self.packages.artifacts(state, target),
             run_id=state.id,
             final_status=RunStatus.PUBLISHED.value,
             content_pack_id=pack.id,
@@ -154,38 +157,83 @@ class PublicationProvenance:
         RunStore._atomic_text(receipt_path, receipt.model_dump_json(indent=2))
         return receipt_path
 
-    def verify(self) -> Dict[str, Any]:
+    def verify(
+        self,
+        *,
+        run_id: Optional[str] = None,
+        artifact_path: Optional[str] = None,
+        receipt_path: Optional[str] = None,
+        new_only: bool = False,
+    ) -> Dict[str, Any]:
         """Verify all configured publication destinations and receipts.
+
+        Apply at most one optional scope so a current package can be distinguished
+        from unrelated legacy debt while the unscoped mode retains repository-wide CI.
+
+        Args:
+            run_id (Optional[str]): Originating run to verify. Defaults to ``None``.
+            artifact_path (Optional[str]): Canonical artifact path. Defaults to ``None``.
+            receipt_path (Optional[str]): Canonical receipt path. Defaults to ``None``.
+            new_only (bool): Exclude unchanged baseline artifacts. Defaults to ``False``.
 
         Returns:
             Dict[str, Any]: Deterministic CI-ready verification report.
+
+        Raises:
+            PublicationProvenanceError: If an explicit run or receipt scope is unavailable.
         """
         policy = PublicationPolicy(self.policy["policy"])
         if policy == PublicationPolicy.OFF:
             return self._report(policy, [], 0, 0, "disabled")
-        artifacts = self._published_artifacts()
         baseline = self._load_baseline()
-        findings: list[PublicationFinding] = []
+        if receipt_path:
+            if not (selected_receipt := self._within_root(receipt_path)).is_file():
+                raise PublicationProvenanceError("Publication receipt does not exist")
+            try:
+                selected = PublicationReceipt.model_validate_json(
+                    selected_receipt.read_text(encoding="utf-8")
+                )
+            except Exception as exc:
+                finding = self._finding("invalid_receipt", None, str(exc))
+                return self._report(policy, [finding], 0, 1, "failed")
+            findings = self._verify_receipt(selected_receipt, selected.artifact_path)
+            return self._report(policy, findings, 1, 1, "failed" if findings else "ok")
+        try:
+            artifacts = self.packages.select_primary(
+                self._published_artifacts(),
+                baseline,
+                run_id,
+                artifact_path,
+                new_only,
+            )
+        except StorageError as exc:
+            raise PublicationProvenanceError(str(exc)) from exc
+        artifacts, missing = self.packages.existing_primary(artifacts)
+        findings = [PublicationFinding.model_validate(item) for item in missing]
         receipt_count = 0
         for artifact in artifacts:
             relative = self._relative(artifact)
-            receipt_path = self.receipt_path(relative)
-            if not receipt_path.exists():
+            canonical_receipt = self.receipt_path(relative)
+            if not canonical_receipt.exists():
                 if self._receipt_required(policy, artifact, relative, baseline):
                     findings.append(
                         self._finding("missing_receipt", relative, "Publication has no receipt")
                     )
                 continue
             receipt_count += 1
-            findings.extend(self._verify_receipt(receipt_path, expected_artifact=relative))
+            findings.extend(self._verify_receipt(canonical_receipt, expected_artifact=relative))
         known = {self.receipt_path(self._relative(path)).resolve() for path in artifacts}
-        for receipt_path in self._receipt_files():
-            if receipt_path.resolve() not in known:
+        if not any((run_id, artifact_path, new_only)):
+            receipt_files = self._receipt_files()
+        else:
+            receipt_files = []
+        for candidate_receipt in receipt_files:
+            if candidate_receipt.resolve() not in known:
                 findings.append(
                     self._finding(
                         "orphan_receipt",
                         None,
-                        f"Receipt has no published artifact: {self._relative(receipt_path)}",
+                        f"Receipt has no published artifact: {self._relative(candidate_receipt)}",
                     )
                 )
         failed_status = "advisory" if policy == PublicationPolicy.ADVISORY else "failed"
@@ -351,6 +399,9 @@ class PublicationProvenance:
             failures.append(
                 self._finding("artifact_hash_mismatch", receipt.artifact_path, "Content changed")
             )
+        failures.extend(
+            PublicationFinding.model_validate(item) for item in self.packages.verify(receipt)
+        )
         if receipt.final_status != RunStatus.PUBLISHED.value:
             failures.append(
                 self._finding(

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import base64
 import hashlib
 import re
 from pathlib import Path
@@ -10,6 +11,7 @@ from uuid import uuid4
 
 from .domain import RunStatus, utc_now
 from .storage import RunStore, StorageError
+from .versioned_artifacts import hash_file
 from .visual_contracts import (
     BoundingBox as BoundingBox,
 )
@@ -45,6 +47,9 @@ from .visual_contracts import (
 )
 from .visual_contracts import (
     VisualCritique as VisualCritique,
+)
+from .visual_contracts import (
+    VisualDecision as VisualDecision,
 )
 from .visual_contracts import (
     VisualDiagnostic as VisualDiagnostic,
@@ -154,7 +159,7 @@ class VisualWorkflow:
         manifest = self._load_manifest(run_id)
         adapter = self.adapters.get(adapter_name) if adapter_name else self.adapters.route(brief)
         parent = self._asset(manifest, parent_asset_id) if parent_asset_id else None
-        output = adapter.render(brief, parent)
+        output = self._apply_locked_assets(adapter.render(brief, parent), brief)
         asset_id = uuid4().hex[:12]
         revision = parent.revision + 1 if parent else 1
         directory = "revisions" if parent else "concepts"
@@ -168,6 +173,7 @@ class VisualWorkflow:
             parent_asset_id=parent.asset_id if parent else None,
             revision=revision,
             variant_name=variant_name,
+            role=brief.role,
             execution_class=adapter.execution_class,
             adapter=adapter.name,
             provider=str(output.metadata.get("provider") or "") or None,
@@ -190,6 +196,55 @@ class VisualWorkflow:
         manifest.assets.append(asset)
         self._save_manifest(manifest)
         return asset
+
+    def _apply_locked_assets(self, output: VisualOutput, brief: VisualBrief) -> VisualOutput:
+        """Verify locked assets and overlay their exact bytes on SVG output.
+
+        Args:
+            output (VisualOutput): Newly rendered provider-neutral visual bytes.
+            brief (VisualBrief): Reviewed brief containing immutable asset references.
+
+        Returns:
+            VisualOutput: Original output with verified provenance or exact SVG overlays.
+
+        Raises:
+            VisualError: If a locked asset is missing, changed, or outside the workspace.
+        """
+        if not brief.locked_assets:
+            return output
+        encoded_assets = []
+        for reference in brief.locked_assets:
+            path = (self.root / reference.path).resolve()
+            try:
+                path.relative_to(self.root)
+            except ValueError as exc:
+                raise VisualError("Locked brand asset path leaves the workspace") from exc
+            if not path.is_file() or hash_file(path) != reference.sha256:
+                raise VisualError(
+                    "Locked brand asset is missing or changed: {}".format(reference.id)
+                )
+            encoded_assets.append((reference, base64.b64encode(path.read_bytes()).decode("ascii")))
+        output.metadata["locked_asset_ids"] = [item.id for item, _ in encoded_assets]
+        if output.format.lower().lstrip(".") != "svg":
+            return output
+        document = output.content.decode("utf-8")
+        overlays = []
+        for index, (reference, encoded) in enumerate(encoded_assets):
+            overlays.append(
+                '<image data-locked-asset="{}" x="{}" y="{}" width="160" height="64" '
+                'preserveAspectRatio="xMidYMid meet" href="data:{};base64,{}"/>'.format(
+                    reference.id,
+                    max(0, output.width - 210),
+                    max(0, output.height - 90 - (index * 76)),
+                    reference.mime_type,
+                    encoded,
+                )
+            )
+        output.content = document.replace(
+            "</svg>",
+            "  {}\n</svg>".format("\n  ".join(overlays)),
+        ).encode("utf-8")
+        return output
 
     def validate(
         self,
@@ -411,6 +466,16 @@ class VisualWorkflow:
         asset.status = VisualApprovalStatus.SELECTED
         manifest.selected_asset_id = asset.asset_id
         self._save_manifest(manifest)
+        self.store.write_artifact(
+            run_id,
+            "visuals/decision.json",
+            VisualDecision(
+                run_id=run_id,
+                selected_asset_id=asset.asset_id,
+                decision="selected",
+                approval_state=asset.status,
+            ),
+        )
         return asset
 
     def approve(self, run_id: str, asset_id: str) -> VisualAsset:
@@ -437,6 +502,16 @@ class VisualWorkflow:
         brief = self._load_brief(run_id)
         brief.author_approval = VisualApprovalStatus.APPROVED
         self.store.write_artifact(run_id, "visual_brief.json", brief)
+        self.store.write_artifact(
+            run_id,
+            "visuals/decision.json",
+            VisualDecision(
+                run_id=run_id,
+                selected_asset_id=asset.asset_id,
+                decision="approved",
+                approval_state=asset.status,
+            ),
+        )
         return asset
 
     def ensure_publication_ready(
@@ -497,22 +572,56 @@ class VisualWorkflow:
         source = self.store.run_dir(run_id) / asset.relative_path
         if not source.exists() or hashlib.sha256(source.read_bytes()).hexdigest() != asset.sha256:
             raise VisualError("Selected visual asset is missing or its hash has changed")
+        target = self.publication_target(run_id, asset, profile)
+        if target.exists():
+            raise StorageError("Refusing to overwrite {}".format(target))
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(source.read_bytes())
+        self.mark_published(run_id, asset.asset_id, target)
+        return target
+
+    def publication_target(
+        self,
+        run_id: str,
+        asset: VisualAsset,
+        profile: VisualPackProfile,
+    ) -> Path:
+        """Return the validated publication destination for one visual asset.
+
+        Args:
+            run_id (str): Run containing the selected visual asset.
+            asset (VisualAsset): Selected visual lifecycle record.
+            profile (VisualPackProfile): Resolved pack destination policy.
+
+        Returns:
+            Path: Immutable visual destination beneath the author workspace.
+
+        Raises:
+            VisualError: If the configured destination leaves the workspace.
+        """
         destination = (self.root / str(profile.destination)).resolve()
         try:
             destination.relative_to(self.root)
         except ValueError as exc:
             raise VisualError("Visual publication destination leaves the workspace") from exc
-        destination.mkdir(parents=True, exist_ok=True)
-        target = destination / "{}-{}.{}".format(run_id, asset.asset_id, asset.format)
-        if target.exists():
-            raise StorageError("Refusing to overwrite {}".format(target))
-        target.write_bytes(source.read_bytes())
+        return destination / "{}-{}.{}".format(run_id, asset.asset_id, asset.format)
+
+    def mark_published(self, run_id: str, asset_id: str, target: Path) -> None:
+        """Record package-published media after all destination writes succeed.
+
+        Args:
+            run_id (str): Run containing the visual manifest.
+            asset_id (str): Selected visual asset identifier.
+            target (Path): Published immutable media destination.
+
+        Returns:
+            None: The selected asset and manifest are updated in place.
+        """
         manifest = self._load_manifest(run_id)
-        selected = self._asset(manifest, asset.asset_id)
+        selected = self._asset(manifest, asset_id)
         selected.status = VisualApprovalStatus.PUBLISHED
         manifest.published_path = str(target.relative_to(self.root))
         self._save_manifest(manifest)
-        return target
 
     def _load_brief(self, run_id: str) -> VisualBrief:
         """Load the brief.

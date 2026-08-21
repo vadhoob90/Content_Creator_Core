@@ -10,7 +10,7 @@ from typing import Any, Optional
 from pydantic import BaseModel, Field
 
 from .context_composition import ContextCompositionManifest
-from .domain import RunState
+from .domain import PublishedMediaArtifact, RunState
 from .packs import PackError, PackRegistry
 from .versioned_artifacts import hash_file
 
@@ -74,6 +74,7 @@ class ProductionPublication(BaseModel):
     path: str
     content_hash: str
     published_at: Optional[datetime] = None
+    media: list[PublishedMediaArtifact] = Field(default_factory=list)
 
 
 class ProductionManifest(BaseModel):
@@ -320,6 +321,7 @@ def _publication(root: Path, state: RunState) -> Optional[ProductionPublication]
         path=state.published_path,
         content_hash=hash_file(path),
         published_at=published_events[-1] if published_events else None,
+        media=list(state.published_media),
     )
 
 

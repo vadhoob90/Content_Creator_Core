@@ -20,7 +20,7 @@ from .production_manifest import ProductionManifest
 from .publication_receipt_models import PublicationBaseline, PublicationReceipt
 from .storage import RunStore
 from .visual_requests import VisualInvocation
-from .visuals import VisualManifest
+from .visuals import VisualDecision, VisualManifest
 from .voice_evolution import VoiceEvolutionChangeSet, VoiceEvolutionDelta
 from .voices import VoiceManifest, VoiceRejectionReceipt
 
@@ -49,6 +49,7 @@ SCHEMA_MODELS: Dict[str, Type[BaseModel]] = {
     "publication-baseline": PublicationBaseline,
     "publication-receipt": PublicationReceipt,
     "visual-manifest": VisualManifest,
+    "visual-decision": VisualDecision,
     "visual-invocation": VisualInvocation,
 }
 

@@ -47,6 +47,16 @@ def actions_for_state(state: RunState, run_id: str) -> list[CoordinatorAction]:
                 artifact=state.published_path,
             )
         ]
+        if state.pending_learning_count:
+            actions.append(
+                action(
+                    "retry-learning",
+                    "Retry the pending publication learning update",
+                    ["learn", run_id, "--retry-pending"],
+                    mutates=True,
+                    confirmation=True,
+                )
+            )
         if state.pending_support_count:
             actions.append(
                 action(
@@ -160,6 +170,8 @@ def recommend_action(snapshot: WorkspaceSnapshot) -> CoordinatorAction:
             mutates_workspace=True,
         )
     for run in snapshot.runs:
+        if not run.authoritative:
+            continue
         if run.status == RunStatus.AWAITING_RESEARCH_APPROVAL.value:
             return CoordinatorAction(
                 id="review-research",

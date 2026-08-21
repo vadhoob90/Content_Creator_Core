@@ -6,6 +6,12 @@ published bytes to the originating run, pinned voice, direct author input,
 selected perspective versions and entries, and the exact deterministic
 perspective evaluation used at the publication boundary.
 
+New receipts also contain an `artifacts` collection for the complete approved
+communication package. The canonical text entry retains the legacy
+`artifact_path` and `artifact_hash` contract, while each media entry adds its
+role, source and published paths, SHA-256 hash, MIME type, dimensions, alt text,
+approval state, asset ID, parent asset ID, and derivation revision.
+
 Receipts live under `publication-receipts/` by default. They contain hashes and
 minimal provenance classifications, not prompts, drafts, feedback, research
 notes, or author-contribution text.
@@ -23,7 +29,8 @@ content-creator verify-publications
 
 The command makes no provider or network call. It checks publication hashes,
 receipt schemas, originating status, pinned voice manifests, perspective
-manifests, approved entry hashes, and the recorded deterministic evaluation.
+manifests, approved entry hashes, the recorded deterministic evaluation, and
+every package artifact's bytes and required image metadata.
 An inactive context cannot authorize a new publication; historical receipts
 continue to verify their immutable version after a later deactivation.
 
@@ -46,6 +53,31 @@ Supported policies are:
 
 New generated workspaces use prospective enforcement with an empty baseline.
 Existing workspaces remain advisory until deliberately migrated.
+
+### Verify one current publication
+
+Repository-wide verification remains the CI default. Operational checks can be
+scoped to one publication so legacy debt does not obscure a new valid package:
+
+```bash
+content-creator verify-publications --run-id <run-id>
+content-creator verify-publications --artifact content/linkedin-post/published/post.md
+content-creator verify-publications \
+  --receipt publication-receipts/content/linkedin-post/published/post.md.receipt.json
+content-creator verify-publications --new-only
+```
+
+The four scope options are mutually exclusive. `--new-only` excludes unchanged
+artifacts admitted by the prospective baseline; it does not weaken the checks
+applied to selected new publications.
+
+### Media replacement history
+
+An approved `visual replace` operation never rewrites the canonical text. Core
+retains the superseded visual bytes, archives the previous canonical receipt as
+an immutable revision, increments `revision`, and records
+`supersedes_receipt_hash` on the new receipt. Verification follows the current
+canonical package while the archived receipt preserves the audit chain.
 
 ## Baseline legacy publications
 

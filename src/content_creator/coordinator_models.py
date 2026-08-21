@@ -49,6 +49,10 @@ class RunSummary(BaseModel):
     content_pack: str
     voice_id: str
     updated_at: str
+    content_session_id: Optional[str] = None
+    parent_run_id: Optional[str] = None
+    authoritative: bool = True
+    superseded_by_run_id: Optional[str] = None
     requires_human_input: bool = False
     incomplete: bool = False
 

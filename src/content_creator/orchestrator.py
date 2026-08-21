@@ -25,11 +25,12 @@ from .perspective_extraction import extract_perspectives
 from .perspectives import PerspectiveCatalogueStore, PerspectiveRegistry, PerspectiveResolver
 from .providers import ProviderRegistry
 from .publication_assessment import build_publication_assessment
+from .publication_package import PublicationPackagePublisher
 from .routing import build_route
 from .stages import CallableDraftReviewStage as CallableDraftReviewStage
 from .stages import CallableResearchStage as CallableResearchStage
 from .stages import LifecycleStages as LifecycleStages
-from .storage import RunStore, StorageError, slugify
+from .storage import StorageError, slugify
 from .versioned_artifacts import hash_file
 from .voices import VoiceRegistry
 from .work_order_resolution import resolve_workspace_defaults
@@ -93,6 +94,9 @@ class Orchestrator:
         self.publications = self._runtime.publications
         self.semantic_review = self._runtime.semantic_review
         self.publication_lifecycle = self._runtime.publication_lifecycle
+        self.package_publisher = PublicationPackagePublisher(
+            self.root, self.visuals, self.publications
+        )
 
     def learn(self, run_id: str, feedback: str, idempotency_key: Optional[str] = None) -> RunState:
         """Apply explicit author feedback through the runtime lifecycle.
@@ -106,6 +110,53 @@ class Orchestrator:
             RunState: Run state with appended learning audit events.
         """
         return self._runtime.learn(run_id, feedback, idempotency_key)
+
+    def retry_pending_learning(self, run_id: str) -> RunState:
+        """Apply durable publication learning again without republishing content.
+
+        Args:
+            run_id (str): Published run with a pending learning request.
+
+        Returns:
+            RunState: Run state with the completed learning audit event.
+        """
+        return self.learning.retry_publication(run_id)
+
+    def replace_visual(self, run_id: str, asset_id: str) -> RunState:
+        """Update published media without rewriting the canonical text artifact.
+
+        Args:
+            run_id (str): Published run whose selected media should change.
+            asset_id (str): Selected and author-approved replacement asset identifier.
+
+        Returns:
+            RunState: Published run pointing at the replacement visual package revision.
+
+        Raises:
+            OrchestrationError: If the run or selected replacement is not publishable.
+        """
+        state = self.store.load(run_id)
+        if state.status != RunStatus.PUBLISHED:
+            raise OrchestrationError("Visual replacement requires a published run")
+        pack = self.packs.resolve(
+            state.work_order.content_pack,
+            state.work_order.pack_options,
+        )
+        asset = self.visuals.ensure_publication_ready(run_id, pack.visuals)
+        if asset is None or asset.asset_id != asset_id:
+            raise OrchestrationError("Visual replacement requires the selected approved asset")
+        receipt_path = self.package_publisher.replace_visual(state, asset, pack.visuals)
+        state.events.extend(
+            [
+                RunEvent(name="visual_replaced", detail=state.published_visual_path or ""),
+                RunEvent(
+                    name="publication_receipt_revised",
+                    detail=str(receipt_path.relative_to(self.root)),
+                ),
+            ]
+        )
+        self.store.save_state(state)
+        return state
 
     def revise(
         self,
@@ -688,17 +739,7 @@ class Orchestrator:
         Returns:
             None: The callable updates learnings state and returns no value.
         """
-        try:
-            self.learning.extract(
-                state,
-                draft,
-                assessment,
-                feedback,
-                "learning-extraction.json",
-            )
-            state.events.append(RunEvent(name="learnings_updated"))
-        except Exception as exc:
-            state.events.append(RunEvent(name="learning_update_failed", detail=str(exc)))
+        self.learning.execute_publication(state, draft, assessment, feedback)
 
     def _extract_perspectives(
         self, state: RunState, draft: str, assessment: Dict[str, Any]
@@ -745,25 +786,20 @@ class Orchestrator:
         Returns:
             RunState: The resulting run state for finish publication.
         """
-        RunStore._atomic_text(target, draft.rstrip())
-        state.published_path = str(target.relative_to(self.root))
-        if visual_asset is not None:
-            visual_target = self.visuals.publish(state.id, pack.visuals)
-            state.published_visual_path = (
-                str(visual_target.relative_to(self.root)) if visual_target else None
-            )
+        receipt_path = self.package_publisher.publish(
+            state,
+            target,
+            draft,
+            pack.visuals,
+            visual_asset,
+            gate,
+        )
+        if state.published_visual_path:
             state.events.append(
                 RunEvent(name="visual_published", detail=state.published_visual_path or "")
             )
         state.status = RunStatus.PUBLISHED
         state.events.append(RunEvent(name="published", detail=state.published_path))
-        receipt_path = self.publications.issue(
-            state,
-            target,
-            gate.perspective_evaluation,
-            gate.evaluation_artifact_hash,
-            gate.semantic_review,
-        )
         state.events.append(
             RunEvent(
                 name="publication_receipt_written", detail=str(receipt_path.relative_to(self.root))
@@ -771,7 +807,6 @@ class Orchestrator:
         )
         self._runtime._persist_model_history(state.id)
         self.store.save_state(state)
-        post_publish = self.diagnostics.preflight(state.id)
-        self._runtime._apply_diagnostic_state(state, post_publish)
+        self._runtime._apply_diagnostic_state(state, self.diagnostics.preflight(state.id))
         self.store.save_state(state)
         return state

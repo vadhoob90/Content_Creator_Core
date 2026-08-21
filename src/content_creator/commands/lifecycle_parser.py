@@ -172,7 +172,13 @@ def register_publication(subparsers: argparse._SubParsersAction) -> None:
         "learn", help="Apply explicit author feedback without publishing content"
     )
     learn.add_argument("run_id")
-    learn.add_argument("--feedback", required=True)
+    learning_mode = learn.add_mutually_exclusive_group(required=True)
+    learning_mode.add_argument("--feedback")
+    learning_mode.add_argument(
+        "--retry-pending",
+        action="store_true",
+        help="Retry the durable learning operation left pending by publication",
+    )
     learn.add_argument("--idempotency-key")
     verify = subparsers.add_parser(
         "verify-publications",
@@ -188,6 +194,11 @@ def register_publication(subparsers: argparse._SubParsersAction) -> None:
         action="store_true",
         help="Replace an existing legacy baseline",
     )
+    scope = verify.add_mutually_exclusive_group()
+    scope.add_argument("--run-id")
+    scope.add_argument("--artifact")
+    scope.add_argument("--receipt")
+    scope.add_argument("--new-only", action="store_true")
     revise = subparsers.add_parser(
         "revise", help="Revise a reviewed run in place and refresh its quality metadata"
     )

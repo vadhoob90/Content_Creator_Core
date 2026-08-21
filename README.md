@@ -109,6 +109,12 @@ author-approved asset can enter repository publication. LinkedIn packs include
 article-cover, link-preview, portrait-feed, and square-feed roles where
 applicable.
 
+Repository publication treats the reviewed text, selected visual, alt text,
+approval, and receipt as one recoverable package. Exact brand marks can be
+hash-locked and overlaid without regeneration, published visuals can be
+replaced without duplicating text, and visual preferences remain separate from
+linguistic voice memory.
+
 See [Governed visual workflows](docs/guides/visual-assets.md) for the natural
 language route, reusable-component API, CLI commands, brand tokens, and
 approval lifecycle.

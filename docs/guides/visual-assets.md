@@ -67,7 +67,25 @@ result = VisualRequestWorkflow(root).render(
 The optional workspace file `visual-brand.json` can supply `background`,
 `foreground`, `accent`, and `font_family` string tokens. Core validates and
 records the effective tokens in the brief; author styling remains owned by the
-workspace rather than the reusable package.
+workspace rather than the reusable package. The original flat string mapping
+remains supported. A structured file can also register exact locked assets:
+
+```json
+{
+  "tokens": {
+    "background": "#071A2B",
+    "accent": "#19C3B1"
+  },
+  "locked_assets": [
+    {"id": "author-logo", "path": "brand/logo.svg", "role": "logo"}
+  ]
+}
+```
+
+Core verifies each locked asset inside the workspace and pins its MIME type and
+SHA-256 hash in the visual brief. The deterministic SVG renderer embeds the
+exact verified bytes as an overlay instead of regenerating spelling, geometry,
+or proportions. A changed or missing locked asset fails closed.
 
 ## Pack-owned roles
 
@@ -100,7 +118,9 @@ reviewed content → visual brief → concept → critique → revision
 `VisualBrief` records the connection to the reviewed argument, exact in-image
 copy, output ratios and formats, safe-area and crop profiles, hierarchy,
 revision invariants, sources and reuse rights, alt text, and optional routing
-preferences. Core writes it to `runs/<run-id>/visual_brief.json`.
+preferences. Core writes it to `runs/<run-id>/visual_brief.json`. Selection and
+approval update a typed `runs/<run-id>/visuals/decision.json`, while critiques
+remain in `visuals/critique.json` and complete lineage remains in the manifest.
 
 Adapters implement the `VisualAdapter` contract and declare either
 `deterministic` or `generative` execution. They return bytes plus dimensions,
@@ -132,10 +152,46 @@ content-creator --workspace . publish <run-id>
 approve it. Those human-governed checkpoints remain separate. A revision uses
 `visual render <run-id> --parent-asset-id <asset-id>` so lineage is preserved.
 
+## Publication packages and replacement
+
+The main `publish <run-id>` command stages the reviewed Markdown and selected
+approved visual before exposing either destination. Its receipt enumerates the
+text and media with hashes, MIME type, dimensions, alt text, approval state,
+role, and derivation. A failed receipt or visual-manifest update removes newly
+visible package files rather than leaving a half-published deliverable.
+
+After publication, render, critique, select, and approve a revision normally,
+then replace only the media:
+
+```bash
+content-creator --workspace . visual replace <run-id> <asset-id>
+```
+
+The text path and bytes remain unchanged. Core publishes the replacement under
+a new immutable media filename, retains the superseded visual, archives the
+previous receipt, and writes a new receipt revision linked to its predecessor's
+hash. `visual publish` follows the same package-aware publication or replacement
+route and no longer bypasses run state or receipts.
+
+## Visual preference learning
+
+Record explicit, reusable visual direction separately from writing voice:
+
+```bash
+content-creator --workspace . visual learn <run-id> \
+  --feedback "Prefer tactile paper-cut editorial styling with strong negative space."
+```
+
+Core writes `profiles/<voice-id>/visual-learnings/memory.json` with scope
+`visual` and injects active principles into later visual briefs. These records
+never enter `profiles/<voice-id>/learnings/memory.json` and therefore cannot
+alter linguistic writer or critic prompts.
+
 ## Ownership boundaries
 
 - Core owns component contracts and discovery, its deterministic renderer,
   lineage, routing contracts, validation, and lifecycle.
 - Packs own platform ratios, formats, safe areas, crops, and destinations.
-- Workspaces own palette, typography, templates, and learned author choices.
+- Workspaces own palette, typography, locked marks, templates, and learned
+  visual choices in a scope separate from linguistic voice.
 - The author remains the final authority; validation never implies approval.

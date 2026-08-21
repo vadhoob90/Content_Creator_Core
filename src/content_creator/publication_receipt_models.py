@@ -30,12 +30,32 @@ class PerspectiveEvaluationReceipt(BaseModel):
     selected_entry_ids: list[str] = Field(default_factory=list)
 
 
+class PublicationArtifactReceipt(BaseModel):
+    """Record one content or media artifact in a publication package."""
+
+    role: str
+    path: str
+    sha256: str
+    mime_type: str
+    source_path: Optional[str] = None
+    width: Optional[int] = Field(default=None, gt=0)
+    height: Optional[int] = Field(default=None, gt=0)
+    alt_text: Optional[str] = None
+    approval_state: Optional[str] = None
+    asset_id: Optional[str] = None
+    parent_asset_id: Optional[str] = None
+    derivation_revision: Optional[int] = Field(default=None, ge=1)
+
+
 class PublicationReceipt(BaseModel):
     """Represent repository-tracked evidence for one publication."""
 
     schema_version: str = "1.0"
     artifact_path: str
     artifact_hash: str
+    revision: int = Field(default=1, ge=1)
+    supersedes_receipt_hash: Optional[str] = None
+    artifacts: list[PublicationArtifactReceipt] = Field(default_factory=list)
     run_id: str
     final_status: str
     content_pack_id: Optional[str] = None

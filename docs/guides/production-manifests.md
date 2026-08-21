@@ -32,7 +32,9 @@ The JSON manifest additionally records:
 - bounded author-contribution provenance;
 - paths and hashes for the final draft, context composition, validation, and
   quality evidence when available; and
-- repository-local publication path, hash, and timestamp.
+- repository-local publication path, hash, and timestamp; and
+- every selected published visual's role, source and published paths, SHA-256
+  hash, MIME type, dimensions, alt text, approval state, and derivation lineage.
 
 It does not copy prompts, model payloads, research text, author contribution
 text, API credentials, or published content.
@@ -42,7 +44,8 @@ text, API credentials, or published content.
 Repository publication always reads `final.md`, not `review.md`. Published
 content therefore remains clean by default, while its receipt records the
 resolved content pack ID and version alongside the existing voice and
-perspective evidence.
+perspective evidence. Package-aware receipts enumerate the canonical text and
+all selected media; text-only runs continue to publish without media entries.
 
 ## Existing runs
 
