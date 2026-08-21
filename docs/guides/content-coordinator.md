@@ -47,6 +47,13 @@ meanings, including the string-valued `provider`. The v0.6 snapshot adds
 metadata. Hosts should ignore unknown fields. Mutating action arrays retain
 their existing commands and confirmation flags.
 
+Core 1.15 adds `content_session_id`, `parent_run_id`, `authoritative`, and
+`superseded_by_run_id` to each run summary. Coordinator recommendations operate
+on the latest authoritative descendant in a revision lineage, so a published
+child does not leave an older ready parent as the apparent active draft. A
+published run with `pending_learning_count` exposes a confirmed
+`retry-learning` action without reopening publication.
+
 For an existing run:
 
 ```bash

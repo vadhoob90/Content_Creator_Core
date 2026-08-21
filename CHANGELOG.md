@@ -8,6 +8,53 @@ release tag.
 
 ## [Unreleased]
 
+## [1.15.0] - 2026-08-21
+
+### Added
+
+- Publication receipts now describe the complete communication package through
+  backward-compatible `artifacts` entries for canonical text and every selected
+  visual, including role, paths, hashes, MIME type, dimensions, alt text,
+  approval state, and derivation lineage.
+- Approved visuals now persist in run state and production manifests, while
+  author-governed selection and approval are recorded in a typed
+  `visuals/decision.json` artifact.
+- `visual replace` publishes a newly approved visual without rewriting or
+  duplicating the text artifact, retains the superseded visual, archives the
+  previous receipt, and links the new receipt revision by hash.
+- Workspace-owned locked brand assets can be registered in
+  `visual-brand.json`, pinned by hash, and overlaid byte-for-byte by the
+  deterministic SVG renderer.
+- Visual preferences now have an explicit `visual learn` workflow and separate
+  `profiles/<voice-id>/visual-learnings/memory.json` scope that is injected into
+  visual briefs without entering linguistic voice memory.
+- Publication verification can be scoped with `--run-id`, `--artifact`,
+  `--receipt`, or `--new-only` while retaining repository-wide verification.
+
+### Changed
+
+- Local publication stages content and selected media together and compensates
+  failed receipt or manifest writes so a failed operation does not leave a
+  partial visible package.
+- Publication-time learning now creates a durable request before provider work.
+  Failed extraction remains visible through coordinator state and can be retried
+  idempotently with `learn <run-id> --retry-pending`.
+- Coordinator run summaries identify the authoritative descendant in each
+  `content_session_id`, mark older ancestors as superseded, and avoid presenting
+  a ready ancestor after its child revision has been published.
+- `visual publish` now uses the package publication or replacement lifecycle
+  instead of bypassing run state and publication receipts.
+
+### Migration
+
+- No stored-data migration is required. New run-state, visual, production
+  manifest, coordinator, and receipt fields are optional when older artifacts
+  are read. Existing text-only receipts continue to verify through their legacy
+  `artifact_path` and `artifact_hash` fields.
+- Existing author workspaces remain on their immutable Core pins. Preview and
+  apply an intentional upgrade with `workspace upgrade --to v1.15.0` and
+  `workspace upgrade --to v1.15.0 --apply`.
+
 ## [1.14.0] - 2026-08-11
 
 ### Added

@@ -15,9 +15,11 @@ After that pre-publication decision, the application:
 4. Runs bounded semantic perspective review when reusable entries were selected
 5. Pauses for an author decision when semantic findings require review
 6. Records `assessment.json` and the publication perspective evaluation
-7. Calls the learning and perspective extractors
-8. Writes the piece to the selected pack's configured repository destination
-9. Writes a privacy-safe tracked publication receipt
+7. Persists a durable publication-learning request, then calls the learning and
+   perspective extractors
+8. Stages the piece and every selected approved visual
+9. Publishes the complete package and a privacy-safe tracked receipt, rolling
+   back newly visible files if the package cannot complete
 10. Adds deduplicated records to
    `profiles/<voice-id>/learnings/memory.json`
 
@@ -51,9 +53,17 @@ apply across voices in that content repository. Publication does not promote a
 voice learning into repository memory automatically; cross-voice promotion is
 a deliberate human-reviewed policy change.
 
-If extraction fails, publication is retained and the run records a
-`learning_update_failed` event. This prevents a model outage from losing an
-already approved piece.
+If extraction fails, publication is retained, the durable
+`publication-learning-request.json` remains `pending`, and the run records a
+`learning_update_failed` event plus `pending_learning_count`. Coordinator next
+actions expose the retry explicitly. Complete it without republishing:
+
+```bash
+content-creator learn <run-id> --retry-pending
+```
+
+The retry reuses an already persisted extraction when available, so a failure
+after provider output does not invoke the provider or apply memory twice.
 
 ## Add feedback without publishing again
 

@@ -66,6 +66,107 @@ class LearningLifecycle:
                 self._record_failure(state, request_name, request, exc)
                 raise
 
+    def execute_publication(
+        self,
+        state: RunState,
+        draft: str,
+        assessment: Dict[str, Any],
+        feedback: Optional[str],
+    ) -> None:
+        """Persist and attempt the retryable learning coupled to publication.
+
+        Args:
+            state (RunState): Reviewed run crossing the publication boundary.
+            draft (str): Exact reviewed content used as learning context.
+            assessment (Dict[str, Any]): Persisted publication assessment.
+            feedback (Optional[str]): Explicit author feedback, or ``None`` for inference.
+
+        Returns:
+            None: Request, extraction, events, and pending state are persisted in place.
+        """
+        request_name = "publication-learning-request.json"
+        request = {
+            "schema_version": "1.0",
+            "status": "started",
+            "run_id": state.id,
+            "fingerprint": self._publication_fingerprint(state.id, draft, assessment, feedback),
+            "assessment_artifact": "assessment.json",
+            "extraction_artifact": "learning-extraction.json",
+            "feedback": feedback,
+            "feedback_scope": "voice",
+        }
+        self.workflow.store.write_artifact(state.id, request_name, request)
+        state.pending_learning_count = 1
+        self.workflow.store.save_state(state)
+        try:
+            self.extract(state, draft, assessment, feedback, "learning-extraction.json")
+        except Exception as exc:
+            request.update(status="pending", error=str(exc))
+            state.events.append(RunEvent(name="learning_update_failed", detail=str(exc)))
+        else:
+            request.update(status="complete")
+            request.pop("error", None)
+            state.pending_learning_count = 0
+            state.events.append(RunEvent(name="learnings_updated"))
+        self.workflow.store.write_artifact(state.id, request_name, request)
+
+    def retry_publication(self, run_id: str) -> RunState:
+        """Execute one durable pending publication-learning operation again.
+
+        Reuse a recovered extraction when present so a failure after provider output
+        does not invoke the provider or apply the same learning twice.
+
+        Args:
+            run_id (str): Published run with a pending durable learning request.
+
+        Returns:
+            RunState: Published run with completed or still-pending learning state.
+
+        Raises:
+            RuntimeError: If the run has no pending publication-learning request.
+        """
+        state = self.workflow.store.load(run_id)
+        request_name = "publication-learning-request.json"
+        request_path = self.workflow.store.run_dir(run_id) / request_name
+        request = self._load_request(request_path)
+        if not request or request.get("status") != "pending":
+            raise RuntimeError("Run has no pending publication learning update")
+        assessment = json.loads(
+            self.workflow.store.read_artifact(run_id, str(request["assessment_artifact"]))
+        )
+        draft = self.workflow.store.read_artifact(run_id, "final.md").rstrip() + "\n"
+        extraction_name = str(request["extraction_artifact"])
+        extraction_path = self.workflow.store.run_dir(run_id) / extraction_name
+        state.events.append(RunEvent(name="learning_update_started", detail="publication"))
+        self.workflow.store.save_state(state)
+        try:
+            if extraction_path.exists():
+                extraction = LearningExtraction.model_validate_json(
+                    extraction_path.read_text(encoding="utf-8")
+                )
+                self._apply(state, extraction, request.get("feedback"))
+            else:
+                self.extract(
+                    state,
+                    draft,
+                    assessment,
+                    request.get("feedback"),
+                    extraction_name,
+                )
+        except Exception as exc:
+            request.update(status="pending", error=str(exc))
+            state.events.append(RunEvent(name="learning_update_failed", detail=str(exc)))
+            self.workflow.store.write_artifact(run_id, request_name, request)
+            self.workflow.store.save_state(state)
+            raise
+        request.update(status="complete")
+        request.pop("error", None)
+        state.pending_learning_count = 0
+        state.events.append(RunEvent(name="learning_update_completed", detail="publication"))
+        self.workflow.store.write_artifact(run_id, request_name, request)
+        self.workflow.store.save_state(state)
+        return state
+
     def extract(
         self,
         state: RunState,
@@ -406,5 +507,36 @@ class LearningLifecycle:
             {"run_id": run_id, "feedback": feedback},
             sort_keys=True,
             ensure_ascii=False,
+        )
+        return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+    @staticmethod
+    def _publication_fingerprint(
+        run_id: str,
+        draft: str,
+        assessment: Dict[str, Any],
+        feedback: Optional[str],
+    ) -> str:
+        """Hash the complete automatic publication-learning request.
+
+        Args:
+            run_id (str): Run receiving the automatic learning update.
+            draft (str): Exact reviewed draft used as evidence.
+            assessment (Dict[str, Any]): Publication assessment supplied to extraction.
+            feedback (Optional[str]): Explicit author feedback when available.
+
+        Returns:
+            str: Stable hexadecimal SHA-256 request fingerprint.
+        """
+        payload = json.dumps(
+            {
+                "run_id": run_id,
+                "draft": draft,
+                "assessment": assessment,
+                "feedback": feedback,
+            },
+            sort_keys=True,
+            ensure_ascii=False,
+            default=str,
         )
         return hashlib.sha256(payload.encode("utf-8")).hexdigest()

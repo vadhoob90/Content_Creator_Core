@@ -455,6 +455,23 @@ class RunEvent(BaseModel):
     detail: str = ""
 
 
+class PublishedMediaArtifact(BaseModel):
+    """Record one approved media artifact in the publication package."""
+
+    role: str
+    source_path: str
+    published_path: str
+    sha256: str
+    mime_type: str
+    width: int = Field(gt=0)
+    height: int = Field(gt=0)
+    alt_text: str
+    approval_state: str
+    asset_id: str
+    parent_asset_id: Optional[str] = None
+    revision: int = Field(default=1, ge=1)
+
+
 class RunState(BaseModel):
     """Represent a run state."""
 
@@ -469,6 +486,8 @@ class RunState(BaseModel):
     review_draft_path: Optional[str] = None
     published_path: Optional[str] = None
     published_visual_path: Optional[str] = None
+    published_media: List[PublishedMediaArtifact] = Field(default_factory=list)
+    pending_learning_count: int = Field(default=0, ge=0)
     last_error: Optional[str] = None
     diagnostic_summary_path: Optional[str] = None
     support_candidate_path: Optional[str] = None

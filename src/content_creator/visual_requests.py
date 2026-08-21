@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import mimetypes
 import re
 from pathlib import Path
 from typing import List, Optional
@@ -12,6 +13,7 @@ from pydantic import BaseModel, Field
 from .domain import utc_now
 from .storage import RunStore, StorageError
 from .version import VERSION
+from .versioned_artifacts import hash_file
 from .visual_components import VisualComponent, VisualComponentRegistry
 from .visual_contracts import (
     ExecutionClass,
@@ -19,10 +21,12 @@ from .visual_contracts import (
     VisualBrief,
     VisualComponentRef,
     VisualError,
+    VisualLockedAssetRef,
     VisualManifest,
     VisualPackProfile,
     VisualRoleProfile,
 )
+from .visual_preferences import VisualPreferenceMemory
 from .visuals import VisualWorkflow
 
 
@@ -280,6 +284,8 @@ class VisualRequestWorkflow:
             revision_invariants=["Preserve reviewed headline copy", "Preserve alt text"],
             alt_text=alt_text or "Editorial visual for: {}".format(headline),
             brand_tokens=self._brand_tokens(),
+            locked_assets=self._locked_assets(),
+            visual_preferences=self._visual_preferences(run_id),
             components=components,
             preferred_execution_class=ExecutionClass.DETERMINISTIC,
             preferred_adapter="core-deterministic-svg",
@@ -363,11 +369,76 @@ class VisualRequestWorkflow:
             payload = json.loads(path.read_text(encoding="utf-8"))
         except (OSError, ValueError) as exc:
             raise VisualError("Workspace visual-brand.json is not valid JSON") from exc
-        if not isinstance(payload, dict) or not all(
-            isinstance(key, str) and isinstance(value, str) for key, value in payload.items()
+        if not isinstance(payload, dict):
+            raise VisualError("Workspace visual-brand.json must contain a mapping")
+        tokens = (
+            payload["tokens"]
+            if "tokens" in payload
+            else {key: value for key, value in payload.items() if key != "locked_assets"}
+        )
+        if not isinstance(tokens, dict) or not all(
+            isinstance(key, str) and isinstance(value, str) for key, value in tokens.items()
         ):
             raise VisualError("Workspace visual-brand.json must contain string tokens")
-        return payload
+        return tokens
+
+    def _locked_assets(self) -> List[VisualLockedAssetRef]:
+        """Resolve exact workspace brand assets and pin their current hashes.
+
+        Returns:
+            List[VisualLockedAssetRef]: Verified workspace paths, roles, MIME types, and
+                immutable hashes in configured order.
+
+        Raises:
+            VisualError: If brand configuration or any locked asset is invalid.
+        """
+        path = self.root / "visual-brand.json"
+        if not path.exists():
+            return []
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+            records = payload.get("locked_assets", []) if isinstance(payload, dict) else []
+        except (OSError, ValueError) as exc:
+            raise VisualError("Workspace visual-brand.json is not valid JSON") from exc
+        if not isinstance(records, list):
+            raise VisualError("visual-brand.json locked_assets must be a list")
+        result = []
+        for record in records:
+            if not isinstance(record, dict) or not record.get("id") or not record.get("path"):
+                raise VisualError("Each locked brand asset requires id and path")
+            asset_path = (self.root / str(record["path"])).resolve()
+            try:
+                relative = asset_path.relative_to(self.root)
+            except ValueError as exc:
+                raise VisualError("Locked brand asset path leaves the workspace") from exc
+            if not asset_path.is_file():
+                raise VisualError("Locked brand asset is missing: {}".format(relative))
+            mime_type = mimetypes.guess_type(asset_path.name)[0] or "application/octet-stream"
+            result.append(
+                VisualLockedAssetRef(
+                    id=str(record["id"]),
+                    path=str(relative),
+                    role=str(record.get("role") or "brand-mark"),
+                    sha256=hash_file(asset_path),
+                    mime_type=mime_type,
+                )
+            )
+        return result
+
+    def _visual_preferences(self, run_id: str) -> List[str]:
+        """Load only the selected voice's dedicated visual preference scope.
+
+        Args:
+            run_id (str): Reviewed run whose selected voice owns the visual scope.
+
+        Returns:
+            List[str]: Active visual-only principles in recorded order.
+        """
+        state = self.store.load(run_id)
+        return VisualPreferenceMemory(
+            self.root,
+            state.work_order.voice_id,
+        ).active_principles()
 
     @staticmethod
     def _component_format(components: List[VisualComponentRef]) -> str:

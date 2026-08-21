@@ -38,6 +38,16 @@ with a selected voice lives in
 `profiles/<voice-id>/learnings/memory.json`. The report shows the actual
 principles and their role and status, not only a count.
 
+Visual preferences live separately in
+`profiles/<voice-id>/visual-learnings/memory.json`. They are shown as scope
+`visual` and enter visual briefs only; they never enter writer, critic, or
+linguistic voice prompts. Record explicit visual direction with:
+
+```bash
+content-creator --workspace . visual learn <run-id> \
+  --feedback "Prefer one dominant metaphor with restrained colour and negative space."
+```
+
 Only active, role-matched learning enters a prompt. For example, an active
 writer principle under `profiles/bharath-linkedin/learnings/memory.json` is
 supplied to the writer whenever `bharath-linkedin` is selected. A provisional
@@ -53,7 +63,8 @@ still requiring a decision.
 
 A voice governs expression. A perspective represents an approved position or
 interpretation. Core keeps them separate so learning a writing habit does not
-silently invent a belief.
+silently invent a belief. Visual preference is a third explicit scope so image
+direction does not silently change linguistic expression.
 
 ## Effective prompt order
 

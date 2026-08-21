@@ -231,6 +231,8 @@ class ContentCoordinator:
                 or bool(state.pending_support_count)
             ),
             "diagnostic_attention_required": bool(state.pending_support_count),
+            "learning_attention_required": bool(state.pending_learning_count),
+            "pending_learning_count": state.pending_learning_count,
             "diagnostic_summary": state.diagnostic_summary_path,
             "support_candidate": state.support_candidate_path,
             "last_error": state.last_error,
@@ -239,7 +241,10 @@ class ContentCoordinator:
         }
 
     def _run_summaries(self, limit: int) -> List[RunSummary]:
-        """Run the summaries.
+        """Return lineage-aware recent run summaries.
+
+        Group runs by content session before projecting human-input state so a
+        published descendant supersedes review prompts from an older ancestor.
 
         Args:
             limit (int): The maximum number of records to return or process.
@@ -259,6 +264,7 @@ class ContentCoordinator:
                 )
                 continue
         states.sort(key=lambda item: item.updated_at, reverse=True)
+        authoritative = self._authoritative_runs(states)
         return [
             RunSummary(
                 run_id=state.id,
@@ -267,16 +273,59 @@ class ContentCoordinator:
                 content_pack=state.work_order.content_pack,
                 voice_id=state.work_order.voice_id,
                 updated_at=state.updated_at.isoformat(),
-                requires_human_input=state.status
-                in {
-                    RunStatus.AWAITING_RESEARCH_APPROVAL,
-                    RunStatus.READY,
-                    RunStatus.NEEDS_AUTHOR,
-                },
-                incomplete=state.status != RunStatus.PUBLISHED,
+                content_session_id=state.work_order.content_session_id,
+                parent_run_id=state.work_order.parent_run_id,
+                authoritative=authoritative[state.work_order.content_session_id].id == state.id,
+                superseded_by_run_id=(
+                    authoritative[state.work_order.content_session_id].id
+                    if authoritative[state.work_order.content_session_id].id != state.id
+                    else None
+                ),
+                requires_human_input=(
+                    authoritative[state.work_order.content_session_id].id == state.id
+                    and state.status
+                    in {
+                        RunStatus.AWAITING_RESEARCH_APPROVAL,
+                        RunStatus.READY,
+                        RunStatus.NEEDS_AUTHOR,
+                    }
+                ),
+                incomplete=(
+                    authoritative[state.work_order.content_session_id].id == state.id
+                    and state.status != RunStatus.PUBLISHED
+                ),
             )
             for state in states[: max(0, limit)]
         ]
+
+    @staticmethod
+    def _authoritative_runs(states: List[RunState]) -> Dict[str, RunState]:
+        """Return the latest authoritative descendant for each content session.
+
+        Args:
+            states (List[RunState]): Persisted runs ordered by recent activity.
+
+        Returns:
+            Dict[str, RunState]: Content-session identifiers mapped to authoritative leaves.
+        """
+        by_session: Dict[str, List[RunState]] = {}
+        for state in states:
+            by_session.setdefault(state.work_order.content_session_id, []).append(state)
+        result = {}
+        for session_id, members in by_session.items():
+            identifiers = {item.id for item in members}
+            parents = {
+                item.work_order.parent_run_id
+                for item in members
+                if item.work_order.parent_run_id in identifiers
+            }
+            leaves = [item for item in members if item.id not in parents]
+            published = [item for item in leaves if item.status == RunStatus.PUBLISHED]
+            result[session_id] = max(
+                published or leaves or members,
+                key=lambda item: item.updated_at,
+            )
+        return result
 
     def _voices(self) -> List[VoiceStatus]:
         """Return the voices.

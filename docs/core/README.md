@@ -123,6 +123,8 @@ every production module, class, function, and method and validate their Google
 Style arguments, types, defaults, returns, explicit exceptions, summaries, and
 required context. [ADR 0013](../adr/0013-google-style-code-contracts.md) records
 the code-contract policy and review boundary.
+[ADR 0014](../adr/0014-publication-packages-and-visual-scope.md) defines
+package publication, media replacement history, and visual-only learning scope.
 
 ## Core versus a thin workspace
 
@@ -376,13 +378,13 @@ Author workspaces remain on their pinned package until deliberately upgraded.
 Preview the upgrade first:
 
 ```bash
-uv run content-creator --workspace . workspace upgrade --to v1.14.0
+uv run content-creator --workspace . workspace upgrade --to v1.15.0
 ```
 
 Apply the reviewed preview explicitly:
 
 ```bash
-uv run content-creator --workspace . workspace upgrade --to v1.14.0 --apply
+uv run content-creator --workspace . workspace upgrade --to v1.15.0 --apply
 ```
 
 The apply operation updates the package requirement and lockfile, runs doctor,

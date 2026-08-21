@@ -40,6 +40,13 @@ variant names while retaining schema version `1.0`. Older manifests read with
 empty component lists and unnamed assets; their next explicit visual render can
 backfill current installed-component references without changing prior assets.
 
+Core 1.15 adds optional publication-package artifacts, receipt revision links,
+published-media state, visual roles, locked-asset references, visual
+preferences, visual decisions, pending-learning counts, and coordinator lineage
+fields while retaining schema version `1.0`. Legacy text-only receipts continue
+to verify through `artifact_path` and `artifact_hash`; writers emit the richer
+artifact collection for new publications without mutating historical receipts.
+
 The authoritative catalogue lives in `content_creator.schema_registry`.
 Pydantic models remain the single source of truth; exported schemas are build
 artifacts and must not be edited by hand.
