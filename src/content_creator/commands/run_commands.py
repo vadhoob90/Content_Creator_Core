@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 
 import yaml
 
 from ..configuration import Configuration
+from ..context_composition import ContextInvocation, render_live_context
 from ..domain import (
     AuthorContribution,
     PerspectiveMode,
@@ -19,6 +21,18 @@ from ..intake import ClarificationRequired
 from ..packs import PackRegistry
 from ..work_order_resolution import resolve_workspace_defaults
 from .context import CommandContext
+
+
+def _render_context_trace(invocation: ContextInvocation) -> None:
+    """Render privacy-safe live context evidence on the command error stream.
+
+    Args:
+        invocation (ContextInvocation): Structured invocation evidence to render.
+
+    Returns:
+        None: The rendered evidence is written to stderr.
+    """
+    print(render_live_context(invocation), file=sys.stderr)
 
 
 def _brief_order(context: CommandContext) -> WorkOrder:
@@ -227,7 +241,7 @@ def _apply_lineage(order: WorkOrder, context: CommandContext) -> None:
     """
     arguments = context.arguments
     if arguments.parent_run:
-        parent = context.orchestrator.store.load(arguments.parent_run)
+        parent = context.queries.state(arguments.parent_run)
         order.parent_run_id = parent.id
         order.content_session_id = parent.work_order.content_session_id
     elif arguments.content_session:
@@ -244,7 +258,7 @@ def run(context: CommandContext) -> int:
         int: The process exit status, where zero indicates successful handling.
     """
     if context.arguments.show_context:
-        context.orchestrator.runner.enable_context_trace()
+        context.orchestrator.runner.enable_context_trace(_render_context_trace)
     order = _build_order(context)
     if order is None:
         return 3

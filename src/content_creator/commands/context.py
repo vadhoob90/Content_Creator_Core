@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any, Callable
 
 from ..orchestrator import Orchestrator
+from ..run_queries import RunQueries
 
 
 @dataclass
@@ -19,6 +20,7 @@ class CommandContext:
     emit: Callable[[Any], None]
     orchestrator_type: type[Orchestrator]
     _orchestrator: Orchestrator | None = field(default=None, init=False)
+    _queries: RunQueries | None = field(default=None, init=False)
 
     @property
     def orchestrator(self) -> Orchestrator:
@@ -30,3 +32,14 @@ class CommandContext:
         if self._orchestrator is None:
             self._orchestrator = self.orchestrator_type(self.root)
         return self._orchestrator
+
+    @property
+    def queries(self) -> RunQueries:
+        """Return the read-only run query boundary for this command invocation.
+
+        Returns:
+            RunQueries: Lazily initialized application query service.
+        """
+        if self._queries is None:
+            self._queries = RunQueries(self.root)
+        return self._queries

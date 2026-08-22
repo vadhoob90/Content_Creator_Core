@@ -3,8 +3,7 @@
 from __future__ import annotations
 
 import json
-import sys
-from typing import Any, Dict, Optional
+from typing import Any, Callable, Dict, Optional
 
 from pydantic import ValidationError
 
@@ -14,7 +13,6 @@ from .context_composition import (
     ContextInvocation,
     ContextInvocationIdentity,
     invocation_record,
-    render_live_context,
 )
 from .diagnostics import RuntimeDiagnostics
 from .domain import ModelRequest, ModelResponse
@@ -22,6 +20,8 @@ from .prompt_provenance import PromptComposition
 from .prompting import PromptAssembler
 from .providers import ProviderRegistry
 from .runner_models import AgentRunOptions as AgentRunOptions
+
+ContextTraceSink = Callable[[ContextInvocation], None]
 
 
 class AgentOutputError(ValueError):
@@ -61,15 +61,18 @@ class AgentRunner:
         self.responses: list[Optional[ModelResponse]] = []
         self.context_store = ContextCompositionStore(prompts.root)
         self.pending_context: list[ContextInvocation] = []
-        self.show_context = False
+        self.context_trace_sink: Optional[ContextTraceSink] = None
 
-    def enable_context_trace(self) -> None:
-        """Configure privacy-safe live composition output on stderr.
+    def enable_context_trace(self, sink: ContextTraceSink) -> None:
+        """Configure privacy-safe live composition evidence delivery.
+
+        Args:
+            sink (ContextTraceSink): Entry-point callback receiving structured evidence.
 
         Returns:
-            None: Subsequent invocation provenance is printed to stderr.
+            None: Subsequent invocation provenance is delivered to the callback.
         """
-        self.show_context = True
+        self.context_trace_sink = sink
 
     def bind_context_run(self, run_id: str) -> None:
         """Bind and flush relevant pre-run composition.
@@ -235,8 +238,8 @@ class AgentRunner:
             payload=payload,
             payload_sources=payload_sources,
         )
-        if self.show_context:
-            print(render_live_context(invocation), file=sys.stderr)
+        if self.context_trace_sink:
+            self.context_trace_sink(invocation)
         if run_id:
             self.context_store.append(run_id, invocation)
         else:

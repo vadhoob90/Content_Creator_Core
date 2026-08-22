@@ -13,7 +13,10 @@ def _module(
     *,
     lines: int = 10,
     imports: list[str] | None = None,
+    import_edges: list[dict[str, object]] | None = None,
     deleted: list[dict[str, object]] | None = None,
+    terminal_output_lines: list[int] | None = None,
+    command_persistence_accesses: list[dict[str, object]] | None = None,
 ) -> dict[str, object]:
     return {
         "module": name,
@@ -21,8 +24,11 @@ def _module(
         "line_count": lines,
         "implementation_line_count": lines,
         "imports": imports or [],
+        "import_edges": import_edges,
         "classes": [],
         "deleted_parameters": deleted or [],
+        "terminal_output_lines": terminal_output_lines or [],
+        "command_persistence_accesses": command_persistence_accesses or [],
     }
 
 
@@ -94,6 +100,95 @@ def test_architecture_harness_rejects_every_edge_in_an_internal_import_cycle():
     assert (
         "internal import cycle includes content_creator.persistence -> content_creator.application"
     ) in violations
+
+
+def test_architecture_harness_rejects_reverse_edges_without_cycles():
+    modules = _valid_architecture_modules()
+    modules.extend(
+        [
+            _module(
+                "content_creator.domain",
+                imports=["content_creator.commands.runtime"],
+                import_edges=[{"target": "content_creator.commands.runtime", "line": 12}],
+            ),
+            _module(
+                "content_creator.storage",
+                imports=["content_creator.orchestrator"],
+                import_edges=[{"target": "content_creator.orchestrator", "line": 24}],
+            ),
+            _module(
+                "content_creator.providers.openai",
+                imports=["content_creator.commands.provider"],
+                import_edges=[{"target": "content_creator.commands.provider", "line": 36}],
+            ),
+            _module(
+                "content_creator.runner",
+                imports=["content_creator.providers.openai"],
+                import_edges=[{"target": "content_creator.providers.openai", "line": 48}],
+            ),
+        ]
+    )
+
+    violations = ARCHITECTURE["architecture_violations"]({"modules": modules})
+
+    expected_fragments = (
+        "domain-is-independent",
+        "storage-points-inward",
+        "entrypoints-are-terminal",
+        "providers-do-not-drive-workflows",
+        "application-uses-provider-boundary",
+        "src/content_creator/domain.py:12",
+    )
+    assert all(
+        any(fragment in violation for violation in violations) for fragment in expected_fragments
+    )
+
+
+def test_architecture_harness_rejects_inner_terminal_and_command_persistence_access():
+    modules = _valid_architecture_modules()
+    modules.extend(
+        [
+            _module("content_creator.runner", terminal_output_lines=[19]),
+            _module(
+                "content_creator.commands.visual",
+                command_persistence_accesses=[
+                    {"line": 31, "expression": "RunStore(...)"},
+                    {"line": 32, "expression": "context.orchestrator.store"},
+                ],
+            ),
+        ]
+    )
+
+    violations = ARCHITECTURE["architecture_violations"]({"modules": modules})
+
+    assert any("runner.py:19 writes directly to terminal output" in item for item in violations)
+    assert any("visual.py:31 command accesses mutable persistence" in item for item in violations)
+    assert any("visual.py:32 command accesses mutable persistence" in item for item in violations)
+
+
+def test_architecture_collector_finds_function_local_edges_and_boundary_accesses():
+    tree = ast.parse(
+        """
+def execute(context):
+    from content_creator.orchestrator import Orchestrator
+    from content_creator import cli
+    store = RunStore(context.root)
+    return context.orchestrator.store.load("run")
+"""
+    )
+
+    path = ROOT / "src" / "content_creator" / "example.py"
+    edges = ARCHITECTURE["internal_import_edges"](path, tree)
+    accesses = ARCHITECTURE["command_persistence_accesses"](tree)
+
+    assert edges == [
+        {"target": "content_creator.cli", "line": 4},
+        {"target": "content_creator.orchestrator", "line": 3},
+    ]
+    assert accesses == [
+        {"line": 5, "expression": "RunStore(...)"},
+        {"line": 6, "expression": "context.orchestrator.store"},
+    ]
 
 
 def test_architecture_harness_attributes_nested_deleted_parameters_to_their_owners():

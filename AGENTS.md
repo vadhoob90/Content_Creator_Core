@@ -51,6 +51,9 @@ incremental learning memory.
 - `orchestrator.py` coordinates lifecycle checkpoints through a composed runtime.
 - `stages.py` and `capabilities.py` define replaceable execution seams.
 - `commands/` owns CLI parsing and dispatch; domain behavior stays outside it.
+- Command handlers invoke application boundaries and render results. They do not
+  construct mutable run stores, call private persistence methods, reach through
+  `orchestrator.store`, or move terminal output into inner services.
 - `providers/` contains the provider contract, registry, fakes, and adapters.
 - `diagnostics/` owns privacy-safe runtime evidence and support candidates.
 - `voice_build/` owns voice-build models, rendering, and pipeline execution.
@@ -60,6 +63,8 @@ incremental learning memory.
 
 Start structural work in `docs/core/architecture-guardrails.md`. Start provider,
 stage, or pack extensions in `docs/guides/extending-core.md`.
+Preserve inward dependencies and run `python scripts/architecture_report.py --check`;
+CI blocks reverse edges even when they do not form an import cycle.
 
 ## Verification
 

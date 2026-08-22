@@ -8,6 +8,34 @@ release tag.
 
 ## [Unreleased]
 
+## [1.15.1] - 2026-08-22
+
+### Changed
+
+- Architecture fitness functions now reject reverse dependencies even when they
+  do not form a cycle: domain and storage remain inward, entry points remain
+  terminal, provider adapters cannot drive workflows, and application code uses
+  the provider boundary rather than concrete vendor modules.
+- Architecture failures now retain import-line evidence, reject terminal output
+  from inner production modules, and prevent command handlers from constructing
+  mutable run stores, calling private storage writers, or reaching through
+  `orchestrator.store`.
+- Live context tracing now delivers structured evidence from `AgentRunner` to a
+  CLI-owned stderr renderer, preserving trace ordering and privacy without
+  coupling the internal execution service to terminal output.
+- Pack creation, default-provider persistence, and read-only run lookup now live
+  behind focused application boundaries instead of command handlers reaching
+  into persistence details.
+- Architecture guardrails, engineering standards, extension guidance, ADR 0007,
+  repository-agent guidance, and the hotspot baseline now describe the enforced
+  inward-dependency rules.
+
+### Migration
+
+- No stored-data, CLI, generated-workspace, provider-adapter, or public Python
+  migration is required. This patch preserves existing outputs and moves only
+  internal responsibilities.
+
 ## [1.15.0] - 2026-08-21
 
 ### Added

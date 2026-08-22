@@ -10,12 +10,39 @@ import yaml
 
 from .domain import ModelSelection
 from .resource_paths import ResourceResolver
+from .storage import RunStore
 
 
 class ConfigurationError(ValueError):
     """Report configuration failures."""
 
     pass
+
+
+def persist_default_provider(root: Path, provider_name: str) -> Path:
+    """Persist the workspace's selected default provider atomically.
+
+    Args:
+        root (Path): Workspace root containing ``content-creator.yaml``.
+        provider_name (str): Registered provider name selected by the author.
+
+    Returns:
+        Path: Workspace configuration path that was updated.
+
+    Raises:
+        ConfigurationError: If the workspace configuration is not a mapping.
+    """
+    path = root.resolve() / "content-creator.yaml"
+    configuration = yaml.safe_load(path.read_text(encoding="utf-8")) or {} if path.exists() else {}
+    if not isinstance(configuration, dict):
+        raise ConfigurationError("content-creator.yaml must contain a mapping")
+    provider_configuration = configuration.get("provider", {}) or {}
+    if not isinstance(provider_configuration, dict):
+        raise ConfigurationError("provider configuration must be a mapping")
+    provider_configuration["default"] = provider_name
+    configuration["provider"] = provider_configuration
+    RunStore._atomic_text(path, yaml.safe_dump(configuration, sort_keys=False))
+    return path
 
 
 class Configuration:

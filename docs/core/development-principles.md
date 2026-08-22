@@ -53,6 +53,12 @@ entry points or concrete external providers. Application services coordinate
 through narrow contracts, and the CLI composes them. A small change should
 normally require understanding one module and its neighbours.
 
+Use this practical test: outer code may invoke inner code, but inner code must
+not know which interface invoked it. Return structured results or use a narrow
+injected callback instead of printing from an internal service. Commands own
+parsing and presentation; domain decisions and mutable persistence remain behind
+the application capability that owns them.
+
 Do not use inheritance merely to split one implementation across files.
 Inheritance should express substitutability; use direct functions or
 composition when responsibilities are assembled. Promote a cluster to a
