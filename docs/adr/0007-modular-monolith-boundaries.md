@@ -34,6 +34,14 @@ also refresh feature-owned evidence, the application composition boundary
 injects that behavior through a narrow callback or existing service contract.
 Function-local imports are not an acceptable way to hide a reversed dependency.
 
+These directions are executable fitness functions. The architecture report
+blocks a domain or storage dependency that points outward, an inward dependency
+on CLI or command modules, provider adapters that drive application workflows,
+and application code that imports a concrete vendor adapter. It also blocks
+direct terminal output from inner production modules and command access to
+mutable run-store implementation details. Entry points render structured results;
+internal services may expose a narrow callback when live evidence is required.
+
 Repository workspaces remain outside this package boundary. They supply
 configuration, author-owned agents, voices, perspectives, and learning, but
 cannot weaken Core contracts.
@@ -56,6 +64,8 @@ workflow.
   only after it is precise, useful, and compatible with current behavior.
 - Architecture reporting blocks internal import cycles and identifies each
   participating direct edge so remediation restores dependency direction.
+- Architecture reporting also blocks accepted reverse edges independently of
+  cycles and includes source-line evidence in each diagnostic.
 
 Microservices, a general event bus, and an unrestricted third-party plugin
 system are explicitly out of scope.

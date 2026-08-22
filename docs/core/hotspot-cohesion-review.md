@@ -10,12 +10,12 @@ not proof that a module should be split.
 | Hotspot | Implementation lines | Direct production importers | Decision | First durable seam to assess |
 | --- | ---: | ---: | --- | --- |
 | `voice_evolution` | 500 | 2 | Extract selectively | Pure proposal/change-set and merge-delta policy; retain `VoiceEvolution` as façade. |
-| `orchestration_support` | 496 | 1 | Simplify through collaborators | Draft/review loop and research execution policy; do not recreate support inheritance. |
-| `voice_ml.training` | 492 | 2 | Extract selectively | Reliability/eligibility policy before classifier or persistence work. |
-| `coordinator` | 487 | 3 | Extract selectively | State-to-action and recommendation policy; retain coordinator entry point. |
-| `orchestrator` | 479 | 7 | Retain façade, clarify transactions | Start-context and publication transaction boundaries after characterisation. |
+| `orchestration_support` | 498 | 1 | Simplify through collaborators | Draft/review loop and research execution policy; do not recreate support inheritance. |
+| `voice_ml.training` | 379 | 2 | Retain extracted policy seam | Reliability/eligibility policy remains separate from classifier and persistence work. |
+| `coordinator` | 345 | 3 | Retain extracted policy seam | State-to-action and recommendation policy remains separate from the coordinator entry point. |
+| `orchestrator` | 500 | 8 | Retain façade, clarify transactions | Start-context and publication transaction boundaries after characterisation. |
 | `voice_build.pipeline` | 459 | 1 | Simplify through package collaborators | Source acquisition/cache and artifact preparation; preserve ordering and cleanup. |
-| `publication_provenance` | 461 | 3 | Extract selectively | Pure per-domain verification and report aggregation; preserve fail-closed paths. |
+| `publication_provenance` | 500 | 4 | Extract selectively | Pure per-domain verification and report aggregation; preserve fail-closed paths. |
 
 ## Dependency and responsibility map
 
@@ -122,6 +122,12 @@ extracted functions have no filesystem, provider, or optional-dependency access.
 The two selected modules are now below the 400-line focused-review threshold.
 Every remaining hotspot above 400 has an explicit cohesion and dependency-
 direction justification, rather than a size-only exemption.
+
+The 1.15.1 boundary review refreshed the current measurements above after visual
+publication work increased the orchestration and provenance façades. Three modules
+now sit at the 500-line hard limit. Their recorded transaction rationale still holds,
+but they have no remaining size headroom; the next responsibility added to one of
+them requires a focused extraction or a newly demonstrated application seam.
 
 ## Transaction boundaries
 

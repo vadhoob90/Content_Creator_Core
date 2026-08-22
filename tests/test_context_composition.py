@@ -7,6 +7,7 @@ import json
 from conftest import passing_critique, valid_draft
 
 from content_creator.cli import main
+from content_creator.commands.run_commands import _render_context_trace
 from content_creator.context_composition import ContextCompositionStore
 from content_creator.domain import WorkOrder
 from content_creator.orchestrator import Orchestrator
@@ -128,7 +129,7 @@ def test_preflight_and_historical_cli_are_read_only_and_human_friendly(project, 
 
 def test_live_trace_uses_stderr_and_does_not_print_private_prompt(project, capsys):
     orchestrator = _orchestrator(project)
-    orchestrator.runner.enable_context_trace()
+    orchestrator.runner.enable_context_trace(_render_context_trace)
     orchestrator.start(
         WorkOrder(
             request="private request text",

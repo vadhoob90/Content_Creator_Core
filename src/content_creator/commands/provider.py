@@ -7,11 +7,8 @@ import os
 from pathlib import Path
 from typing import Any, Callable, Sequence
 
-import yaml
-
-from ..configuration import ConfigurationError
+from ..configuration import persist_default_provider
 from ..providers import ProviderError, ProviderRegistry
-from ..storage import RunStore
 
 
 def register(subparsers: Any, providers: Sequence[str]) -> None:
@@ -42,24 +39,10 @@ def run(root: Path, args: argparse.Namespace, emit: Callable[[Any], None]) -> in
 
     Returns:
         int: The process exit status, where zero indicates successful handling.
-
-    Raises:
-        ConfigurationError: If the configuration operation cannot complete.
     """
     provider_name = args.provider_name
     if args.provider_command == "select":
-        path = root / "content-creator.yaml"
-        configuration = (
-            yaml.safe_load(path.read_text(encoding="utf-8")) or {} if path.exists() else {}
-        )
-        if not isinstance(configuration, dict):
-            raise ConfigurationError("content-creator.yaml must contain a mapping")
-        provider_configuration = configuration.get("provider", {}) or {}
-        if not isinstance(provider_configuration, dict):
-            raise ConfigurationError("provider configuration must be a mapping")
-        provider_configuration["default"] = provider_name
-        configuration["provider"] = provider_configuration
-        RunStore._atomic_text(path, yaml.safe_dump(configuration, sort_keys=False))
+        path = persist_default_provider(root, provider_name)
         emit({"status": "ok", "provider": provider_name, "persisted_to": str(path)})
         return 0
     if provider_name in {"anthropic", "openai"}:

@@ -35,7 +35,12 @@ life.
   for production modules, optional capabilities outside the orchestrator,
   explicit application stages, shared immutable-artifact mechanics, and the ban
   on deleting function parameters. It also blocks every internal import edge
-  that participates in a cycle, including imports placed inside functions.
+  that participates in a cycle, including imports placed inside functions. The
+  same required check blocks reverse dependencies without cycles: domain and
+  storage remain inward, entry points remain terminal, provider adapters cannot
+  drive workflows, application code cannot import concrete vendor adapters,
+  inner modules cannot print to a terminal, and commands cannot access mutable
+  persistence implementation details.
   Physical size remains visible in the report. New rules need a documented green
   baseline before becoming blocking.
 - `python scripts/readability_report.py --check` scans every Python module in

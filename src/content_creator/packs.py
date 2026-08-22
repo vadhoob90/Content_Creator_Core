@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from copy import deepcopy
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -9,6 +10,7 @@ from typing import Any, Dict, List, Optional
 from pydantic import BaseModel, Field
 
 from .resource_paths import ResourceResolver
+from .storage import RunStore
 from .visual_contracts import VisualPackProfile
 
 
@@ -114,6 +116,42 @@ class PackRegistry:
             raise PackError("Pack id {} does not match directory {}".format(pack.id, pack_id))
         self._packs[pack_id] = pack
         return pack
+
+    def create(self, pack_id: str, extends: str) -> ContentPack:
+        """Create and resolve one workspace-owned content pack.
+
+        Args:
+            pack_id (str): Stable identifier for the new content pack.
+            extends (str): Existing base pack inherited by the new pack.
+
+        Returns:
+            ContentPack: Resolved new pack including inherited policy.
+
+        Raises:
+            PackError: If the pack already exists or the base pack is unavailable.
+        """
+        if self.path(pack_id).exists():
+            raise PackError("Content pack already exists: {}".format(pack_id))
+        self.get(extends)
+        destination = self.resources.workspace_path(Path("packs") / pack_id)
+        destination.mkdir(parents=True)
+        manifest = {
+            "schema_version": "1.0",
+            "id": pack_id,
+            "version": "0.1.0",
+            "extends": extends,
+            "format": "text",
+            "destination": "content/{}/published".format(pack_id),
+            "rubric": "rubric.yaml",
+        }
+        RunStore._atomic_text(destination / "pack.json", json.dumps(manifest, indent=2))
+        RunStore._atomic_text(destination / "rubric.yaml", "dimensions: {}\nhard_gates: []")
+        RunStore._atomic_text(destination / "validators.yaml", "append: []")
+        RunStore._atomic_text(
+            destination / "README.md", "# {}\n\nExtends `{}`.".format(pack_id, extends)
+        )
+        (destination / "evals").mkdir()
+        return self.resolve(pack_id)
 
     def resolve(self, pack_id: str, overrides: Optional[Dict[str, Any]] = None) -> ContentPack:
         """Resolve the pack registry workflow.

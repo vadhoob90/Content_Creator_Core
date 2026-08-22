@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any, Callable
 
 from ..packs import PackRegistry
-from ..storage import RunStore
+from ..run_queries import RunQueries
 from ..visual_preferences import VisualPreferenceMemory
 from ..visual_requests import VisualRenderRequest, VisualRequestWorkflow
 from ..visuals import VisualBrief, VisualCritique, VisualError, VisualWorkflow
@@ -75,8 +75,8 @@ def run(root: Path, args: argparse.Namespace, emit: Callable[[Any], None]) -> in
         int: The process exit status, where zero indicates successful handling.
     """
     workflow = VisualWorkflow(root)
-    store = RunStore(root)
-    state = store.load(args.run_id)
+    queries = RunQueries(root)
+    state = queries.state(args.run_id)
     pack = PackRegistry(root).resolve(state.work_order.content_pack, state.work_order.pack_options)
     profile = pack.visuals
     if args.visual_command == "brief":
@@ -124,7 +124,7 @@ def run(root: Path, args: argparse.Namespace, emit: Callable[[Any], None]) -> in
             )
         )
     else:
-        emit(json.loads(store.read_artifact(args.run_id, "visuals/manifest.json")))
+        emit(json.loads(queries.artifact(args.run_id, "visuals/manifest.json")))
     return 0
 
 

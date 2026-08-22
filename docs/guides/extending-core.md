@@ -13,6 +13,9 @@ and the [provider configuration guide](provider-configuration.md).
 
 Provider adapters own credentials, vendor request syntax, retry translation,
 and usage metadata. They do not select content routes or bypass validation.
+They return normalized responses and never import commands, orchestration
+workflows, or terminal-rendering code. Application code resolves adapters through
+the provider contract or registry rather than importing a vendor module directly.
 
 ## Compose lifecycle stages
 
@@ -25,6 +28,9 @@ A custom stage replaces execution inside an existing checkpoint contract. It
 does not remove research approval, author review, provenance, or publication
 gates. Prefer a function plus the callable adapter when no independent state or
 lifecycle needs to be owned.
+
+Stages return structured results or invoke an explicitly supplied narrow callback.
+They do not print terminal output; the host entry point owns presentation.
 
 ## Add a content pack
 

@@ -38,7 +38,7 @@ def show_status(context: CommandContext) -> int:
     Returns:
         int: The resulting numeric value for show status.
     """
-    context.emit(context.orchestrator.store.load(context.arguments.run_id))
+    context.emit(context.queries.state(context.arguments.run_id))
     return 0
 
 
@@ -54,7 +54,7 @@ def show_submission(context: CommandContext) -> int:
     Raises:
         ValueError: If an input value violates the supported domain constraints.
     """
-    state = context.orchestrator.store.load_by_idempotency_key(context.arguments.idempotency_key)
+    state = context.queries.submission(context.arguments.idempotency_key)
     if state is None:
         raise ValueError("Unknown idempotency key")
     context.emit(state)

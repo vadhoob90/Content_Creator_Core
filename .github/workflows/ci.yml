@@ -34,7 +34,7 @@ jobs:
       - run: uv run --frozen --extra dev mypy
       - name: Enforce Google Style documentation contracts
         run: uv run --frozen --extra dev python scripts/documentation_report.py --check
-      - name: Enforce architecture and readability limits
+      - name: Enforce architecture, dependency boundaries, and readability limits
         run: |
           uv run --frozen --extra dev python scripts/architecture_report.py --check
           uv run --frozen --extra dev python scripts/readability_report.py --check

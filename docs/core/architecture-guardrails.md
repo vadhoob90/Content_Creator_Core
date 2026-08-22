@@ -105,15 +105,28 @@ without forcing meaningless fragments.
 
 - The internal `content_creator` module graph remains acyclic. A function-local
   import is still a dependency and must not be used to conceal a cycle.
-- Low-level persistence and domain modules do not import application workflows,
-  manifests, packs, providers, or entry points. Higher-level capabilities may
-  depend on storage, but storage never reaches back into those capabilities.
+- Dependencies point inward: entry points invoke application workflows, workflows
+  use domain contracts and declared adapter boundaries, and inner code never knows
+  which external interface invoked it.
+- `content_creator.domain` has no internal package dependencies. Low-level
+  `content_creator.storage` depends only on domain contracts; it does not import
+  application workflows, manifests, packs, providers, or entry points. Higher-level
+  capabilities may depend on storage, but storage never reaches back into them.
+- No production module outside `content_creator.cli` and
+  `content_creator.commands.*` imports those entry points. Provider adapters do not
+  import commands or orchestration, and application modules use the provider package
+  boundary rather than concrete vendor adapter modules.
+- Inner production modules return structured results or emit narrow callbacks. Direct
+  terminal output belongs to the CLI and command layer. Command handlers parse,
+  invoke, and render; they do not construct mutable run stores, call private storage
+  writers, or reach through `orchestrator.store`.
 - Cross-cutting save behavior is composed at an application boundary through a
   narrow callback or existing service contract. It is not activated by importing
   the higher-level feature from the persistence implementation.
-- `scripts/architecture_report.py --check` rejects every internal import edge
-  that participates in a cycle. A cycle is fixed by restoring dependency
-  direction, not by moving the import inside a function or suppressing CodeQL.
+- `scripts/architecture_report.py --check` rejects every import cycle and every
+  accepted boundary violation independently. Its failure names the boundary,
+  source, target, and import line. A violation is fixed by restoring dependency
+  direction, not by moving an import inside a function or suppressing CodeQL.
 
 These rules apply even when Python's import cache makes the current execution
 order appear safe. Import-order-dependent code is not an accepted runtime
@@ -137,8 +150,8 @@ New protocols, factories, registries, and reusable abstractions require current
 consumers. Avoid forwarding layers that increase the normal call path without
 owning state, policy, or a distinct boundary.
 
-Run `python scripts/architecture_report.py --check` locally. CI blocks growth
-past these limits. Do not evade the check with generated monoliths, renamed
+Run `python scripts/architecture_report.py --check` locally. CI blocks boundary
+violations and growth past these limits. Do not evade the check with generated monoliths, renamed
 "legacy" modules, dense formatting, or arbitrary fragments. If a limit cannot
 be met safely, document a time-bounded ADR and remediation issue before changing
 the guardrail.

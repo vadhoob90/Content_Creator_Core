@@ -6,7 +6,11 @@ from __future__ import annotations
 import argparse
 import ast
 import json
+import runpy
 from pathlib import Path
+
+BOUNDARY_CHECKER = runpy.run_path(str(Path(__file__).with_name("dependency_boundaries.py")))
+dependency_boundary_violations = BOUNDARY_CHECKER["dependency_boundary_violations"]
 
 ROOT = Path(__file__).resolve().parents[1]
 PACKAGE_ROOT = ROOT / "src" / "content_creator"
@@ -23,15 +27,29 @@ def module_name(path: Path) -> str:
     return ".".join([PACKAGE_NAME, *parts]) if parts else PACKAGE_NAME
 
 
-def internal_imports(path: Path, tree: ast.AST) -> list[str]:
-    """Return package imports made by one parsed module."""
+def _import_from_targets(target: str, node: ast.ImportFrom) -> set[str]:
+    """Resolve imported child modules without mistaking imported symbols for modules."""
+    children = set()
+    for alias in node.names:
+        candidate = ".".join(part for part in (target, alias.name) if part)
+        relative = candidate.split(".")[1:]
+        path = PACKAGE_ROOT.joinpath(*relative)
+        if path.with_suffix(".py").exists() or (path / "__init__.py").exists():
+            children.add(candidate)
+    return children or {target}
+
+
+def internal_import_edges(path: Path, tree: ast.AST) -> list[dict[str, object]]:
+    """Return line-aware package imports made by one parsed module."""
     current = module_name(path)
     package_parts = current.split(".") if path.name == "__init__.py" else current.split(".")[:-1]
-    imports: set[str] = set()
+    edges: set[tuple[str, int]] = set()
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
-            imports.update(
-                alias.name for alias in node.names if alias.name.startswith(PACKAGE_NAME)
+            edges.update(
+                (alias.name, node.lineno)
+                for alias in node.names
+                if alias.name.startswith(PACKAGE_NAME)
             )
         elif isinstance(node, ast.ImportFrom):
             if node.level:
@@ -40,9 +58,47 @@ def internal_imports(path: Path, tree: ast.AST) -> list[str]:
                 target = ".".join([*base, *(node.module or "").split(".")]).rstrip(".")
             else:
                 target = node.module or ""
-            if target.startswith(PACKAGE_NAME) and target != current:
-                imports.add(target)
-    return sorted(imports)
+            if target.startswith(PACKAGE_NAME):
+                edges.update(
+                    (imported, node.lineno)
+                    for imported in _import_from_targets(target, node)
+                    if imported != current
+                )
+    return [
+        {"target": target, "line": line}
+        for target, line in sorted(edges, key=lambda item: (item[0], item[1]))
+    ]
+
+
+def internal_imports(path: Path, tree: ast.AST) -> list[str]:
+    """Return unique package imports made by one parsed module."""
+    return sorted({str(edge["target"]) for edge in internal_import_edges(path, tree)})
+
+
+def terminal_output_lines(tree: ast.AST) -> list[int]:
+    """Return direct built-in print calls made by one production module."""
+    return sorted(
+        node.lineno
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Name)
+        and node.func.id == "print"
+    )
+
+
+def command_persistence_accesses(tree: ast.AST) -> list[dict[str, object]]:
+    """Return command-layer access to mutable persistence implementation details."""
+    accesses = []
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Name):
+            if node.func.id == "RunStore":
+                accesses.append({"line": node.lineno, "expression": "RunStore(...)"})
+        if not isinstance(node, ast.Attribute):
+            continue
+        expression = ast.unparse(node)
+        if expression == "RunStore._atomic_text" or expression.endswith(".orchestrator.store"):
+            accesses.append({"line": node.lineno, "expression": expression})
+    return sorted(accesses, key=lambda item: (int(item["line"]), str(item["expression"])))
 
 
 def docstring_lines(tree: ast.AST) -> set[int]:
@@ -185,6 +241,7 @@ def build_report() -> dict:
             continue
         source = path.read_text(encoding="utf-8")
         tree = ast.parse(source, filename=str(path))
+        import_edges = internal_import_edges(path, tree)
         physical_line_count = len(source.splitlines())
         implementation_line_count = physical_line_count - len(docstring_lines(tree))
         modules.append(
@@ -193,9 +250,12 @@ def build_report() -> dict:
                 "path": str(path.relative_to(ROOT)),
                 "line_count": physical_line_count,
                 "implementation_line_count": implementation_line_count,
-                "imports": internal_imports(path, tree),
+                "imports": sorted({str(edge["target"]) for edge in import_edges}),
+                "import_edges": import_edges,
                 "classes": defined_classes(tree),
                 "deleted_parameters": deleted_parameters(tree),
+                "terminal_output_lines": terminal_output_lines(tree),
+                "command_persistence_accesses": command_persistence_accesses(tree),
             }
         )
     report = {
@@ -214,10 +274,50 @@ def build_report() -> dict:
     return report
 
 
+def module_structure_violations(name: str, module: dict) -> list[str]:
+    """Return size, parameter, terminal, and command-boundary violations."""
+    violations = []
+    if module["implementation_line_count"] > MAX_MODULE_LINES:
+        violations.append(
+            "{} exceeds the {}-line production-module implementation limit "
+            "({} implementation lines; {} physical lines)".format(
+                name,
+                MAX_MODULE_LINES,
+                module["implementation_line_count"],
+                module["line_count"],
+            )
+        )
+    for deletion in module["deleted_parameters"]:
+        violations.append(
+            "{}:{} deletes parameter {!r} in {}; prefix intentionally unused parameters "
+            "with an underscore instead".format(
+                module["path"],
+                deletion["line"],
+                deletion["parameter"],
+                deletion["function"],
+            )
+        )
+    if name != "content_creator.cli" and not name.startswith("content_creator.commands"):
+        for line in module.get("terminal_output_lines", []):
+            violations.append(
+                "{}:{} writes directly to terminal output outside the entry-point layer".format(
+                    module["path"], line
+                )
+            )
+    if name.startswith("content_creator.commands"):
+        for access in module.get("command_persistence_accesses", []):
+            violations.append(
+                "{}:{} command accesses mutable persistence through {}".format(
+                    module["path"], access["line"], access["expression"]
+                )
+            )
+    return violations
+
+
 def architecture_violations(report: dict) -> list[str]:
     """Evaluate precise dependency rules that have an established green baseline."""
     modules = {module["module"]: module for module in report["modules"]}
-    violations = []
+    violations = dependency_boundary_violations(list(modules.values()))
     for edge in import_cycle_edges(list(modules.values())):
         violations.append("internal import cycle includes {source} -> {target}".format(**edge))
     cli = modules.get("content_creator.cli")
@@ -233,26 +333,7 @@ def architecture_violations(report: dict) -> list[str]:
         )
 
     for name, module in sorted(modules.items()):
-        if module["implementation_line_count"] > MAX_MODULE_LINES:
-            violations.append(
-                "{} exceeds the {}-line production-module implementation limit "
-                "({} implementation lines; {} physical lines)".format(
-                    name,
-                    MAX_MODULE_LINES,
-                    module["implementation_line_count"],
-                    module["line_count"],
-                )
-            )
-        for deletion in module["deleted_parameters"]:
-            violations.append(
-                "{}:{} deletes parameter {!r} in {}; prefix intentionally unused parameters "
-                "with an underscore instead".format(
-                    module["path"],
-                    deletion["line"],
-                    deletion["parameter"],
-                    deletion["function"],
-                )
-            )
+        violations.extend(module_structure_violations(name, module))
 
     orchestrator = modules.get("content_creator.orchestrator", {})
     orchestrator_imports = set(orchestrator.get("imports", []))
