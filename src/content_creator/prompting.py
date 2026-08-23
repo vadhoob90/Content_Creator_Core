@@ -337,9 +337,7 @@ class PromptAssembler:
             if order and order.voice_version
             else legacy_voice_path
         )
-        voice_path = (
-            versioned_voice_path if versioned_voice_path.is_file() else legacy_voice_path
-        )
+        voice_path = versioned_voice_path if versioned_voice_path.is_file() else legacy_voice_path
         voice_records = self._active_learning_records(voice_path, role)
         self.provenance.append_learning_scope(
             parts,

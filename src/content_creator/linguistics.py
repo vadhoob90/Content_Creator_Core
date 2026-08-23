@@ -313,7 +313,7 @@ def combine_linguistic_signatures(*signatures: Dict) -> Dict:
     Returns:
         Dict: Deterministically aggregated signature with duplicate sources removed.
     """
-    profiles = {}
+    profiles: dict[str, Dict] = {}
     for signature in signatures:
         for profile in signature.get("source_profiles", []):
             profiles.setdefault(profile["source_id"], profile)

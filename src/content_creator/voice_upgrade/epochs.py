@@ -71,7 +71,7 @@ def load_epoch(
     records: list[dict[str, Any]] = []
     if legacy.is_file():
         data = json.loads(legacy.read_text(encoding="utf-8"))
-        admitted_versions = {voice_version}
+        admitted_versions: set[str | None] = {voice_version}
         if migrate_legacy:
             admitted_versions.add(None)
         records = [
