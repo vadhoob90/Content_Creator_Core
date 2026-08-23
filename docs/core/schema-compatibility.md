@@ -47,6 +47,14 @@ fields while retaining schema version `1.0`. Legacy text-only receipts continue
 to verify through `artifact_path` and `artifact_hash`; writers emit the richer
 artifact collection for new publications without mutating historical receipts.
 
+Core 1.18 additively extends schema `1.0` production manifests with nullable
+generation-time Core identity, governed voice and learning-epoch state,
+perspective manifest digests, governance hashes, revision lineage, and
+publication-receipt references. Publication receipts add optional production
+manifest and governance-hash bindings. Older manifests and receipts remain
+readable; absent provenance stays explicitly unavailable instead of being
+reconstructed from current registry state.
+
 The authoritative catalogue lives in `content_creator.schema_registry`.
 Pydantic models remain the single source of truth; exported schemas are build
 artifacts and must not be edited by hand.

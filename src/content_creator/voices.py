@@ -191,9 +191,9 @@ class VoiceRegistry:
         mismatches = verify_components(path, manifest.components, manifest.component_hashes)
         if mismatches:
             raise VoiceError("Active voice component hash mismatch: {}".format(mismatches[0]))
-        from .voice_upgrade.epochs import epoch_hash, load_epoch
-
-        learning_epoch = load_epoch(self.root, voice_id, resolved_version, migrate_legacy=False)
+        epoch_id, learning_hash, epoch_status = _learning_epoch_metadata(
+            self.root, voice_id, resolved_version
+        )
         return {
             "id": voice_id,
             "version": resolved_version,
@@ -206,9 +206,10 @@ class VoiceRegistry:
             "evidence_status": manifest.evidence_status,
             "perspectives_allowed": manifest.perspectives_allowed,
             "template_id": manifest.template_id,
-            "learning_epoch_id": learning_epoch.epoch_id,
-            "learning_epoch_hash": epoch_hash(learning_epoch),
-            "learning_epoch_status": learning_epoch.status,
+            "evidence_baseline_hash": manifest.evidence_baseline_hash,
+            "learning_epoch_id": epoch_id,
+            "learning_epoch_hash": learning_hash,
+            "learning_epoch_status": epoch_status,
         }
 
     def activate_starter(
@@ -445,6 +446,29 @@ class VoiceRegistry:
         from .voice_lifecycle import VoiceLifecycleService
 
         return VoiceLifecycleService(self).verify(voice_id)
+
+
+def _learning_epoch_metadata(
+    root: Path, voice_id: str, voice_version: str
+) -> tuple[Optional[str], Optional[str], Optional[str]]:
+    """Return persisted epoch identity without synthesizing legacy history.
+
+    Args:
+        root (Path): Workspace root containing voice learning epochs.
+        voice_id (str): Stable selected voice identifier.
+        voice_version (str): Immutable selected voice version.
+
+    Returns:
+        tuple[Optional[str], Optional[str], Optional[str]]: Epoch ID, canonical hash,
+            and status, or three ``None`` values when no version epoch was persisted.
+    """
+    from .voice_upgrade.epochs import epoch_hash, epoch_path, load_epoch
+
+    path = epoch_path(root, voice_id, voice_version)
+    if not path.is_file():
+        return None, None, None
+    epoch = load_epoch(root, voice_id, voice_version, migrate_legacy=False)
+    return epoch.epoch_id, epoch_hash(epoch), epoch.status
 
 
 def voice_id_for(name: str) -> str:

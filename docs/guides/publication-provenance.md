@@ -17,7 +17,9 @@ minimal provenance classifications, not prompts, drafts, feedback, research
 notes, or author-contribution text.
 New receipts also record the resolved content pack ID and version. The
 [production manifest](production-manifests.md) provides the broader run summary
-and review-only table without decorating the published content.
+and review-only table without decorating the published content. New receipts
+bind its stable generation-time governance hash and run-local path; mutable run
+status and publication metadata remain outside that hash.
 
 ## Verify publications offline
 
@@ -30,7 +32,8 @@ content-creator verify-publications
 The command makes no provider or network call. It checks publication hashes,
 receipt schemas, originating status, pinned voice manifests, perspective
 manifests, approved entry hashes, the recorded deterministic evaluation, and
-every package artifact's bytes and required image metadata.
+every package artifact's bytes and required image metadata. For new receipts it
+also recomputes the production governance hash from the referenced manifest.
 An inactive context cannot authorize a new publication; historical receipts
 continue to verify their immutable version after a later deactivation.
 

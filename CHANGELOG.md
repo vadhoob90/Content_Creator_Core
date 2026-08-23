@@ -8,6 +8,41 @@ release tag.
 
 ## [Unreleased]
 
+## [1.18.0] - 2026-08-23
+
+### Added
+
+- Production manifests and review tables now identify the generation-time Core
+  version, discriminated voice artifact digest, aggregate and immutable-version
+  lifecycle state, evidence-baseline digest, and exact learning epoch ID, status,
+  and digest.
+- Every selected perspective now carries its immutable manifest digest and lifecycle
+  status alongside its ID and version, with complete machine values retained in
+  `production-manifest.json` and concise values rendered in `review.md`.
+- A canonical governance hash binds stable Core, voice, epoch, and perspective inputs;
+  revision manifests retain their immediate predecessor hash, and publication receipts
+  reference and verify the run-local governed production record.
+
+### Changed
+
+- Production provenance is projected only from the run's persisted resolved context.
+  Later upgrades, epoch transitions, deactivation, retirement, or restoration cannot
+  rewrite the governed state recorded for an older draft.
+- Historical runs no longer receive invented `unresolved` versions, synthetic learning
+  epochs, or the currently installed Core version. Missing evidence is nullable and
+  explicitly classified as partial or unavailable.
+- Publication verification recomputes the stable governance hash while leaving mutable
+  run status, publication timestamps, and media revisions outside that binding.
+
+### Migration
+
+- No stored-data migration is required. Existing schema `1.0` production manifests and
+  publication receipts remain readable because all governance fields are additive.
+- A deliberate state-saving operation can backfill only provenance already present in
+  an older run's resolved context; unavailable history remains unavailable.
+- Author workspaces can preview the new Core pin with `content-creator --workspace .
+  workspace upgrade --to v1.18.0` and apply it after review with `--apply`.
+
 ## [1.17.0] - 2026-08-23
 
 ### Added

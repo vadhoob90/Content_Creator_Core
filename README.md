@@ -51,8 +51,9 @@ before a run, trace source loading while content is created, or inspect the
 persisted provenance afterwards. See
 [runtime context composition](docs/guides/runtime-context-composition.md).
 Each run also produces a privacy-safe production manifest and a review copy
-showing the resolved pack, voice, perspectives, research route, models, and
-revision while keeping the publication artifact clean.
+showing the generation-time Core version, governed voice artifact and learning
+epoch, perspective versions and hashes, research route, models, and revision
+while keeping the publication artifact clean.
 
 ### 1. Create an author workspace
 
