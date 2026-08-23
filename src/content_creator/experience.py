@@ -8,7 +8,7 @@ from .coordinator import CoordinatorAction, WorkspaceSnapshot
 from .domain import WorkOrder
 
 
-def render_overview(snapshot: WorkspaceSnapshot) -> str:
+def render_overview(snapshot: WorkspaceSnapshot, *, details: bool = False) -> str:
     """Render workspace state and the safest useful next action.
 
     Summarize active and pending personalisation, runtime health, recent runs,
@@ -16,6 +16,7 @@ def render_overview(snapshot: WorkspaceSnapshot) -> str:
 
     Args:
         snapshot (WorkspaceSnapshot): The snapshot value passed to render overview.
+        details (bool): Whether to link advanced personalisation. Defaults to ``False``.
 
     Returns:
         str: The rendered text for overview.
@@ -56,7 +57,8 @@ def render_overview(snapshot: WorkspaceSnapshot) -> str:
     command = _render_action_command(snapshot.recommended_action)
     if command:
         lines.append(command)
-    lines.append("Explore personalisation: content-creator personalisation show")
+    if details:
+        lines.append("Explore personalisation: content-creator personalisation show")
     return "\n".join(lines)
 
 
@@ -64,8 +66,14 @@ def render_start(
     snapshot: WorkspaceSnapshot,
     order: Optional[WorkOrder] = None,
     questions: Optional[Iterable[str]] = None,
+    *,
+    details: bool = False,
 ) -> str:
     """Render the start.
+
+    Present a read-only plan while withholding an executable run action until
+    the derived setup snapshot confirms an active writing style and verified
+    model connection.
 
     Args:
         snapshot (WorkspaceSnapshot): The snapshot value passed to render start.
@@ -73,6 +81,7 @@ def render_start(
             run. Defaults to ``None``.
         questions (Optional[Iterable[str]]): The questions value passed to render start.
             Defaults to ``None``.
+        details (bool): Whether to link advanced personalisation. Defaults to ``False``.
 
     Returns:
         str: The rendered text for start.
@@ -88,26 +97,42 @@ def render_start(
             for line in [
                 snapshot.recommended_action.label,
                 command,
-                "Explore personalisation: content-creator personalisation show",
+                (
+                    "Explore personalisation: content-creator personalisation show"
+                    if details
+                    else ""
+                ),
             ]
             if line
         )
+    ready = bool(snapshot.setup and snapshot.setup.ready_for_content)
     lines = [
         "Proposed content plan",
         "Topic: {}".format(order.topic),
-        "Voice: {}".format(order.voice_id),
+        "Writing style: {}".format(order.voice_id if ready else "complete setup first"),
         "Format and pack: {} / {}".format(order.format, order.content_pack),
         "Research route: {} / {}".format(
             order.research_depth.value,
             order.research_source.value,
         ),
-        "Perspective: {}".format(
-            order.perspective_context or "Core will resolve from workspace policy"
-        ),
         "Approval points: research checkpoint when required; final author review; "
         "repository-local publication",
-        "Next command: content-creator run {!r}".format(order.request),
     ]
+    if ready:
+        lines.insert(
+            -1,
+            "Perspective: {}".format(
+                order.perspective_context or "Core will resolve from workspace policy"
+            ),
+        )
+        lines.append("Next command: content-creator run {!r}".format(order.request))
+    else:
+        lines.extend(
+            [
+                "Finish setup before creating this piece.",
+                "Next command: content-creator setup",
+            ]
+        )
     if snapshot.warnings:
         lines.append("Warnings:")
         lines.extend("  - {}".format(warning) for warning in snapshot.warnings)

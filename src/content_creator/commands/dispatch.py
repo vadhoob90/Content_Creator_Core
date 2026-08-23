@@ -38,6 +38,7 @@ from .pack_commands import manage_pack
 from .parser import build_parser
 from .personalisation import run as show_personalisation
 from .run_commands import run as run_content
+from .setup import run as run_setup
 from .shared import print_json, resolve_root
 from .workspace_commands import manage_workspace
 
@@ -66,6 +67,7 @@ ROUTES: dict[str, Handler] = {
     "revise": revise,
     "run": run_content,
     "schema": inspect_schema,
+    "setup": run_setup,
     "start": start,
     "status": show_status,
     "submission": show_submission,

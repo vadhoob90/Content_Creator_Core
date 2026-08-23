@@ -19,7 +19,9 @@ def show_overview(context: CommandContext) -> int:
         int: The resulting numeric value for show overview.
     """
     snapshot = ContentCoordinator(context.root).snapshot(context.arguments.run_limit)
-    context.emit(snapshot) if context.arguments.json else print(render_overview(snapshot))
+    context.emit(snapshot) if context.arguments.json else print(
+        render_overview(snapshot, details=context.arguments.details)
+    )
     return 0
 
 
@@ -47,12 +49,21 @@ def _clarification(
             }
         )
     else:
-        print(render_start(snapshot, questions=error.questions))
+        print(
+            render_start(
+                snapshot,
+                questions=error.questions,
+                details=context.arguments.details,
+            )
+        )
     return 3
 
 
 def start(context: CommandContext) -> int:
     """Start the experience commands workflow.
+
+    Keep request planning read-only and project the typed setup gate into both
+    human and machine output so hosts never infer execution readiness.
 
     Args:
         context (CommandContext): The operation context and its resolved dependencies.
@@ -63,7 +74,9 @@ def start(context: CommandContext) -> int:
     coordinator = ContentCoordinator(context.root)
     snapshot = coordinator.snapshot()
     if not context.arguments.request or not snapshot.is_workspace:
-        context.emit(snapshot) if context.arguments.json else print(render_start(snapshot))
+        context.emit(snapshot) if context.arguments.json else print(
+            render_start(snapshot, details=context.arguments.details)
+        )
         return 0
     try:
         order = context.orchestrator.plan_request(
@@ -78,6 +91,16 @@ def start(context: CommandContext) -> int:
                 "workspace": snapshot.model_dump(mode="json"),
                 "work_order": order.model_dump(mode="json"),
                 "mutates_workspace": False,
+                "ready_to_run": bool(snapshot.setup and snapshot.setup.ready_for_content),
+                "next_action": (
+                    {
+                        "id": "run-content",
+                        "command": ["run", order.request],
+                        "mutates_workspace": True,
+                    }
+                    if snapshot.setup and snapshot.setup.ready_for_content
+                    else snapshot.recommended_action.model_dump(mode="json")
+                ),
                 "approval_points": [
                     "research checkpoint when required",
                     "final author review",
@@ -86,7 +109,7 @@ def start(context: CommandContext) -> int:
             }
         )
     else:
-        print(render_start(snapshot, order=order))
+        print(render_start(snapshot, order=order, details=context.arguments.details))
     return 0
 
 

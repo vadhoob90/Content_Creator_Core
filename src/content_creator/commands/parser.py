@@ -12,6 +12,7 @@ from . import (
     perspective,
     provider,
     schema,
+    setup,
     visual,
     voice,
 )
@@ -40,7 +41,7 @@ def build_parser() -> argparse.ArgumentParser:
         dest="command",
         required=True,
         metavar=(
-            "{start,overview,personalisation,context,workspace,doctor,run,status,submission,publish,learn,"
+            "{setup,start,overview,personalisation,context,workspace,doctor,run,status,submission,publish,learn,"
             "revise,verify-publications,diagnostics,visual,coordinator,schema,operations,advanced}"
         ),
     )
@@ -50,6 +51,7 @@ def build_parser() -> argparse.ArgumentParser:
     register_agents(subparsers)
     provider.register(subparsers, PROVIDERS)
     register_experience(subparsers)
+    setup.register(subparsers)
     personalisation.register(subparsers)
     context_commands.register(subparsers)
     register_coordinator(subparsers)

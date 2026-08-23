@@ -1,5 +1,16 @@
 # Voice onboarding
 
+For a fresh generated workspace, begin with the concise author route:
+
+```bash
+content-creator --workspace . setup
+```
+
+The lower-level lifecycle commands in this guide remain available for
+automation and detailed administration. `voice status <voice-id>` preserves
+its machine-readable output; add `--human` for a concise choice or readiness
+summary.
+
 Every new thin workspace begins with an explicit decision: derive a personal
 voice from authorised writing, or begin with a neutral starter.
 

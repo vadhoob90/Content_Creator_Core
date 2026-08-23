@@ -75,6 +75,8 @@ def _register_build_and_assessment(commands: argparse._SubParsersAction) -> None
     for command_name in ("build", "rebuild", "status", "show", "signature", "verify"):
         command = commands.add_parser(command_name)
         command.add_argument("voice_id")
+        if command_name == "status":
+            command.add_argument("--human", action="store_true")
         if command_name in {"build", "rebuild"}:
             command.add_argument("--provider", choices=PROVIDERS)
             command.add_argument("--offline-analysis", action="store_true")

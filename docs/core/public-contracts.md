@@ -18,6 +18,13 @@ Command behavior is characterized in `tests/test_cli.py`,
 `tests/test_documentation_commands.py`, and
 `tests/test_architecture_guardrails.py`.
 
+`setup` is an additive author-facing projection over the existing coordinator
+state. Its schema `1.0` milestones and action objects follow the coordinator's
+ignore-unknown-fields compatibility rule. It does not replace the stable
+low-level voice, provider, planning, or run commands. Successful provider
+verification may write an ignored local readiness receipt; it is operational
+state rather than author-owned or publication provenance.
+
 ### Python package
 
 The supported root exports are declared by `content_creator.__all__`. Internal

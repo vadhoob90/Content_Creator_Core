@@ -75,7 +75,7 @@ def test_personalisation_explains_agents_learning_voice_and_paths(project, capsy
 
 
 def test_overview_and_help_signpost_personalisation(project, capsys):
-    assert main(["--root", str(project), "overview"]) == 0
+    assert main(["--root", str(project), "overview", "--details"]) == 0
     assert "content-creator personalisation show" in capsys.readouterr().out
 
     parser = main.__globals__["runtime"].build_parser()

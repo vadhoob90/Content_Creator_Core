@@ -47,7 +47,8 @@ def test_start_uses_persisted_run_state_before_new_work(project, capsys):
 def test_start_json_exposes_typed_recommendation(project, capsys):
     assert main(["--root", str(project), "start", "--json"]) == 0
     result = json.loads(capsys.readouterr().out)
-    assert result["recommended_action"]["mutates_workspace"] is False
+    assert result["recommended_action"]["mutates_workspace"] is True
+    assert result["recommended_action"]["requires_confirmation"] is True
     assert result["health"]["status"] == "ok"
 
 

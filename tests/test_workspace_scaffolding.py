@@ -120,12 +120,16 @@ def _assert_workspace_result(result):
 
 
 def _assert_author_navigation(destination, readme):
-    assert "## Quick start" in readme
+    assert "## Start here" in readme
+    assert "content-creator --workspace . setup" in readme
     assert "How this system is personalised to me" in readme
-    assert "Technical setup, uv, providers, and CLI usage" in readme
-    assert "Terminal installation and maintenance use `uv`" in readme
+    assert "Technical setup and advanced administration" in readme
+    assert "<summary>Advanced administration and reproducibility</summary>" in readme
     assert "## Upgrade options" in readme
     assert "voice upgrade-plan <voice-id>" in readme
+    start_screen = readme.split("<details>", maxsplit=1)[0]
+    assert "learning epoch" not in start_screen.lower()
+    assert "retire" not in start_screen.lower()
     personalisation = (destination / "PERSONALISATION.md").read_text(encoding="utf-8")
     assert "## What my agents have learnt" in personalisation
     assert "profiles/alice-general/learnings/memory.json" in personalisation
