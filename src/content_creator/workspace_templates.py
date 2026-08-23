@@ -6,6 +6,8 @@ import json
 from dataclasses import dataclass
 from typing import List
 
+from .workspace_upgrade_docs import UPGRADE_OPTIONS_BLOCK
+
 DEFAULT_CORE_URL = "https://github.com/vadhoob90/Content_Creator_Core.git"
 README_CORE_START = "<!-- content-creator-core-dependency:start -->"
 README_CORE_END = "<!-- content-creator-core-dependency:end -->"
@@ -113,6 +115,8 @@ commands.
 
 {core_dependency_section}
 
+{upgrade_options}
+
 ## Ownership
 
 Your agents, voice material, learnings, perspectives, content, and tests belong
@@ -162,6 +166,9 @@ rejected records remain inspectable but do not enter prompts.
 
 Candidate and active lifecycle state comes from manifests and decision receipts.
 Profile prose is evidence and guidance, not lifecycle authority.
+
+See [`docs/how-to-evolve-my-voice.md`](docs/how-to-evolve-my-voice.md) before
+consolidating learning or adding new publications to an immutable voice version.
 """
 
 
@@ -174,6 +181,9 @@ learning, and separately approved perspective contexts.
 Start with [`{voice_id}/README.md`]({voice_id}/README.md), or run
 `content-creator --workspace . personalisation show` for current state and valid
 decisions.
+
+See [`../docs/how-to-evolve-my-voice.md`](../docs/how-to-evolve-my-voice.md) for
+incremental evolution, full-corpus reanalysis, and full replacement.
 """
 
 
@@ -189,6 +199,9 @@ This directory contains the voice `{voice_id}`.
 
 Use `content-creator --workspace . personalisation show` for authoritative
 current state. Do not infer lifecycle state from historical profile prose.
+
+Use [`../../docs/how-to-evolve-my-voice.md`](../../docs/how-to-evolve-my-voice.md)
+to plan a reviewed transition to the next immutable version.
 """
 
 
@@ -243,6 +256,12 @@ material may remain outside this repository and be supplied with the
 `voice add-sources` command and its `--documents` option. Review candidate
 status and the copyable approval or rejection commands with
 `personalisation show`.
+
+## Evolve an existing voice
+
+See [`how-to-evolve-my-voice.md`](how-to-evolve-my-voice.md). Incremental
+evolution is the default; full-corpus reanalysis and full replacement are
+separate explicit operations with different privacy and approval boundaries.
 
 ## Direct content creation
 
@@ -448,6 +467,11 @@ that should remain unpublished, use `learn <run-id> --feedback "..."
 --idempotency-key <stable-key>`. This updates only the run's verified voice
 learning memory and never writes to a content pack destination.
 
+When the author asks to evolve an active voice, follow
+`docs/how-to-evolve-my-voice.md`: plan first, classify every prior-version
+learning explicitly, prefer incremental evidence analysis, show the semantic
+diff, and never activate without deterministic approval.
+
 Recovered operational diagnostics stay deferred throughout normal draft
 iterations. If publication returns `awaiting_diagnostic_decision`, present the
 sanitised Core support candidate once and ask whether to publish only or
@@ -492,6 +516,7 @@ ownership boundaries, approval trigger, and content-integrity rules.
             display_name=context.display_name,
             author_name=context.author_name,
             core_dependency_section=readme_core_dependency(context.core_ref, context.dependency),
+            upgrade_options=UPGRADE_OPTIONS_BLOCK,
             pack_list=pack_list,
             voice_id=context.voice_id,
             voice_label=context.voice_label,

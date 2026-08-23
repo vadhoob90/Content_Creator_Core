@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import List, Optional
+from typing import Any, List, Optional
 
 from .runner import AgentRunner
 from .storage import RunStore
@@ -102,6 +102,10 @@ class VoiceBuilder:
         voice_id: str,
         full_regenerate: bool = False,
         change_set: Optional[Path] = None,
+        order_override: Optional[VoiceWorkOrder] = None,
+        upgrade_context: Any = None,
+        source_ids: Optional[dict[str, str]] = None,
+        lifecycle_lock_held: bool = False,
     ) -> VoiceManifest:
         """Build the voice builder workflow.
 
@@ -111,13 +115,23 @@ class VoiceBuilder:
                 ``False``.
             change_set (Optional[Path]): Evidence-backed semantic change proposals.
                 Defaults to ``None``.
+            order_override (Optional[VoiceWorkOrder]): Filtered authorised evidence order.
+                Defaults to ``None``.
+            upgrade_context (Any): Validated governed upgrade context. Defaults to ``None``.
+            source_ids (Optional[dict[str, str]]): Stable evidence IDs by locator. Defaults
+                to ``None``.
+            lifecycle_lock_held (bool): Whether the caller owns the voice lifecycle lock.
+                Defaults to ``False``.
 
         Returns:
             VoiceManifest: The constructed voice manifest for value.
         """
         pipeline = VoiceBuildPipeline(self.root, self.runner, self.provider)
         return pipeline.build(
-            self.load_work_order(voice_id),
+            order_override or self.load_work_order(voice_id),
             full_regenerate=full_regenerate,
             change_set=change_set,
+            upgrade_context=upgrade_context,
+            source_ids=source_ids,
+            lifecycle_lock_held=lifecycle_lock_held,
         )

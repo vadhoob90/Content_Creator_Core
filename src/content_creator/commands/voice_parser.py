@@ -105,6 +105,37 @@ def _register_build_and_assessment(commands: argparse._SubParsersAction) -> None
     score_config.add_argument("--selected-by")
 
 
+def _register_upgrade(commands: argparse._SubParsersAction) -> None:
+    """Register governed voice-upgrade planning and build commands.
+
+    Args:
+        commands (argparse._SubParsersAction): Voice subcommand collection.
+
+    Returns:
+        None: Upgrade routes are registered in place.
+    """
+    plan = commands.add_parser(
+        "upgrade-plan",
+        help="Inventory evidence and learning without changing the active voice",
+    )
+    plan.add_argument("voice_id")
+    plan.add_argument("--mode", choices=["incremental", "full-corpus"], default="incremental")
+    plan.add_argument("--provider", choices=PROVIDERS)
+    plan.add_argument("--offline-analysis", action="store_true")
+    upgrade = commands.add_parser(
+        "upgrade",
+        help="Build a reviewable next-version candidate from a persisted plan",
+    )
+    upgrade.add_argument("voice_id")
+    upgrade.add_argument("--mode", choices=["incremental", "full-corpus"], default="incremental")
+    upgrade.add_argument("--learning-selection")
+    upgrade.add_argument("--change-set")
+    upgrade.add_argument("--idempotency-key")
+    upgrade.add_argument("--approve-provider-sharing", action="store_true")
+    upgrade.add_argument("--provider", choices=PROVIDERS)
+    upgrade.add_argument("--offline-analysis", action="store_true")
+
+
 def _register_training(commands: argparse._SubParsersAction) -> None:
     """Register the training.
 
@@ -178,5 +209,6 @@ def register(subparsers: argparse._SubParsersAction) -> None:
     _register_onboard(commands)
     _register_create(commands)
     _register_build_and_assessment(commands)
+    _register_upgrade(commands)
     _register_training(commands)
     _register_lifecycle(commands)

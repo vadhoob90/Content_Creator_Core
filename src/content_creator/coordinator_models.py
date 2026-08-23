@@ -38,6 +38,10 @@ class VoiceStatus(BaseModel):
     candidate_hash: Optional[str] = None
     onboarding_status: Optional[str] = None
     strategy: Optional[str] = None
+    upgrade_eligible: bool = False
+    new_voice_evidence_count: int = 0
+    unconsolidated_learning_count: int = 0
+    upgrade_plan_command: Optional[List[str]] = None
 
 
 class RunSummary(BaseModel):

@@ -117,3 +117,6 @@ class BuildState:
     analysis_artifact: Optional[dict] = None
     criticism_artifact: Optional[dict] = None
     evolution: Any = None
+    upgrade_context: Any = None
+    source_ids: dict[str, str] = field(default_factory=dict)
+    lifecycle_lock_held: bool = False

@@ -8,6 +8,47 @@ release tag.
 
 ## [Unreleased]
 
+## [1.16.0] - 2026-08-23
+
+### Added
+
+- `voice upgrade-plan` inventories an active voice's immutable evidence baseline,
+  content-hash delta, duplicate exclusions, exact version-scoped learning epoch,
+  privacy impact, provider-sharing scope, and calm next commands before model work.
+- `voice upgrade` builds either an incremental candidate from only newly authorised
+  evidence or an explicitly approved full-corpus reanalysis, with stale-plan checks,
+  idempotent retries, shared lifecycle locking, and the existing diff/approval gate.
+- Every newly built voice version records a canonical `evidence-baseline.json`; legacy
+  versions migrate deterministically from their approved source index.
+- Learning now has immutable version epochs, explicit carry-forward, incorporation,
+  discard, and remain-learning dispositions, plus freeze/create transition receipts.
+- Coordinator and personalisation reports expose local upgrade eligibility without
+  fetching private corpus content or executing a model.
+- Generated and upgraded downstream workspaces receive a managed `Upgrade options`
+  section in their main README and `docs/how-to-evolve-my-voice.md` operational guide.
+
+### Changed
+
+- New neutral starter voices persist the explicit `starter-neutral` strategy and can
+  transition only through an approved source-derived candidate.
+- Prompt composition reads learning only from the exact active voice version; frozen
+  prior epochs cannot receive new runtime learning.
+- Incremental linguistic aggregation reuses persisted per-source measurements so
+  historical private corpus text need not be retransmitted to a provider.
+- Candidate and approval receipts now bind the upgrade mode, evidence cutoff and
+  hashes, learning dispositions, build fingerprint, and epoch transition.
+
+### Migration
+
+- Run `content-creator --workspace . workspace upgrade --to v1.16.0` to preview the
+  dependency and additive documentation changes, then repeat with `--apply`.
+- Existing active voice versions remain readable. Their first upgrade derives an
+  evidence baseline from approved source-index entries, and legacy unversioned
+  learning is assigned to the provenance-matching active epoch before transition.
+- Existing downstream README prose is preserved. Core owns only the marked upgrade
+  options block; other custom documentation is reported as an explicit manual
+  follow-up instead of being overwritten.
+
 ## [1.15.1] - 2026-08-22
 
 ### Changed

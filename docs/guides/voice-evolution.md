@@ -1,113 +1,176 @@
-# Safe voice evolution
+# Evolve an existing voice
 
-An active voice is an approved editorial contract. Adding new source material
-therefore evolves that contract by default; it does not silently regenerate it.
-The active version stays usable until a human approves the new candidate.
+A voice upgrade is a reviewed transition from one immutable active voice version
+to the next. It is different from upgrading the Core dependency and different
+from adding runtime learning.
 
-## Default workflow
+The active version remains usable and unchanged until deterministic approval.
+Core persists the plan, evidence sets, learning dispositions, semantic diff,
+evaluations, and approval or rejection receipt; chat memory is never lifecycle
+state.
 
-```bash
-content-creator voice add-sources <voice-id> --documents "/path/to/new-writing"
-content-creator voice rebuild <voice-id>
-content-creator voice diff <voice-id>
-content-creator voice approve <voice-id> --approved-by "Repository Owner"
-```
+## Choose the operation
 
-When an active version exists, `voice rebuild` uses it as an immutable baseline.
-The candidate preserves its profile prose, constraints, rubric, and structured
-patterns. Newly derived, non-conflicting patterns may be added for review, but an
-approved rule is never modified or removed merely because a fresh analysis did
-not rediscover it.
-
-`voice diff` compares `active` with `candidate` by default. Its semantic delta
-separates `retained`, `added`, `modified`, `superseded`, and `removed` guidance.
-Review this output before approval.
-
-## Evolution evidence
-
-Every evolved candidate contains:
-
-| Artifact or field | Purpose |
+| Need | Operation |
 |---|---|
-| `voice-evolution.json` | Deterministic semantic delta, provenance, confidence, and rationale |
-| `evaluation-report.json` → `regression_evaluation` | Separate check for unexplained loss of approved guidance |
-| `manifest.json` → `baseline_version` | Immutable active version used as the baseline |
-| `manifest.json` → `baseline_candidate_hash` | Exact approved candidate hash used as the baseline |
-| `manifest.json` → `evolution_delta_hash` | Integrity hash for the semantic delta |
+| Adopt a newer Core release | `workspace upgrade --to <tag>` |
+| Apply feedback as a runtime overlay | `learn <run-id>` |
+| Evolve voice from new evidence and reviewed learning | `voice upgrade-plan`, then `voice upgrade` |
+| Reassess every authorised source while preserving the baseline | `voice upgrade-plan --mode full-corpus` |
+| Discard baseline precedence | `voice rebuild --full-regenerate` |
 
-A candidate cannot be approved if its baseline has changed or its active
-components, manifest, registry entry, or evolution delta fail verification.
+## Version 1 strategy
 
-## Propose a deliberate rule change
+Version 1 records one of two non-equivalent strategies:
 
-Use a change set when new authorised evidence justifies a semantic change. For
-example, this proposal supersedes one approved opening rule:
+- `starter-neutral` is a neutral writing policy with no author voice evidence;
+- `source-derived` is built from an authorised, attributed author corpus.
 
-```json
-{
-  "schema_version": "1.0",
-  "changes": [
-    {
-      "action": "supersede",
-      "target_id": "opening-rule",
-      "replacement": {
-        "id": "precise-opening-rule",
-        "name": "Precise opening",
-        "description": "Open with a precise, evidence-backed tension.",
-        "status": "for-review",
-        "confidence": 0.9,
-        "supporting_source_ids": ["source-003"],
-        "mandatory": true,
-        "category": "openings",
-        "generation_guidance": "Open with a precise tension.",
-        "anti_pattern": "Do not overstate the opening claim."
-      },
-      "evidence_source_ids": ["source-003"],
-      "confidence": 0.9,
-      "rationale": "The new article supports a narrower opening rule."
-    }
-  ]
-}
-```
+Replacing a starter with the first source-derived voice is recorded as
+`starter-neutral-to-source-derived` in the candidate manifest and approval
+receipt. Starter prose is never treated as corpus evidence.
+
+## Default incremental workflow
+
+Add authorised material to the voice work order, then plan:
 
 ```bash
-content-creator voice rebuild <voice-id> --change-set voice-change-set.json
-content-creator voice diff <voice-id>
+content-creator --workspace . voice add-sources <voice-id> \
+  --documents "/path/to/new-writing"
+content-creator --workspace . voice upgrade-plan <voice-id> \
+  --mode incremental \
+  --offline-analysis
 ```
 
-Supported actions are `retain`, `add`, `modify`, `supersede`, and `remove`.
-Additions require a new replacement pattern. Modifications retain the target ID;
-supersessions use a new ID. Changes and removals require authorised source IDs,
-confidence, and a rationale. They remain proposals until explicit approval.
+Planning inventories:
+
+- the active version, candidate hash, strategy, and evidence cutoff;
+- the complete represented evidence baseline;
+- currently authorised sources and reviewed local publications;
+- the canonical content-hash set difference;
+- the exact prior-version learning epoch and active records;
+- duplicate content already represented;
+- provider and historical-corpus sharing implications; and
+- exact build, diff, and approval commands.
+
+Publication dates are display information, not delta authority. A backdated but
+previously unrepresented article is new evidence. A later-dated duplicate is
+not. Edited content becomes new evidence when its reviewed normalized content
+hash changes.
+
+Incremental analysis reads only evidence in that delta. It deterministically
+combines new per-source measurements with persisted baseline measurements and
+does not retrieve or transmit historical baseline corpus text.
+
+## Review learning dispositions
+
+When active learning exists, planning creates
+`profiles/<voice-id>/upgrade/learning-selection.template.json`. Copy it to
+`learning-selection.json`, identify the reviewer, and decide every record.
+
+Supported classifications are:
+
+- `voice-profile`, `voice-constraint`, and `critic/rubric` for reviewed
+  linguistic guidance;
+- `repository-agent-policy` and `remain-learning` for non-profile policy;
+- `perspective`, `research-only`, and `visual-preference` for separate
+  lifecycles; and
+- `reject/obsolete/conflicting` for excluded records.
+
+Supported dispositions include `incorporate`, `carry-forward`, specialist
+routes, `leave-prior-version`, and `reject-retire`. Core proposes
+`remain-learning` and `carry-forward` conservatively; it never promotes a record
+merely because the record is active. Researcher learning cannot enter linguistic
+voice, and visual or perspective classifications must use their separate route.
+
+Build the exact reviewed selection:
+
+```bash
+content-creator --workspace . voice upgrade <voice-id> \
+  --mode incremental \
+  --learning-selection profiles/<voice-id>/upgrade/learning-selection.json \
+  --idempotency-key <stable-equivalent-build-key>
+```
+
+The build verifies every active component hash, evidence-set binding, learning
+epoch hash, mode, and disposition. A changed input requires a new plan and key.
+A failed build leaves the active voice and previous valid candidate unchanged.
+
+## Full-corpus reanalysis
+
+Use this mode when attribution or historical evidence changed, the analysis
+framework materially changed, or the author deliberately wants all evidence
+reassessed:
+
+```bash
+content-creator --workspace . voice upgrade-plan <voice-id> \
+  --mode full-corpus \
+  --provider codex-native
+content-creator --workspace . voice upgrade <voice-id> \
+  --mode full-corpus \
+  --approve-provider-sharing \
+  --learning-selection profiles/<voice-id>/upgrade/learning-selection.json
+```
+
+The plan discloses the provider, execution mode, source and learning counts,
+and whether historical private corpus text will be transmitted. Native
+subscription execution never silently falls back to API-key billing.
+Full-corpus mode still preserves approved baseline guidance unless an explicit,
+evidence-backed semantic change is reviewed.
 
 ## Full replacement
 
-Use full regeneration only when the author explicitly intends to replace the
-approved guidance:
+Full replacement is separate and exceptional:
 
 ```bash
-content-creator voice rebuild <voice-id> --full-regenerate
-content-creator voice diff <voice-id>
+content-creator --workspace . voice rebuild <voice-id> --full-regenerate
 ```
 
-Full replacement still records every semantic loss in `voice-evolution.json`,
-runs the regression evaluation in explicit-replacement mode, and requires human
-approval. It cannot be combined with a change set.
+It discards baseline precedence, records every semantic loss, runs evaluation,
+and still requires human approval. It is not an alias for full-corpus
+reanalysis.
 
-Builds are staged atomically. A failed evolution leaves both the active version
-and the previous valid candidate unchanged. This guarantee covers candidate
-construction and replacement, not the later multi-file approval transaction.
+## Diff, approval, rejection, and recovery
 
-## Operational concurrency limit
+```bash
+content-creator --workspace . voice diff <voice-id>
+content-creator --workspace . voice approve <voice-id> \
+  --approved-by "<author>"
+content-creator --workspace . voice reject <voice-id> \
+  --candidate-hash sha256:<hash> \
+  --rejected-by "<author>" \
+  --reason "<reason>"
+```
 
-Run `voice rebuild` and `voice approve` serially. Do not start another build or
-rebuild for the same voice while approval is in progress. Approval currently
-validates the mutable `candidate/` directory before taking its activation lock,
-and promotion is written across the version directory, receipt, and registry in
-separate steps. Concurrent candidate replacement or an interruption between
-those writes can therefore leave mixed or partial lifecycle artifacts.
+Approval validates the active baseline again under the shared lifecycle lock,
+publishes the next immutable version atomically, freezes the prior learning
+epoch, creates a fresh new-version epoch, writes an epoch-transition receipt,
+and updates the registry. Incorporated records are not copied into the new
+epoch. Only explicitly `carry-forward` records enter it.
 
-If approval overlaps a rebuild or is interrupted, stop mutating that voice and
-preserve the workspace for inspection. Do not delete a numeric version directory
-or edit the registry by hand. Snapshot-safe, transactional promotion is tracked
-in [#73](https://github.com/vadhoob90/Content_Creator_Core/issues/73).
+Repeating approval for the same candidate returns the existing receipt. A stale
+baseline, concurrent lifecycle operation, component mismatch, or incomplete
+learning selection fails closed. Rejection and failure leave the active voice
+unchanged.
+
+## Persisted evidence
+
+An upgrade candidate includes:
+
+- `voice-upgrade-plan.json`;
+- `evidence-baseline.json` and `evidence-delta.json`;
+- `learning-selection.json` and `learning-dispositions.json`;
+- `voice-evolution.json`;
+- standalone and active-baseline regression evaluation;
+- the candidate manifest and component hashes; and
+- after activation, approval and learning-epoch-transition receipts.
+
+Learning memory is resolved by exact immutable voice version:
+
+```text
+profiles/<voice-id>/learnings/1.0.0/memory.json
+profiles/<voice-id>/learnings/2.0.0/memory.json
+```
+
+A run pinned to version 1 can never mutate or load version 2 learning. Historical
+epochs remain frozen and verifiable rather than being deleted.

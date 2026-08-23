@@ -49,7 +49,7 @@ def test_starter_onboarding_activates_neutral_version_and_disables_perspectives(
     assert result["status"] == "starter-active"
     assert result["perspective_mode"] == "disabled"
     resolved = VoiceRegistry(project).resolve("example-author-general")
-    assert resolved["strategy"] == "starter"
+    assert resolved["strategy"] == "starter-neutral"
     assert resolved["evidence_status"] == "none"
     assert resolved["perspectives_allowed"] is False
     assert resolved["template_id"] == "clear-professional"
@@ -118,7 +118,7 @@ def test_starter_voice_forces_disabled_perspective_resolution(project, capsys):
     resolution = json.loads((run / "perspective-resolution.json").read_text(encoding="utf-8"))
     context = json.loads((run / "resolved-context.json").read_text(encoding="utf-8"))
     assert resolution["disabled_reason"] == "starter-voice-without-author-evidence"
-    assert context["voice"]["strategy"] == "starter"
+    assert context["voice"]["strategy"] == "starter-neutral"
     assert context["perspectives"] == []
 
 

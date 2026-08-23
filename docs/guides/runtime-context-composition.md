@@ -15,13 +15,19 @@ For each role, Core composes the applicable instruction layers in this order:
    learning policy;
 5. the selected immutable voice profile under `profiles/<voice-id>/`;
 6. only the approved perspective profiles selected for this run;
-7. active, role-matched records from `learnings/memory.json` and
-   `profiles/<voice-id>/learnings/memory.json`; and
+7. active, role-matched records from `learnings/memory.json` and the exact
+   `profiles/<voice-id>/learnings/<resolved-voice-version>/memory.json` epoch; and
 8. the selected content pack's rubrics and role instructions.
 
 A layer that does not apply is recorded as `skipped` with a reason. This makes
 absence visible—for example, `no-approved-perspective-selected` or
 `no-active-role-matched-learning`.
+
+Voice learning resolution is pinned to the run's immutable voice version. A
+version 1 run cannot read or mutate version 2 memory. When an upgrade
+incorporates a version 1 learning into version 2 guidance, the record remains in
+the frozen version 1 epoch and is absent from the fresh version 2 runtime epoch,
+preventing duplicate injection without prompt-time heuristics.
 
 The task instruction and structured payload are then sent as user context.
 Their contents can include the work order, research, a draft, prior criticism,

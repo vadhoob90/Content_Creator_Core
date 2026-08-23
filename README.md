@@ -74,6 +74,18 @@ its approved guidance by default. Follow
 [Safe voice evolution](docs/guides/voice-evolution.md) when adding evidence or
 proposing a rule change.
 
+### Evolve an existing voice
+
+Use `voice upgrade-plan <voice-id>` to compare the immutable active evidence
+baseline with newly authorised writing and reviewed publications. Incremental
+mode is the default: it analyses only the evidence delta plus explicitly
+selected prior-version learning, without resending the historical corpus.
+
+`--mode full-corpus` is a separate, explicit reassessment that discloses
+provider and privacy implications while retaining baseline precedence. A full
+replacement remains the exceptional `voice rebuild --full-regenerate` route.
+See [Evolve an existing voice](docs/guides/voice-evolution.md).
+
 ### 3. Ask for content naturally
 
 Open the author workspace in a supported coding assistant and describe what

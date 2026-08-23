@@ -22,6 +22,7 @@ from .packs import PackRegistry
 from .storage import RunStore
 from .upgrade_audit import coordinator_upgrade_operations, latest_upgrade_report
 from .voice_rejection import candidate_decision
+from .voice_upgrade.eligibility import inspect_upgrade_eligibility
 from .voices import VoiceManifest, VoiceRegistry, load_voice_onboarding
 
 logger = logging.getLogger(__name__)
@@ -109,6 +110,17 @@ class ContentCoordinator:
                 self._operation(
                     "voice.approve",
                     ["voice", "approve", "<voice-id>"],
+                    mutates=True,
+                    approval=True,
+                ),
+                self._operation(
+                    "voice.upgrade-plan",
+                    ["voice", "upgrade-plan", "<voice-id>"],
+                    mutates=True,
+                ),
+                self._operation(
+                    "voice.upgrade",
+                    ["voice", "upgrade", "<voice-id>", "<reviewed-selection>"],
                     mutates=True,
                     approval=True,
                 ),
@@ -369,6 +381,11 @@ class ContentCoordinator:
                 except ValueError:
                     candidate_status = "invalid"
             decision = candidate_decision(self.root, voice_id, active)
+            eligibility = (
+                inspect_upgrade_eligibility(self.root, voice_id, active)
+                if active
+                else {"eligible": False}
+            )
             result.append(
                 VoiceStatus(
                     voice_id=voice_id,
@@ -382,6 +399,12 @@ class ContentCoordinator:
                     onboarding_status=onboarding.status if onboarding else None,
                     strategy=active.get("strategy")
                     or (onboarding.strategy.value if onboarding and onboarding.strategy else None),
+                    upgrade_eligible=bool(eligibility.get("eligible")),
+                    new_voice_evidence_count=int(eligibility.get("new_local_evidence_count", 0)),
+                    unconsolidated_learning_count=int(
+                        eligibility.get("unconsolidated_active_learning_count", 0)
+                    ),
+                    upgrade_plan_command=eligibility.get("command"),
                 )
             )
         return result

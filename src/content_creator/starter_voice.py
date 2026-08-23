@@ -21,6 +21,8 @@ from .voice_models import (
     VoiceStrategy,
     save_voice_onboarding,
 )
+from .voice_upgrade.epochs import epoch_path
+from .voice_upgrade.models import EvidenceSet, LearningEpoch
 
 
 @dataclass(frozen=True)
@@ -99,9 +101,14 @@ def activate_starter(
         request.template_id,
         activated_at,
     )
-    memory = voice_root / "learnings" / "memory.json"
+    memory = epoch_path(registry_service.root, request.voice_id, version)
     if not memory.exists():
-        RunStore._atomic_text(memory, json.dumps({"version": 1, "records": []}, indent=2))
+        epoch = LearningEpoch(
+            voice_id=request.voice_id,
+            voice_version=version,
+            created_at=activated_at,
+        )
+        RunStore._atomic_text(memory, epoch.model_dump_json(indent=2))
     return registry_service.resolve(manifest.id)
 
 
@@ -124,7 +131,10 @@ def _existing_starter(
         VoiceError: If the voice operation cannot complete.
     """
     resolved = registry_service.resolve(request.voice_id)
-    if resolved["strategy"] != VoiceStrategy.STARTER.value:
+    if resolved["strategy"] not in {
+        VoiceStrategy.STARTER.value,
+        VoiceStrategy.STARTER_NEUTRAL.value,
+    }:
         raise VoiceError(f"Voice {request.voice_id} already has an active source-derived version")
     _record_onboarding(
         registry_service.root,
@@ -182,6 +192,10 @@ def _write_artifacts(destination: Path, author_name: str) -> tuple[dict, dict, s
             "perspectives_allowed": False,
         },
     }
+    evidence = EvidenceSet(
+        voice_id=destination.parent.parent.name,
+        evidence_cutoff=datetime.now(UTC).isoformat(),
+    )
     artifacts = {
         "profile.md": profile,
         "constraints.json": json.dumps(constraints, indent=2),
@@ -189,6 +203,7 @@ def _write_artifacts(destination: Path, author_name: str) -> tuple[dict, dict, s
         "source-index.json": "[]",
         "patterns.json": "[]",
         "evaluation-report.json": json.dumps(evaluation, indent=2),
+        "evidence-baseline.json": evidence.model_dump_json(indent=2),
     }
     for filename, contents in artifacts.items():
         RunStore._atomic_text(destination / filename, contents)
@@ -199,6 +214,7 @@ def _write_artifacts(destination: Path, author_name: str) -> tuple[dict, dict, s
         "sources": "source-index.json",
         "patterns": "patterns.json",
         "evaluation_report": "evaluation-report.json",
+        "evidence_baseline": "evidence-baseline.json",
     }
     component_hashes = {
         name: hash_file(destination / filename) for name, filename in components.items()
@@ -243,10 +259,14 @@ def _write_manifest(
             attested_by=request.selected_by,
             intended_uses=request.intended_uses,
         ),
-        strategy=VoiceStrategy.STARTER,
+        strategy=VoiceStrategy.STARTER_NEUTRAL,
         evidence_status="none",
         perspectives_allowed=False,
         template_id=request.template_id,
+        evidence_cutoff=EvidenceSet.model_validate_json(
+            (destination / "evidence-baseline.json").read_text(encoding="utf-8")
+        ).evidence_cutoff,
+        evidence_baseline_hash=hash_json([]),
     )
     RunStore._atomic_text(destination / "manifest.json", manifest.model_dump_json(indent=2))
     return manifest
@@ -289,7 +309,7 @@ def _write_receipt(
         "component_hashes": VoiceManifest.model_validate_json(
             (destination / "manifest.json").read_text()
         ).component_hashes,
-        "strategy": VoiceStrategy.STARTER.value,
+        "strategy": VoiceStrategy.STARTER_NEUTRAL.value,
         "template_id": STARTER_TEMPLATE_ID,
     }
     RunStore._atomic_text(destination / "voice-lock.json", json.dumps(lock, indent=2))
@@ -325,7 +345,7 @@ def _update_registry(
         "status": VoiceStatus.ACTIVE.value,
         "active_version": version,
         "candidate_hash": candidate_hash,
-        "strategy": VoiceStrategy.STARTER.value,
+        "strategy": VoiceStrategy.STARTER_NEUTRAL.value,
         "evidence_status": "none",
         "perspectives_allowed": False,
         "template_id": template_id,
@@ -363,7 +383,7 @@ def _record_onboarding(
             display_name=display_name,
             author_name=author_name,
             status="starter-active",
-            strategy=VoiceStrategy.STARTER,
+            strategy=VoiceStrategy.STARTER_NEUTRAL,
             template_id=template_id,
             selected_by=selected_by,
             selected_at=activated_at,

@@ -17,6 +17,9 @@ from ..voice_assessment import (
 )
 from ..voice_ml import train_voice_ml_model
 from ..voice_rejection import candidate_decision, list_rejections
+from ..voice_upgrade.models import VoiceUpgradeMode, VoiceUpgradePlan, VoiceUpgradeState
+from ..voice_upgrade.service import VoiceUpgradeError, VoiceUpgradeService
+from ..voice_upgrade.state import record_upgrade_decision
 from ..voices import VoiceManifest, hash_file, load_voice_onboarding
 from .shared import print_json
 from .voice_context import VoiceCommandContext
@@ -155,14 +158,20 @@ def reject(context: VoiceCommandContext) -> int:
         int: Zero after the rejection receipt is persisted or found.
     """
     arguments = context.arguments
-    print_json(
-        context.registry.reject(
-            arguments.voice_id,
-            arguments.candidate_hash,
-            arguments.rejected_by,
-            arguments.reason,
-        )
+    receipt = context.registry.reject(
+        arguments.voice_id,
+        arguments.candidate_hash,
+        arguments.rejected_by,
+        arguments.reason,
     )
+    record_upgrade_decision(
+        context.root,
+        arguments.voice_id,
+        arguments.candidate_hash,
+        VoiceUpgradeState.REJECTED,
+        receipt.snapshot_path + "/rejection-receipt.json",
+    )
+    print_json(receipt)
     return 0
 
 
@@ -214,13 +223,80 @@ def consolidate_learnings(context: VoiceCommandContext) -> int:
     Returns:
         int: The resulting numeric value for consolidate learnings.
     """
-    path = LearningMemory(context.root, context.arguments.voice_id).consolidate_candidate()
+    active_version = context.registry.get(context.arguments.voice_id).get("active_version")
+    path = LearningMemory(
+        context.root,
+        context.arguments.voice_id,
+        active_version,
+    ).consolidate_candidate()
     print_json(
         {
             "voice_id": context.arguments.voice_id,
             "status": "candidate",
             "path": str(path.relative_to(context.root)),
         }
+    )
+    return 0
+
+
+def upgrade_plan(context: VoiceCommandContext) -> int:
+    """Persist and render a read-only governed voice-upgrade inventory.
+
+    Args:
+        context (VoiceCommandContext): Voice command dependencies and arguments.
+
+    Returns:
+        int: Zero after the plan and review template are persisted.
+    """
+    arguments = context.arguments
+    plan = VoiceUpgradeService(context.root, context.builder).plan(
+        arguments.voice_id,
+        VoiceUpgradeMode(arguments.mode),
+        provider=arguments.provider,
+        offline_analysis=arguments.offline_analysis,
+    )
+    print_json(plan)
+    return 0
+
+
+def upgrade(context: VoiceCommandContext) -> int:
+    """Build a candidate from a fresh plan and explicit learning dispositions.
+
+    Args:
+        context (VoiceCommandContext): Voice command dependencies and arguments.
+
+    Returns:
+        int: Zero after a candidate is built or an equivalent retry is returned.
+
+    Raises:
+        VoiceUpgradeError: If the requested mode differs from the persisted plan.
+    """
+    arguments = context.arguments
+    plan_path = (
+        context.root / "profiles" / arguments.voice_id / "upgrade" / "voice-upgrade-plan.json"
+    )
+    plan = VoiceUpgradePlan.model_validate_json(plan_path.read_text(encoding="utf-8"))
+    if plan.mode != VoiceUpgradeMode(arguments.mode):
+        raise VoiceUpgradeError("Requested mode does not match the persisted upgrade plan")
+    planned_offline = plan.execution_mode == "offline-deterministic"
+    if planned_offline != arguments.offline_analysis:
+        raise VoiceUpgradeError("Requested execution mode does not match the persisted plan")
+    if plan.provider != arguments.provider:
+        raise VoiceUpgradeError("Requested provider does not match the persisted upgrade plan")
+    selection = Path(arguments.learning_selection) if arguments.learning_selection else None
+    change_set = Path(arguments.change_set) if arguments.change_set else None
+    if selection and not selection.is_absolute():
+        selection = context.root / selection
+    if change_set and not change_set.is_absolute():
+        change_set = context.root / change_set
+    print_json(
+        VoiceUpgradeService(context.root, context.builder).build(
+            arguments.voice_id,
+            selection,
+            idempotency_key=arguments.idempotency_key,
+            provider_sharing_approved=arguments.approve_provider_sharing,
+            explicit_change_set=change_set,
+        )
     )
     return 0
 

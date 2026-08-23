@@ -1,6 +1,7 @@
 import json
 
 from content_creator.cli import main
+from content_creator.voice_upgrade.epochs import epoch_path
 from content_creator.voices import VoiceRegistry
 
 
@@ -21,7 +22,7 @@ def test_personalisation_explains_agents_learning_voice_and_paths(project, capsy
         "Bharath Vadhoola",
         ["linkedin-post"],
     )
-    voice_memory = project / "profiles" / "bharath-linkedin" / "learnings" / "memory.json"
+    voice_memory = epoch_path(project, "bharath-linkedin", "1.0.0")
     voice_memory.parent.mkdir(parents=True, exist_ok=True)
     voice_memory.write_text(
         _memory(

@@ -300,6 +300,38 @@ def build_linguistic_signature(sources: Iterable[Dict]) -> Dict:
             }
         )
 
+    return _signature_from_profiles(source_profiles)
+
+
+def combine_linguistic_signatures(*signatures: Dict) -> Dict:
+    """Return aggregated per-source profiles without retrieving source text.
+
+    Args:
+        *signatures (tuple[Dict, ...]): Linguistic signatures containing
+            per-source profiles.
+
+    Returns:
+        Dict: Deterministically aggregated signature with duplicate sources removed.
+    """
+    profiles = {}
+    for signature in signatures:
+        for profile in signature.get("source_profiles", []):
+            profiles.setdefault(profile["source_id"], profile)
+    return _signature_from_profiles([profiles[key] for key in sorted(profiles)])
+
+
+def _signature_from_profiles(source_profiles: List[Dict]) -> Dict:
+    """Render a complete signature from persisted per-source measurements.
+
+    Group the already-extracted measurements by register and source kind while retaining
+    explicit limits on distinctiveness claims.
+
+    Args:
+        source_profiles (List[Dict]): Per-source linguistic feature profiles.
+
+    Returns:
+        Dict: Aggregated transparent linguistic signature.
+    """
     by_mode = defaultdict(list)
     by_kind = defaultdict(list)
     for profile in source_profiles:

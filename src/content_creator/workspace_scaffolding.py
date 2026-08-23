@@ -24,6 +24,7 @@ from .workspace_templates import (
     WorkspaceReadmeContext,
     WorkspaceTemplates,
 )
+from .workspace_upgrade_docs import HOW_TO_EVOLVE_VOICE
 
 
 @dataclass(frozen=True)
@@ -276,6 +277,7 @@ def _write_workspace_files(
             voice_id=identity.voice_id,
             first_pack=identity.packs[0],
         ),
+        "docs/how-to-evolve-my-voice.md": HOW_TO_EVOLVE_VOICE,
         f"profiles/{identity.voice_id}/learnings/memory.json": json.dumps(
             {"version": 1, "records": []}, indent=2
         ),
