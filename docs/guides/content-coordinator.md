@@ -157,3 +157,15 @@ uv run content-creator --workspace . publish <run-id> \
 
 Repository publication never overwrites an existing file, updates only the
 selected voice's learning memory, and does not post to an external platform.
+
+## Defaults, withdrawal, and unfinished runs
+
+The coordinator never silently redirects an inactive or retired default voice.
+`voice retirement-plan` inventories the default decision, pending candidates and
+proposals, owned perspective contexts, learning epoch, and every incomplete or
+publishable run. The author explicitly clears or replaces a withdrawn default and
+chooses whether named unfinished runs are completed, abandoned with an auditable
+decision, or retained behind an exact exception. Retirement blocks new revisions,
+publication, learning, upgrades, and candidate activation; historical inspection and
+verification remain available. Coordinator and personalisation views show the reason,
+decision time, unresolved dispositions, and only valid next actions.

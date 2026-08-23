@@ -55,6 +55,7 @@ class RunStatus(str, Enum):
     READY = "ready"
     NEEDS_AUTHOR = "needs_author"
     FAILED = "failed"
+    ABANDONED = "abandoned"
     PUBLISHED = "published"
 
 

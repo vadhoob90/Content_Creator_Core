@@ -77,6 +77,13 @@ Resolve only active voices. Preserve the exact pack and voice version written
 to `runs/<run-id>/resolved-context.json`. Use `$voice-builder` when the user
 asks to create, approve, deactivate, or otherwise manage a voice.
 
+When an author says they may return, route to a pause. When they say a channel or
+context is no longer future work, route to retirement. Use `voice retirement-plan`
+first and surface every default, learning, candidate, perspective, and unfinished-run
+decision. Retirement preserves history and never means deletion. Do not silently
+cascade context retirement. A retired aggregate uses the reviewed restore path, not
+ordinary reactivation.
+
 ## Create a visual for reviewed content
 
 Treat “create an image for this post/article” as an invocation of Core's visual

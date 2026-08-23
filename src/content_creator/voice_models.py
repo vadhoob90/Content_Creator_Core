@@ -37,6 +37,7 @@ class VoiceStatus(str, Enum):
     ACTIVE = "active"
     SUPERSEDED = "superseded"
     INACTIVE = "inactive"
+    RETIRED = "retired"
     REJECTED = "rejected"
 
 

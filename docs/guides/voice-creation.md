@@ -86,15 +86,21 @@ Rule changes require an evidence-backed change set. Full regeneration is a
 separate explicit replacement mode. See [Safe voice evolution](voice-evolution.md)
 for the contracts, commands, and failure-safety guarantees.
 
-Deactivate without deleting history:
+Pause without deleting history:
 
 ```bash
 content-creator voice deactivate example-person-general \
+  --deactivated-by "Repository Owner" \
   --reason "Authorisation withdrawn"
+content-creator voice reactivate example-person-general \
+  --approved-by "Repository Owner"
 ```
 
-Pinned historical runs still resolve their saved version. A new explicit
-approval is required to reactivate the voice.
+Pausing freezes the current learning epoch and writes an immutable receipt.
+Reactivation verifies the exact selected version and opens a new activation epoch;
+it does not create a duplicate voice version. Retirement is distinct, blocks normal
+future use, and requires a reviewed restore path. Start with `voice retirement-plan`
+and see [Voice retirement](voice-retirement.md).
 
 `--offline-analysis` exists for deterministic fixtures and development. It
 creates only a measured provisional rhythm profile and is not a substitute for

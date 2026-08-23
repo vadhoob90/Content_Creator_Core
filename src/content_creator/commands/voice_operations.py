@@ -144,7 +144,16 @@ def deactivate(context: VoiceCommandContext) -> int:
     Returns:
         int: The resulting numeric value for deactivate.
     """
-    print_json(context.registry.deactivate(context.arguments.voice_id, context.arguments.reason))
+    arguments = context.arguments
+    print_json(
+        context.registry.deactivate(
+            arguments.voice_id,
+            arguments.reason,
+            arguments.deactivated_by,
+            clear_default=arguments.clear_default,
+            replacement_voice=arguments.replacement_voice,
+        )
+    )
     return 0
 
 
@@ -186,7 +195,101 @@ def reactivate(context: VoiceCommandContext) -> int:
         int: The resulting numeric value for reactivate.
     """
     arguments = context.arguments
-    print_json(context.registry.activate(arguments.voice_id, arguments.approved_by, "reactivation"))
+    print_json(
+        context.registry.reactivate(arguments.voice_id, arguments.approved_by, arguments.reason)
+    )
+    return 0
+
+
+def retirement_plan(context: VoiceCommandContext) -> int:
+    """Render persisted-state retirement effects without changing the workspace.
+
+    Args:
+        context (VoiceCommandContext): The resolved voice command context.
+
+    Returns:
+        int: Zero after printing the retirement preflight.
+    """
+    print_json(context.registry.retirement_plan(context.arguments.voice_id))
+    return 0
+
+
+def retire_voice(context: VoiceCommandContext) -> int:
+    """Retire a voice using one exact reviewed plan.
+
+    Args:
+        context (VoiceCommandContext): The resolved voice command context.
+
+    Returns:
+        int: Zero after persisting the retirement decision.
+    """
+    arguments = context.arguments
+    print_json(
+        context.registry.retire(
+            arguments.voice_id,
+            arguments.retired_by,
+            arguments.reason,
+            arguments.plan_hash,
+            clear_default=arguments.clear_default,
+            replacement_voice=arguments.replacement_voice,
+            candidate_disposition=arguments.candidate_disposition,
+            perspective_candidate_disposition=arguments.perspective_candidate_disposition,
+            proposal_disposition=arguments.proposal_disposition,
+            run_disposition=arguments.run_disposition,
+        )
+    )
+    return 0
+
+
+def restore_voice(context: VoiceCommandContext) -> int:
+    """Restore a retired voice after an explicit hash-bound review.
+
+    Args:
+        context (VoiceCommandContext): The resolved voice command context.
+
+    Returns:
+        int: Zero after persisting the reviewed restoration.
+    """
+    arguments = context.arguments
+    print_json(
+        context.registry.restore(
+            arguments.voice_id,
+            arguments.requested_by,
+            arguments.approved_by,
+            arguments.plan_hash,
+        )
+    )
+    return 0
+
+
+def verify_lifecycle(context: VoiceCommandContext) -> int:
+    """Verify lifecycle receipts and catalogue hashes offline.
+
+    Args:
+        context (VoiceCommandContext): The resolved voice command context.
+
+    Returns:
+        int: Zero for valid evidence or six for verification failures.
+    """
+    result = context.registry.verify_lifecycle(context.arguments.voice_id)
+    print_json(result)
+    return 0 if result["valid"] else 6
+
+
+def migrate_lifecycle(context: VoiceCommandContext) -> int:
+    """Create an explicitly legacy-labelled receipt for registry-only inactivity.
+
+    Args:
+        context (VoiceCommandContext): The resolved voice command context.
+
+    Returns:
+        int: Zero after persisting the migration receipt.
+    """
+    print_json(
+        context.registry.migrate_legacy_lifecycle(
+            context.arguments.voice_id, context.arguments.migrated_by
+        )
+    )
     return 0
 
 

@@ -174,3 +174,11 @@ profiles/<voice-id>/learnings/2.0.0/memory.json
 
 A run pinned to version 1 can never mutate or load version 2 learning. Historical
 epochs remain frozen and verifiable rather than being deleted.
+
+## Supersession is not retirement
+
+An approved upgrade selects a new immutable version and marks the prior version
+`superseded` in the separate lifecycle catalogue. Retirement withdraws the whole
+voice from normal future use without selecting a successor or deleting any version.
+A paused voice resumes the same verified version; a retired voice uses the reviewed
+restore path. See [Voice retirement](voice-retirement.md).

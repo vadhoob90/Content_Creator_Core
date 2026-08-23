@@ -23,10 +23,14 @@ UPGRADE_OPTIONS_BLOCK = """{start}
   provider, cost, and privacy implications first.
 - **Replace the voice completely** only through the separate, exceptional
   `voice rebuild <voice-id> --full-regenerate` path.
+- **Pause or retire the voice** with `voice retirement-plan <voice-id>` first.
+  Pause when you may return; retire when the channel is no longer future work.
+  Both preserve versions, learning, perspectives, publications, and runs.
 - A neutral starter is not evidence of the author's voice. Replacing it with a
   first source-derived voice is a reviewed strategy transition.
 
 See [How to evolve my voice](docs/how-to-evolve-my-voice.md).
+See [How to pause or retire my voice](docs/how-to-pause-or-retire-my-voice.md).
 {end}""".format(start=UPGRADE_OPTIONS_START, end=UPGRADE_OPTIONS_END)
 
 HOW_TO_EVOLVE_VOICE = """# How to evolve my voice
@@ -63,6 +67,48 @@ Active learning is never copied automatically into linguistic voice. Research,
 perspectives, visual preferences, and repository-agent policy remain in their
 separate lifecycles. Activation freezes the prior version's learning epoch and
 creates a fresh epoch for the new immutable version.
+"""
+
+HOW_TO_RETIRE_VOICE = """# How to pause or retire my voice
+
+Pause a voice when you may return to the channel. Retirement is the higher-
+friction choice for a channel or context that is no longer part of future work.
+Neither operation deletes evidence, immutable versions, learning, perspectives,
+publications, receipts, or historical runs. Supersession means a later immutable
+version replaced an earlier one; it is not pause or retirement.
+
+## Plan before changing state
+
+Run `content-creator --workspace . voice retirement-plan <voice-id>`. Review the
+selected version and manifest hash, learning epoch, default-voice effect, pending
+candidates and proposals, owned perspective contexts, unfinished runs, historical
+publications, and the exact `binding_hash`.
+
+For a temporary pause, run `voice deactivate <voice-id> --deactivated-by
+"<author>" --reason "<reason>"`. If it is the default, explicitly pass either
+`--clear-default` or `--replacement-voice <active-id>`. New unpinned work and
+learning stop; the unchanged selected version can later be verified and resumed
+with `voice reactivate` without creating a duplicate voice version.
+
+For retirement, run `voice retire` with the reviewed `--plan-hash`, actor, reason,
+default decision, and any required exact-hash candidate or unfinished-run
+dispositions. Core freezes the learning epoch and blocks new runs, revisions,
+publication, learning, upgrades, and candidate activation. Installed content packs,
+repository agents, and repository-wide learning are unchanged. Owned perspective
+contexts remain preserved and are not silently retired.
+
+## Perspectives and restoration
+
+Use `perspective retirement-plan`, `deactivate`, `reactivate`, `retire-context`,
+and `restore-context` for independent context decisions. Entry retirement remains
+candidate-based: approve a new immutable context version rather than editing the
+registry. Exact candidate hashes can be rejected or abandoned with receipts.
+
+A retired voice or context cannot use ordinary reactivation. Generate a fresh
+restore plan, review its hash, and supply both requester and approver to `voice
+restore` or `perspective restore-context`. Historical pinned artifacts remain
+inspectable throughout. Run `voice verify-lifecycle` or `perspective
+verify-lifecycle` for deterministic offline receipt verification.
 """
 
 
@@ -111,6 +157,14 @@ class WorkspaceUpgradeDocumentation:
                     else "create"
                 ),
             },
+            "retirement_guide": {
+                "path": "docs/how-to-pause-or-retire-my-voice.md",
+                "action": (
+                    "preserve-existing"
+                    if (self.root / "docs/how-to-pause-or-retire-my-voice.md").exists()
+                    else "create"
+                ),
+            },
             "manual_follow_up": self._manual_follow_up(),
         }
 
@@ -134,6 +188,12 @@ class WorkspaceUpgradeDocumentation:
         else:
             RunStore._atomic_text(guide, HOW_TO_EVOLVE_VOICE.rstrip())
             created.append("docs/how-to-evolve-my-voice.md")
+        retirement_guide = self.root / "docs/how-to-pause-or-retire-my-voice.md"
+        if retirement_guide.exists():
+            preserved.append("docs/how-to-pause-or-retire-my-voice.md")
+        else:
+            RunStore._atomic_text(retirement_guide, HOW_TO_RETIRE_VOICE.rstrip())
+            created.append("docs/how-to-pause-or-retire-my-voice.md")
         return {
             "created": created,
             "updated": updated,
@@ -158,10 +218,11 @@ class WorkspaceUpgradeDocumentation:
             for path in sorted((self.root / "profiles").glob("*/README.md"))
         )
         return [
-            "Add a link to docs/how-to-evolve-my-voice.md in {}".format(path)
+            "Add lifecycle guide links in {}".format(path)
             for path in candidates
             if (self.root / path).is_file()
-            and "how-to-evolve-my-voice.md" not in (self.root / path).read_text(encoding="utf-8")
+            and "how-to-pause-or-retire-my-voice.md"
+            not in (self.root / path).read_text(encoding="utf-8")
         ]
 
 

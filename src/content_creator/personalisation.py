@@ -194,7 +194,34 @@ class PersonalisationInspector:
             "manifest": (
                 f"profiles/{voice_id}/versions/{version}/manifest.json" if version else None
             ),
+            "lifecycle_reason": active.get("retirement_reason")
+            or active.get("deactivation_reason")
+            or active.get("retire_reason"),
+            "lifecycle_actor": active.get("lifecycle_actor"),
+            "lifecycle_decided_at": active.get("retired_at")
+            or active.get("deactivated_at")
+            or active.get("reactivated_at")
+            or active.get("restored_at"),
+            "valid_actions": self._voice_actions(str(active.get("status"))),
         }
+
+    @staticmethod
+    def _voice_actions(status: str) -> list[str]:
+        """Return the author actions valid for one aggregate state.
+
+        Args:
+            status (str): Persisted aggregate voice status.
+
+        Returns:
+            list[str]: Valid author-facing lifecycle actions.
+        """
+        if status == "active":
+            return ["upgrade-plan", "retirement-plan", "deactivate", "retire"]
+        if status == "inactive":
+            return ["retirement-plan", "reactivate", "retire"]
+        if status == "retired":
+            return ["restore-plan", "verify-lifecycle"]
+        return ["inspect", "verify"]
 
     def _learning_scope(self, path: Path, scope: str) -> dict[str, Any]:
         """Return actual principles and counts for one learning-memory scope.
@@ -272,9 +299,17 @@ class PersonalisationInspector:
                             f"profiles/{voice_id}/perspectives/{context_id}/versions/"
                             f"{item.get('active_version')}/"
                         ),
+                        "lifecycle_reason": item.get("lifecycle_reason"),
+                        "lifecycle_actor": item.get("lifecycle_actor"),
+                        "valid_actions": (
+                            ["deactivate", "retire-context"]
+                            if item.get("status") == "active"
+                            else ["reactivate", "retire-context"]
+                            if item.get("status") == "inactive"
+                            else ["restore-context-plan", "verify-lifecycle"]
+                        ),
                     }
                     for context_id, item in sorted(contexts.items())
-                    if item.get("status") == "active"
                 ]
             except (json.JSONDecodeError, AttributeError) as error:
                 problems.append(str(error))

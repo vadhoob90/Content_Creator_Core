@@ -72,6 +72,13 @@ class LearningMemory:
             ValueError: If the selected version's learning epoch is frozen.
         """
         resolved_version = voice_version or self.voice_version
+        registry_path = self.root / "profiles" / "registry.json"
+        if registry_path.exists() and self.voice_id in json.loads(
+            registry_path.read_text(encoding="utf-8")
+        ).get("profiles", {}):
+            from .voices import VoiceRegistry
+
+            VoiceRegistry(self.root).resolve(self.voice_id, resolved_version)
         path = (
             epoch_path(self.root, self.voice_id, resolved_version)
             if resolved_version

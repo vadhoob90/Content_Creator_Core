@@ -20,8 +20,12 @@ from .voice_operations import (
     consolidate_learnings,
     deactivate,
     list_voices,
+    migrate_lifecycle,
     reactivate,
     reject,
+    restore_voice,
+    retire_voice,
+    retirement_plan,
     show_diff,
     show_profile,
     show_signature,
@@ -31,6 +35,7 @@ from .voice_operations import (
     upgrade_plan,
     verify,
     verify_all,
+    verify_lifecycle,
 )
 from .voice_parser import register as register
 
@@ -47,6 +52,12 @@ ROUTES: dict[str, VoiceHandler] = {
     "onboard": onboard,
     "reactivate": reactivate,
     "reject": reject,
+    "restore": restore_voice,
+    "restore-plan": retirement_plan,
+    "retire": retire_voice,
+    "retirement-plan": retirement_plan,
+    "verify-lifecycle": verify_lifecycle,
+    "migrate-lifecycle": migrate_lifecycle,
     "rebuild": build,
     "score": assess,
     "score-config": configure_score,

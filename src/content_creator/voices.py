@@ -3,11 +3,10 @@
 from __future__ import annotations
 
 import json
-from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from .storage import RunStore, slugify
+from .storage import slugify
 from .versioned_artifacts import (
     hash_file,
     verify_components,
@@ -192,6 +191,9 @@ class VoiceRegistry:
         mismatches = verify_components(path, manifest.components, manifest.component_hashes)
         if mismatches:
             raise VoiceError("Active voice component hash mismatch: {}".format(mismatches[0]))
+        from .voice_upgrade.epochs import epoch_hash, load_epoch
+
+        learning_epoch = load_epoch(self.root, voice_id, resolved_version, migrate_legacy=False)
         return {
             "id": voice_id,
             "version": resolved_version,
@@ -204,6 +206,9 @@ class VoiceRegistry:
             "evidence_status": manifest.evidence_status,
             "perspectives_allowed": manifest.perspectives_allowed,
             "template_id": manifest.template_id,
+            "learning_epoch_id": learning_epoch.epoch_id,
+            "learning_epoch_hash": epoch_hash(learning_epoch),
+            "learning_epoch_status": learning_epoch.status,
         }
 
     def activate_starter(
@@ -285,28 +290,161 @@ class VoiceRegistry:
 
         return reject_candidate(self, voice_id, candidate_hash, rejected_by, reason)
 
-    def deactivate(self, voice_id: str, reason: str) -> Dict:
+    def deactivate(
+        self,
+        voice_id: str,
+        reason: str,
+        deactivated_by: str = "repository-owner",
+        *,
+        clear_default: bool = False,
+        replacement_voice: Optional[str] = None,
+    ) -> Dict:
         """Deactivate the voice registry workflow.
 
         Args:
             voice_id (str): The stable identifier for the selected voice.
             reason (str): The human-readable reason recorded for the decision.
+            deactivated_by (str): Human identity recorded with the pause decision. Defaults to
+                ``"repository-owner"``.
+            clear_default (bool): Explicitly clear the workspace default. Defaults to ``False``.
+            replacement_voice (Optional[str]): Reviewed replacement. Defaults to ``None``.
 
         Returns:
             Dict: The structured resulting data for deactivate.
 
-        Raises:
-            VoiceError: If the voice operation cannot complete.
         """
-        registry = self._read()
-        item = registry["profiles"].get(voice_id)
-        if not item:
-            raise VoiceError("Unknown voice: {}".format(voice_id))
-        item["status"] = VoiceStatus.INACTIVE.value
-        item["deactivation_reason"] = reason
-        item["deactivated_at"] = datetime.now(UTC).isoformat()
-        RunStore._atomic_text(self.path, json.dumps(registry, indent=2))
-        return item
+        from .voice_lifecycle import VoiceLifecycleService
+
+        return (
+            VoiceLifecycleService(self)
+            .deactivate(
+                voice_id,
+                deactivated_by,
+                reason,
+                clear_default=clear_default,
+                replacement_voice=replacement_voice,
+            )
+            .model_dump(mode="json")
+        )
+
+    def reactivate(
+        self, voice_id: str, approved_by: str, reason: str = "author reactivation"
+    ) -> Dict:
+        """Restore an unchanged selected version with an immutable receipt.
+
+        Args:
+            voice_id (str): Stable selected voice identifier.
+            approved_by (str): Human identity approving reactivation.
+            reason (str): Human-readable explanation. Defaults to ``"author reactivation"``.
+
+        Returns:
+            Dict: Structured immutable reactivation receipt.
+        """
+        from .voice_lifecycle import VoiceLifecycleService
+
+        return (
+            VoiceLifecycleService(self)
+            .reactivate(voice_id, approved_by, reason)
+            .model_dump(mode="json")
+        )
+
+    def retirement_plan(self, voice_id: str) -> Dict:
+        """Return a hash-bound read-only retirement inventory.
+
+        Args:
+            voice_id (str): Stable selected voice identifier.
+
+        Returns:
+            Dict: Persisted-state retirement inventory and binding hash.
+        """
+        from .voice_lifecycle import VoiceLifecycleService
+
+        return VoiceLifecycleService(self).plan(voice_id).model_dump(mode="json")
+
+    def retire(
+        self,
+        voice_id: str,
+        retired_by: str,
+        reason: str,
+        plan_hash: str,
+        **decisions: Any,
+    ) -> Dict:
+        """Retire a voice after validating the reviewed preflight and decisions.
+
+        Args:
+            voice_id (str): Stable selected voice identifier.
+            retired_by (str): Human identity responsible for retirement.
+            reason (str): Human-readable retirement explanation.
+            plan_hash (str): Exact reviewed retirement plan hash.
+            **decisions (dict[str, Any]): Explicit aggregate and default dispositions.
+
+        Returns:
+            Dict: Structured immutable retirement receipt.
+        """
+        from .voice_lifecycle import VoiceLifecycleService, VoiceRetirementDecisions
+
+        return (
+            VoiceLifecycleService(self)
+            .retire(
+                voice_id,
+                retired_by,
+                reason,
+                plan_hash,
+                VoiceRetirementDecisions(**decisions),
+            )
+            .model_dump(mode="json")
+        )
+
+    def restore(self, voice_id: str, requested_by: str, approved_by: str, plan_hash: str) -> Dict:
+        """Restore a retired voice through a hash-bound reviewed path.
+
+        Args:
+            voice_id (str): Stable selected voice identifier.
+            requested_by (str): Human identity requesting restoration.
+            approved_by (str): Human identity approving restoration.
+            plan_hash (str): Exact reviewed restoration plan hash.
+
+        Returns:
+            Dict: Structured immutable restoration receipt.
+        """
+        from .voice_lifecycle import VoiceLifecycleService
+
+        return (
+            VoiceLifecycleService(self)
+            .restore(voice_id, requested_by, approved_by, plan_hash)
+            .model_dump(mode="json")
+        )
+
+    def migrate_legacy_lifecycle(self, voice_id: str, migrated_by: str) -> Dict:
+        """Record a reviewed receipt for a legacy registry-only inactive state.
+
+        Args:
+            voice_id (str): Stable selected voice identifier.
+            migrated_by (str): Human identity reviewing the legacy state.
+
+        Returns:
+            Dict: Structured immutable legacy migration receipt.
+        """
+        from .voice_lifecycle import VoiceLifecycleService
+
+        return (
+            VoiceLifecycleService(self)
+            .migrate_legacy(voice_id, migrated_by)
+            .model_dump(mode="json")
+        )
+
+    def verify_lifecycle(self, voice_id: str) -> Dict:
+        """Verify lifecycle receipts and the separate version catalogue offline.
+
+        Args:
+            voice_id (str): Stable selected voice identifier.
+
+        Returns:
+            Dict: Deterministic receipt and catalogue verification result.
+        """
+        from .voice_lifecycle import VoiceLifecycleService
+
+        return VoiceLifecycleService(self).verify(voice_id)
 
 
 def voice_id_for(name: str) -> str:

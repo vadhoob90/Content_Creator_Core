@@ -1,6 +1,6 @@
 ---
 name: voice-builder
-description: Create, inspect, evolve, evaluate, approve, deactivate, or reactivate an evidence-backed writing voice from authorised URLs, publications, text, HTML, PDF, DOCX, transcripts, and reviewed learning in a Content Creator repository. Use when a user asks to create or upgrade someone's voice, add voice sources, consolidate learning, approve a voice, check voice status, or change which voice version may create content.
+description: Create, inspect, evolve, evaluate, approve, pause, reactivate, retire, or restore an evidence-backed writing voice from authorised URLs, publications, text, HTML, PDF, DOCX, transcripts, and reviewed learning in a Content Creator repository. Use when a user asks to create or upgrade someone's voice, add voice sources, consolidate learning, approve a voice, check voice status, stop using a channel, or change which voice version may create content.
 ---
 
 # Voice Builder
@@ -190,14 +190,27 @@ content-creator voice approve <voice-id> --approved-by "<approver>"
 Report the activated version from the receipt. Do not substitute an LLM call,
 file edit, or registry edit for this command.
 
-## Deactivate or reactivate
+## Pause, retire, or restore
 
-Run the deterministic command matching the user's explicit instruction:
+Pause when the author may return. Retire when the channel is no longer part of
+future work. Always inspect persisted state first:
 
 ```bash
-content-creator voice deactivate <voice-id> --reason "<reason>"
+content-creator voice retirement-plan <voice-id>
+content-creator voice deactivate <voice-id> \
+  --deactivated-by "<author>" --reason "<reason>"
 content-creator voice reactivate <voice-id> --approved-by "<approver>"
+content-creator voice retire <voice-id> \
+  --retired-by "<author>" --reason "<reason>" --plan-hash sha256:<hash>
 ```
 
-Deactivation blocks future unpinned runs but preserves historical versions.
-Reactivation creates a new approval receipt.
+Surface required default, candidate, context, proposal, learning, and unfinished-run
+decisions. Do not select a replacement default or silently cascade perspective
+retirement. Pause and retirement freeze the learning epoch and preserve all history.
+Reactivation verifies the same immutable version and opens a new activation epoch;
+it does not create another voice version.
+
+A retired voice cannot use reactivation. Generate `voice restore-plan`, review its
+hash, and use `voice restore` with explicit requester and approver identities. Use
+`voice verify-lifecycle` for offline receipt verification. Never describe retirement
+as deletion.

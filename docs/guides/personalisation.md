@@ -108,3 +108,12 @@ content-creator --workspace . voice reject <voice-id> \
 
 Core archives an immutable rejection snapshot and receipt, removes the pending
 candidate, and leaves the active registry entry and version unchanged.
+
+## Lifecycle state and valid actions
+
+The report distinguishes `active`, `inactive`, and `retired`, shows the recorded
+actor, reason, and time, and offers only valid next actions. Inactive voices can be
+reactivated without a content-version change. Retired voices expose a restore plan,
+historical inspection, and offline verification—not ordinary reactivation. A default
+voice that is withdrawn must be explicitly cleared or replaced with a verified active
+voice. See [Voice retirement](voice-retirement.md).

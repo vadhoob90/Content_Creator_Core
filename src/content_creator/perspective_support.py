@@ -59,6 +59,8 @@ class PerspectiveStatus(str, Enum):
     AWAITING_APPROVAL = "awaiting_approval"
     ACTIVE = "active"
     INACTIVE = "inactive"
+    RETIRED = "retired"
+    REJECTED = "rejected"
 
 
 class PerspectiveEntryStatus(str, Enum):

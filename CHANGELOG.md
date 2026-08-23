@@ -8,6 +8,45 @@ release tag.
 
 ## [Unreleased]
 
+## [1.17.0] - 2026-08-23
+
+### Added
+
+- `voice retirement-plan`, `deactivate`, `reactivate`, `retire`, `restore-plan`,
+  `restore`, and `verify-lifecycle` provide hash-bound, actor-attributed withdrawal
+  and restoration without rewriting immutable voice versions.
+- Perspective contexts now have first-class pause, reactivation, retirement,
+  restoration, and exact-hash candidate rejection or abandonment receipts, while
+  entry retirement remains candidate-based.
+- A separate voice-version lifecycle catalogue records selected, superseded,
+  deactivated-with-voice, retired-with-voice, and historical relationships.
+- Generated and upgraded downstream workspaces receive an additive guide explaining
+  channel retirement, defaults, learning, perspectives, candidates, unfinished runs,
+  historical verification, and restoration.
+
+### Changed
+
+- Pausing or retiring a voice freezes and archives its exact activation learning epoch;
+  reactivation opens a new epoch for the unchanged selected version instead of
+  creating a duplicate major voice version.
+- Retired voices block new runs, revisions, unpublished publication, learning,
+  upgrades, and candidate activation while historical versions, runs, publications,
+  receipts, sources, and perspectives remain inspectable.
+- Default voices must be explicitly cleared or replaced with a verified active voice,
+  and pending candidates, proposals, and unfinished runs require explicit retirement
+  dispositions.
+- Coordinator, personalisation, resolved context, schemas, packaged skills, and CLI
+  help now distinguish inactive, retired, superseded, rejected, and deleted states.
+
+### Migration
+
+- Run `content-creator --workspace . workspace upgrade --to v1.17.0` to preview the
+  dependency, managed README block, new lifecycle guide, packaged skills, and manual
+  follow-up for customised documentation; repeat with `--apply` after review.
+- Existing registry-only inactive voices remain unchanged. Use `voice
+  migrate-lifecycle <voice-id> --migrated-by <actor>` only after review; its receipt is
+  explicitly labelled as legacy and does not invent historical actor or approval data.
+
 ## [1.16.0] - 2026-08-23
 
 ### Added

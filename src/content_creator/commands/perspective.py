@@ -14,9 +14,15 @@ from .perspective_operations import (
     create,
     create_comparison,
     deactivate,
+    decide_candidate,
     list_perspectives,
+    migrate_lifecycle,
+    reactivate,
     record_comparison,
+    restore_context,
     retire,
+    retire_context,
+    retirement_plan,
     show,
     show_catalogue,
     show_proposals,
@@ -24,6 +30,7 @@ from .perspective_operations import (
     stage_proposal,
     verify,
     verify_catalogue,
+    verify_lifecycle,
 )
 from .perspective_parser import register as register
 
@@ -36,6 +43,15 @@ ROUTES: dict[str, PerspectiveHandler] = {
     "catalogue": show_catalogue,
     "create": create,
     "deactivate": deactivate,
+    "reactivate": reactivate,
+    "retirement-plan": retirement_plan,
+    "restore-context-plan": retirement_plan,
+    "retire-context": retire_context,
+    "restore-context": restore_context,
+    "reject-candidate": decide_candidate,
+    "abandon-candidate": decide_candidate,
+    "verify-lifecycle": verify_lifecycle,
+    "migrate-lifecycle": migrate_lifecycle,
     "list": list_perspectives,
     "proposals": show_proposals,
     "retire": retire,
@@ -61,7 +77,26 @@ def _context(root: Path, arguments: argparse.Namespace) -> PerspectiveCommandCon
     Raises:
         PerspectiveError: If the perspective operation cannot complete.
     """
-    resolved_voice = VoiceRegistry(root).resolve(arguments.voice)
+    lifecycle_commands = {
+        "deactivate",
+        "reactivate",
+        "retirement-plan",
+        "restore-context-plan",
+        "retire-context",
+        "restore-context",
+        "reject-candidate",
+        "abandon-candidate",
+        "verify-lifecycle",
+        "migrate-lifecycle",
+        "status",
+        "show",
+        "verify",
+        "list",
+    }
+    resolved_voice = VoiceRegistry(root).resolve(
+        arguments.voice,
+        allow_inactive=arguments.perspective_command in lifecycle_commands,
+    )
     if not resolved_voice.get("perspectives_allowed", True):
         raise PerspectiveError(
             f"Perspectives are disabled for starter voice {arguments.voice} until a "

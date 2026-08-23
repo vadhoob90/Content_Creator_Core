@@ -157,6 +157,9 @@ def activate_context(
 ) -> PerspectiveApprovalReceipt:
     """Activate the context.
 
+    Hold the shared lifecycle lock while validating the candidate, excluding
+    exact-hash decisions, and publishing the immutable selected version.
+
     Args:
         registry_service (Any): The registry service used for domain lifecycle
             operations.
@@ -166,6 +169,9 @@ def activate_context(
     Returns:
         PerspectiveApprovalReceipt: The resulting perspective approval receipt for
             activate context.
+
+    Raises:
+        PerspectiveError: If the context is retired or the candidate was withdrawn.
     """
     VoiceRegistry(registry_service.root).resolve(registry_service.voice_id)
     context_root = registry_service.context_root(context_id)
@@ -175,8 +181,30 @@ def activate_context(
         "Perspective lifecycle operation is already in progress",
         PerspectiveError,
     ):
-        manifest = _validated_candidate(candidate)
         registry = registry_service._read()
+        current = registry["contexts"].get(context_id, {})
+        if current.get("status") == PerspectiveStatus.RETIRED.value:
+            raise PerspectiveError(
+                "Retired perspective contexts cannot activate candidates; use restore-context"
+            )
+        manifest = _validated_candidate(candidate)
+        decision_path = (
+            context_root
+            / "candidate-decisions"
+            / f"{manifest.candidate_hash.removeprefix('sha256:')}.json"
+        )
+        if decision_path.exists():
+            raise PerspectiveError("Perspective candidate was rejected or abandoned by exact hash")
+        aggregate_decision = (
+            registry_service.root
+            / "profiles"
+            / registry_service.voice_id
+            / "lifecycle"
+            / "candidate-decisions"
+            / f"perspective-candidate-{manifest.candidate_hash.removeprefix('sha256:')}.json"
+        )
+        if aggregate_decision.exists():
+            raise PerspectiveError("Perspective candidate was abandoned with its owner voice")
         existing = _existing_receipt(context_root, registry, context_id, manifest)
         if existing:
             return existing

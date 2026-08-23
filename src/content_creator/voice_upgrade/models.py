@@ -138,6 +138,7 @@ class LearningEpoch(BaseModel):
     schema_version: str = "2.0"
     voice_id: str
     voice_version: str
+    epoch_id: Optional[str] = None
     status: str = "active"
     created_at: str
     frozen_at: Optional[str] = None

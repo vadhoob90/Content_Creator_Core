@@ -16,6 +16,7 @@ from .perspective_semantic_review import (
 from .publication_provenance import PublicationProvenance
 from .storage import RunStore
 from .versioned_artifacts import hash_file
+from .voices import VoiceRegistry
 
 
 class PublicationReviewRequired(RuntimeError):
@@ -94,6 +95,7 @@ class PublicationLifecycle:
             PublicationGateEvidence: Deterministic and semantic evidence for the receipt.
 
         """
+        VoiceRegistry(self.root).resolve(state.work_order.voice_id, state.work_order.voice_version)
         evaluation, evaluation_hash = self._deterministic(state, draft)
         semantic = self._semantic(state, draft, approved_by, review_notes)
         return PublicationGateEvidence(

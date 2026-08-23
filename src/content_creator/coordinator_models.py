@@ -42,6 +42,10 @@ class VoiceStatus(BaseModel):
     new_voice_evidence_count: int = 0
     unconsolidated_learning_count: int = 0
     upgrade_plan_command: Optional[List[str]] = None
+    lifecycle_reason: Optional[str] = None
+    lifecycle_decided_at: Optional[str] = None
+    valid_actions: List[str] = Field(default_factory=list)
+    retirement_plan_command: Optional[List[str]] = None
 
 
 class RunSummary(BaseModel):
@@ -111,6 +115,41 @@ def operation(
         "mutates_workspace": mutates,
         "requires_explicit_approval": approval,
     }
+
+
+def voice_lifecycle_operations() -> list[Dict[str, Any]]:
+    """Return coordinator contracts for graceful voice withdrawal and restoration.
+
+    Returns:
+        list[Dict[str, Any]]: Structured coordinator operation contracts.
+    """
+    return [
+        operation("voice.retirement-plan", ["voice", "retirement-plan", "<voice-id>"]),
+        operation(
+            "voice.deactivate",
+            ["voice", "deactivate", "<voice-id>"],
+            mutates=True,
+            approval=True,
+        ),
+        operation(
+            "voice.reactivate",
+            ["voice", "reactivate", "<voice-id>"],
+            mutates=True,
+            approval=True,
+        ),
+        operation(
+            "voice.retire",
+            ["voice", "retire", "<voice-id>", "--plan-hash", "<hash>"],
+            mutates=True,
+            approval=True,
+        ),
+        operation(
+            "voice.restore",
+            ["voice", "restore", "<voice-id>", "--plan-hash", "<hash>"],
+            mutates=True,
+            approval=True,
+        ),
+    ]
 
 
 def action(

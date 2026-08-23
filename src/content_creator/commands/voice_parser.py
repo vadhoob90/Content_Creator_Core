@@ -179,9 +179,14 @@ def _register_lifecycle(commands: argparse._SubParsersAction) -> None:
     deactivate = commands.add_parser("deactivate")
     deactivate.add_argument("voice_id")
     deactivate.add_argument("--reason", required=True)
+    deactivate.add_argument("--deactivated-by", default="repository-owner")
+    deactivate.add_argument("--clear-default", action="store_true")
+    deactivate.add_argument("--replacement-voice")
     reactivate = commands.add_parser("reactivate")
     reactivate.add_argument("voice_id")
     reactivate.add_argument("--approved-by", default="repository-owner")
+    reactivate.add_argument("--reason", default="author reactivation")
+    _register_withdrawal_lifecycle(commands)
     add_sources = commands.add_parser("add-sources")
     add_sources.add_argument("voice_id")
     add_sources.add_argument("--sources")
@@ -192,6 +197,46 @@ def _register_lifecycle(commands: argparse._SubParsersAction) -> None:
     diff.add_argument("--to", dest="to_version", default="candidate")
     consolidate = commands.add_parser("consolidate-learnings")
     consolidate.add_argument("voice_id")
+
+
+def _register_withdrawal_lifecycle(commands: argparse._SubParsersAction) -> None:
+    """Register retirement, restoration, verification, and legacy migration routes.
+
+    Args:
+        commands (argparse._SubParsersAction): Voice subcommand collection.
+
+    Returns:
+        None: Lifecycle routes are registered in place.
+    """
+    retirement_plan = commands.add_parser(
+        "retirement-plan", help="Inventory retirement effects without mutation"
+    )
+    retirement_plan.add_argument("voice_id")
+    retire = commands.add_parser("retire")
+    retire.add_argument("voice_id")
+    retire.add_argument("--retired-by", required=True)
+    retire.add_argument("--reason", required=True)
+    retire.add_argument("--plan-hash", required=True)
+    retire.add_argument("--clear-default", action="store_true")
+    retire.add_argument("--replacement-voice")
+    retire.add_argument("--candidate-disposition", choices=["retain", "reject", "abandon"])
+    retire.add_argument(
+        "--perspective-candidate-disposition", choices=["retain", "reject", "abandon"]
+    )
+    retire.add_argument("--proposal-disposition", choices=["retain", "reject", "abandon"])
+    retire.add_argument("--run-disposition", choices=["abandon", "retain-exception"])
+    restore_plan = commands.add_parser("restore-plan")
+    restore_plan.add_argument("voice_id")
+    restore = commands.add_parser("restore")
+    restore.add_argument("voice_id")
+    restore.add_argument("--requested-by", required=True)
+    restore.add_argument("--approved-by", required=True)
+    restore.add_argument("--plan-hash", required=True)
+    verify_lifecycle = commands.add_parser("verify-lifecycle")
+    verify_lifecycle.add_argument("voice_id")
+    migrate_lifecycle = commands.add_parser("migrate-lifecycle")
+    migrate_lifecycle.add_argument("voice_id")
+    migrate_lifecycle.add_argument("--migrated-by", required=True)
 
 
 def register(subparsers: argparse._SubParsersAction) -> None:

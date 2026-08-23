@@ -97,3 +97,11 @@ research text, credentials, or unselected private voice and perspective
 material. A hash proves which private task input was used without making the
 manifest another store of that content. The original authorised files and run
 artifacts remain the source of truth.
+
+## Withdrawn voices and historical resolution
+
+New runs resolve only an `active` voice and active perspective contexts. The resolved
+context pins both `voice_version` and `learning_epoch_id`. Pause or retirement blocks
+new unpinned composition and automatic perspective selection, while existing run
+manifests remain readable and verifiable against the preserved immutable versions.
+Historical inspection never reactivates an aggregate or opens learning for writes.

@@ -15,6 +15,7 @@ from .coordinator_models import RunSummary as RunSummary
 from .coordinator_models import VoiceStatus as VoiceStatus
 from .coordinator_models import WorkspaceSnapshot as WorkspaceSnapshot
 from .coordinator_models import operation as coordinator_operation
+from .coordinator_models import voice_lifecycle_operations
 from .coordinator_policy import actions_for_state, recommend_action
 from .domain import RunState, RunStatus
 from .health import WorkspaceHealth
@@ -124,6 +125,7 @@ class ContentCoordinator:
                     mutates=True,
                     approval=True,
                 ),
+                *voice_lifecycle_operations(),
             ],
             "boundaries": {
                 "chat_memory_is_state": False,
@@ -153,7 +155,15 @@ class ContentCoordinator:
         warnings: List[str] = []
         default_voice = policy.get("default_voice")
         if default_voice and default_voice not in active_ids:
-            warnings.append("Configured default voice is not active: {}".format(default_voice))
+            configured = next((item for item in voices if item.voice_id == default_voice), None)
+            detail = (
+                f" ({configured.active_status}: {configured.lifecycle_reason})"
+                if configured and configured.lifecycle_reason
+                else ""
+            )
+            warnings.append(
+                "Configured default voice is not active: {}{}".format(default_voice, detail)
+            )
         if policy["default_pack"] not in packs:
             warnings.append(
                 "Configured default pack is unavailable: {}".format(policy["default_pack"])
@@ -304,7 +314,8 @@ class ContentCoordinator:
                 ),
                 incomplete=(
                     authoritative[state.work_order.content_session_id].id == state.id
-                    and state.status != RunStatus.PUBLISHED
+                    and state.status
+                    not in {RunStatus.PUBLISHED, RunStatus.FAILED, RunStatus.ABANDONED}
                 ),
             )
             for state in states[: max(0, limit)]
@@ -405,9 +416,38 @@ class ContentCoordinator:
                         eligibility.get("unconsolidated_active_learning_count", 0)
                     ),
                     upgrade_plan_command=eligibility.get("command"),
+                    lifecycle_reason=active.get("retirement_reason")
+                    or active.get("deactivation_reason")
+                    or active.get("retire_reason"),
+                    lifecycle_decided_at=active.get("retired_at")
+                    or active.get("deactivated_at")
+                    or active.get("reactivated_at")
+                    or active.get("restored_at"),
+                    valid_actions=self._voice_actions(str(active.get("status", "candidate"))),
+                    retirement_plan_command=["voice", "retirement-plan", voice_id]
+                    if active
+                    else None,
                 )
             )
         return result
+
+    @staticmethod
+    def _voice_actions(status: str) -> List[str]:
+        """Return only lifecycle actions valid for the persisted voice state.
+
+        Args:
+            status (str): Persisted aggregate voice status.
+
+        Returns:
+            List[str]: Valid next lifecycle action identifiers.
+        """
+        if status == "active":
+            return ["upgrade-plan", "retirement-plan", "deactivate", "retire"]
+        if status == "inactive":
+            return ["retirement-plan", "reactivate", "retire"]
+        if status == "retired":
+            return ["restore-plan", "verify-lifecycle"]
+        return ["inspect", "verify"]
 
     def _provider_status(self) -> ProviderStatus:
         """Return the provider status.
