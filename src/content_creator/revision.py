@@ -12,6 +12,7 @@ from .domain import Critique, ResearchBrief, RunEvent, RunState, RunStatus
 from .quality import evaluate_quality
 from .storage import IdempotencyError, RunStore, StorageError
 from .validation import normalize_publishable_markdown
+from .voices import VoiceRegistry
 
 
 class RevisionLifecycle:
@@ -81,6 +82,9 @@ class RevisionLifecycle:
             RuntimeError: If the run has no conflicting legacy pack policy.
         """
         state = self.workflow.store.load(run_id)
+        VoiceRegistry(self.workflow.root).resolve(
+            state.work_order.voice_id, state.work_order.voice_version
+        )
         migrations = self.workflow.packs.override_compatibility(
             state.work_order.content_pack, state.work_order.pack_options
         )

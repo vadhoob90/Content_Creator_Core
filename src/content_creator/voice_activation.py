@@ -71,6 +71,9 @@ def activate_candidate(
     Returns:
         VoiceApprovalReceipt: The resulting voice approval receipt for activate
             candidate.
+
+    Raises:
+        VoiceError: If the voice is retired or the candidate cannot be activated.
     """
     voice_root = registry_service.root / "profiles" / voice_id
     candidate = voice_root / "candidate"
@@ -79,8 +82,19 @@ def activate_candidate(
         "Voice candidate lifecycle operation is already in progress",
         VoiceError,
     ):
-        manifest, evaluation_path = _validated_candidate(candidate, override_reason)
         registry = registry_service._read()
+        current = registry["profiles"].get(voice_id, {})
+        if current.get("status") == VoiceStatus.RETIRED.value:
+            raise VoiceError("Retired voices cannot activate candidates; use the restore path")
+        manifest, evaluation_path = _validated_candidate(candidate, override_reason)
+        lifecycle_decision = (
+            voice_root
+            / "lifecycle"
+            / "candidate-decisions"
+            / f"voice-candidate-{manifest.candidate_hash.removeprefix('sha256:')}.json"
+        )
+        if lifecycle_decision.exists():
+            raise VoiceError("Voice candidate was rejected or abandoned by exact hash")
         existing_receipt = _existing_receipt(voice_root, registry, voice_id, manifest)
         if existing_receipt:
             return existing_receipt

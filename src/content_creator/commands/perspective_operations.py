@@ -285,7 +285,135 @@ def deactivate(context: PerspectiveCommandContext) -> int:
         int: The resulting numeric value for deactivate.
     """
     arguments = context.arguments
-    print_json(_registry(context).deactivate(arguments.context, arguments.reason))
+    print_json(
+        _registry(context).deactivate(arguments.context, arguments.reason, arguments.deactivated_by)
+    )
+    return 0
+
+
+def reactivate(context: PerspectiveCommandContext) -> int:
+    """Restore an unchanged paused context through an explicit receipt.
+
+    Args:
+        context (PerspectiveCommandContext): The resolved perspective command context.
+
+    Returns:
+        int: Zero after persisting the reactivation.
+    """
+    arguments = context.arguments
+    print_json(
+        _registry(context).reactivate(arguments.context, arguments.approved_by, arguments.reason)
+    )
+    return 0
+
+
+def retirement_plan(context: PerspectiveCommandContext) -> int:
+    """Render the persisted-state context retirement preflight.
+
+    Args:
+        context (PerspectiveCommandContext): The resolved perspective command context.
+
+    Returns:
+        int: Zero after printing the preflight.
+    """
+    print_json(_registry(context).retirement_plan(context.arguments.context))
+    return 0
+
+
+def retire_context(context: PerspectiveCommandContext) -> int:
+    """Retire a complete perspective context without rewriting entries.
+
+    Args:
+        context (PerspectiveCommandContext): The resolved perspective command context.
+
+    Returns:
+        int: Zero after persisting the retirement.
+    """
+    arguments = context.arguments
+    print_json(
+        _registry(context).retire_context(
+            arguments.context,
+            arguments.retired_by,
+            arguments.reason,
+            plan_hash=arguments.plan_hash,
+            candidate_disposition=arguments.candidate_disposition,
+            proposal_disposition=arguments.proposal_disposition,
+        )
+    )
+    return 0
+
+
+def restore_context(context: PerspectiveCommandContext) -> int:
+    """Restore a retired context through explicit request and review.
+
+    Args:
+        context (PerspectiveCommandContext): The resolved perspective command context.
+
+    Returns:
+        int: Zero after persisting the restoration.
+    """
+    arguments = context.arguments
+    print_json(
+        _registry(context).restore_context(
+            arguments.context,
+            arguments.requested_by,
+            arguments.approved_by,
+            arguments.plan_hash,
+        )
+    )
+    return 0
+
+
+def decide_candidate(context: PerspectiveCommandContext) -> int:
+    """Reject or abandon one exact context candidate hash.
+
+    Args:
+        context (PerspectiveCommandContext): The resolved perspective command context.
+
+    Returns:
+        int: Zero after persisting the candidate decision.
+    """
+    arguments = context.arguments
+    action = "abandon" if arguments.perspective_command == "abandon-candidate" else "reject"
+    print_json(
+        _registry(context).decide_candidate(
+            arguments.context,
+            arguments.candidate_hash,
+            arguments.decided_by,
+            arguments.reason,
+            action,
+        )
+    )
+    return 0
+
+
+def verify_lifecycle(context: PerspectiveCommandContext) -> int:
+    """Verify context lifecycle receipts offline.
+
+    Args:
+        context (PerspectiveCommandContext): The resolved perspective command context.
+
+    Returns:
+        int: Zero for valid evidence or six for verification failures.
+    """
+    result = _registry(context).verify_lifecycle(context.arguments.context)
+    print_json(result)
+    return 0 if result["valid"] else 6
+
+
+def migrate_lifecycle(context: PerspectiveCommandContext) -> int:
+    """Record a registry-only inactive context as reviewed legacy state.
+
+    Args:
+        context (PerspectiveCommandContext): The resolved perspective command context.
+
+    Returns:
+        int: Zero after persisting the migration receipt.
+    """
+    arguments = context.arguments
+    print_json(
+        _registry(context).migrate_legacy_lifecycle(arguments.context, arguments.migrated_by)
+    )
     return 0
 
 

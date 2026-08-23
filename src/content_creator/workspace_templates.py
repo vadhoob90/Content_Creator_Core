@@ -167,8 +167,8 @@ rejected records remain inspectable but do not enter prompts.
 Candidate and active lifecycle state comes from manifests and decision receipts.
 Profile prose is evidence and guidance, not lifecycle authority.
 
-See [`docs/how-to-evolve-my-voice.md`](docs/how-to-evolve-my-voice.md) before
-consolidating learning or adding new publications to an immutable voice version.
+See `docs/how-to-evolve-my-voice.md` for evolution and
+`docs/how-to-pause-or-retire-my-voice.md` for withdrawal that preserves history.
 """
 
 
@@ -182,8 +182,8 @@ Start with [`{voice_id}/README.md`]({voice_id}/README.md), or run
 `content-creator --workspace . personalisation show` for current state and valid
 decisions.
 
-See [`../docs/how-to-evolve-my-voice.md`](../docs/how-to-evolve-my-voice.md) for
-incremental evolution, full-corpus reanalysis, and full replacement.
+See `../docs/how-to-evolve-my-voice.md` for evolution and
+`../docs/how-to-pause-or-retire-my-voice.md` for pause, retirement, and restoration.
 """
 
 
@@ -200,8 +200,8 @@ This directory contains the voice `{voice_id}`.
 Use `content-creator --workspace . personalisation show` for authoritative
 current state. Do not infer lifecycle state from historical profile prose.
 
-Use [`../../docs/how-to-evolve-my-voice.md`](../../docs/how-to-evolve-my-voice.md)
-to plan a reviewed transition to the next immutable version.
+Use `../../docs/how-to-evolve-my-voice.md` for versions and
+`../../docs/how-to-pause-or-retire-my-voice.md` for withdrawal without deletion.
 """
 
 
@@ -257,11 +257,11 @@ material may remain outside this repository and be supplied with the
 status and the copyable approval or rejection commands with
 `personalisation show`.
 
-## Evolve an existing voice
+## Evolve an existing voice, pause it, or retire it
 
-See [`how-to-evolve-my-voice.md`](how-to-evolve-my-voice.md). Incremental
-evolution is the default; full-corpus reanalysis and full replacement are
-separate explicit operations with different privacy and approval boundaries.
+See [`how-to-evolve-my-voice.md`](how-to-evolve-my-voice.md) for versions and
+[`how-to-pause-or-retire-my-voice.md`](how-to-pause-or-retire-my-voice.md) for
+preserved withdrawal. Run `voice retirement-plan {voice_id}` before retiring.
 
 ## Direct content creation
 
@@ -467,10 +467,10 @@ that should remain unpublished, use `learn <run-id> --feedback "..."
 --idempotency-key <stable-key>`. This updates only the run's verified voice
 learning memory and never writes to a content pack destination.
 
-When the author asks to evolve an active voice, follow
-`docs/how-to-evolve-my-voice.md`: plan first, classify every prior-version
-learning explicitly, prefer incremental evidence analysis, show the semantic
-diff, and never activate without deterministic approval.
+For evolution follow `docs/how-to-evolve-my-voice.md`; for pause, retirement, or
+restoration follow `docs/how-to-pause-or-retire-my-voice.md`. Plan first, surface
+every learning/default/candidate/context/run decision, never silently cascade,
+and never describe preserved retirement as deletion.
 
 Recovered operational diagnostics stay deferred throughout normal draft
 iterations. If publication returns `awaiting_diagnostic_decision`, present the

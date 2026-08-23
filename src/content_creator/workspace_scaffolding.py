@@ -24,7 +24,7 @@ from .workspace_templates import (
     WorkspaceReadmeContext,
     WorkspaceTemplates,
 )
-from .workspace_upgrade_docs import HOW_TO_EVOLVE_VOICE
+from .workspace_upgrade_docs import HOW_TO_EVOLVE_VOICE, HOW_TO_RETIRE_VOICE
 
 
 @dataclass(frozen=True)
@@ -278,6 +278,7 @@ def _write_workspace_files(
             first_pack=identity.packs[0],
         ),
         "docs/how-to-evolve-my-voice.md": HOW_TO_EVOLVE_VOICE,
+        "docs/how-to-pause-or-retire-my-voice.md": HOW_TO_RETIRE_VOICE,
         f"profiles/{identity.voice_id}/learnings/memory.json": json.dumps(
             {"version": 1, "records": []}, indent=2
         ),

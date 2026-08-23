@@ -266,7 +266,9 @@ content-creator voice add-sources example-person --sources additional-urls.txt
 content-creator voice rebuild example-person
 content-creator voice diff example-person
 content-creator voice deactivate example-person \
+  --deactivated-by "Repository Owner" \
   --reason "Authorisation withdrawn"
+content-creator voice retirement-plan example-person
 ```
 
 For an active voice, rebuild preserves approved guidance and `voice diff`
@@ -275,8 +277,12 @@ changes use `--change-set`; intentional replacement uses `--full-regenerate`.
 Both routes still require explicit approval. See
 [Safe voice evolution](../guides/voice-evolution.md).
 
-Deactivation prevents future content runs but preserves old manifests,
-receipts and run snapshots. Reactivation requires a new explicit approval.
+Deactivation prevents future content runs and learning but preserves old manifests,
+receipts and run snapshots. Reactivation verifies the same selected version and opens
+a new activation epoch rather than creating a duplicate version. Retirement and
+restoration use a hash-bound plan and separate receipts. Generated schema bundles
+include `aggregate-lifecycle-plan`, `aggregate-lifecycle-receipt`, and
+`voice-version-lifecycle-catalogue`.
 
 ### Content creation
 

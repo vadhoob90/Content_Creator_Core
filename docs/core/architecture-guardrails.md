@@ -186,6 +186,7 @@ the guardrail.
 | Concept cohesion and package promotion | [ADR 0012](../adr/0012-concept-cohesion-and-package-promotion.md) |
 | Google Style code contracts | [ADR 0013](../adr/0013-google-style-code-contracts.md) |
 | Publication packages and visual scope | [ADR 0014](../adr/0014-publication-packages-and-visual-scope.md) |
+| Aggregate withdrawal and restoration | [ADR 0015](../adr/0015-graceful-aggregate-retirement.md) |
 
 ## Full local gate
 

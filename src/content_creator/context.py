@@ -13,6 +13,7 @@ from .packs import ContentPack
 from .resource_paths import ResourceResolver
 from .version import VERSION
 from .versioned_artifacts import hash_file
+from .voice_upgrade.epochs import epoch_path
 
 
 def resolved_context(
@@ -68,7 +69,7 @@ def resolved_context(
             if item.get("status") == "active"
         ]
         hashes["repository_learning_memory"] = hash_file(repository_memory)
-    voice_memory = root / "profiles" / order.voice_id / "learnings" / "memory.json"
+    voice_memory = _voice_memory_path(root, order)
     voice_learning_ids = []
     if voice_memory.exists():
         voice_learning_ids = [
@@ -108,3 +109,18 @@ def resolved_context(
         result["perspective"] = None
         result["perspectives"] = []
     return result
+
+
+def _voice_memory_path(root: Path, order: WorkOrder) -> Path:
+    """Return the exact selected voice-version learning epoch path.
+
+    Args:
+        root (Path): Workspace root containing voice artifacts.
+        order (WorkOrder): Resolved work order with selected voice evidence.
+
+    Returns:
+        Path: Version epoch path, or the legacy voice learning path.
+    """
+    if order.voice_version:
+        return epoch_path(root, order.voice_id, str(order.voice_version))
+    return root / "profiles" / order.voice_id / "learnings" / "memory.json"

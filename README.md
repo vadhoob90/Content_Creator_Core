@@ -86,6 +86,14 @@ provider and privacy implications while retaining baseline precedence. A full
 replacement remains the exceptional `voice rebuild --full-regenerate` route.
 See [Evolve an existing voice](docs/guides/voice-evolution.md).
 
+### Pause or retire a voice
+
+Use `voice retirement-plan <voice-id>` before withdrawing a voice or channel.
+Pause is reversible and retirement is terminal for normal use; both preserve
+immutable versions, learning, perspectives, publications, receipts, and historical
+runs. Retirement never means deletion. See
+[Pause, retire, and restore voices and perspectives](docs/guides/voice-retirement.md).
+
 ### 3. Ask for content naturally
 
 Open the author workspace in a supported coding assistant and describe what

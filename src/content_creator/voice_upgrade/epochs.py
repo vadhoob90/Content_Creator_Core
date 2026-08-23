@@ -57,10 +57,15 @@ def load_epoch(
     if path.is_file():
         stored = json.loads(path.read_text(encoding="utf-8"))
         if stored.get("voice_id") and stored.get("voice_version"):
-            return LearningEpoch.model_validate(stored)
+            epoch = LearningEpoch.model_validate(stored)
+            epoch.epoch_id = epoch.epoch_id or "activation-1"
+            if migrate_legacy and stored.get("epoch_id") is None:
+                RunStore._atomic_text(path, epoch.model_dump_json(indent=2))
+            return epoch
         epoch = LearningEpoch(
             voice_id=voice_id,
             voice_version=voice_version,
+            epoch_id="activation-1",
             created_at=datetime.fromtimestamp(path.stat().st_mtime, tz=UTC).isoformat(),
             records=stored.get("records", []),
         )
@@ -82,6 +87,7 @@ def load_epoch(
     epoch = LearningEpoch(
         voice_id=voice_id,
         voice_version=voice_version,
+        epoch_id="activation-1",
         created_at=datetime.now(UTC).isoformat(),
         records=records,
     )
@@ -214,6 +220,7 @@ def prepare_epoch_transition(
     resulting_epoch = LearningEpoch(
         voice_id=voice_id,
         voice_version=resulting_version,
+        epoch_id="activation-1",
         created_at=now,
         records=[record for record in prior_records if record.get("id") in carried_ids],
     )

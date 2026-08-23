@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-from datetime import UTC, datetime
 from pathlib import Path
 from typing import Dict, List, Optional
 
@@ -233,31 +232,187 @@ class PerspectiveRegistry:
 
         return activate_context(self, context_id, approved_by)
 
-    def deactivate(self, context_id: str, reason: str) -> Dict:
+    def deactivate(
+        self,
+        context_id: str,
+        reason: str,
+        deactivated_by: str = "repository-owner",
+    ) -> Dict:
         """Deactivate the perspective registry workflow.
 
         Args:
             context_id (str): The stable identifier for the context.
             reason (str): The human-readable reason recorded for the decision.
+            deactivated_by (str): Human identity recorded with the pause decision. Defaults to
+                ``"repository-owner"``.
 
         Returns:
             Dict: The structured resulting data for deactivate.
 
-        Raises:
-            PerspectiveError: If the perspective operation cannot complete.
         """
-        registry = self._read()
-        item = registry["contexts"].get(context_id)
-        if not item:
-            raise PerspectiveError("Unknown perspective context: {}".format(context_id))
-        item["status"] = PerspectiveStatus.INACTIVE.value
-        item["deactivation_reason"] = reason
-        item["deactivated_at"] = datetime.now(UTC).isoformat()
-        RunStore._atomic_text(
-            self.registry_path,
-            json.dumps(registry, indent=2),
+        from .perspective_context_lifecycle import PerspectiveContextLifecycleService
+
+        return (
+            PerspectiveContextLifecycleService(self)
+            .deactivate(context_id, deactivated_by, reason)
+            .model_dump(mode="json")
         )
-        return item
+
+    def reactivate(
+        self, context_id: str, approved_by: str, reason: str = "author reactivation"
+    ) -> Dict:
+        """Restore an unchanged perspective context with a receipt.
+
+        Args:
+            context_id (str): Stable perspective context identifier.
+            approved_by (str): Human identity approving reactivation.
+            reason (str): Human-readable explanation. Defaults to ``"author reactivation"``.
+
+        Returns:
+            Dict: Structured immutable reactivation receipt.
+        """
+        from .perspective_context_lifecycle import PerspectiveContextLifecycleService
+
+        return (
+            PerspectiveContextLifecycleService(self)
+            .reactivate(context_id, approved_by, reason)
+            .model_dump(mode="json")
+        )
+
+    def retirement_plan(self, context_id: str) -> Dict:
+        """Return the hash-bound context retirement preflight.
+
+        Args:
+            context_id (str): Stable perspective context identifier.
+
+        Returns:
+            Dict: Persisted-state retirement inventory and binding hash.
+        """
+        from .perspective_context_lifecycle import PerspectiveContextLifecycleService
+
+        return PerspectiveContextLifecycleService(self).plan(context_id).model_dump(mode="json")
+
+    def retire_context(
+        self, context_id: str, retired_by: str, reason: str, **decisions: object
+    ) -> Dict:
+        """Retire a whole context without changing any immutable entry.
+
+        Args:
+            context_id (str): Stable perspective context identifier.
+            retired_by (str): Human identity responsible for retirement.
+            reason (str): Human-readable retirement explanation.
+            **decisions (dict[str, object]): Reviewed plan and pending-artifact dispositions.
+
+        Returns:
+            Dict: Structured immutable retirement receipt.
+
+        Raises:
+            PerspectiveError: If the reviewed retirement plan hash is missing.
+        """
+        from .perspective_context_lifecycle import PerspectiveContextLifecycleService
+
+        plan_hash = decisions.get("plan_hash")
+        if not isinstance(plan_hash, str) or not plan_hash:
+            raise PerspectiveError("Context retirement requires a reviewed plan hash")
+        candidate_disposition = decisions.get("candidate_disposition")
+        proposal_disposition = decisions.get("proposal_disposition")
+        return (
+            PerspectiveContextLifecycleService(self)
+            .retire(
+                context_id,
+                retired_by,
+                reason,
+                plan_hash=plan_hash,
+                candidate_disposition=(
+                    str(candidate_disposition) if candidate_disposition is not None else None
+                ),
+                proposal_disposition=(
+                    str(proposal_disposition) if proposal_disposition is not None else None
+                ),
+            )
+            .model_dump(mode="json")
+        )
+
+    def restore_context(
+        self, context_id: str, requested_by: str, approved_by: str, plan_hash: str
+    ) -> Dict:
+        """Restore a retired context through explicit request and review.
+
+        Args:
+            context_id (str): Stable perspective context identifier.
+            requested_by (str): Human identity requesting restoration.
+            approved_by (str): Human identity approving restoration.
+            plan_hash (str): Exact reviewed restoration plan hash.
+
+        Returns:
+            Dict: Structured immutable restoration receipt.
+        """
+        from .perspective_context_lifecycle import PerspectiveContextLifecycleService
+
+        return (
+            PerspectiveContextLifecycleService(self)
+            .restore(context_id, requested_by, approved_by, plan_hash)
+            .model_dump(mode="json")
+        )
+
+    def decide_candidate(
+        self,
+        context_id: str,
+        candidate_hash: str,
+        actor: str,
+        reason: str,
+        action: str = "reject",
+    ) -> Dict:
+        """Reject or abandon one exact pending context candidate hash.
+
+        Args:
+            context_id (str): Stable perspective context identifier.
+            candidate_hash (str): Exact pending candidate content hash.
+            actor (str): Human identity responsible for the decision.
+            reason (str): Human-readable decision explanation.
+            action (str): Reject or abandon. Defaults to ``"reject"``.
+
+        Returns:
+            Dict: Structured immutable exact-hash decision receipt.
+        """
+        from .perspective_context_lifecycle import PerspectiveContextLifecycleService
+
+        return (
+            PerspectiveContextLifecycleService(self)
+            .decide_candidate(context_id, candidate_hash, actor, reason, action)
+            .model_dump(mode="json")
+        )
+
+    def verify_lifecycle(self, context_id: str) -> Dict:
+        """Verify context lifecycle receipts offline.
+
+        Args:
+            context_id (str): Stable perspective context identifier.
+
+        Returns:
+            Dict: Deterministic offline verification result.
+        """
+        from .perspective_context_lifecycle import PerspectiveContextLifecycleService
+
+        return PerspectiveContextLifecycleService(self).verify(context_id)
+
+    def migrate_legacy_lifecycle(self, context_id: str, migrated_by: str) -> Dict:
+        """Record a legacy registry-only inactive context with a reviewed receipt.
+
+        Args:
+            context_id (str): Stable perspective context identifier.
+            migrated_by (str): Human identity reviewing the legacy state.
+
+        Returns:
+            Dict: Structured immutable legacy migration receipt.
+        """
+        from .perspective_context_lifecycle import PerspectiveContextLifecycleService
+
+        return (
+            PerspectiveContextLifecycleService(self)
+            .migrate_legacy(context_id, migrated_by)
+            .model_dump(mode="json")
+        )
 
     def current_entries(self, context_id: str) -> List[PerspectiveEntry]:
         """Return the current entries.

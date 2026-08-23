@@ -106,6 +106,7 @@ def activate_starter(
         epoch = LearningEpoch(
             voice_id=request.voice_id,
             voice_version=version,
+            epoch_id="activation-1",
             created_at=activated_at,
         )
         RunStore._atomic_text(memory, epoch.model_dump_json(indent=2))

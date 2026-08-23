@@ -11,6 +11,7 @@ from pydantic import BaseModel
 
 from .context_composition import ContextCompositionManifest
 from .domain import RunState, WorkOrder
+from .lifecycle_models import LifecyclePlan, LifecycleReceipt, VersionLifecycleCatalogue
 from .perspective_semantic_review import (
     PerspectiveReviewDecision,
     PerspectiveSemanticArtifact,
@@ -54,6 +55,9 @@ SCHEMA_MODELS: Dict[str, Type[BaseModel]] = {
     "voice-learning-selection": LearningSelection,
     "voice-learning-epoch": LearningEpoch,
     "voice-learning-epoch-transition-receipt": LearningEpochTransitionReceipt,
+    "aggregate-lifecycle-plan": LifecyclePlan,
+    "aggregate-lifecycle-receipt": LifecycleReceipt,
+    "voice-version-lifecycle-catalogue": VersionLifecycleCatalogue,
     "perspective-manifest": PerspectiveManifest,
     "perspective-review-decision": PerspectiveReviewDecision,
     "perspective-semantic-artifact": PerspectiveSemanticArtifact,

@@ -280,3 +280,14 @@ whether the machinery executes.
 - Repository publication pins selected versions and entry hashes in a tracked,
   privacy-safe receipt. `content-creator verify-publications` checks that
   evidence offline without requiring every piece to select a perspective.
+
+## Context and entry withdrawal
+
+Entry retirement remains semantic and candidate-based: `perspective retire` stages
+a new immutable context version for review. Whole-context lifecycle is separate.
+Use `perspective retirement-plan`, `deactivate`, `reactivate`, `retire-context`, and
+the reviewed `restore-context` path. These operations write immutable receipts and
+never rewrite or delete an entry. Exact pending candidate hashes can be rejected or
+abandoned. Retiring an owning voice makes its contexts inaccessible but does not
+silently change their independent registry states. See
+[Voice retirement](voice-retirement.md).
