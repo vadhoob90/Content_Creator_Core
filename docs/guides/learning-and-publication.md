@@ -20,8 +20,8 @@ After that pre-publication decision, the application:
 8. Stages the piece and every selected approved visual
 9. Publishes the complete package and a privacy-safe tracked receipt, rolling
    back newly visible files if the package cannot complete
-10. Adds deduplicated records to
-   `profiles/<voice-id>/learnings/memory.json`
+10. Adds deduplicated records to the exact resolved voice-version epoch:
+   `profiles/<voice-id>/learnings/<voice-version>/memory.json`
 
 The destination is untouched when provenance fails. See
 [Publication provenance and CI verification](publication-provenance.md) for
@@ -35,9 +35,21 @@ only from publication or draft differences remain `provisional`. The extractor
 assigns that status from its evidence; storage does not promote every candidate
 merely because some feedback was supplied.
 
-Active structured learnings are added to later role prompts. Provisional
+Active structured learnings are added only to later role prompts pinned to the
+same immutable voice version. Provisional
 entries remain recorded but inactive. `profiles/<voice-id>/voice.md` is not rewritten
 automatically; consolidation requires a deliberate, reviewed repository change.
+
+`voice upgrade-plan` is the supported consolidation boundary. It proposes a
+classification for every active record but defaults to keeping it as runtime
+learning. Only an explicitly reviewed `voice-profile`, `voice-constraint`, or
+`critic/rubric` disposition may enter linguistic guidance. Research policy,
+perspectives, visual preferences, and repository-agent policy remain separate.
+
+When the next voice version is approved, Core freezes the prior learning epoch
+and creates a fresh epoch. Incorporated records are represented by the new
+immutable guidance and are not injected again. Non-incorporated records move
+forward only through an explicit `carry-forward` disposition.
 
 Learning roles are schema-constrained to the prompt consumers `researcher`,
 `writer`, and `critic`. Unsupported extractor output, including `author`, is

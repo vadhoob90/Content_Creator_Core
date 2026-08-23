@@ -416,7 +416,11 @@ class LearningLifecycle:
         Returns:
             None: Voice learning memory is updated atomically.
         """
-        LearningMemory(self.workflow.root, state.work_order.voice_id).apply(
+        LearningMemory(
+            self.workflow.root,
+            state.work_order.voice_id,
+            state.work_order.voice_version,
+        ).apply(
             state.id,
             extraction,
             explicit_feedback=feedback,

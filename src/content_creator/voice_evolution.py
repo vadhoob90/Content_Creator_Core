@@ -4,82 +4,21 @@ from __future__ import annotations
 
 import json
 from copy import deepcopy
-from dataclasses import dataclass
-from enum import Enum
 from pathlib import Path
 from typing import Any, Optional
-
-from pydantic import BaseModel, Field
 
 from .storage import RunStore
 from .versioned_artifacts import hash_file, hash_json, verify_components
 from .voice_build.models import VoiceBuildError
+from .voice_evolution_models import (
+    EvolutionResult,
+    VoiceEvolutionAction,
+    VoiceEvolutionChangeSet,
+    VoiceEvolutionDelta,
+    VoiceEvolutionProposal,
+    VoiceEvolutionRecord,
+)
 from .voice_models import VoiceManifest, VoicePattern, VoiceStatus
-
-
-class VoiceEvolutionAction(str, Enum):
-    """Enumerate supported semantic voice-change classifications."""
-
-    RETAIN = "retain"
-    ADD = "add"
-    MODIFY = "modify"
-    SUPERSEDE = "supersede"
-    REMOVE = "remove"
-
-
-class VoiceEvolutionProposal(BaseModel):
-    """Represent one explicit evidence-backed voice change proposal."""
-
-    action: VoiceEvolutionAction
-    target_id: Optional[str] = None
-    replacement: Optional[VoicePattern] = None
-    evidence_source_ids: list[str] = Field(default_factory=list)
-    confidence: float = Field(default=1.0, ge=0, le=1)
-    rationale: str
-
-
-class VoiceEvolutionChangeSet(BaseModel):
-    """Represent author-supplied proposals applied to an active baseline."""
-
-    schema_version: str = "1.0"
-    changes: list[VoiceEvolutionProposal] = Field(default_factory=list)
-
-
-class VoiceEvolutionRecord(BaseModel):
-    """Record one deterministic semantic difference from active guidance."""
-
-    guidance_id: str
-    replacement_id: Optional[str] = None
-    provenance: list[str] = Field(default_factory=list)
-    confidence: float = Field(ge=0, le=1)
-    rationale: str
-
-
-class VoiceEvolutionDelta(BaseModel):
-    """Persist a deterministic active-to-candidate semantic delta."""
-
-    schema_version: str = "1.0"
-    mode: str
-    baseline_version: str
-    baseline_candidate_hash: str
-    baseline_manifest_hash: str
-    generated_evidence_hash: str
-    change_set_hash: Optional[str] = None
-    retained: list[VoiceEvolutionRecord] = Field(default_factory=list)
-    added: list[VoiceEvolutionRecord] = Field(default_factory=list)
-    modified: list[VoiceEvolutionRecord] = Field(default_factory=list)
-    superseded: list[VoiceEvolutionRecord] = Field(default_factory=list)
-    removed: list[VoiceEvolutionRecord] = Field(default_factory=list)
-
-
-@dataclass
-class EvolutionResult:
-    """Return merged artifacts needed by the remaining build pipeline."""
-
-    profile: str
-    constraints: dict[str, Any]
-    rubric: dict[str, Any]
-    patterns: list[VoicePattern]
 
 
 class VoiceEvolution:
@@ -93,6 +32,7 @@ class VoiceEvolution:
         voice_id: str,
         full_regenerate: bool = False,
         change_set_path: Optional[Path] = None,
+        approved_learning_ids: Optional[set[str]] = None,
     ):
         """Resolve the immutable baseline and requested evolution mode.
 
@@ -103,6 +43,8 @@ class VoiceEvolution:
                 ``False``.
             change_set_path (Optional[Path]): Explicit semantic changes to propose.
                 Defaults to ``None``.
+            approved_learning_ids (Optional[set[str]]): Explicitly selected learning
+                provenance identifiers. Defaults to ``None``.
 
         Returns:
             None: The service is initialized in place.
@@ -114,6 +56,7 @@ class VoiceEvolution:
         self.voice_id = voice_id
         self.baseline_dir, self.baseline = self._baseline()
         self.change_set, self.change_set_hash = self._load_changes(change_set_path)
+        self.approved_learning_ids = approved_learning_ids or set()
         if full_regenerate and self.change_set is not None:
             raise VoiceBuildError("--full-regenerate cannot be combined with --change-set")
         if self.baseline is None and self.change_set is not None:
@@ -325,6 +268,7 @@ class VoiceEvolution:
             for item in json.loads((candidate / "source-index.json").read_text(encoding="utf-8"))
             if item.get("approved_for_analysis")
         }
+        approved_ids.update("learning:{}".format(item) for item in self.approved_learning_ids)
         patterns = {item.id: item.model_copy(deep=True) for item in baseline.patterns}
         order = [item.id for item in baseline.patterns]
         groups: dict[str, list[VoiceEvolutionRecord]] = {
@@ -696,7 +640,10 @@ class VoiceEvolution:
         Returns:
             VoiceEvolutionRecord: Normalized deterministic delta entry.
         """
-        provenance = [item if item.startswith("active:") else f"source:{item}" for item in evidence]
+        provenance = [
+            item if item.startswith(("active:", "learning:")) else f"source:{item}"
+            for item in evidence
+        ]
         return VoiceEvolutionRecord(
             guidance_id=guidance_id,
             replacement_id=replacement_id,

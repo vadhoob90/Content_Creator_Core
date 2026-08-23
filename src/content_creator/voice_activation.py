@@ -26,6 +26,9 @@ from .voice_models import (
     load_voice_onboarding,
     save_voice_onboarding,
 )
+from .voice_upgrade.epochs import active_learning_records, load_epoch, prepare_epoch_transition
+from .voice_upgrade.models import LearningSelection, VoiceUpgradeState
+from .voice_upgrade.state import record_upgrade_decision
 
 
 class VoiceRegistryAccess(Protocol):
@@ -52,7 +55,10 @@ def activate_candidate(
     approved_by: str,
     override_reason: str | None,
 ) -> VoiceApprovalReceipt:
-    """Activate the candidate.
+    """Activate a verified candidate and its version-scoped learning transition.
+
+    Hold the shared lifecycle lock across publication, epoch freezing, registry update,
+    and durable decision recording so readers never observe a partial activation.
 
     Args:
         registry_service (VoiceRegistryAccess): The registry service used for domain
@@ -79,11 +85,26 @@ def activate_candidate(
         if existing_receipt:
             return existing_receipt
         _validate_active_baseline(voice_root, registry, voice_id, manifest)
+        _validate_learning_transition(registry_service.root, voice_id, manifest, candidate)
         recovered_receipt = _recover_published_snapshot(
             registry_service, voice_root, registry, manifest
         )
         if recovered_receipt:
             _complete_onboarding(registry_service.root, voice_id)
+            record_upgrade_decision(
+                registry_service.root,
+                voice_id,
+                recovered_receipt.candidate_hash,
+                VoiceUpgradeState.ACTIVATED,
+                str(
+                    (
+                        voice_root
+                        / "versions"
+                        / recovered_receipt.activated_version
+                        / "approval-receipt.json"
+                    ).relative_to(registry_service.root)
+                ),
+            )
             return recovered_receipt
         version, destination, active_manifest, receipt = _promote_candidate(
             voice_root,
@@ -93,13 +114,84 @@ def activate_candidate(
             approved_by,
             override_reason,
         )
-        try:
-            _activate_registry(registry_service, registry, active_manifest, version)
-        except Exception:
-            shutil.rmtree(destination)
-            raise
+        _complete_promotion(
+            registry_service,
+            registry,
+            manifest,
+            destination,
+            active_manifest,
+            receipt,
+        )
         _complete_onboarding(registry_service.root, voice_id)
+        record_upgrade_decision(
+            registry_service.root,
+            voice_id,
+            receipt.candidate_hash,
+            VoiceUpgradeState.ACTIVATED,
+            str((destination / "approval-receipt.json").relative_to(registry_service.root)),
+        )
         return receipt
+
+
+def _complete_promotion(
+    registry_service: VoiceRegistryAccess,
+    registry: dict,
+    candidate_manifest: VoiceManifest,
+    destination: Path,
+    active_manifest: VoiceManifest,
+    receipt: VoiceApprovalReceipt,
+) -> None:
+    """Apply the epoch transition and registry write with compensation.
+
+    Enrich the approval receipt only after the new epoch is prepared, and roll back that
+    epoch if registry persistence fails.
+
+    Args:
+        registry_service (VoiceRegistryAccess): Voice registry persistence boundary.
+        registry (dict): Registry snapshot to update.
+        candidate_manifest (VoiceManifest): Exact candidate being activated.
+        destination (Path): Newly published immutable version directory.
+        active_manifest (VoiceManifest): Promoted active manifest.
+        receipt (VoiceApprovalReceipt): Approval receipt to enrich.
+
+    Returns:
+        None: Learning epochs, receipt, and registry are committed together.
+    """
+    selection_path = destination / "learning-selection.json"
+    selection = (
+        LearningSelection.model_validate_json(selection_path.read_text(encoding="utf-8"))
+        if selection_path.is_file()
+        else None
+    )
+    transition = prepare_epoch_transition(
+        registry_service.root,
+        candidate_manifest.id,
+        candidate_manifest.baseline_version,
+        active_manifest.version,
+        candidate_manifest.candidate_hash,
+        selection,
+    )
+    try:
+        transition.apply()
+        receipt.prior_learning_epoch_hash = transition.receipt.prior_epoch_hash
+        receipt.resulting_learning_epoch_hash = transition.receipt.resulting_epoch_hash
+        receipt.learning_epoch_transition_hash = hash_json(
+            transition.receipt.model_dump(mode="json")
+        )
+        RunStore._atomic_text(
+            destination / "approval-receipt.json",
+            receipt.model_dump_json(indent=2),
+        )
+        _activate_registry(
+            registry_service,
+            registry,
+            active_manifest,
+            active_manifest.version,
+        )
+    except Exception:
+        transition.rollback()
+        shutil.rmtree(destination)
+        raise
 
 
 def _validated_candidate(
@@ -142,6 +234,40 @@ def _validated_candidate(
         if not override_reason:
             raise VoiceError("Voice evaluation did not pass")
     return manifest, evaluation_path
+
+
+def _validate_learning_transition(
+    root: Path,
+    voice_id: str,
+    manifest: VoiceManifest,
+    candidate: Path,
+) -> None:
+    """Reject an unreviewed rebuild that would drop active learning.
+
+    Args:
+        root (Path): Workspace root.
+        voice_id (str): Selected voice identifier.
+        manifest (VoiceManifest): Candidate proposed for activation.
+        candidate (Path): Candidate directory containing reviewed dispositions.
+
+    Returns:
+        None: The learning transition is safe to activate.
+
+    Raises:
+        VoiceError: If prior active learning has no complete governed disposition set.
+    """
+    if not manifest.baseline_version or (candidate / "learning-selection.json").is_file():
+        return
+    epoch = load_epoch(
+        root,
+        voice_id,
+        manifest.baseline_version,
+        migrate_legacy=True,
+    )
+    if active_learning_records(epoch):
+        raise VoiceError(
+            "Active prior-version learning requires voice upgrade planning and dispositions"
+        )
 
 
 def _validate_active_baseline(
@@ -363,7 +489,10 @@ def _write_receipt(
     override_reason: str | None,
     version: str,
 ) -> VoiceApprovalReceipt:
-    """Write the receipt.
+    """Write the candidate approval receipt with governed upgrade provenance.
+
+    Bind the approval to evaluation, evolution, evidence, learning selection, and the
+    exact candidate hash so activation can be audited independently.
 
     Args:
         destination (Path): The destination filesystem path.
@@ -377,6 +506,12 @@ def _write_receipt(
     Returns:
         VoiceApprovalReceipt: The resulting voice approval receipt for write receipt.
     """
+    selection_path = destination / "learning-selection.json"
+    selection = (
+        LearningSelection.model_validate_json(selection_path.read_text(encoding="utf-8"))
+        if selection_path.is_file()
+        else None
+    )
     receipt = VoiceApprovalReceipt(
         voice_id=manifest.id,
         candidate_version="candidate",
@@ -386,6 +521,22 @@ def _write_receipt(
         candidate_hash=manifest.candidate_hash,
         evaluation_report_hash=hash_file(evaluation_path),
         override_reason=override_reason,
+        upgrade_mode=manifest.upgrade_mode,
+        baseline_version=manifest.baseline_version,
+        baseline_candidate_hash=manifest.baseline_candidate_hash,
+        strategy_transition=manifest.strategy_transition,
+        evidence_baseline_hash=manifest.evidence_baseline_hash,
+        evidence_delta_hash=manifest.evidence_delta_hash,
+        selected_learning_ids=(
+            [
+                item.learning_id
+                for item in selection.dispositions
+                if item.disposition.value == "incorporate"
+            ]
+            if selection
+            else []
+        ),
+        learning_dispositions_hash=manifest.learning_dispositions_hash,
     )
     RunStore._atomic_text(destination / "approval-receipt.json", receipt.model_dump_json(indent=2))
     lock = {

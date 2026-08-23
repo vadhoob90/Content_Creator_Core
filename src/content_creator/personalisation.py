@@ -9,6 +9,8 @@ from typing import Any
 from .agent_resources import LEARNING_FILES, ROLE_FILES, STANDARD_TEMPLATE, AgentWorkspace
 from .configuration import Configuration
 from .voice_rejection import candidate_decision, list_rejections
+from .voice_upgrade.eligibility import inspect_upgrade_eligibility
+from .voice_upgrade.epochs import epoch_path
 from .voices import VoiceRegistry, load_voice_onboarding
 
 VOICE_ROLES = {"writer", "critic", "learning-extractor"}
@@ -131,6 +133,17 @@ class PersonalisationInspector:
         for voice_id in sorted(voice_ids):
             active = registry.get(voice_id)
             onboarding = load_voice_onboarding(self.root, voice_id)
+            version = (
+                str(active.get("active_version"))
+                if active and active.get("active_version")
+                else None
+            )
+            versioned_learning = epoch_path(self.root, voice_id, version) if version else None
+            learning_file = (
+                versioned_learning
+                if versioned_learning and versioned_learning.is_file()
+                else self.root / "profiles" / voice_id / "learnings" / "memory.json"
+            )
             result.append(
                 {
                     "voice_id": voice_id,
@@ -138,11 +151,13 @@ class PersonalisationInspector:
                     or (onboarding.display_name if onboarding else voice_id),
                     "active": self._active_voice(voice_id, active),
                     "candidate": candidate_decision(self.root, voice_id, active),
-                    "rejections": list_rejections(self.root, voice_id),
-                    "learnings": self._learning_scope(
-                        self.root / "profiles" / voice_id / "learnings" / "memory.json",
-                        "voice",
+                    "voice_upgrade": (
+                        inspect_upgrade_eligibility(self.root, voice_id, active)
+                        if active
+                        else {"eligible": False, "reason": "voice-not-active"}
                     ),
+                    "rejections": list_rejections(self.root, voice_id),
+                    "learnings": self._learning_scope(learning_file, "voice"),
                     "visual_preferences": self._learning_scope(
                         self.root / "profiles" / voice_id / "visual-learnings" / "memory.json",
                         "visual",
@@ -150,7 +165,7 @@ class PersonalisationInspector:
                     "perspectives": self._perspectives(voice_id),
                     "paths": {
                         "voice": f"profiles/{voice_id}/",
-                        "learnings": f"profiles/{voice_id}/learnings/memory.json",
+                        "learnings": str(learning_file.relative_to(self.root)),
                         "visual_preferences": (f"profiles/{voice_id}/visual-learnings/memory.json"),
                         "perspectives": f"profiles/{voice_id}/perspectives/",
                     },
@@ -385,6 +400,12 @@ def render_personalisation(report: dict[str, Any]) -> str:
             lines.append(f"  Candidate hash: {candidate['candidate_hash']}")
         for action in candidate.get("actions", []):
             lines.append("  Valid action: content-creator " + " ".join(action))
+        upgrade = voice.get("voice_upgrade", {})
+        lines.append(
+            "- Voice upgrade: {}".format(upgrade.get("recommendation", "not currently eligible"))
+        )
+        if upgrade.get("eligible"):
+            lines.append("  Plan: content-creator " + " ".join(upgrade["command"]))
         lines.append(f"- Rejected candidates: {len(voice['rejections'])}")
         _append_learning_lines(lines, voice["learnings"], "Voice-specific")
         _append_learning_lines(lines, voice["visual_preferences"], "Visual preferences")

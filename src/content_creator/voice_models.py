@@ -23,6 +23,8 @@ class VoiceStrategy(str, Enum):
     """Enumerate supported voice strategy values."""
 
     SOURCE_DERIVED = "source-derived"
+    STARTER_NEUTRAL = "starter-neutral"
+    # Retained only to read manifests written before v1.16.0.
     STARTER = "starter"
 
 
@@ -142,6 +144,14 @@ class VoiceManifest(BaseModel):
     baseline_version: Optional[str] = None
     baseline_candidate_hash: Optional[str] = None
     evolution_delta_hash: Optional[str] = None
+    upgrade_state: Optional[str] = None
+    upgrade_mode: Optional[str] = None
+    evidence_cutoff: Optional[str] = None
+    evidence_baseline_hash: Optional[str] = None
+    evidence_delta_hash: Optional[str] = None
+    learning_dispositions_hash: Optional[str] = None
+    upgrade_build_fingerprint: Optional[str] = None
+    strategy_transition: Optional[str] = None
 
 
 class VoiceOnboardingRecord(BaseModel):
@@ -171,6 +181,17 @@ class VoiceApprovalReceipt(BaseModel):
     candidate_hash: str
     evaluation_report_hash: str
     override_reason: Optional[str] = None
+    upgrade_mode: Optional[str] = None
+    baseline_version: Optional[str] = None
+    baseline_candidate_hash: Optional[str] = None
+    strategy_transition: Optional[str] = None
+    evidence_baseline_hash: Optional[str] = None
+    evidence_delta_hash: Optional[str] = None
+    selected_learning_ids: List[str] = Field(default_factory=list)
+    learning_dispositions_hash: Optional[str] = None
+    prior_learning_epoch_hash: Optional[str] = None
+    resulting_learning_epoch_hash: Optional[str] = None
+    learning_epoch_transition_hash: Optional[str] = None
 
 
 class VoiceRejectionReceipt(BaseModel):

@@ -1,5 +1,23 @@
 # How Content Creator derives a voice
 
+## Version strategy and later evolution
+
+The first immutable version records whether it is `starter-neutral` or
+`source-derived`. These are different trust boundaries: the starter is a
+neutral policy and is never evidence of the author's established voice. Its
+reviewed replacement records an explicit strategy transition.
+
+After a source-derived version is active, the default next-version route
+preserves that approved baseline and analyses only the canonical provenance
+delta: authorised source and publication hashes not represented by the active
+version. Explicitly selected prior-version learning may add evidence-backed
+profile, constraint, or critic guidance after classification review.
+
+Full-corpus reanalysis deliberately reassesses all authorised evidence, with
+provider and privacy disclosure, while preserving baseline precedence. Full
+replacement discards that precedence and remains a separate exceptional
+operation. See [Evolve an existing voice](voice-evolution.md).
+
 This guide explains how Content Creator turns authorised source material into a
 reviewable and versioned writing voice. It starts with the conceptual model,
 then follows the lifecycle, and finally documents the algorithms and current

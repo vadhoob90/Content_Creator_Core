@@ -14,6 +14,7 @@ from .packs import PackRegistry
 from .perspectives import PerspectiveEntry, PerspectiveRegistry
 from .prompt_provenance import PromptComposition, PromptProvenance
 from .resource_paths import ResourceResolver
+from .voice_upgrade.epochs import epoch_path
 from .voices import VoiceRegistry
 
 
@@ -330,7 +331,13 @@ class PromptAssembler:
             "repository",
         )
         voice_id = order.voice_id if order else "default"
-        voice_path = self.root / "profiles" / voice_id / "learnings" / "memory.json"
+        legacy_voice_path = self.root / "profiles" / voice_id / "learnings" / "memory.json"
+        versioned_voice_path = (
+            epoch_path(self.root, voice_id, str(order.voice_version))
+            if order and order.voice_version
+            else legacy_voice_path
+        )
+        voice_path = versioned_voice_path if versioned_voice_path.is_file() else legacy_voice_path
         voice_records = self._active_learning_records(voice_path, role)
         self.provenance.append_learning_scope(
             parts,

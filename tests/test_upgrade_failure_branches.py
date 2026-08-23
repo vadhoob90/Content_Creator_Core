@@ -43,7 +43,7 @@ def test_failed_upgrade_removes_new_lockfile_and_preserves_absent_readme(tmp_pat
     assert pyproject.read_text(encoding="utf-8") == DEPENDENCY
 
 
-def test_upgrade_does_not_rewrite_unmanaged_readme_on_success(tmp_path):
+def test_upgrade_preserves_unmanaged_readme_prose_and_adds_upgrade_options(tmp_path):
     (tmp_path / "pyproject.toml").write_text(DEPENDENCY, encoding="utf-8")
     (tmp_path / "uv.lock").write_text("version = 1\n", encoding="utf-8")
     readme = tmp_path / "README.md"
@@ -55,7 +55,11 @@ def test_upgrade_does_not_rewrite_unmanaged_readme_on_success(tmp_path):
     report = WorkspaceUpgrader(tmp_path, runner=passing).apply("v0.6.0")
 
     assert report["readme_updated"] is False
-    assert readme.read_text(encoding="utf-8") == "# Author-owned documentation\n"
+    text = readme.read_text(encoding="utf-8")
+    assert text.startswith("# Author-owned documentation\n")
+    assert "## Upgrade options" in text
+    assert "Incremental mode is" in text
+    assert report["scaffolded"]["voice_upgrade_documentation"]["updated"] == ["README.md"]
 
 
 def test_skill_diff_classifies_missing_changed_and_unchanged_files(tmp_path, monkeypatch):

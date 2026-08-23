@@ -12,18 +12,22 @@ from ..ingestion import content_hash, is_near_duplicate, normalize_text, read_so
 from ..linguistics import extract_linguistic_features
 from ..runner import AgentRunner, AgentRunOptions
 from ..storage import RunStore
-from ..versioned_artifacts import hash_file, hash_json, publish_candidate, replace_candidate
+from ..versioned_artifacts import publish_candidate, replace_candidate
 from ..voice_evolution import VoiceEvolution
+from ..voice_upgrade.artifacts import write_upgrade_artifacts
+from ..voice_upgrade.guidance import apply_learning_overlays
+from ..voice_upgrade.measurements import combine_incremental_measurements
+from ..voice_upgrade.models import VoiceUpgradeBuildContext, VoiceUpgradeMode
 from ..voices import (
     AttributionResult,
     SourceRecord,
     VoiceManifest,
     VoicePattern,
-    VoiceStatus,
     VoiceStrategy,
     VoiceWorkOrder,
 )
 from .corpus import analyse_corpus
+from .manifest import write_voice_manifest
 from .models import (
     BuildState,
     ProfileCriticism,
@@ -64,8 +68,14 @@ class VoiceBuildPipeline:
         order: VoiceWorkOrder,
         full_regenerate: bool = False,
         change_set: Optional[Path] = None,
+        upgrade_context: Optional[VoiceUpgradeBuildContext] = None,
+        source_ids: Optional[dict[str, str]] = None,
+        lifecycle_lock_held: bool = False,
     ) -> VoiceManifest:
-        """Build the voice build pipeline workflow.
+        """Build a source-derived candidate through the complete governed pipeline.
+
+        Collect only the evidence authorized by the supplied order, preserve active
+        guidance by default, evaluate the result, and publish one reviewable candidate.
 
         Args:
             order (VoiceWorkOrder): The work order that defines the requested content run.
@@ -73,21 +83,58 @@ class VoiceBuildPipeline:
                 ``False``.
             change_set (Optional[Path]): Evidence-backed semantic change proposals.
                 Defaults to ``None``.
+            upgrade_context (Optional[VoiceUpgradeBuildContext]): Validated governed
+                upgrade plan. Defaults to ``None``.
+            source_ids (Optional[dict[str, str]]): Stable evidence IDs by locator. Defaults
+                to ``None``.
+            lifecycle_lock_held (bool): Whether the application boundary owns the shared
+                lifecycle lock. Defaults to ``False``.
 
         Returns:
             VoiceManifest: The constructed voice manifest for value.
         """
         state = self._prepare(order)
-        state.evolution = VoiceEvolution(self.root, order.voice_id, full_regenerate, change_set)
+        state.upgrade_context = upgrade_context
+        state.source_ids = source_ids or {}
+        state.lifecycle_lock_held = lifecycle_lock_held
+        selected_learning_ids = (
+            {
+                item.learning_id
+                for item in upgrade_context.learning_selection.dispositions
+                if item.disposition.value == "incorporate"
+            }
+            if upgrade_context
+            else set()
+        )
+        state.evolution = VoiceEvolution(
+            self.root,
+            order.voice_id,
+            full_regenerate,
+            change_set,
+            approved_learning_ids=selected_learning_ids,
+        )
         self._collect_sources(state)
         self._analyse_corpus(state)
+        if upgrade_context and upgrade_context.plan.mode == VoiceUpgradeMode.INCREMENTAL:
+            combine_incremental_measurements(state, state.evolution.baseline_dir)
         self._analyse_patterns(state)
         profile, constraints, voice_rubric = self._write_profile_artifacts(state)
         evolved = state.evolution.apply(state.candidate)
+        if upgrade_context:
+            evolved = apply_learning_overlays(
+                state.candidate,
+                evolved,
+                upgrade_context.learning_selection,
+                upgrade_context.selected_learning_records,
+            )
+            write_upgrade_artifacts(state.candidate, upgrade_context)
         state.patterns = evolved.patterns
         evaluation = self._evaluate(state, evolved.profile, evolved.constraints, evolved.rubric)
-        manifest = self._write_manifest(state, evaluation)
-        publish_candidate(state.voice_root, self._activate_candidate, state, VoiceBuildError)
+        manifest = write_voice_manifest(state, evaluation)
+        if state.lifecycle_lock_held:
+            self._activate_candidate(state)
+        else:
+            publish_candidate(state.voice_root, self._activate_candidate, state, VoiceBuildError)
         return manifest
 
     def _prepare(self, order: VoiceWorkOrder) -> BuildState:
@@ -130,7 +177,11 @@ class VoiceBuildPipeline:
         """
         for index, locator in enumerate(state.order.urls + state.order.documents, start=1):
             try:
-                self._collect_source(state, locator, f"source-{index:03d}")
+                self._collect_source(
+                    state,
+                    locator,
+                    state.source_ids.get(locator, f"source-{index:03d}"),
+                )
             except Exception as error:
                 state.errors.append(
                     {
@@ -302,7 +353,14 @@ class VoiceBuildPipeline:
             None: The callable updates analyse corpus state and returns no value.
 
         """
-        analyse_corpus(state, self.renderer)
+        analyse_corpus(
+            state,
+            self.renderer,
+            allow_insufficient_delta=bool(
+                state.upgrade_context
+                and state.upgrade_context.plan.mode == VoiceUpgradeMode.INCREMENTAL
+            ),
+        )
 
     def _analyse_patterns(self, state: BuildState) -> None:
         """Return the analyse patterns.
@@ -482,7 +540,7 @@ class VoiceBuildPipeline:
             "hard_failures": [] if state.corpus["sufficient"] else ["insufficient_corpus"],
             "checks": {
                 "provenance": all(pattern.supporting_source_ids for pattern in state.patterns),
-                "held_out_allocation": bool(state.held_out),
+                "held_out_allocation": bool(state.held_out) or bool(state.upgrade_context),
                 "held_out_excluded_from_analysis": all(
                     not set(pattern.supporting_source_ids)
                     & set(state.corpus["held_out_source_ids"])
@@ -582,71 +640,6 @@ class VoiceBuildPipeline:
                 "invented personal experience",
             ],
         }
-
-    def _write_manifest(self, state: BuildState, evaluation: dict) -> VoiceManifest:
-        """Write the manifest.
-
-        Record source hashes, analysis evidence, generated profile artifacts, and activation
-        metadata in the candidate voice manifest.
-
-        Args:
-            state (BuildState): The persisted lifecycle state to inspect or update.
-            evaluation (dict): The evaluation value passed to write manifest.
-
-        Returns:
-            VoiceManifest: The resulting voice manifest for write manifest.
-        """
-        components = {
-            "profile": "profile.md",
-            "constraints": "constraints.json",
-            "rubric": "voice-rubric.json",
-            "sources": "source-index.json",
-            "patterns": "patterns.json",
-            "corpus": "corpus-report.json",
-            "linguistic_signature": "linguistic-signature.json",
-            "evaluation_report": "evaluation-report.json",
-        }
-        if state.evolution.delta is not None:
-            components["evolution_delta"] = state.evolution.artifact_name
-        if state.analysis_artifact is not None:
-            components["analyst_report"] = "analyst-report.json"
-        if state.criticism_artifact is not None:
-            components["critic_report"] = "critic-report.json"
-        component_hashes = {
-            name: hash_file(state.candidate / filename) for name, filename in components.items()
-        }
-        candidate_hash = hash_json(component_hashes)
-        manifest = VoiceManifest(
-            id=state.order.voice_id,
-            display_name=state.order.display_name,
-            author_name=state.order.attribution_name,
-            author_aliases=state.order.author_aliases,
-            version="candidate",
-            status=VoiceStatus.AWAITING_APPROVAL if evaluation["passed"] else VoiceStatus.BUILT,
-            candidate_hash=candidate_hash,
-            components=components,
-            component_hashes=component_hashes,
-            supported_packs=state.corpus["supported_packs"],
-            authorisation=state.order.authorisation,
-            strategy=VoiceStrategy.SOURCE_DERIVED,
-            evidence_status="author-sources",
-            perspectives_allowed=True,
-            evolution_mode=state.evolution.mode,
-            baseline_version=state.evolution.baseline_version,
-            baseline_candidate_hash=state.evolution.baseline_candidate_hash,
-            evolution_delta_hash=state.evolution.delta_hash,
-        )
-        RunStore._atomic_text(state.candidate / "manifest.json", manifest.model_dump_json(indent=2))
-        build_report = {
-            "voice_id": state.order.voice_id,
-            "candidate_hash": candidate_hash,
-            "source_failures": state.errors,
-            "status": manifest.status.value,
-        }
-        RunStore._atomic_text(
-            state.candidate / "build-report.json", json.dumps(build_report, indent=2)
-        )
-        return manifest
 
     @staticmethod
     def _activate_candidate(state: BuildState) -> None:

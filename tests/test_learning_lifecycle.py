@@ -111,7 +111,9 @@ def test_reviewed_run_accepts_idempotent_learning_without_publication(project):
 
     run = project / "runs" / state.id
     memory = json.loads(
-        (project / "profiles" / "verified-author" / "learnings" / "memory.json").read_text()
+        (
+            project / "profiles" / "verified-author" / "learnings" / "1.0.0" / "memory.json"
+        ).read_text()
     )
     request_name = "learning-request-{}.json".format(
         hashlib.sha256(b"post-review-feedback-1").hexdigest()[:16]
@@ -155,7 +157,9 @@ def test_published_run_can_learn_without_rewriting_or_duplicating_publication(pr
     )
 
     memory = json.loads(
-        (project / "profiles" / "verified-author" / "learnings" / "memory.json").read_text()
+        (
+            project / "profiles" / "verified-author" / "learnings" / "1.0.0" / "memory.json"
+        ).read_text()
     )
     assert learned.status == RunStatus.PUBLISHED
     assert target.read_text(encoding="utf-8") == original

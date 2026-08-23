@@ -35,7 +35,7 @@ runtime so its evidence and lifecycle remain inspectable.
 
 Repository-wide learning lives in `learnings/memory.json`. Learning associated
 with a selected voice lives in
-`profiles/<voice-id>/learnings/memory.json`. The report shows the actual
+`profiles/<voice-id>/learnings/<voice-version>/memory.json`. The report shows the actual
 principles and their role and status, not only a count.
 
 Visual preferences live separately in
@@ -49,7 +49,7 @@ content-creator --workspace . visual learn <run-id> \
 ```
 
 Only active, role-matched learning enters a prompt. For example, an active
-writer principle under `profiles/bharath-linkedin/learnings/memory.json` is
+writer principle under `profiles/bharath-linkedin/learnings/1.0.0/memory.json` is
 supplied to the writer whenever `bharath-linkedin` is selected. A provisional
 critic principle remains visible for review but is not supplied to the writer
 or critic until activated.
@@ -65,6 +65,11 @@ A voice governs expression. A perspective represents an approved position or
 interpretation. Core keeps them separate so learning a writing habit does not
 silently invent a belief. Visual preference is a third explicit scope so image
 direction does not silently change linguistic expression.
+
+The report also shows whether an active voice has locally discoverable new
+evidence or unconsolidated active learning. This is advisory eligibility, not
+an automatic upgrade. Use the reported `voice upgrade-plan` command to create
+a hash-bound inventory and review every learning disposition.
 
 ## Effective prompt order
 

@@ -7,6 +7,7 @@ from content_creator.domain import RunStatus, WorkOrder
 from content_creator.orchestrator import OrchestrationError, Orchestrator
 from content_creator.providers import FakeProvider, ProviderError, ProviderRegistry
 from content_creator.storage import StorageError
+from content_creator.voice_upgrade.epochs import epoch_path
 
 
 def make_orchestrator(project, responses, max_revisions=3):
@@ -350,7 +351,7 @@ def test_publish_updates_learning_and_refuses_overwrite(project):
     )
     assert state.status == RunStatus.PUBLISHED
     memory = json.loads(
-        (project / "profiles" / "default" / "learnings" / "memory.json").read_text(encoding="utf-8")
+        epoch_path(project, "default", state.work_order.voice_version).read_text(encoding="utf-8")
     )
     assert memory["records"][0]["status"] == "active"
     with pytest.raises(OrchestrationError):
@@ -387,7 +388,7 @@ def test_publish_without_explicit_feedback_keeps_inference_provisional(project):
     )
     orchestrator.publish(state.id, filename="x.md")
     memory = json.loads(
-        (project / "profiles" / "default" / "learnings" / "memory.json").read_text(encoding="utf-8")
+        epoch_path(project, "default", state.work_order.voice_version).read_text(encoding="utf-8")
     )
     assert memory["records"][0]["status"] == "provisional"
 

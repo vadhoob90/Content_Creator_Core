@@ -159,7 +159,7 @@ Run metadata records:
 
 ```json
 {
-  "strategy": "starter",
+  "strategy": "starter-neutral",
   "evidence_status": "none",
   "perspectives_allowed": false,
   "template_id": "clear-professional"
@@ -200,7 +200,11 @@ the source-derived candidate is activated:
 - previous starter runs continue to resolve historically;
 - the registry records `source-derived` and `author-sources`;
 - perspective permission becomes `true`; and
-- the workspace's configured perspective policy takes effect again.
+- the workspace's configured perspective policy takes effect again;
+- the manifest and approval receipt record the reviewed
+  `starter-neutral-to-source-derived` strategy transition; and
+- the starter learning epoch is frozen while the source-derived version begins
+  with a fresh version-scoped epoch.
 
 Core never derives, activates, or changes the voice merely because enough
 published content appears to exist.

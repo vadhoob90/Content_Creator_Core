@@ -57,12 +57,18 @@ def assess_corpus(records: list[SourceRecord], intended_packs: list[str]) -> dic
     }
 
 
-def analyse_corpus(state: BuildState, renderer: VoiceProfileRenderer) -> None:
+def analyse_corpus(
+    state: BuildState,
+    renderer: VoiceProfileRenderer,
+    allow_insufficient_delta: bool = False,
+) -> None:
     """Prepare corpus sufficiency, holdout, measurement, and signature evidence.
 
     Args:
         state (BuildState): Mutable voice-build state.
         renderer (VoiceProfileRenderer): Renderer that converts measurements into patterns.
+        allow_insufficient_delta (bool): Permit a baseline-backed delta below initial
+            corpus thresholds. Defaults to ``False``.
 
     Returns:
         None: Corpus and analysis fields are updated in place.
@@ -71,7 +77,11 @@ def analyse_corpus(state: BuildState, renderer: VoiceProfileRenderer) -> None:
         VoiceBuildError: If a rebuild would replace a candidate with insufficient evidence.
     """
     state.corpus = assess_corpus(state.sources, state.order.authorisation.intended_uses)
-    if state.final_candidate.exists() and not state.corpus["sufficient"]:
+    if (
+        state.final_candidate.exists()
+        and not state.corpus["sufficient"]
+        and not allow_insufficient_delta
+    ):
         raise VoiceBuildError(
             "Rebuild has insufficient usable material; previous candidate preserved"
         )

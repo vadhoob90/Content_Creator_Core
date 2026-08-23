@@ -206,6 +206,13 @@ def recommend_action(snapshot: WorkspaceSnapshot) -> CoordinatorAction:
             label="Review the pending voice candidate",
             command=["personalisation", "show"],
         )
+    eligible_upgrade = next((voice for voice in snapshot.voices if voice.upgrade_eligible), None)
+    if eligible_upgrade:
+        return CoordinatorAction(
+            id="plan-voice-upgrade",
+            label="Review new evidence and learning eligible for voice evolution",
+            command=eligible_upgrade.upgrade_plan_command,
+        )
     if snapshot.provider_status.status in {"not-selected", "missing-credentials", "unavailable"}:
         return CoordinatorAction(
             id="select-provider",

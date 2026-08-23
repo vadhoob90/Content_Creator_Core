@@ -27,6 +27,8 @@ from .voice_operations import (
     show_signature,
     show_status,
     train_model,
+    upgrade,
+    upgrade_plan,
     verify,
     verify_all,
 )
@@ -52,6 +54,8 @@ ROUTES: dict[str, VoiceHandler] = {
     "signature": show_signature,
     "status": show_status,
     "train-ml": train_model,
+    "upgrade": upgrade,
+    "upgrade-plan": upgrade_plan,
     "verify": verify,
     "verify-all": verify_all,
 }
@@ -67,7 +71,7 @@ def command_needs_model(arguments: argparse.Namespace) -> bool:
     Returns:
         bool: Whether command needs model satisfies the documented condition.
     """
-    return arguments.voice_command in {"build", "rebuild"} or (
+    return arguments.voice_command in {"build", "rebuild", "upgrade"} or (
         arguments.voice_command == "create" and not arguments.no_build
     )
 

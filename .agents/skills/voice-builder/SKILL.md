@@ -1,6 +1,6 @@
 ---
 name: voice-builder
-description: Create, inspect, evaluate, approve, deactivate, or reactivate an evidence-backed writing voice from authorised URLs, text, HTML, PDF, DOCX, and transcript sources in a Content Creator repository. Use when a user asks to create someone's voice, add voice sources, approve a voice, check voice status, or change which voice version may create content.
+description: Create, inspect, evolve, evaluate, approve, deactivate, or reactivate an evidence-backed writing voice from authorised URLs, publications, text, HTML, PDF, DOCX, transcripts, and reviewed learning in a Content Creator repository. Use when a user asks to create or upgrade someone's voice, add voice sources, consolidate learning, approve a voice, check voice status, or change which voice version may create content.
 ---
 
 # Voice Builder
@@ -140,6 +140,44 @@ supersession, or removal. Every changed rule needs authorised source IDs,
 confidence, and rationale, followed by author review. Never use
 `--full-regenerate` unless the user explicitly asks to replace the approved
 guidance.
+
+## Upgrade an immutable voice version
+
+Do not use routine rebuild as a substitute for governed evidence and learning
+selection. Plan first:
+
+```bash
+content-creator voice upgrade-plan <voice-id> --mode incremental
+```
+
+Show the active version and strategy, evidence cutoff, canonical evidence
+delta, duplicates, active or conflicting learning, conservative classification
+proposals, provider implications, and exact approval points. Incremental mode
+is the default and must not retrieve, analyse, or transmit the historical
+baseline corpus text.
+
+When active prior-version learning exists, open the generated selection
+template and require the author to review every disposition. Only
+`voice-profile`, `voice-constraint`, and `critic/rubric` may be incorporated.
+Keep researcher policy, perspectives, visual preferences, and repository-agent
+policy in their own lifecycle. Never activate, silently rescope, delete, or
+promote a learning record on model judgement alone.
+
+Build with a stable retry key:
+
+```bash
+content-creator voice upgrade <voice-id> \
+  --mode incremental \
+  --learning-selection profiles/<voice-id>/upgrade/learning-selection.json \
+  --idempotency-key <stable-key>
+content-creator voice diff <voice-id>
+```
+
+Use `--mode full-corpus` only after explaining source count, provider, cost,
+privacy, and historical-corpus sharing. It preserves the active baseline by
+default. It is not full replacement. After approval, report the frozen prior
+learning epoch, fresh new-version epoch, incorporated IDs, carry-forward IDs,
+and receipt hashes.
 
 ## Approve deterministically
 

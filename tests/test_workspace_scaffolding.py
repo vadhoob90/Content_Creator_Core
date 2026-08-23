@@ -124,12 +124,19 @@ def _assert_author_navigation(destination, readme):
     assert "How this system is personalised to me" in readme
     assert "Technical setup, uv, providers, and CLI usage" in readme
     assert "Terminal installation and maintenance use `uv`" in readme
+    assert "## Upgrade options" in readme
+    assert "voice upgrade-plan <voice-id>" in readme
     personalisation = (destination / "PERSONALISATION.md").read_text(encoding="utf-8")
     assert "## What my agents have learnt" in personalisation
     assert "profiles/alice-general/learnings/memory.json" in personalisation
     technical = (destination / "docs" / "setup-and-technical-guide.md").read_text(encoding="utf-8")
     assert "uv sync --dev" in technical
     assert "`voice add-sources` command" in technical
+    assert "Evolve an existing voice" in technical
+    evolution = (destination / "docs" / "how-to-evolve-my-voice.md").read_text(encoding="utf-8")
+    assert "Default: incremental evolution" in evolution
+    assert "Full-corpus reanalysis" in evolution
+    assert "Full replacement" in evolution
     runtime_context = (destination / "docs" / "runtime-context.md").read_text(encoding="utf-8")
     assert "personalisation explain" in runtime_context
     assert "context show <run-id>" in runtime_context

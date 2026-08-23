@@ -106,6 +106,7 @@ def test_upgrade_does_not_rewrite_custom_readme_without_managed_block(project):
     report = WorkspaceUpgrader(root).preview("v0.6.0")
 
     assert report["readme"]["managed_core_dependency"] is False
+    assert report["voice_upgrade_documentation"]["main_readme"]["action"] == "append-managed-block"
 
 
 def test_upgrade_preserves_registry_distribution_source(project):

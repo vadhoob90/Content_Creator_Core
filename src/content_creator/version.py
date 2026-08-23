@@ -1,3 +1,3 @@
 """Provide version capabilities."""
 
-VERSION = "1.15.1"
+VERSION = "1.16.0"

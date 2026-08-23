@@ -12,6 +12,7 @@ from .agent_resources import AgentWorkspace
 from .storage import RunStore
 from .upgrade_audit import UpgradeCompatibilityAudit
 from .workspace import scaffold_skills, update_readme_core_dependency
+from .workspace_upgrade_docs import WorkspaceUpgradeDocumentation
 
 IMMUTABLE_REF = re.compile(r"^(?:v\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?|[0-9a-fA-F]{40})$")
 GIT_DEPENDENCY = re.compile(
@@ -71,22 +72,7 @@ class WorkspaceUpgrader:
         if not pyproject.is_file():
             raise WorkspaceUpgradeError("Missing workspace pyproject.toml")
         text = pyproject.read_text(encoding="utf-8")
-        git_match = GIT_DEPENDENCY.search(text)
-        registry_match = REGISTRY_DEPENDENCY.search(text)
-        match = git_match or registry_match
-        if not match:
-            raise WorkspaceUpgradeError(
-                "pyproject.toml does not contain a pinned content-creator dependency"
-            )
-        if git_match:
-            current = git_match.group("ref")
-            dependency = "content-creator @ git+{}@{}".format(git_match.group("url"), target)
-            source = "git"
-        else:
-            assert registry_match is not None
-            current = "v{}".format(registry_match.group("version"))
-            dependency = "content-creator=={}".format(target.removeprefix("v"))
-            source = "registry"
+        before, current, dependency, source = self._dependency_change(text, target)
         compatibility = UpgradeCompatibilityAudit(self.root).inspect()
         compatibility.update(
             {
@@ -103,7 +89,7 @@ class WorkspaceUpgrader:
             "to": target,
             "source": source,
             "immutable_target": True,
-            "dependency_before": match.group(0),
+            "dependency_before": before,
             "dependency_after": dependency,
             "lockfile": {
                 "path": "uv.lock",
@@ -115,6 +101,7 @@ class WorkspaceUpgrader:
                 "managed_core_dependency": self._readme_is_managed(),
             },
             "personalisation": self._personalisation_changes(),
+            "voice_upgrade_documentation": WorkspaceUpgradeDocumentation(self.root).preview(),
             "template_changes": {
                 "agents": AgentWorkspace(self.root).diff_template(),
                 "skills": self._skill_changes(),
@@ -145,6 +132,34 @@ class WorkspaceUpgrader:
             ],
             "compatibility": compatibility,
         }
+
+    @staticmethod
+    def _dependency_change(text: str, target: str) -> tuple[str, str, str, str]:
+        """Resolve the current and requested immutable dependency declarations.
+
+        Args:
+            text (str): Workspace project manifest text.
+            target (str): Requested immutable Core target.
+
+        Returns:
+            tuple[str, str, str, str]: Before, current ref, replacement, and source.
+
+        Raises:
+            WorkspaceUpgradeError: If no pinned Core dependency exists.
+        """
+        git_match = GIT_DEPENDENCY.search(text)
+        registry_match = REGISTRY_DEPENDENCY.search(text)
+        match = git_match or registry_match
+        if not match:
+            raise WorkspaceUpgradeError(
+                "pyproject.toml does not contain a pinned content-creator dependency"
+            )
+        if git_match:
+            dependency = "content-creator @ git+{}@{}".format(git_match.group("url"), target)
+            return match.group(0), git_match.group("ref"), dependency, "git"
+        assert registry_match is not None
+        dependency = "content-creator=={}".format(target.removeprefix("v"))
+        return match.group(0), "v{}".format(registry_match.group("version")), dependency, "registry"
 
     def apply(self, target: str) -> Dict[str, Any]:
         """Apply the workspace upgrader workflow.
@@ -188,6 +203,7 @@ class WorkspaceUpgrader:
         )
         agents = AgentWorkspace(self.root).scaffold()
         skills = scaffold_skills(self.root)
+        voice_upgrade_docs = WorkspaceUpgradeDocumentation(self.root).apply()
         compatibility = UpgradeCompatibilityAudit(self.root).inspect()
         compatibility.update(
             {
@@ -206,6 +222,7 @@ class WorkspaceUpgrader:
                 "scaffolded": {
                     "agents": agents["created"],
                     "skills": skills["created"],
+                    "voice_upgrade_documentation": voice_upgrade_docs,
                 },
                 "readme_updated": readme_updated,
                 "compatibility": compatibility,
@@ -215,6 +232,7 @@ class WorkspaceUpgrader:
                     "Run content-creator --workspace . personalisation show.",
                     "Add the v1.5 personalisation navigation links to a customised README.",
                     "Review and commit pyproject.toml and uv.lock deliberately.",
+                    *voice_upgrade_docs["manual_follow_up"],
                 ],
             }
         )

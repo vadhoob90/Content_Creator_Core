@@ -21,7 +21,14 @@ from .publication_receipt_models import PublicationBaseline, PublicationReceipt
 from .storage import RunStore
 from .visual_requests import VisualInvocation
 from .visuals import VisualDecision, VisualManifest
-from .voice_evolution import VoiceEvolutionChangeSet, VoiceEvolutionDelta
+from .voice_evolution_models import VoiceEvolutionChangeSet, VoiceEvolutionDelta
+from .voice_upgrade.models import (
+    EvidenceSet,
+    LearningEpoch,
+    LearningEpochTransitionReceipt,
+    LearningSelection,
+    VoiceUpgradePlan,
+)
 from .voices import VoiceManifest, VoiceRejectionReceipt
 
 CURRENT_SCHEMA_VERSION = "1.0"
@@ -42,6 +49,11 @@ SCHEMA_MODELS: Dict[str, Type[BaseModel]] = {
     "voice-rejection-receipt": VoiceRejectionReceipt,
     "voice-evolution-change-set": VoiceEvolutionChangeSet,
     "voice-evolution-delta": VoiceEvolutionDelta,
+    "voice-upgrade-plan": VoiceUpgradePlan,
+    "voice-evidence-set": EvidenceSet,
+    "voice-learning-selection": LearningSelection,
+    "voice-learning-epoch": LearningEpoch,
+    "voice-learning-epoch-transition-receipt": LearningEpochTransitionReceipt,
     "perspective-manifest": PerspectiveManifest,
     "perspective-review-decision": PerspectiveReviewDecision,
     "perspective-semantic-artifact": PerspectiveSemanticArtifact,
