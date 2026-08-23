@@ -86,6 +86,12 @@ def test_publication_writes_privacy_safe_receipt_for_direct_author_contribution(
     assert receipt["author_contribution_provenance"] == "direct-author-contribution"
     assert receipt["perspectives"] == []
     assert receipt["perspective_evaluation"]["passed"] is True
+    assert receipt["production_manifest_path"] == (f"runs/{state.id}/production-manifest.json")
+    manifest = json.loads(
+        (project / receipt["production_manifest_path"]).read_text(encoding="utf-8")
+    )
+    assert receipt["production_governance_hash"] == manifest["governance_hash"]
+    assert manifest["publication"]["receipt_path"] == str(receipt_path.relative_to(project))
     assert "Careful escalation" not in json.dumps(receipt)
     assert _required(project).verify()["status"] == "ok"
 

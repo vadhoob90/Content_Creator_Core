@@ -180,3 +180,18 @@ def test_verifier_rejects_unavailable_or_changed_voice_evidence(project, field, 
     report = _required(project).verify()
 
     assert expected in {finding["code"] for finding in report["findings"]}
+
+
+def test_verifier_rejects_changed_production_governance(project):
+    receipt_path = _published_receipt(project)
+    receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+    manifest_path = project / receipt["production_manifest_path"]
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest["voice"]["provenance_reason"] = "tampered-after-publication"
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+
+    report = _required(project).verify()
+
+    assert "production_governance_hash_mismatch" in {
+        finding["code"] for finding in report["findings"]
+    }

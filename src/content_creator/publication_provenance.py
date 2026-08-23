@@ -3,17 +3,22 @@
 from __future__ import annotations
 
 import json
-from enum import Enum
 from pathlib import Path
 from typing import Any, Dict, Iterable, Optional
-
-from pydantic import BaseModel
 
 from .domain import RunState, RunStatus, utc_now
 from .packs import PackRegistry
 from .perspective_evaluation import evaluate_perspective_output
 from .perspective_semantic_review import SemanticReviewReceipt
 from .perspectives import PerspectiveEntryStatus, PerspectiveRegistry
+from .production_governance import governance_hash, production_governance
+from .publication_governance import verify_production_governance
+from .publication_models import (
+    PublicationFinding,
+    PublicationPolicy,
+    PublicationProvenanceError,
+    provenance_source,
+)
 from .publication_package_receipts import PublicationPackageReceipts
 from .publication_receipt_models import (
     PerspectiveEvaluationReceipt,
@@ -25,28 +30,6 @@ from .publication_receipt_models import (
 from .storage import RunStore, StorageError
 from .versioned_artifacts import hash_file, hash_json
 from .voices import VoiceRegistry
-
-
-class PublicationProvenanceError(RuntimeError):
-    """Report a deterministic publication-provenance failure."""
-
-
-class PublicationPolicy(str, Enum):
-    """Enumerate supported publication receipt enforcement levels."""
-
-    OFF = "off"
-    ADVISORY = "advisory"
-    REQUIRED_FOR_NEW = "required-for-new-publications"
-    REQUIRED = "required"
-
-
-class PublicationFinding(BaseModel):
-    """Describe one deterministic publication verification finding."""
-
-    category: str = "deterministic_failure"
-    code: str
-    artifact_path: Optional[str] = None
-    detail: str
 
 
 class PublicationProvenance:
@@ -128,6 +111,8 @@ class PublicationProvenance:
             state.work_order.content_pack,
             state.work_order.pack_options,
         )
+        production_manifest_path = self.root / "runs" / state.id / "production-manifest.json"
+        production_governance_hash = governance_hash(production_governance(self.root, state))
         receipt = PublicationReceipt(
             artifact_path=relative_target,
             artifact_hash=hash_file(target),
@@ -139,7 +124,13 @@ class PublicationProvenance:
             voice_id=state.work_order.voice_id,
             voice_version=str(state.work_order.voice_version),
             voice_manifest_hash=voice.get("manifest_hash"),
-            author_contribution_provenance=self._provenance_source(state),
+            production_manifest_path=(
+                str(production_manifest_path.relative_to(self.root))
+                if production_manifest_path.is_file()
+                else None
+            ),
+            production_governance_hash=production_governance_hash,
+            author_contribution_provenance=provenance_source(state),
             perspectives=self._perspective_receipts(state.work_order, strict=True),
             perspective_evaluation=PerspectiveEvaluationReceipt(
                 passed=bool(evaluation["passed"]),
@@ -433,6 +424,10 @@ class PublicationProvenance:
             )
         failures.extend(self._verify_voice(receipt))
         failures.extend(self._verify_perspectives(receipt))
+        failures.extend(
+            self._finding(code, receipt.artifact_path, detail)
+            for code, detail in verify_production_governance(self.root, receipt)
+        )
         failures.extend(self._verify_semantic(receipt))
         return failures
 
@@ -592,35 +587,6 @@ class PublicationProvenance:
             self.baseline_path.read_text(encoding="utf-8")
         )
         return {item.artifact_path: item.artifact_hash for item in baseline.artifacts}
-
-    @staticmethod
-    def _provenance_source(state: RunState) -> str:
-        """Return the minimal non-sensitive author provenance classification.
-
-        Args:
-            state (RunState): Run whose direct and reusable inputs are classified.
-
-        Returns:
-            str: Direct, selected, combined, or absent provenance classification.
-        """
-        contribution = state.work_order.author_contribution
-        direct = bool(
-            contribution
-            and contribution.supplied_by_author
-            and (
-                contribution.thesis
-                or contribution.intended_challenge
-                or contribution.personal_basis
-            )
-        )
-        selected = bool(state.work_order.perspective_selections)
-        if direct and selected:
-            return "direct-and-selected-perspective"
-        if direct:
-            return "direct-author-contribution"
-        if selected:
-            return "selected-perspective"
-        return "none"
 
     @staticmethod
     def _receipt_required(

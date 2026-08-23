@@ -63,6 +63,8 @@ class PublicationReceipt(BaseModel):
     voice_id: str
     voice_version: str
     voice_manifest_hash: Optional[str] = None
+    production_manifest_path: Optional[str] = None
+    production_governance_hash: Optional[str] = None
     author_contribution_provenance: str
     perspectives: list[PerspectiveReceipt] = Field(default_factory=list)
     perspective_evaluation: PerspectiveEvaluationReceipt

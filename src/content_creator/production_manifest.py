@@ -2,16 +2,24 @@
 
 from __future__ import annotations
 
+import json
 from collections.abc import Callable
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Literal, Optional
 
 from pydantic import BaseModel, Field
 
 from .context_composition import ContextCompositionManifest
 from .domain import PublishedMediaArtifact, RunState
 from .packs import PackError, PackRegistry
+from .production_governance import (
+    ProductionGovernance,
+    ProductionPerspective,
+    ProductionVoice,
+    governance_hash,
+    production_governance,
+)
 from .versioned_artifacts import hash_file
 
 
@@ -23,22 +31,6 @@ class ProductionPack(BaseModel):
     format: str
     destination: str
     effective_options: dict[str, Any] = Field(default_factory=dict)
-
-
-class ProductionVoice(BaseModel):
-    """Represent the immutable voice selection used by a run."""
-
-    id: str
-    version: str
-
-
-class ProductionPerspective(BaseModel):
-    """Represent one pinned perspective selection used by a run."""
-
-    context_id: str
-    version: str
-    reason: str
-    confidence: float
 
 
 class ProductionResearch(BaseModel):
@@ -75,6 +67,8 @@ class ProductionPublication(BaseModel):
     content_hash: str
     published_at: Optional[datetime] = None
     media: list[PublishedMediaArtifact] = Field(default_factory=list)
+    receipt_path: Optional[str] = None
+    receipt_hash: Optional[str] = None
 
 
 class ProductionManifest(BaseModel):
@@ -88,6 +82,10 @@ class ProductionManifest(BaseModel):
     updated_at: datetime
     status: str
     revision: int
+    previous_revision_manifest_hash: Optional[str] = None
+    core_version: Optional[str] = None
+    core_version_status: Literal["captured", "unavailable"] = "unavailable"
+    governance_hash: Optional[str] = None
     content_pack: ProductionPack
     voice: ProductionVoice
     perspectives: list[ProductionPerspective] = Field(default_factory=list)
@@ -118,8 +116,13 @@ def refresh_production_manifest(
     """
     root = root.resolve()
     run_dir = root / "runs" / state.id
-    manifest = build_production_manifest(root, state)
     manifest_path = run_dir / "production-manifest.json"
+    previous_revision_hash = _previous_revision_hash(manifest_path, state.revision)
+    manifest = build_production_manifest(
+        root,
+        state,
+        previous_revision_manifest_hash=previous_revision_hash,
+    )
     summary_path = run_dir / "production-manifest.md"
     write_text(manifest_path, manifest.model_dump_json(indent=2))
     write_text(summary_path, render_production_table(manifest))
@@ -137,7 +140,11 @@ def refresh_production_manifest(
     return manifest
 
 
-def build_production_manifest(root: Path, state: RunState) -> ProductionManifest:
+def build_production_manifest(
+    root: Path,
+    state: RunState,
+    previous_revision_manifest_hash: Optional[str] = None,
+) -> ProductionManifest:
     """Build a production manifest from persisted, privacy-safe run evidence.
 
     Resolve current pack metadata while preserving the run's recorded effective
@@ -146,12 +153,15 @@ def build_production_manifest(root: Path, state: RunState) -> ProductionManifest
     Args:
         root (Path): Workspace root containing the run.
         state (RunState): Current persisted lifecycle state.
+        previous_revision_manifest_hash (Optional[str]): Immediate predecessor digest
+            when the run revision changed. Defaults to ``None``.
 
     Returns:
         ProductionManifest: Unified production metadata for the run.
     """
     order = state.work_order
     run_dir = root / "runs" / state.id
+    governance = production_governance(root, state)
     return ProductionManifest(
         run_id=state.id,
         content_session_id=order.content_session_id,
@@ -160,12 +170,13 @@ def build_production_manifest(root: Path, state: RunState) -> ProductionManifest
         updated_at=state.updated_at,
         status=state.status.value,
         revision=state.revision,
+        previous_revision_manifest_hash=previous_revision_manifest_hash,
+        core_version=governance.core_version,
+        core_version_status=governance.core_version_status,
+        governance_hash=governance_hash(governance),
         content_pack=_pack(root, state),
-        voice=ProductionVoice(
-            id=order.voice_id,
-            version=str(order.voice_version or "unresolved"),
-        ),
-        perspectives=_perspectives(state),
+        voice=governance.voice,
+        perspectives=governance.perspectives,
         research=_research(state),
         audience=order.audience,
         objective=order.objective,
@@ -186,9 +197,7 @@ def render_production_table(manifest: ProductionManifest) -> str:
     Returns:
         str: Markdown table suitable for draft and review surfaces.
     """
-    perspectives = (
-        ", ".join(f"{item.context_id} v{item.version}" for item in manifest.perspectives) or "None"
-    )
+    perspectives = ", ".join(_perspective_summary(item) for item in manifest.perspectives) or "None"
     routes = []
     for item in manifest.invocations:
         route = f"{item.provider}/{item.model}"
@@ -196,8 +205,10 @@ def render_production_table(manifest: ProductionManifest) -> str:
             routes.append(route)
     rows = [
         ("Content/run ID", manifest.run_id),
+        ("Core", _core_summary(manifest)),
         ("Content pack", f"{manifest.content_pack.id} v{manifest.content_pack.version}"),
-        ("Voice", f"{manifest.voice.id} v{manifest.voice.version}"),
+        ("Voice", _voice_summary(manifest.voice)),
+        ("Voice governance", _voice_governance_summary(manifest.voice)),
         ("Perspectives", perspectives),
         ("Research", f"{manifest.research.depth} / {manifest.research.source}"),
         ("Audience", manifest.audience),
@@ -286,6 +297,7 @@ def _artifacts(root: Path, state: RunState) -> list[ProductionArtifact]:
     run_dir = root / "runs" / state.id
     candidates = [
         ("final-draft", run_dir / "final.md"),
+        ("resolved-context", run_dir / "resolved-context.json"),
         ("context-composition", run_dir / "context-composition.json"),
         ("quality", run_dir / f"quality-{state.revision:02d}.json"),
         ("validation", run_dir / f"validation-{state.revision:02d}.json"),
@@ -317,11 +329,18 @@ def _publication(root: Path, state: RunState) -> Optional[ProductionPublication]
     if not path.is_file():
         return None
     published_events = [event.at for event in state.events if event.name == "published"]
+    receipt_events = [
+        event.detail for event in state.events if event.name == "publication_receipt_written"
+    ]
+    receipt_path = receipt_events[-1] if receipt_events else None
+    receipt = root / receipt_path if receipt_path else None
     return ProductionPublication(
         path=state.published_path,
         content_hash=hash_file(path),
         published_at=published_events[-1] if published_events else None,
         media=list(state.published_media),
+        receipt_path=receipt_path,
+        receipt_hash=hash_file(receipt) if receipt and receipt.is_file() else None,
     )
 
 
@@ -362,24 +381,121 @@ def _pack(root: Path, state: RunState) -> ProductionPack:
     )
 
 
-def _perspectives(state: RunState) -> list[ProductionPerspective]:
-    """Return all pinned perspective selections in work-order order.
+def manifest_governance_hash(manifest: ProductionManifest) -> str:
+    """Return the recomputed governance digest represented by a manifest.
 
     Args:
-        state (RunState): Run containing resolved perspective selections.
+        manifest (ProductionManifest): Persisted production manifest.
 
     Returns:
-        list[ProductionPerspective]: Bounded perspective identities and reasons.
+        str: Canonical SHA-256 digest independent of mutable run lifecycle fields.
     """
-    return [
-        ProductionPerspective(
-            context_id=item.context_id,
-            version=str(item.version or "unresolved"),
-            reason=item.reason,
-            confidence=item.confidence,
+    return governance_hash(
+        ProductionGovernance(
+            core_version=manifest.core_version,
+            core_version_status=manifest.core_version_status,
+            voice=manifest.voice,
+            perspectives=manifest.perspectives,
         )
-        for item in state.work_order.perspective_selections
-    ]
+    )
+
+
+def _previous_revision_hash(path: Path, revision: int) -> Optional[str]:
+    """Return or preserve the immediate prior revision manifest digest.
+
+    Args:
+        path (Path): Current production-manifest path.
+        revision (int): Revision about to be written.
+
+    Returns:
+        Optional[str]: Immediate predecessor hash, preserved lineage hash, or ``None``.
+    """
+    if not path.is_file():
+        return None
+    try:
+        prior = json.loads(path.read_text(encoding="utf-8"))
+        prior_revision = int(prior.get("revision", 0))
+    except (OSError, TypeError, ValueError):
+        return None
+    if prior_revision < revision:
+        return hash_file(path)
+    value = prior.get("previous_revision_manifest_hash")
+    text = str(value).strip() if value is not None else ""
+    return text or None
+
+
+def _digest_summary(value: Optional[str]) -> str:
+    """Return a concise human digest while JSON retains the complete value.
+
+    Args:
+        value (Optional[str]): Full optional digest to abbreviate.
+
+    Returns:
+        str: Readable digest or explicit unavailable label.
+    """
+    if not value:
+        return "digest unavailable"
+    return value if len(value) <= 24 else value[:20] + "…"
+
+
+def _core_summary(manifest: ProductionManifest) -> str:
+    """Render the captured Core version or an explicit unavailable label.
+
+    Args:
+        manifest (ProductionManifest): Manifest containing generation-time Core identity.
+
+    Returns:
+        str: Human-readable Core version provenance.
+    """
+    return f"v{manifest.core_version}" if manifest.core_version else "Unavailable (legacy run)"
+
+
+def _voice_summary(voice: ProductionVoice) -> str:
+    """Render concise immutable voice identity and artifact provenance.
+
+    Args:
+        voice (ProductionVoice): Governed voice snapshot to summarize.
+
+    Returns:
+        str: Human-readable voice identity and digest.
+    """
+    version = f"v{voice.version}" if voice.version else "version unavailable"
+    return f"{voice.id} {version}; {voice.source_kind}; {_digest_summary(voice.artifact_digest)}"
+
+
+def _voice_governance_summary(voice: ProductionVoice) -> str:
+    """Render concise lifecycle, epoch, and evidence-baseline provenance.
+
+    Args:
+        voice (ProductionVoice): Governed voice snapshot to summarize.
+
+    Returns:
+        str: Human-readable lifecycle and epoch state.
+    """
+    lifecycle = voice.lifecycle_status_at_generation or "status unavailable"
+    if voice.learning_epoch:
+        epoch = "epoch {} {} {}".format(
+            voice.learning_epoch.id,
+            voice.learning_epoch.status,
+            _digest_summary(voice.learning_epoch.digest),
+        )
+    else:
+        epoch = "epoch unavailable"
+    baseline = _digest_summary(voice.evidence_baseline_digest)
+    return f"{lifecycle}; {epoch}; evidence {baseline}"
+
+
+def _perspective_summary(item: ProductionPerspective) -> str:
+    """Render one concise pinned perspective identity and digest.
+
+    Args:
+        item (ProductionPerspective): Pinned perspective snapshot to summarize.
+
+    Returns:
+        str: Human-readable perspective identity and digest.
+    """
+    version = f"v{item.version}" if item.version else "version unavailable"
+    return f"{item.context_id} {version} {_digest_summary(item.manifest_digest)}"
 
 
 def _research(state: RunState) -> ProductionResearch:
