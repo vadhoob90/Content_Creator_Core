@@ -5,7 +5,6 @@ import pytest
 import yaml
 from conftest import passing_critique, valid_draft
 
-import content_creator.cli as cli
 from content_creator.cli import main
 from content_creator.commands.voice_status_rendering import render_voice_status
 from content_creator.orchestrator import Orchestrator
@@ -300,7 +299,7 @@ def test_fake_provider_golden_path_reaches_reviewable_draft_within_budget(
         def start(self, order, **kwargs):
             return self.delegate.start(order, **kwargs)
 
-    monkeypatch.setattr(cli, "Orchestrator", GoldenPathOrchestrator)
+    monkeypatch.setattr("content_creator.cli.Orchestrator", GoldenPathOrchestrator)
     request = "Write a useful LinkedIn post. No external research is required."
     assert main(["--workspace", str(workspace), "run", request]) == 0
     result = json.loads(capsys.readouterr().out)
