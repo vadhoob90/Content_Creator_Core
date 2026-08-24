@@ -41,7 +41,7 @@ dev = [
   "pytest-cov>=5,<8",
   "ruff>=0.9",
   "scikit-learn>=1.9,<2",
-  "setuptools>=83,<84",
+  "setuptools>=83,<85",
   "twine>=6,<7",
   "wheel>=0.45,<1",
 ]
