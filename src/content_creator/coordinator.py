@@ -18,8 +18,10 @@ from .coordinator_models import operation as coordinator_operation
 from .coordinator_models import voice_lifecycle_operations
 from .coordinator_policy import actions_for_state, recommend_action
 from .domain import RunState, RunStatus
+from .first_run_setup import build_first_run_setup
 from .health import WorkspaceHealth
 from .packs import PackRegistry
+from .provider_setup import provider_verification_is_current
 from .storage import RunStore
 from .upgrade_audit import coordinator_upgrade_operations, latest_upgrade_report
 from .voice_rejection import candidate_decision
@@ -69,6 +71,7 @@ class ContentCoordinator:
             "operations": [
                 self._operation("workspace.inspect", ["coordinator", "context"]),
                 self._operation("workspace.overview", ["overview"]),
+                self._operation("workspace.setup", ["setup"]),
                 *coordinator_upgrade_operations(),
                 self._operation("workspace.start", ["start", "<request>"]),
                 self._operation("run.plan", ["plan", "<request>"]),
@@ -197,6 +200,7 @@ class ContentCoordinator:
             ),
         )
         snapshot.recommended_action = self._recommend(snapshot)
+        snapshot.setup = build_first_run_setup(snapshot)
         return snapshot
 
     def context(self, run_limit: int = 10) -> Dict[str, Any]:
@@ -402,6 +406,7 @@ class ContentCoordinator:
                     voice_id=voice_id,
                     display_name=active.get("display_name")
                     or (onboarding.display_name if onboarding else voice_id),
+                    author_name=(onboarding.author_name if onboarding else None),
                     active_status=active.get("status"),
                     active_version=active.get("active_version"),
                     candidate_status=candidate_status,
@@ -452,6 +457,10 @@ class ContentCoordinator:
     def _provider_status(self) -> ProviderStatus:
         """Return the provider status.
 
+        Combine selected-provider configuration, currently visible credential or
+        executable availability, and the matching local verification receipt. A
+        stale receipt never makes an unavailable provider ready.
+
         Returns:
             ProviderStatus: The resulting provider status for provider status.
         """
@@ -462,9 +471,12 @@ class ContentCoordinator:
         if provider in {"openai", "anthropic"}:
             variable = "{}_API_KEY".format(provider.upper())
             configured = bool(os.getenv(variable))
+            status = "configured" if configured else "missing-credentials"
+            if configured and provider_verification_is_current(self.root, provider):
+                status = "verified"
             return ProviderStatus(
                 name=provider,
-                status="configured" if configured else "missing-credentials",
+                status=status,
                 detail=variable,
             )
         if provider == "bedrock":
@@ -475,15 +487,22 @@ class ContentCoordinator:
                 or os.getenv("AWS_WEB_IDENTITY_TOKEN_FILE")
                 or os.getenv("AWS_CONTAINER_CREDENTIALS_RELATIVE_URI")
             )
+            status = "configured" if credential_hint else "verify-required"
+            if credential_hint and provider_verification_is_current(self.root, provider):
+                status = "verified"
             return ProviderStatus(
                 name=provider,
-                status="configured" if credential_hint else "verify-required",
+                status=status,
                 detail="AWS credential chain",
             )
         executable = "codex" if provider == "codex-native" else "claude"
+        available = bool(shutil.which(executable))
+        status = "available" if available else "unavailable"
+        if available and provider_verification_is_current(self.root, provider):
+            status = "verified"
         return ProviderStatus(
             name=provider,
-            status="available" if shutil.which(executable) else "unavailable",
+            status=status,
             detail=executable,
         )
 

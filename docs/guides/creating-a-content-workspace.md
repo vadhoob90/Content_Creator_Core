@@ -9,10 +9,10 @@ material owned by that workspace.
 
 ## Install Core
 
-Install the immutable `v1.18.0` release:
+Install the immutable `v1.19.0` release:
 
 ```bash
-uv tool install content-creator==1.18.0
+uv tool install content-creator==1.19.0
 ```
 
 ## Generate the repository
@@ -27,7 +27,7 @@ content-creator workspace create Content_Creator_Alice \
   --voice-label "Alice — General" \
   --pack linkedin-post \
   --pack linkedin-article \
-  --core-ref v1.18.0
+  --core-ref v1.19.0
 ```
 
 Without `--pack`, the command enables `general-text`.
@@ -59,7 +59,7 @@ Relative destinations are resolved from the current directory. When the global
 `--workspace` option is supplied, it acts as the base directory.
 
 The generated main README names both the immutable Core revision and the exact
-dependency declaration (for example, `content-creator==1.18.0`). That small
+dependency declaration (for example, `content-creator==1.19.0`). That small
 section is marked as generator-owned so a later `workspace upgrade --apply`
 can refresh it without replacing the rest of the workspace's README.
 
@@ -149,6 +149,7 @@ Enter the new repository and install its pinned dependency:
 cd Content_Creator_Alice
 uv sync --dev
 uv run content-creator --workspace . doctor
+uv run content-creator --workspace . setup
 uv run pytest
 ```
 
@@ -162,10 +163,28 @@ uv sync --dev --native-tls
 The generator includes this recovery command in its machine-readable next
 steps so a first-time author does not have to infer it from a failed install.
 
-The generated README begins with an author checkpoint. The author chooses
-whether to derive a voice from previous writing or begin with the neutral Clear
-Professional Starter. `profiles/alice-general/onboarding.json` remains
-`undecided` until that choice is recorded.
+The generated README begins with the four-step `setup` view. The author chooses
+whether to derive a writing style from previous work or begin with the neutral
+Clear Professional Starter, then explicitly confirms a verified model
+connection. Core infers the generated author, voice identifier, and enabled
+packs rather than asking the author to copy them. The underlying
+`profiles/alice-general/onboarding.json` remains `undecided` until that choice
+is recorded.
+
+For the fastest first draft:
+
+```bash
+uv run content-creator --workspace . setup starter
+uv run content-creator --workspace . setup
+```
+
+The second command shows only provider choices currently available or
+configured. Select one exact returned action. API and Bedrock routes require
+`--confirm-api-billing`; native subscription routes never silently fall back to
+API billing.
+
+The lower-level commands below remain available for technical and automation
+use.
 
 ### Use previous writing
 

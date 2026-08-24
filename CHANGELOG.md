@@ -8,6 +8,37 @@ release tag.
 
 ## [Unreleased]
 
+## [1.19.0] - 2026-08-23
+
+### Added
+
+- `content-creator setup` projects workspace readiness, writing-style choice,
+  verified model connection, and the first piece as one four-milestone author
+  journey shared by the CLI and typed coordinator context.
+- `setup starter` and `setup source-derived` infer the generated author, voice
+  identifier, and enabled packs, while `setup provider` verifies an explicit
+  provider choice before persisting it. Usage-billed providers require
+  `--confirm-api-billing`.
+- Successful provider verification writes a privacy-safe local ignored receipt
+  so later setup and `start` invocations can distinguish availability from a
+  verified connection.
+
+### Changed
+
+- `start "<request>"` may still show its read-only content plan during setup,
+  but it does not display a `run` command until an active writing style and
+  verified provider are available.
+- Fresh workspace READMEs now lead with “setup, request, review, approve” and
+  progressively disclose dependency, evolution, retirement, hashes, and other
+  administration behind advanced links and details.
+
+### Compatibility
+
+- Existing coordinator action IDs, low-level provider and voice commands, JSON
+  fields, approval boundaries, and persisted voice/run schemas remain
+  compatible. The coordinator `setup` field and request-plan `next_action`
+  fields are additive.
+
 ## [1.18.0] - 2026-08-23
 
 ### Added

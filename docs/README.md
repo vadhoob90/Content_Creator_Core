@@ -9,8 +9,9 @@ on the author journey; these guides contain the detailed terminal procedures.
 - [Choose and configure a provider](guides/provider-configuration.md)
 - [Troubleshoot setup](guides/troubleshooting.md)
 
-After setup, run `content-creator --workspace . start` to see the next task and
-`content-creator --workspace . overview` to inspect workspace health.
+Run `content-creator --workspace . setup` for the four-step path from workspace
+creation to a first reviewable draft. Use `start` for the next content task and
+`overview` for returning-workspace health.
 
 ## I want to understand how this workspace is personalised
 

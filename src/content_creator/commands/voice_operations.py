@@ -24,6 +24,7 @@ from ..voices import VoiceManifest, hash_file, load_voice_onboarding
 from .shared import print_json
 from .voice_context import VoiceCommandContext
 from .voice_sources import documents, source_lines
+from .voice_status_rendering import render_voice_status
 
 VoiceHandler = Callable[[VoiceCommandContext], int]
 
@@ -572,17 +573,16 @@ def show_status(context: VoiceCommandContext) -> int:
         else None
     )
     active = context.registry.list().get(voice_id)
-    print_json(
-        {
-            "voice_id": voice_id,
-            "onboarding": onboarding.model_dump(mode="json") if onboarding else None,
-            "candidate": candidate_status,
-            "active": active,
-            "candidate_decision": candidate_decision(context.root, voice_id, active),
-            "rejections": list_rejections(context.root, voice_id),
-            "statistical_voice_score": load_score_preference(context.root, voice_id),
-        }
-    )
+    result = {
+        "voice_id": voice_id,
+        "onboarding": onboarding.model_dump(mode="json") if onboarding else None,
+        "candidate": candidate_status,
+        "active": active,
+        "candidate_decision": candidate_decision(context.root, voice_id, active),
+        "rejections": list_rejections(context.root, voice_id),
+        "statistical_voice_score": load_score_preference(context.root, voice_id),
+    }
+    print(render_voice_status(result)) if context.arguments.human else print_json(result)
     return 0
 
 

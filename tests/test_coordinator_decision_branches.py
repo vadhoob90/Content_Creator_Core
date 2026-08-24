@@ -17,7 +17,7 @@ def _snapshot(**changes):
         "workspace": "/workspace",
         "is_workspace": True,
         "coordinator": {},
-        "provider_status": ProviderStatus(name="anthropic", status="configured"),
+        "provider_status": ProviderStatus(name="anthropic", status="verified"),
         "active_voice_ids": ["default"],
         "health": {"status": "ok"},
         "recommended_action": CoordinatorAction(id="pending", label="pending"),
@@ -141,7 +141,7 @@ def test_coordinator_surfaces_degraded_workspace_defaults_and_health(project, mo
 
     snapshot = coordinator.snapshot()
 
-    assert snapshot.recommended_action.id == "select-provider"
+    assert snapshot.recommended_action.id == "create-voice"
     assert snapshot.warnings == [
         "Configured default voice is not active: missing-voice",
         "Configured default pack is unavailable: missing-pack",

@@ -19,11 +19,20 @@ content-creator --workspace . coordinator context
 Authors can use the calmer human-readable entry points:
 
 ```bash
+content-creator --workspace . setup
 content-creator --workspace . overview
 content-creator --workspace . start
 content-creator --workspace . start "Write a concise launch announcement"
 content-creator --workspace . personalisation show
 ```
+
+`setup` derives four milestones from the same typed coordinator state:
+workspace readiness, writing-style choice, model connection, and the first
+piece. It supplies exact actions using identifiers Core already knows. The
+neutral-starter path can reach content creation immediately; source-derived
+personalisation remains a separate evidence and review process. Provider
+selection is persisted only after verification, and usage-billed providers
+require explicit confirmation.
 
 `overview` renders active voice and version, provider state, default pack,
 incomplete runs, warnings, and one recommended action. `overview --json`
@@ -37,7 +46,9 @@ selected voice and approved perspectives live. See the
 `start` is read-only. With no request it routes the author to setup, onboarding,
 an interrupted run, or draft review. With a request it proposes the voice,
 format, pack, research route, perspective handling, and approval points. The
-author must still invoke any mutating or approval command explicitly.
+author must still invoke any mutating or approval command explicitly. With a
+request, it may show the proposed plan before setup is complete, but it does
+not offer `run` until an active writing style and verified provider are ready.
 
 ## JSON compatibility
 

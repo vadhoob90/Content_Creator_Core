@@ -33,6 +33,10 @@ terminal and filesystem access:
 The assistant will create a separate author workspace pinned to an immutable
 Core release. To set one up manually, follow
 [Create a thin content workspace](docs/guides/creating-a-content-workspace.md).
+Fresh workspaces expose `content-creator setup`, a four-step journey covering
+workspace readiness, writing style, model connection, and the first piece.
+Detailed voice, perspective, provenance, and lifecycle controls remain
+available on demand rather than becoming first-run prerequisites.
 
 ## How it works
 

@@ -21,6 +21,19 @@ summary, run `overview`. A configured default voice is a proposal, not
 permission to ignore an explicit voice choice. Never reconstruct lifecycle
 state from chat memory.
 
+When Core recommends setup, run:
+
+```bash
+content-creator --workspace . setup
+```
+
+Present only the returned writing-style or model-connection choices. The
+author explicitly chooses the neutral starter, source-derived personalisation,
+and provider. Invoke the exact returned `setup` action so known author, voice,
+and pack identifiers are not requested again. Never silently confirm a
+usage-billed provider. Do not offer `run` until the setup snapshot reports
+`ready_for_content: true`.
+
 When the author asks who their agents are, what the agents have learnt, or
 where voice and perspectives live, run the read-only inspection:
 

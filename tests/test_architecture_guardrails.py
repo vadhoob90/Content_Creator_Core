@@ -131,6 +131,7 @@ def test_top_level_cli_commands_are_characterized():
         "revise",
         "run",
         "schema",
+        "setup",
         "start",
         "status",
         "submission",

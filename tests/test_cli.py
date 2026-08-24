@@ -29,6 +29,7 @@ def test_default_help_is_calm_and_advanced_commands_remain_discoverable(capsys):
         parser.parse_args(["--help"])
     assert result.value.code == 0
     help_text = capsys.readouterr().out
+    assert "setup" in help_text
     assert "start" in help_text
     assert "overview" in help_text
     assert "personalisation" in help_text

@@ -169,9 +169,29 @@ def recommend_action(snapshot: WorkspaceSnapshot) -> CoordinatorAction:
             ],
             mutates_workspace=True,
         )
-    for run in snapshot.runs:
-        if not run.authoritative:
-            continue
+    existing_run = _existing_run_action(snapshot)
+    if existing_run:
+        return existing_run
+    setup = _setup_action(snapshot)
+    if setup:
+        return setup
+    return CoordinatorAction(
+        id="create-content",
+        label="Describe the content you want to create",
+        command=["start", "<request>"],
+    )
+
+
+def _existing_run_action(snapshot: WorkspaceSnapshot) -> CoordinatorAction | None:
+    """Return the highest-priority action for interrupted or reviewable work.
+
+    Args:
+        snapshot (WorkspaceSnapshot): Complete coordinator view to evaluate.
+
+    Returns:
+        CoordinatorAction | None: Existing-run action when one takes priority.
+    """
+    for run in (item for item in snapshot.runs if item.authoritative):
         if run.status == RunStatus.AWAITING_RESEARCH_APPROVAL.value:
             return CoordinatorAction(
                 id="review-research",
@@ -184,6 +204,21 @@ def recommend_action(snapshot: WorkspaceSnapshot) -> CoordinatorAction:
                 label="Review the completed draft and its next actions",
                 command=["coordinator", "next-actions", run.run_id],
             )
+    return None
+
+
+def _setup_action(snapshot: WorkspaceSnapshot) -> CoordinatorAction | None:
+    """Return the next voice or provider prerequisite action.
+
+    Preserve lifecycle decision priority while translating first-run gaps into
+    the smaller setup command surface.
+
+    Args:
+        snapshot (WorkspaceSnapshot): Complete coordinator view to evaluate.
+
+    Returns:
+        CoordinatorAction | None: Setup action when content is not ready.
+    """
     undecided = next(
         (voice for voice in snapshot.voices if voice.onboarding_status == "undecided"), None
     )
@@ -191,11 +226,11 @@ def recommend_action(snapshot: WorkspaceSnapshot) -> CoordinatorAction:
         return CoordinatorAction(
             id="choose-voice-route",
             label=(
-                "Choose source-derived voice or Clear Professional Starter for {}".format(
+                "Choose personalised writing or the neutral starter for {}".format(
                     undecided.display_name
                 )
             ),
-            command=["voice", "status", undecided.voice_id],
+            command=["setup"],
         )
     candidate = next(
         (voice for voice in snapshot.voices if voice.candidate_decision == "pending"), None
@@ -206,6 +241,23 @@ def recommend_action(snapshot: WorkspaceSnapshot) -> CoordinatorAction:
             label="Review the pending voice candidate",
             command=["personalisation", "show"],
         )
+    collecting = next(
+        (voice for voice in snapshot.voices if voice.onboarding_status == "collecting-sources"),
+        None,
+    )
+    if collecting:
+        return CoordinatorAction(
+            id="continue-voice-onboarding",
+            label="Add authorised writing for personalised setup",
+            command=[
+                "voice",
+                "add-sources",
+                collecting.voice_id,
+                "--documents",
+                "<path-to-writing>",
+            ],
+            mutates_workspace=True,
+        )
     eligible_upgrade = next((voice for voice in snapshot.voices if voice.upgrade_eligible), None)
     if eligible_upgrade:
         return CoordinatorAction(
@@ -213,20 +265,23 @@ def recommend_action(snapshot: WorkspaceSnapshot) -> CoordinatorAction:
             label="Review new evidence and learning eligible for voice evolution",
             command=eligible_upgrade.upgrade_plan_command,
         )
-    if snapshot.provider_status.status in {"not-selected", "missing-credentials", "unavailable"}:
-        return CoordinatorAction(
-            id="select-provider",
-            label="Select and verify a model provider",
-            command=["provider", "--help"],
-        )
     if not snapshot.active_voice_ids:
         return CoordinatorAction(
             id="create-voice",
-            label="Create or activate a voice",
+            label="Create or activate a writing style",
             command=["voice", "--help"],
         )
-    return CoordinatorAction(
-        id="create-content",
-        label="Describe the content you want to create",
-        command=["start", "<request>"],
-    )
+    if snapshot.provider_status.status != "verified":
+        command = ["setup"]
+        if snapshot.provider_status.name:
+            command = ["setup", "provider", snapshot.provider_status.name]
+            if snapshot.provider_status.name in {"anthropic", "bedrock", "openai"}:
+                command.append("--confirm-api-billing")
+        return CoordinatorAction(
+            id="select-provider",
+            label="Choose and verify a model connection",
+            command=command,
+            mutates_workspace=bool(snapshot.provider_status.name),
+            requires_confirmation=bool(snapshot.provider_status.name),
+        )
+    return None

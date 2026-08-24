@@ -17,6 +17,10 @@ of the `content-creator` workflow.
 7. Preserve research, drafts, critiques, validation, and route artifacts
 8. Return the final draft for author review
 
+For a fresh author workspace, use the typed `content-creator setup` journey.
+Present only its current choices, never select a writing style or provider for
+the author, and do not offer `run` until `ready_for_content` is true.
+
 Attach one stable `--idempotency-key` when an exact run invocation may be
 retried. Reuse it only for the equivalent submission; changed requests and
 intentional revisions require a new key. Revisions also use `--parent-run`.

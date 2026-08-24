@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any, Callable, Sequence
 
 from ..configuration import persist_default_provider
+from ..provider_setup import record_provider_verification
 from ..providers import ProviderError, ProviderRegistry
 
 
@@ -48,7 +49,14 @@ def run(root: Path, args: argparse.Namespace, emit: Callable[[Any], None]) -> in
     if provider_name in {"anthropic", "openai"}:
         variable = "{}_API_KEY".format(provider_name.upper())
         configured = bool(os.getenv(variable))
-        emit({"provider": provider_name, "configured": configured, "credential_variable": variable})
+        result = {
+            "provider": provider_name,
+            "configured": configured,
+            "credential_variable": variable,
+        }
+        if configured:
+            record_provider_verification(root, provider_name, {"credential_variable": variable})
+        emit(result)
         return 0 if configured else 8
     try:
         selected = ProviderRegistry(root=root).get(provider_name)
@@ -56,5 +64,6 @@ def run(root: Path, args: argparse.Namespace, emit: Callable[[Any], None]) -> in
     except ProviderError as exc:
         emit({"provider": provider_name, "configured": False, "error": str(exc)})
         return 8
+    record_provider_verification(root, provider_name, authentication)
     emit({"provider": provider_name, "configured": True, **authentication})
     return 0

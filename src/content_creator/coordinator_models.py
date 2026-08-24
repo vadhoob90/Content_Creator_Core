@@ -31,6 +31,7 @@ class VoiceStatus(BaseModel):
 
     voice_id: str
     display_name: str
+    author_name: Optional[str] = None
     active_status: Optional[str] = None
     active_version: Optional[str] = None
     candidate_status: Optional[str] = None
@@ -46,6 +47,27 @@ class VoiceStatus(BaseModel):
     lifecycle_decided_at: Optional[str] = None
     valid_actions: List[str] = Field(default_factory=list)
     retirement_plan_command: Optional[List[str]] = None
+
+
+class SetupMilestone(BaseModel):
+    """Represent one author-facing first-run milestone."""
+
+    id: str
+    label: str
+    status: str
+    summary: str
+
+
+class FirstRunSetup(BaseModel):
+    """Represent the derived journey from workspace creation to first draft."""
+
+    schema_version: str = "1.0"
+    completed_count: int
+    total_count: int = 4
+    ready_for_content: bool
+    milestones: List[SetupMilestone]
+    recommended_action: CoordinatorAction
+    choices: List[CoordinatorAction] = Field(default_factory=list)
 
 
 class RunSummary(BaseModel):
@@ -82,6 +104,7 @@ class WorkspaceSnapshot(BaseModel):
     health: Dict[str, Any]
     warnings: List[str] = Field(default_factory=list)
     recommended_action: CoordinatorAction
+    setup: Optional[FirstRunSetup] = None
     personalisation_action: CoordinatorAction = Field(
         default_factory=lambda: CoordinatorAction(
             id="inspect-personalisation",

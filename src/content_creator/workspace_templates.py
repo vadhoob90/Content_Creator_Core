@@ -55,67 +55,53 @@ class WorkspaceReadmeContext:
 
 AUTHOR_WORKSPACE_README_TEMPLATE = """# {display_name}
 
-This is {author_name}'s Content Creator workspace. It keeps your voice,
-perspectives, editorial agents, feedback-derived learning, drafts, and approved
-content together without publishing anything externally.
+This is {author_name}'s private workspace for planning, drafting, reviewing, and
+saving content. Nothing is posted externally.
 
-## Quick start
+## Start here
 
-Open this folder in Codex or Claude Code and describe what you want to create:
+Run the guided setup once:
+
+```bash
+content-creator --workspace . setup
+```
+
+It asks only how you want to begin and which model connection you approve. The
+neutral starter gets you creating quickly; a personalised writing style can use
+authorised examples of your writing and takes a separate review.
+
+When setup is ready, open this folder in Codex or Claude Code and describe what
+you want to create:
 
 ```text
 Write a useful piece for my professional audience. Use no external research.
 ```
 
-The assistant will inspect the workspace, select only an active voice and
-approved perspectives, apply previous feedback, and return a draft for review.
-To approve a repository-local copy, say:
+The assistant will plan, draft, review, and return the result to you. To approve
+a copy inside this workspace, say:
 
 ```text
 Move the active draft into the published directory.
 ```
 
-## Understand your workspace
+## Learn more when you need it
 
 - [How this system is personalised to me](PERSONALISATION.md)
-- [My agents](agents/README.md)
-- [My voices and perspectives](profiles/README.md)
-- [My shared learning](learnings/README.md)
-- [What my agents receive at runtime](docs/runtime-context.md)
 - [My approved content](content/)
-- [Technical setup, uv, providers, and CLI usage](docs/setup-and-technical-guide.md)
-
-The guided personalisation view is also available as:
-
-```bash
-content-creator --workspace . personalisation show
-```
+- [Technical setup and advanced administration](docs/setup-and-technical-guide.md)
 
 ## Included content packs
 
 {pack_list}
 
-## First-time voice choice
-
-Before creating content, the assistant will ask whether to build a personalised
-voice from writing you provide or begin with the neutral Clear Professional
-Starter. It must not choose for you. Your intended voice is `{voice_id}`
-(`{voice_label}`).
-
-The starter is a writing policy, not a representation of {author_name}'s
-established voice. It cannot invent experience, identity, opinions, or
-perspectives.
-
-## Technical users
-
-Terminal installation and maintenance use `uv`, but they are not required to
-understand or navigate this workspace. See the
-[technical setup guide](docs/setup-and-technical-guide.md) for the complete
-commands.
+<details>
+<summary>Advanced administration and reproducibility</summary>
 
 {core_dependency_section}
 
 {upgrade_options}
+
+</details>
 
 ## Ownership
 
@@ -232,6 +218,7 @@ Install [uv](https://docs.astral.sh/uv/), then run:
 ```bash
 uv sync --dev
 uv run content-creator --workspace . doctor
+uv run content-creator --workspace . setup
 uv run content-creator --workspace . overview
 uv run content-creator --workspace . personalisation show
 uv run content-creator --workspace . personalisation explain --role writer
@@ -251,11 +238,11 @@ implicit provider default.
 
 ## Voice onboarding
 
-Run `uv run content-creator --workspace . start` for the guided route. Source
-material may remain outside this repository and be supplied with the
-`voice add-sources` command and its `--documents` option. Review candidate
-status and the copyable approval or rejection commands with
-`personalisation show`.
+Run `uv run content-creator --workspace . setup` for the guided first-run route.
+It infers the generated author, voice identifier, and enabled packs. Source
+material may remain outside this repository. Use the `voice add-sources` command
+and its `--documents` option. Review candidate status and the copyable approval
+or rejection commands with `personalisation show`.
 
 ## Evolve an existing voice, pause it, or retire it
 
@@ -425,22 +412,19 @@ of the installed Content Creator workflow.
 
 1. Run `content-creator --workspace . start` and use the next action derived
    from Core's persisted workspace state rather than chat memory.
-2. Read `profiles/{voice_id}/onboarding.json`.
-3. If its status is `undecided`, stop and ask the author to choose:
-   build a source-derived voice from their writing, or use the neutral starter.
-   Never choose on their behalf.
-4. For the starter route, run `voice onboard --strategy starter`. Treat it as
-   a neutral writing policy, never as the author's established voice.
-   Perspectives are disabled by Core while it is active.
-5. For the source-derived route, run `voice onboard --strategy source-derived`,
-   collect authorised sources, and complete review and activation.
-6. Create or validate a work order and resolve the pack and research route.
-7. Use only an active, verified voice; the intended voice is `{voice_id}`.
-8. Load only permitted voice learnings and perspectives.
-9. Preserve generated artifacts under `runs/<run-id>/`.
-10. Use `coordinator next-actions <run-id>` before offering an approval or
+2. When setup is incomplete, run `content-creator --workspace . setup` and
+   present only the returned choices. Never choose a writing style or model
+   connection on the author's behalf.
+3. After an explicit choice, use `setup starter`, `setup source-derived`, or
+   the exact returned `setup provider` action. These commands infer known
+   workspace identifiers and preserve Core's approval boundaries.
+4. Create or validate a work order and resolve the pack and research route.
+5. Use only an active, verified voice; the intended voice is `{voice_id}`.
+6. Load only permitted voice learnings and perspectives.
+7. Preserve generated artifacts under `runs/<run-id>/`.
+8. Use `coordinator next-actions <run-id>` before offering an approval or
     publication action.
-11. Return the final draft for author review.
+9. Return the final draft for author review.
 
 When an exact invocation may be retried, reuse one stable `--idempotency-key`
 for that submission or inspect it with `submission status <key>`. Changed
