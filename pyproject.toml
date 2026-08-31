@@ -25,9 +25,9 @@ Changelog = "https://github.com/vadhoob90/Content_Creator_Core/blob/main/CHANGEL
 
 [project.optional-dependencies]
 openai = ["openai>=2.48,<3"]
-anthropic = ["anthropic>=0.120,<1"]
-bedrock = ["anthropic[bedrock]>=0.120,<1"]
-providers = ["openai>=2.48,<3", "anthropic[bedrock]>=0.120,<1"]
+anthropic = ["anthropic>=0.120,<2"]
+bedrock = ["anthropic[bedrock]>=0.120,<2"]
+providers = ["openai>=2.48,<3", "anthropic[bedrock]>=0.120,<2"]
 ml = [
   "scikit-learn>=1.9,<2",
 ]
