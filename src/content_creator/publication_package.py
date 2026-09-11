@@ -45,7 +45,7 @@ class PublicationPackagePublisher:
         target: Path,
         draft: str,
         profile: VisualPackProfile,
-        visual_asset: Optional[VisualAsset],
+        visual_asset: Optional[VisualAsset] | list[VisualAsset],
         gate: Any,
     ) -> Path:
         """Publish text, optional media, and one canonical package receipt.
@@ -58,12 +58,16 @@ class PublicationPackagePublisher:
             target (Path): Canonical content publication destination.
             draft (str): Exact reviewed content bytes to publish.
             profile (VisualPackProfile): Resolved pack visual policy.
-            visual_asset (Optional[VisualAsset]): Approved selected media, when present.
+            visual_asset (Optional[VisualAsset] | list[VisualAsset]): Approved selected media.
             gate (Any): Deterministic and semantic publication-gate evidence.
 
         Returns:
             Path: Canonical publication receipt written for the complete package.
         """
+        if isinstance(visual_asset, list):
+            from .slot_publication import publish_collection
+
+            return publish_collection(self, state, target, draft, profile, visual_asset, gate)
         visual_target = (
             self.visuals.publication_target(state.id, visual_asset, profile)
             if visual_asset is not None
@@ -134,6 +138,10 @@ class PublicationPackagePublisher:
             PublicationProvenanceError: If receipt history cannot be revised safely.
             VisualError: If the run or replacement source is not publishable.
         """
+        if asset.slot_id:
+            from .slot_publication import replace_slot
+
+            return replace_slot(self, state, asset, profile)
         if not state.published_path:
             raise VisualError("Visual replacement requires a published content artifact")
         target = self.visuals.publication_target(state.id, asset, profile)
@@ -186,7 +194,13 @@ class PublicationPackagePublisher:
             VisualError: If the source is missing or differs from its recorded hash.
         """
         source = self.root / "runs" / run_id / asset.relative_path
-        if not source.is_file() or hash_file(source) != "sha256:" + asset.sha256:
+        run = self.root / "runs" / run_id
+        if (
+            not source.resolve().is_relative_to(run.resolve())
+            or source.is_symlink()
+            or not source.is_file()
+            or hash_file(source) != "sha256:" + asset.sha256
+        ):
             raise VisualError("Selected visual asset is missing or its hash has changed")
         return source
 
@@ -208,6 +222,7 @@ class PublicationPackagePublisher:
         """
         source = self._visual_source(run_id, asset)
         return PublishedMediaArtifact(
+            slot_id=asset.slot_id,
             role=asset.role or "visual",
             source_path=str(source.relative_to(self.root)),
             published_path=str(target.relative_to(self.root)),

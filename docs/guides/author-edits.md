@@ -98,5 +98,8 @@ remains, follow the existing operations recovery guidance to inspect its owner;
 Core never removes a possibly live lock automatically. Journals contain private
 run text and must remain with ignored run evidence.
 
-This implements the author-edit integrity slice of issue #135. Multiple visual
-slots, bundle membership, and draft export remain subsequent work.
+This implements the author-edit integrity slice of issue #135. See
+[draft bundles](draft-bundles.md) for collecting and exporting edited drafts.
+See [visual slots](visual-slots.md) for independently governed placements.
+An adopted text revision makes existing slot ownership stale and requires explicit
+brief refresh and visual review before publication.

@@ -34,7 +34,10 @@ def test_schema_catalogue_covers_persisted_public_contracts():
         "visual-manifest",
         "visual-invocation",
     } <= set(catalogue)
-    assert all(item["schema_version"] == "1.0" for item in catalogue.values())
+    assert all(
+        item["schema_version"] == ("1.1" if name == "visual-manifest" else "1.0")
+        for name, item in catalogue.items()
+    )
 
 
 def test_schema_bundle_is_deterministic_and_indexed(tmp_path):

@@ -356,6 +356,9 @@ voice-material/**/*
 !voice-material/**/
 !voice-material/**/source-urls.txt
 content/*/drafting/
+content/*/drafts/
+drafts/
+draft-bundles/
 """
 
     @staticmethod

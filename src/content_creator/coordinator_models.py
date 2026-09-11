@@ -102,6 +102,7 @@ class WorkspaceSnapshot(BaseModel):
     active_voice_ids: List[str] = Field(default_factory=list)
     suggested_voice_id: Optional[str] = None
     runs: List[RunSummary] = Field(default_factory=list)
+    draft_bundles: List[Dict[str, Any]] = Field(default_factory=list)
     health: Dict[str, Any]
     warnings: List[str] = Field(default_factory=list)
     recommended_action: CoordinatorAction

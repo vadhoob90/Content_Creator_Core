@@ -6,10 +6,19 @@ The project follows semantic versioning. Entries marked **Unreleased** are
 present on the development branch but are not available from an immutable
 release tag.
 
-## [Unreleased]
+## [1.20.0] - 2026-09-11
 
 ### Added
 
+- Independently governed visual slots with revision-specific briefs, invocations,
+  validation, critiques, decisions, and exact media/accessibility approval bindings.
+- Governed SVG, PNG, JPEG, and WebP import, explicit singleton migration, and
+  article inline-diagram, comparison, and facts-panel roles.
+- Complete collection publication and per-slot replacement into immutable text
+  snapshots, with receipt lineage and unchanged media preserved.
+- Pinned draft bundles with explicit membership updates, combined review, and
+  deterministic non-publishing bundle/single-run export, including selected media,
+  portable Markdown references, provenance manifests, and read-only preview (#135).
 - Provider-free `adopt-edit`, exact-hash `approve-edit-claims`, and `recover-edit`
   commands preserve accepted text, deterministic diffs, original pack inputs,
   and recoverable author-edit evidence (first slice of #135).
@@ -24,6 +33,10 @@ release tag.
 - New runs preserve effective pack snapshots for historical edit validation.
   Adoption and claim review share a run lock with revision and publication.
 
+### Security
+
+- Require pypdf 6.16.1 or newer and lock 6.18.1 to resolve the three
+  dependency vulnerabilities found by the release audit.
 
 ## [1.19.0] - 2026-08-23
 

@@ -459,6 +459,7 @@ class RunEvent(BaseModel):
 class PublishedMediaArtifact(BaseModel):
     """Record one approved media artifact in the publication package."""
 
+    slot_id: Optional[str] = None
     role: str
     source_path: str
     published_path: str

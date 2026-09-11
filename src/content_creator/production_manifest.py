@@ -22,6 +22,7 @@ from .production_governance import (
     production_governance,
 )
 from .versioned_artifacts import hash_file
+from .visual_contracts import VisualManifest, VisualSlot
 
 
 class ProductionPack(BaseModel):
@@ -99,6 +100,7 @@ class ProductionManifest(BaseModel):
     artifacts: list[ProductionArtifact] = Field(default_factory=list)
     publication: Optional[ProductionPublication] = None
     draft_integrity: Optional[DraftIntegrity] = None
+    visual_slots: list[VisualSlot] = Field(default_factory=list)
 
 
 def refresh_production_manifest(
@@ -188,6 +190,7 @@ def build_production_manifest(
         artifacts=_artifacts(root, state),
         publication=_publication(root, state),
         draft_integrity=read_integrity(run_dir),
+        visual_slots=_visual_slots(run_dir),
     )
 
 
@@ -301,6 +304,7 @@ def _artifacts(root: Path, state: RunState) -> list[ProductionArtifact]:
     candidates = [
         ("final-draft", run_dir / "final.md"),
         ("resolved-context", run_dir / "resolved-context.json"),
+        ("visual-manifest", run_dir / "visuals/manifest.json"),
         ("context-composition", run_dir / "context-composition.json"),
         ("quality", run_dir / f"quality-{state.revision:02d}.json"),
         ("validation", run_dir / f"validation-{state.revision:02d}.json"),
@@ -521,3 +525,16 @@ def _research(state: RunState) -> ProductionResearch:
         source=order.research_source.value,
         citation_style=str(order.pack_options.get("citation_style", "inline-links")),
     )
+
+
+def _visual_slots(run: Path) -> list[VisualSlot]:
+    """Read current explicit placements for the production projection.
+
+    Args:
+        run (Path): Governed run directory.
+
+    Returns:
+        list[VisualSlot]: Complete slot collection or no legacy placements.
+    """
+    path = run / "visuals/manifest.json"
+    return VisualManifest.model_validate_json(path.read_bytes()).slots if path.exists() else []

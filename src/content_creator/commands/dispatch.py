@@ -20,6 +20,7 @@ from .base_commands import (
     manage_voice,
     show_advanced,
 )
+from .bundle import run as run_bundle
 from .context import CommandContext
 from .context_commands import run as show_context
 from .coordinator_commands import inspect_coordinator
@@ -45,6 +46,8 @@ from .workspace_commands import manage_workspace
 
 Handler = Callable[[CommandContext], int]
 ROUTES: dict[str, Handler] = {
+    "bundle": run_bundle,
+    "export-draft": run_bundle,
     "adopt-edit": run_author_edit,
     "approve-edit-claims": run_author_edit,
     "recover-edit": run_author_edit,

@@ -180,3 +180,10 @@ decision, or retained behind an exact exception. Retirement blocks new revisions
 publication, learning, upgrades, and candidate activation; historical inspection and
 verification remain available. Coordinator and personalisation views show the reason,
 decision time, unresolved dispositions, and only valid next actions.
+
+## Related drafts and multiple placements
+
+See [visual slots](visual-slots.md) to govern several independent images and
+[draft bundles](draft-bundles.md) to collect and export article/hook drafts for
+review. Coordinator capabilities expose these commands, context includes bundle
+review summaries, and run next-actions report per-slot review requirements.

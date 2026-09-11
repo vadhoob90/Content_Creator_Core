@@ -123,6 +123,7 @@ class Orchestrator:
         """
         return self.learning.retry_publication(run_id)
 
+    @serialize_run
     def replace_visual(self, run_id: str, asset_id: str) -> RunState:
         """Update published media without rewriting the canonical text artifact.
 
@@ -139,13 +140,15 @@ class Orchestrator:
         state = self.store.load(run_id)
         if state.status != RunStatus.PUBLISHED:
             raise OrchestrationError("Visual replacement requires a published run")
+        if self.publications.verify(run_id=run_id)["status"] != "ok":
+            raise OrchestrationError(
+                "Existing publication failed verification; restore it before replacing media"
+            )
         pack = self.packs.resolve(
             state.work_order.content_pack,
             state.work_order.pack_options,
         )
-        asset = self.visuals.ensure_publication_ready(run_id, pack.visuals)
-        if asset is None or asset.asset_id != asset_id:
-            raise OrchestrationError("Visual replacement requires the selected approved asset")
+        asset = self.visuals.replacement_asset(run_id, asset_id, pack.visuals)
         receipt_path = self.package_publisher.replace_visual(state, asset, pack.visuals)
         state.events.extend(
             [
@@ -681,7 +684,7 @@ class Orchestrator:
             self._runtime._apply_diagnostic_state(state, preflight)
         draft = self.store.read_artifact(run_id, "final.md").rstrip() + "\n"
         pack = self.packs.resolve(state.work_order.content_pack, state.work_order.pack_options)
-        visual_asset = self.visuals.ensure_publication_ready(run_id, pack.visuals)
+        visual_asset = self.visuals.ensure_publication_assets(run_id, pack.visuals)
         target_dir = self.root / pack.destination
         target_dir.mkdir(parents=True, exist_ok=True)
         requested = filename or f"{slugify(state.work_order.topic)}.md"
@@ -689,6 +692,11 @@ class Orchestrator:
         if target.exists():
             raise StorageError(f"Refusing to overwrite {target}")
         self.publications.ensure_receipt_available(target)
+        from .slot_publication import preflight_collection
+
+        preflight_collection(
+            self.package_publisher, state, target, draft, pack.visuals, visual_asset
+        )
         return state, draft, pack, visual_asset, target
 
     def _publication_assessment(

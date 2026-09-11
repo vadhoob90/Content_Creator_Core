@@ -17,6 +17,9 @@ from ..visuals import VisualBrief, VisualCritique, VisualError, VisualWorkflow
 def register(subparsers: Any) -> None:
     """Register the visual workflow.
 
+    Asset decisions remain separate from placement specification and import.
+    Publication commands route through the complete content package boundary.
+
     Args:
         subparsers (Any): The argparse subparser collection receiving the command.
 
@@ -44,6 +47,7 @@ def register(subparsers: Any) -> None:
     render = commands.add_parser("render", help="Render validated visual review variants")
     render.add_argument("run_id")
     render.add_argument("--role")
+    render.add_argument("--slot", dest="slot_id")
     render.add_argument("--request", default="Create an image for this content.")
     render.add_argument("--variants", type=int, default=1)
     render.add_argument("--adapter")
@@ -58,6 +62,10 @@ def register(subparsers: Any) -> None:
     learn.add_argument("run_id")
     learn.add_argument("--feedback", required=True)
     commands.add_parser("show").add_argument("run_id")
+    commands.add_parser("migrate-slots").add_argument("run_id")
+    imported = commands.add_parser("import", help="Register an existing image for slot review")
+    imported.add_argument("run_id")
+    imported.add_argument("request_file")
 
 
 def run(root: Path, args: argparse.Namespace, emit: Callable[[Any], None]) -> int:
@@ -74,6 +82,10 @@ def run(root: Path, args: argparse.Namespace, emit: Callable[[Any], None]) -> in
     Returns:
         int: The process exit status, where zero indicates successful handling.
     """
+    if args.visual_command in {"migrate-slots", "import"}:
+        from .visual_slot import run_slot_command
+
+        return run_slot_command(root, args, emit)
     workflow = VisualWorkflow(root)
     queries = RunQueries(root)
     state = queries.state(args.run_id)
@@ -115,6 +127,7 @@ def run(root: Path, args: argparse.Namespace, emit: Callable[[Any], None]) -> in
                     pack_version=pack.version,
                     request=args.request,
                     role=args.role,
+                    slot_id=args.slot_id,
                     variants=args.variants,
                     adapter_name=args.adapter,
                     parent_asset_id=args.parent_asset_id,

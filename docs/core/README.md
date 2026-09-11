@@ -378,13 +378,13 @@ Author workspaces remain on their pinned package until deliberately upgraded.
 Preview the upgrade first:
 
 ```bash
-uv run content-creator --workspace . workspace upgrade --to v1.19.0
+uv run content-creator --workspace . workspace upgrade --to v1.20.0
 ```
 
 Apply the reviewed preview explicitly:
 
 ```bash
-uv run content-creator --workspace . workspace upgrade --to v1.19.0 --apply
+uv run content-creator --workspace . workspace upgrade --to v1.20.0 --apply
 ```
 
 The apply operation updates the package requirement and lockfile, runs doctor,
@@ -414,6 +414,8 @@ unpinned package version.
 - [Perspective provenance](../guides/perspective-provenance.md)
 - [Repository-owned agents](../guides/repository-agents.md)
 - [Provider configuration](../guides/provider-configuration.md)
+- [Draft bundles and review export](../guides/draft-bundles.md)
+- [Independent visual slots](../guides/visual-slots.md)
 - [Versioned workspaces](../guides/workspace-dependencies.md)
 - [Migrating to v0.4](../guides/migrating-to-v0.4.md)
 - [Changelog](../../CHANGELOG.md)

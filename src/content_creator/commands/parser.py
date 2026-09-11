@@ -7,6 +7,7 @@ import argparse
 from ..version import VERSION
 from . import (
     author_edit,
+    bundle,
     context_commands,
     operations,
     personalisation,
@@ -43,11 +44,12 @@ def build_parser() -> argparse.ArgumentParser:
         required=True,
         metavar=(
             "{setup,start,overview,personalisation,context,workspace,doctor,run,status,submission,publish,learn,"
-            "revise,adopt-edit,approve-edit-claims,recover-edit,verify-publications,diagnostics,visual,coordinator,schema,operations,advanced}"
+            "revise,adopt-edit,approve-edit-claims,recover-edit,bundle,export-draft,verify-publications,diagnostics,visual,coordinator,schema,operations,advanced}"
         ),
     )
     schema.register(subparsers)
     author_edit.register(subparsers)
+    bundle.register(subparsers)
     operations.register(subparsers)
     register_workspace(subparsers)
     register_agents(subparsers)
