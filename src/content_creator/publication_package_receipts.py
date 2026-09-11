@@ -48,6 +48,7 @@ class PublicationPackageReceipts:
         ]
         artifacts.extend(
             PublicationArtifactReceipt(
+                slot_id=item.slot_id,
                 role=item.role,
                 path=item.published_path,
                 source_path=item.source_path,

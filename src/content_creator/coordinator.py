@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from .configuration import Configuration
+from .coordinator_drafts import bundle_summaries, draft_operations, slot_summary
 from .coordinator_models import CoordinatorAction as CoordinatorAction
 from .coordinator_models import ProviderStatus as ProviderStatus
 from .coordinator_models import RunSummary as RunSummary
@@ -129,6 +130,7 @@ class ContentCoordinator:
                     approval=True,
                 ),
                 *voice_lifecycle_operations(),
+                *draft_operations(),
             ],
             "boundaries": {
                 "chat_memory_is_state": False,
@@ -191,6 +193,7 @@ class ContentCoordinator:
             active_voice_ids=active_ids,
             suggested_voice_id=default_voice if default_voice in active_ids else None,
             runs=self._run_summaries(run_limit),
+            draft_bundles=bundle_summaries(self.root),
             health=health,
             warnings=warnings,
             recommended_action=CoordinatorAction(
@@ -263,6 +266,8 @@ class ContentCoordinator:
             "support_candidate": state.support_candidate_path,
             "last_error": state.last_error,
             "artifacts": artifacts,
+            "visual_slots": slot_summary(self.root, run_id),
+            "draft_bundles": bundle_summaries(self.root, run_id),
             "actions": [item.model_dump(mode="json") for item in actions],
         }
 
@@ -295,6 +300,7 @@ class ContentCoordinator:
             RunSummary(
                 run_id=state.id,
                 status=state.status.value,
+                claim_review_required=state.claim_review_required,
                 topic=state.work_order.topic,
                 content_pack=state.work_order.content_pack,
                 voice_id=state.work_order.voice_id,

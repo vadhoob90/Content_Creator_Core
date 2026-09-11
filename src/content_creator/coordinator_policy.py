@@ -99,6 +99,15 @@ def _reviewed_actions(state: RunState, run_id: str) -> list[CoordinatorAction]:
         list[CoordinatorAction]: Ordered review and publication choices.
     """
     actions = []
+    if state.claim_review_required:
+        return [
+            action(
+                "review-changed-claims",
+                "Review changed claims and the exact draft/research hashes",
+                artifact=f"runs/{run_id}/draft-integrity.json",
+            ),
+            action("review-final", "Review the current draft", artifact=state.final_draft_path),
+        ]
     if state.final_draft_path:
         actions.append(
             action("review-final", "Review the current draft", artifact=state.final_draft_path)
@@ -192,6 +201,12 @@ def _existing_run_action(snapshot: WorkspaceSnapshot) -> CoordinatorAction | Non
         CoordinatorAction | None: Existing-run action when one takes priority.
     """
     for run in (item for item in snapshot.runs if item.authoritative):
+        if run.claim_review_required:
+            return CoordinatorAction(
+                id="review-changed-claims",
+                label="Review changed claims before publication",
+                command=["coordinator", "next-actions", run.run_id],
+            )
         if run.status == RunStatus.AWAITING_RESEARCH_APPROVAL.value:
             return CoordinatorAction(
                 id="review-research",

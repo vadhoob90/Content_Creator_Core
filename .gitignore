@@ -18,3 +18,6 @@ runs/
 voice-material/
 profiles/*/work-order.json
 content/*/drafting/
+content/*/drafts/
+drafts/
+draft-bundles/

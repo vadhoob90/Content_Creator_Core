@@ -4,9 +4,8 @@ from __future__ import annotations
 
 import base64
 import hashlib
-import re
 from pathlib import Path
-from typing import List, Optional
+from typing import Optional
 from uuid import uuid4
 
 from .domain import RunStatus, utc_now
@@ -72,7 +71,10 @@ from .visual_contracts import (
 from .visual_contracts import (
     VisualValidation as VisualValidation,
 )
+from .visual_mutation import serialize_visual
 from .visual_rendering import default_visual_adapters
+from .visual_slots import brief_path, decide_slot, prepare_slot, selected_slots, slot_for
+from .visual_validation import VisualValidator
 
 
 class VisualWorkflow:
@@ -93,6 +95,7 @@ class VisualWorkflow:
         self.store = RunStore(self.root)
         self.adapters = adapter_registry or default_visual_adapters()
 
+    @serialize_visual
     def create_brief(self, brief: VisualBrief, profile: VisualPackProfile) -> VisualBrief:
         """Create the brief.
 
@@ -108,6 +111,11 @@ class VisualWorkflow:
         Raises:
             VisualError: If the visual operation cannot complete.
         """
+        if brief.slot_id:
+            return prepare_slot(self.store, brief, profile)
+        existing = self.store.run_dir(brief.run_id) / "visuals/manifest.json"
+        if existing.exists() and self._load_manifest(brief.run_id).slots:
+            raise VisualError("Specify a slot for a multi-slot run")
         state = self.store.load(brief.run_id)
         if state.status not in {RunStatus.READY, RunStatus.NEEDS_AUTHOR, RunStatus.PUBLISHED}:
             raise VisualError("Visual briefs require reviewed content")
@@ -129,15 +137,24 @@ class VisualWorkflow:
         for directory in ("concepts", "revisions", "selected", "previews"):
             (visuals / directory).mkdir(parents=True, exist_ok=True)
         self.store.write_artifact(brief.run_id, "visual_brief.json", brief)
-        self._save_manifest(VisualManifest(run_id=brief.run_id, components=brief.components))
+        manifest = (
+            self._load_manifest(brief.run_id)
+            if existing.exists()
+            else VisualManifest(run_id=brief.run_id)
+        )
+        manifest.components = brief.components
+        manifest.selected_asset_id = None
+        self._save_manifest(manifest)
         return brief
 
+    @serialize_visual
     def execute(
         self,
         run_id: str,
         adapter_name: Optional[str] = None,
         parent_asset_id: Optional[str] = None,
         variant_name: Optional[str] = None,
+        slot_id: Optional[str] = None,
     ) -> VisualAsset:
         """Execute the visual workflow workflow.
 
@@ -151,15 +168,31 @@ class VisualWorkflow:
             parent_asset_id (Optional[str]): The stable identifier for the parent asset.
                 Defaults to ``None``.
             variant_name (Optional[str]): Stable review variant label. Defaults to ``None``.
+            slot_id (Optional[str]): Explicit placement for multi-slot runs. Defaults to ``None``.
 
         Returns:
             VisualAsset: The resulting visual asset for execute.
+
+        Raises:
+            VisualError: If slot ownership or renderer capability is incompatible.
         """
-        brief = self._load_brief(run_id)
+        brief = self._load_brief(run_id, slot_id)
         manifest = self._load_manifest(run_id)
         adapter = self.adapters.get(adapter_name) if adapter_name else self.adapters.route(brief)
         parent = self._asset(manifest, parent_asset_id) if parent_asset_id else None
-        output = self._apply_locked_assets(adapter.render(brief, parent), brief)
+        if parent and parent.slot_id != slot_id:
+            raise VisualError("A visual revision must remain in its original slot")
+        if (
+            brief.role in {"article-inline-diagram", "comparison", "facts-panel"}
+            and adapter.name == "core-deterministic-svg"
+        ):
+            raise VisualError("This role requires a compatible adapter or governed import")
+        rendered = adapter.render(brief, parent)
+        output = (
+            rendered
+            if adapter.name == "governed-import"
+            else self._apply_locked_assets(rendered, brief)
+        )
         asset_id = uuid4().hex[:12]
         revision = parent.revision + 1 if parent else 1
         directory = "revisions" if parent else "concepts"
@@ -170,6 +203,13 @@ class VisualWorkflow:
         path.write_bytes(output.content)
         asset = VisualAsset(
             asset_id=asset_id,
+            slot_id=brief.slot_id,
+            brief_revision=brief.brief_revision,
+            brief_sha256=hash_file(
+                self.store.run_dir(run_id) / brief_path(brief.slot_id, brief.brief_revision)
+            )
+            if brief.slot_id
+            else None,
             parent_asset_id=parent.asset_id if parent else None,
             revision=revision,
             variant_name=variant_name,
@@ -191,7 +231,7 @@ class VisualWorkflow:
             extracted_copy=output.extracted_copy,
             content_boxes=output.content_boxes,
             metadata=output.metadata,
-            components=manifest.components,
+            components=brief.components,
         )
         manifest.assets.append(asset)
         self._save_manifest(manifest)
@@ -246,6 +286,7 @@ class VisualWorkflow:
         ).encode("utf-8")
         return output
 
+    @serialize_visual
     def validate(
         self,
         run_id: str,
@@ -263,165 +304,16 @@ class VisualWorkflow:
         Returns:
             VisualValidation: The validated visual validation for value.
         """
-        brief = self._load_brief(run_id)
         manifest = self._load_manifest(run_id)
         asset = self._asset(manifest, asset_id)
-        diagnostics: List[VisualDiagnostic] = []
-        self._validate_asset_basics(asset, brief, profile, diagnostics)
-        self._validate_copy(asset, brief, diagnostics)
-        self._validate_safe_areas(asset, brief, profile, diagnostics)
-        self._validate_crops(asset, brief, profile, diagnostics)
-        result = VisualValidation(
-            passed=not any(item.severity == DiagnosticSeverity.ERROR for item in diagnostics),
-            diagnostics=diagnostics,
-        )
+        brief = self._load_brief(run_id, asset.slot_id, asset.brief_revision)
+        result = VisualValidator().validate(asset, brief, profile)
         asset.validation = result
         self._save_manifest(manifest)
-        self.store.write_artifact(run_id, "visuals/validation.json", result)
+        self.store.write_artifact(run_id, self._evidence_path(asset, "validation"), result)
         return result
 
-    def _validate_asset_basics(
-        self,
-        asset: VisualAsset,
-        brief: VisualBrief,
-        profile: VisualPackProfile,
-        diagnostics: List[VisualDiagnostic],
-    ) -> None:
-        """Validate the asset basics.
-
-        Args:
-            asset (VisualAsset): The asset value passed to validate asset basics.
-            brief (VisualBrief): The research or content brief that defines the requested
-                work.
-            profile (VisualPackProfile): The resolved voice, perspective, or content
-                profile.
-            diagnostics (List[VisualDiagnostic]): The runtime diagnostics service used to
-                record safe evidence.
-
-        Returns:
-            None: The callable updates asset basics state and returns no value.
-        """
-        ratio = self._ratio(asset.width, asset.height)
-        if not any(
-            self._ratio_matches(asset.width, asset.height, item) for item in profile.aspect_ratios
-        ):
-            diagnostics.append(self._error("unsupported-aspect-ratio", ratio))
-        if asset.format not in [value.lower().lstrip(".") for value in profile.formats]:
-            diagnostics.append(self._error("unsupported-format", asset.format))
-        if asset.execution_class not in profile.execution_classes:
-            diagnostics.append(
-                self._error("unsupported-execution-class", asset.execution_class.value)
-            )
-        if profile.max_file_size_bytes and asset.size_bytes > profile.max_file_size_bytes:
-            diagnostics.append(self._error("file-too-large", str(asset.size_bytes)))
-        if profile.require_alt_text and not brief.alt_text.strip():
-            diagnostics.append(self._error("missing-alt-text", "Alt text is required"))
-        if profile.require_provenance:
-            unresolved = [
-                item.source_id
-                for item in brief.sources
-                if item.rights_status == RightsStatus.UNVERIFIED
-            ]
-            if unresolved:
-                diagnostics.append(self._error("unresolved-reuse-rights", ", ".join(unresolved)))
-
-    def _validate_copy(
-        self,
-        asset: VisualAsset,
-        brief: VisualBrief,
-        diagnostics: List[VisualDiagnostic],
-    ) -> None:
-        """Validate the copy.
-
-        Args:
-            asset (VisualAsset): The asset value passed to validate copy.
-            brief (VisualBrief): The research or content brief that defines the requested
-                work.
-            diagnostics (List[VisualDiagnostic]): The runtime diagnostics service used to
-                record safe evidence.
-
-        Returns:
-            None: The callable updates copy state and returns no value.
-        """
-        if brief.exact_copy:
-            if asset.extracted_copy is None:
-                diagnostics.append(
-                    self._error(
-                        "exact-copy-unverified",
-                        "The adapter did not supply OCR or deterministic copy evidence",
-                    )
-                )
-            elif self._normalise_copy(asset.extracted_copy) != self._normalise_copy(
-                brief.exact_copy
-            ):
-                diagnostics.append(
-                    self._error("exact-copy-mismatch", "Rendered copy differs from the brief")
-                )
-
-    def _validate_safe_areas(
-        self,
-        asset: VisualAsset,
-        brief: VisualBrief,
-        profile: VisualPackProfile,
-        diagnostics: List[VisualDiagnostic],
-    ) -> None:
-        """Validate the safe areas.
-
-        Args:
-            asset (VisualAsset): The asset value passed to validate safe areas.
-            brief (VisualBrief): The research or content brief that defines the requested
-                work.
-            profile (VisualPackProfile): The resolved voice, perspective, or content
-                profile.
-            diagnostics (List[VisualDiagnostic]): The runtime diagnostics service used to
-                record safe evidence.
-
-        Returns:
-            None: The callable updates safe areas state and returns no value.
-        """
-        safe_areas = {item.id: item for item in profile.safe_areas}
-        for profile_id in brief.safe_area_profiles:
-            safe = safe_areas.get(profile_id)
-            if safe is None:
-                diagnostics.append(self._error("unknown-safe-area", profile_id))
-                continue
-            for box in asset.content_boxes:
-                if box.role in safe.applies_to_roles and not self._inside_safe_area(box, safe):
-                    diagnostics.append(
-                        self._error("unsafe-placement", box.role, profile=profile_id)
-                    )
-
-    def _validate_crops(
-        self,
-        asset: VisualAsset,
-        brief: VisualBrief,
-        profile: VisualPackProfile,
-        diagnostics: List[VisualDiagnostic],
-    ) -> None:
-        """Validate the crops.
-
-        Args:
-            asset (VisualAsset): The asset value passed to validate crops.
-            brief (VisualBrief): The research or content brief that defines the requested
-                work.
-            profile (VisualPackProfile): The resolved voice, perspective, or content
-                profile.
-            diagnostics (List[VisualDiagnostic]): The runtime diagnostics service used to
-                record safe evidence.
-
-        Returns:
-            None: The callable updates crops state and returns no value.
-        """
-        crops = {item.id: item for item in profile.crop_profiles}
-        for profile_id in brief.crop_profiles:
-            crop = crops.get(profile_id)
-            if crop is None:
-                diagnostics.append(self._error("unknown-crop-profile", profile_id))
-                continue
-            for box in asset.content_boxes:
-                if box.role in crop.protected_roles and not self._inside(box, crop.visible_area):
-                    diagnostics.append(self._error("crop-risk", box.role, profile=profile_id))
-
+    @serialize_visual
     def record_critique(self, run_id: str, asset_id: str, critique: VisualCritique) -> VisualAsset:
         """Record the critique.
 
@@ -438,9 +330,10 @@ class VisualWorkflow:
         asset.critique = critique
         asset.status = VisualApprovalStatus.CRITIQUED
         self._save_manifest(manifest)
-        self.store.write_artifact(run_id, "visuals/critique.json", critique)
+        self.store.write_artifact(run_id, self._evidence_path(asset, "critique"), critique)
         return asset
 
+    @serialize_visual
     def select(self, run_id: str, asset_id: str) -> VisualAsset:
         """Select the visual workflow workflow.
 
@@ -456,6 +349,10 @@ class VisualWorkflow:
         """
         manifest = self._load_manifest(run_id)
         asset = self._asset(manifest, asset_id)
+        if asset.slot_id:
+            return decide_slot(self.store, manifest, asset, False)
+        if manifest.slots:
+            raise VisualError("Legacy assets must be migrated before slot selection")
         if not asset.validation or not asset.validation.passed:
             raise VisualError("Only a validated visual asset can be selected")
         if asset.critique is None:
@@ -478,6 +375,7 @@ class VisualWorkflow:
         )
         return asset
 
+    @serialize_visual
     def approve(self, run_id: str, asset_id: str) -> VisualAsset:
         """Approve the visual workflow workflow.
 
@@ -493,6 +391,10 @@ class VisualWorkflow:
         """
         manifest = self._load_manifest(run_id)
         asset = self._asset(manifest, asset_id)
+        if asset.slot_id:
+            return decide_slot(self.store, manifest, asset, True)
+        if manifest.slots:
+            raise VisualError("Legacy assets must be migrated before slot selection")
         if manifest.selected_asset_id != asset.asset_id:
             raise VisualError("Author approval requires the selected asset")
         if not asset.validation or not asset.validation.passed:
@@ -513,6 +415,60 @@ class VisualWorkflow:
             ),
         )
         return asset
+
+    def replacement_asset(
+        self, run_id: str, asset_id: str, profile: VisualPackProfile
+    ) -> VisualAsset:
+        """Validate one approved replacement without changing other pending selections.
+
+        Args:
+            run_id (str): Published run identifier.
+            asset_id (str): Explicit replacement candidate.
+            profile (VisualPackProfile): Pack publication policy.
+
+        Returns:
+            VisualAsset: Selected approved replacement candidate.
+
+        Raises:
+            VisualError: If the candidate is not the selected approved replacement.
+        """
+        manifest = self._load_manifest(run_id)
+        asset = self._asset(manifest, asset_id)
+        if asset.slot_id:
+            slot = slot_for(manifest, asset.slot_id)
+            selection = selected_slots(
+                self.store, manifest.model_copy(update={"slots": [slot]}), approved=True
+            )
+            if selection[0].asset_id == asset_id:
+                return asset
+        elif self.ensure_publication_ready(run_id, profile) == asset:
+            return asset
+        raise VisualError("Replacement requires the selected approved asset for its slot")
+
+    def ensure_publication_assets(
+        self, run_id: str, profile: VisualPackProfile
+    ) -> list[VisualAsset]:
+        """Return the complete approved visual collection for publication.
+
+        Args:
+            run_id (str): Reviewed run identifier.
+            profile (VisualPackProfile): Pack publication policy.
+
+        Returns:
+            list[VisualAsset]: Every approved placement, including legacy singleton selection.
+
+        Raises:
+            VisualError: If selected slots have no publication destination.
+        """
+        path = self.store.run_dir(run_id) / "visuals/manifest.json"
+        if path.exists():
+            manifest = self._load_manifest(run_id)
+            if manifest.slots:
+                if not profile.destination:
+                    raise VisualError("Visual slots have no publication destination")
+                return selected_slots(self.store, manifest, approved=True)
+        asset = self.ensure_publication_ready(run_id, profile)
+        return [asset] if asset else []
 
     def ensure_publication_ready(
         self, run_id: str, profile: VisualPackProfile
@@ -537,6 +493,8 @@ class VisualWorkflow:
                 raise VisualError("This content pack requires an approved visual asset")
             return None
         manifest = self._load_manifest(run_id)
+        if manifest.slots:
+            raise VisualError("Use the complete visual collection for a multi-slot run")
         if not manifest.selected_asset_id:
             raise VisualError("The visual manifest has no selected publication asset")
         asset = self._asset(manifest, manifest.selected_asset_id)
@@ -551,6 +509,7 @@ class VisualWorkflow:
             raise VisualError("Selected visual asset is missing or its hash has changed")
         return asset
 
+    @serialize_visual
     def publish(self, run_id: str, profile: VisualPackProfile) -> Optional[Path]:
         """Publish the visual workflow workflow.
 
@@ -620,14 +579,21 @@ class VisualWorkflow:
         manifest = self._load_manifest(run_id)
         selected = self._asset(manifest, asset_id)
         selected.status = VisualApprovalStatus.PUBLISHED
-        manifest.published_path = str(target.relative_to(self.root))
+        if selected.slot_id:
+            slot_for(manifest, selected.slot_id).published_path = str(target.relative_to(self.root))
+        else:
+            manifest.published_path = str(target.relative_to(self.root))
         self._save_manifest(manifest)
 
-    def _load_brief(self, run_id: str) -> VisualBrief:
+    def _load_brief(
+        self, run_id: str, slot_id: Optional[str] = None, revision: Optional[int] = None
+    ) -> VisualBrief:
         """Load the brief.
 
         Args:
             run_id (str): The stable identifier for the content run.
+            slot_id (Optional[str]): Explicit placement. Defaults to ``None``.
+            revision (Optional[int]): Immutable brief revision. Defaults to ``None``.
 
         Returns:
             VisualBrief: The loaded visual brief for brief.
@@ -635,6 +601,16 @@ class VisualWorkflow:
         Raises:
             VisualError: If the visual operation cannot complete.
         """
+        manifest_path = self.store.run_dir(run_id) / "visuals/manifest.json"
+        if slot_id:
+            slot = slot_for(self._load_manifest(run_id), slot_id)
+            return VisualBrief.model_validate_json(
+                self.store.read_artifact(
+                    run_id, brief_path(slot.slot_id, revision or slot.brief_revision)
+                )
+            )
+        if manifest_path.exists() and self._load_manifest(run_id).slots:
+            raise VisualError("Specify a slot for a multi-slot run")
         try:
             return VisualBrief.model_validate_json(
                 self.store.read_artifact(run_id, "visual_brief.json")
@@ -685,6 +661,22 @@ class VisualWorkflow:
         self.store.write_artifact(manifest.run_id, "visuals/manifest.json", manifest)
 
     @staticmethod
+    def _evidence_path(asset: VisualAsset, kind: str) -> str:
+        """Return candidate-specific review evidence paths for slot assets.
+
+        Args:
+            asset (VisualAsset): Candidate being validated or critiqued.
+            kind (str): Evidence kind.
+
+        Returns:
+            str: Run-relative evidence path.
+        """
+        if asset.slot_id:
+            directory = f"visuals/slots/{asset.slot_id}/r{asset.brief_revision:04d}"
+            return f"{directory}/{asset.asset_id}-{kind}.json"
+        return f"visuals/{kind}.json"
+
+    @staticmethod
     def _asset(manifest: VisualManifest, asset_id: Optional[str]) -> VisualAsset:
         """Return the asset.
 
@@ -702,107 +694,3 @@ class VisualWorkflow:
             if asset.asset_id == asset_id:
                 return asset
         raise VisualError("Unknown visual asset: {}".format(asset_id))
-
-    @staticmethod
-    def _ratio(width: int, height: int) -> str:
-        """Return the ratio.
-
-        Args:
-            width (int): The width value that controls ratio.
-            height (int): The height value that controls ratio.
-
-        Returns:
-            str: The resulting text for ratio.
-        """
-        from math import gcd
-
-        divisor = gcd(width, height)
-        return "{}:{}".format(width // divisor, height // divisor)
-
-    @staticmethod
-    def _ratio_matches(width: int, height: int, expected: str) -> bool:
-        """Return whether dimensions match a declared ratio within rounding tolerance.
-
-        Args:
-            width (int): Rendered width in pixels.
-            height (int): Rendered height in pixels.
-            expected (str): Pack ratio in positive ``WIDTH:HEIGHT`` form.
-
-        Returns:
-            bool: Whether the rendered and declared ratios differ by at most 0.5 percent.
-        """
-        expected_width, expected_height = (float(part) for part in expected.split(":"))
-        expected_value = expected_width / expected_height
-        return abs((width / height) - expected_value) / expected_value <= 0.005
-
-    @staticmethod
-    def _normalise_copy(lines: List[str]) -> List[str]:
-        """Return the normalise copy.
-
-        Args:
-            lines (List[str]): The lines collection consumed while normalise copy.
-
-        Returns:
-            List[str]: The resulting normalise copy values in their documented order.
-        """
-        return [re.sub(r"\s+", " ", line).strip() for line in lines]
-
-    @staticmethod
-    def _inside(inner: BoundingBox, outer: BoundingBox) -> bool:
-        """Return the inside.
-
-        Args:
-            inner (BoundingBox): The inner value passed to inside.
-            outer (BoundingBox): The outer value passed to inside.
-
-        Returns:
-            bool: Whether inside satisfies the documented condition.
-        """
-        epsilon = 1e-9
-        return (
-            inner.x + epsilon >= outer.x
-            and inner.y + epsilon >= outer.y
-            and inner.x + inner.width <= outer.x + outer.width + epsilon
-            and inner.y + inner.height <= outer.y + outer.height + epsilon
-        )
-
-    @classmethod
-    def _inside_safe_area(cls, box: BoundingBox, safe: SafeAreaProfile) -> bool:
-        """Return the inside safe area.
-
-        Args:
-            box (BoundingBox): The box value passed to inside safe area.
-            safe (SafeAreaProfile): The safe value passed to inside safe area.
-
-        Returns:
-            bool: Whether inside safe area satisfies the documented condition.
-        """
-        return cls._inside(
-            box,
-            BoundingBox(
-                x=safe.left,
-                y=safe.top,
-                width=1 - safe.left - safe.right,
-                height=1 - safe.top - safe.bottom,
-            ),
-        )
-
-    @staticmethod
-    def _error(code: str, message: str, profile: Optional[str] = None) -> VisualDiagnostic:
-        """Return the error.
-
-        Args:
-            code (str): The code text processed when error.
-            message (str): The human-readable message associated with the operation.
-            profile (Optional[str]): The resolved voice, perspective, or content profile.
-                Defaults to ``None``.
-
-        Returns:
-            VisualDiagnostic: The resulting visual diagnostic for error.
-        """
-        return VisualDiagnostic(
-            code=code,
-            severity=DiagnosticSeverity.ERROR,
-            message=message,
-            profile=profile,
-        )

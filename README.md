@@ -112,7 +112,8 @@ required research and review route, and preserves the work for author review.
 “Publish” means saving an approved copy inside the author workspace.
 
 See [Content Creator Coordinator](docs/guides/content-coordinator.md) for
-conversational and terminal use.
+conversational and terminal use. To collect related drafts for review, see
+[draft bundles and non-publishing export](docs/guides/draft-bundles.md).
 
 ### 4. Create governed visuals from natural language
 

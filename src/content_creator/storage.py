@@ -355,6 +355,29 @@ class RunStore:
         return self.runs_dir / run_id
 
     @staticmethod
+    def atomic_bytes(path: Path, content: bytes) -> None:
+        """Write one artifact without changing its exact bytes.
+
+        Args:
+            path (Path): Application-validated artifact destination.
+            content (bytes): Exact bytes to persist.
+
+        Returns:
+            None: The destination is replaced atomically.
+        """
+        path.parent.mkdir(parents=True, exist_ok=True)
+        fd, temporary = tempfile.mkstemp(prefix=".tmp-", dir=str(path.parent))
+        try:
+            with os.fdopen(fd, "wb") as handle:
+                handle.write(content)
+                handle.flush()
+                os.fsync(handle.fileno())
+            os.replace(temporary, path)
+        finally:
+            if os.path.exists(temporary):
+                os.unlink(temporary)
+
+    @staticmethod
     def _atomic_text(path: Path, content: str) -> None:
         """Return the atomic text.
 

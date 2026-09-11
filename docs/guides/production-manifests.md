@@ -86,3 +86,11 @@ version, voice version, artifact digest, learning epoch, or perspective digest
 is represented by `null` plus an explicit `unavailable` or `partial` provenance
 status and reason. Core never stamps its current installed version onto a
 historical run.
+
+## Author-edit integrity
+
+New manifests optionally expose `draft_integrity`: the accepted text and
+research hashes, claim-review state, and whether model quality evidence is
+historical. New generation contexts preserve effective pack policy, which
+manifest refresh and [author-edit adoption](author-edits.md) retain after later
+pack upgrades. Existing manifests without these fields remain readable.

@@ -1,17 +1,34 @@
 {
   "id": "linkedin-article",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "extends": "general-text",
   "format": "article",
   "destination": "content/linkedin-article/published",
-  "defaults": {"length": "800:1800"},
-  "statistical_voice_score": {"eligible": true},
+  "defaults": {
+    "length": "800:1800"
+  },
+  "statistical_voice_score": {
+    "eligible": true
+  },
   "visuals": {
     "supported": true,
     "required": false,
-    "execution_classes": ["deterministic", "generative"],
-    "aspect_ratios": ["16:9", "1.91:1", "1:1", "4:5"],
-    "formats": ["svg", "png", "jpg", "webp"],
+    "execution_classes": [
+      "deterministic",
+      "generative"
+    ],
+    "aspect_ratios": [
+      "16:9",
+      "1.91:1",
+      "1:1",
+      "4:5"
+    ],
+    "formats": [
+      "svg",
+      "png",
+      "jpg",
+      "webp"
+    ],
     "max_file_size_bytes": 8388608,
     "destination": "content/linkedin-article/visuals",
     "default_role": "article-cover",
@@ -20,33 +37,108 @@
         "aspect_ratio": "16:9",
         "recommended_width": 1920,
         "recommended_height": 1080,
-        "formats": ["svg", "png", "jpg", "webp"],
-        "safe_area_profiles": ["feed"],
-        "crop_profiles": ["composer-thumbnail"]
+        "formats": [
+          "svg",
+          "png",
+          "jpg",
+          "webp"
+        ],
+        "safe_area_profiles": [
+          "feed"
+        ],
+        "crop_profiles": [
+          "composer-thumbnail"
+        ]
       },
       "link-preview": {
         "aspect_ratio": "1.91:1",
         "recommended_width": 1200,
         "recommended_height": 627,
-        "formats": ["svg", "png", "jpg", "webp"],
-        "safe_area_profiles": ["feed"],
-        "crop_profiles": ["composer-thumbnail"]
+        "formats": [
+          "svg",
+          "png",
+          "jpg",
+          "webp"
+        ],
+        "safe_area_profiles": [
+          "feed"
+        ],
+        "crop_profiles": [
+          "composer-thumbnail"
+        ]
       },
       "portrait-feed": {
         "aspect_ratio": "4:5",
         "recommended_width": 1200,
         "recommended_height": 1500,
-        "formats": ["svg", "png", "jpg", "webp"],
-        "safe_area_profiles": ["feed"],
-        "crop_profiles": ["composer-thumbnail"]
+        "formats": [
+          "svg",
+          "png",
+          "jpg",
+          "webp"
+        ],
+        "safe_area_profiles": [
+          "feed"
+        ],
+        "crop_profiles": [
+          "composer-thumbnail"
+        ]
       },
       "square-feed": {
         "aspect_ratio": "1:1",
         "recommended_width": 1200,
         "recommended_height": 1200,
-        "formats": ["svg", "png", "jpg", "webp"],
-        "safe_area_profiles": ["feed"],
-        "crop_profiles": ["composer-thumbnail"]
+        "formats": [
+          "svg",
+          "png",
+          "jpg",
+          "webp"
+        ],
+        "safe_area_profiles": [
+          "feed"
+        ],
+        "crop_profiles": [
+          "composer-thumbnail"
+        ]
+      },
+      "article-inline-diagram": {
+        "aspect_ratio": "16:9",
+        "recommended_width": 1920,
+        "recommended_height": 1080,
+        "formats": [
+          "svg",
+          "png",
+          "jpg",
+          "webp"
+        ],
+        "safe_area_profiles": [],
+        "crop_profiles": []
+      },
+      "comparison": {
+        "aspect_ratio": "16:9",
+        "recommended_width": 1920,
+        "recommended_height": 1080,
+        "formats": [
+          "svg",
+          "png",
+          "jpg",
+          "webp"
+        ],
+        "safe_area_profiles": [],
+        "crop_profiles": []
+      },
+      "facts-panel": {
+        "aspect_ratio": "16:9",
+        "recommended_width": 1920,
+        "recommended_height": 1080,
+        "formats": [
+          "svg",
+          "png",
+          "jpg",
+          "webp"
+        ],
+        "safe_area_profiles": [],
+        "crop_profiles": []
       }
     },
     "safe_areas": [
@@ -56,7 +148,10 @@
         "top": 0.05,
         "right": 0.05,
         "bottom": 0.05,
-        "applies_to_roles": ["text", "headline"]
+        "applies_to_roles": [
+          "text",
+          "headline"
+        ]
       }
     ],
     "crop_profiles": [
@@ -69,11 +164,17 @@
           "height": 0.55,
           "role": "crop"
         },
-        "protected_roles": ["headline"]
+        "protected_roles": [
+          "headline"
+        ]
       }
     ]
   },
   "validators": [],
   "rubric": "rubric.yaml",
-  "allowed_research": ["none", "light", "deep"]
+  "allowed_research": [
+    "none",
+    "light",
+    "deep"
+  ]
 }

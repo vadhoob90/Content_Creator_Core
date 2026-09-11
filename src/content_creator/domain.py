@@ -459,6 +459,7 @@ class RunEvent(BaseModel):
 class PublishedMediaArtifact(BaseModel):
     """Record one approved media artifact in the publication package."""
 
+    slot_id: Optional[str] = None
     role: str
     source_path: str
     published_path: str
@@ -485,6 +486,7 @@ class RunState(BaseModel):
     final_draft_path: Optional[str] = None
     production_manifest_path: Optional[str] = None
     review_draft_path: Optional[str] = None
+    claim_review_required: bool = False
     published_path: Optional[str] = None
     published_visual_path: Optional[str] = None
     published_media: List[PublishedMediaArtifact] = Field(default_factory=list)

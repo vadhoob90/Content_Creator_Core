@@ -11,6 +11,9 @@ from pydantic import BaseModel
 
 from .context_composition import ContextCompositionManifest
 from .domain import RunState, WorkOrder
+from .draft_bundles.models import BundleReview, DraftBundle, DraftExportManifest
+from .draft_integrity import DraftIntegrity
+from .edit_contracts import ClaimReviewDecision
 from .lifecycle_models import LifecyclePlan, LifecycleReceipt, VersionLifecycleCatalogue
 from .perspective_semantic_review import (
     PerspectiveReviewDecision,
@@ -20,6 +23,7 @@ from .perspectives import PerspectiveManifest
 from .production_manifest import ProductionManifest
 from .publication_receipt_models import PublicationBaseline, PublicationReceipt
 from .storage import RunStore
+from .visual_contracts import VisualBrief, VisualSlot
 from .visual_requests import VisualInvocation
 from .visuals import VisualDecision, VisualManifest
 from .voice_evolution_models import VoiceEvolutionChangeSet, VoiceEvolutionDelta
@@ -43,6 +47,11 @@ class SchemaCompatibilityError(ValueError):
 
 
 SCHEMA_MODELS: Dict[str, Type[BaseModel]] = {
+    "draft-bundle": DraftBundle,
+    "draft-bundle-review": BundleReview,
+    "draft-export-manifest": DraftExportManifest,
+    "draft-integrity": DraftIntegrity,
+    "edit-claim-review": ClaimReviewDecision,
     "context-composition-manifest": ContextCompositionManifest,
     "work-order": WorkOrder,
     "run-state": RunState,
@@ -65,6 +74,8 @@ SCHEMA_MODELS: Dict[str, Type[BaseModel]] = {
     "publication-baseline": PublicationBaseline,
     "publication-receipt": PublicationReceipt,
     "visual-manifest": VisualManifest,
+    "visual-slot": VisualSlot,
+    "visual-brief": VisualBrief,
     "visual-decision": VisualDecision,
     "visual-invocation": VisualInvocation,
 }
@@ -79,12 +90,16 @@ def schema_catalogue() -> Dict[str, Dict[str, Any]]:
     result: Dict[str, Dict[str, Any]] = {}
     for name, model in SCHEMA_MODELS.items():
         schema = model.model_json_schema()
-        schema["$id"] = "https://content-creator.dev/schemas/{}/{}.json".format(
-            name, CURRENT_SCHEMA_VERSION
+        version = "1.1" if name == "visual-manifest" else CURRENT_SCHEMA_VERSION
+        reads = (
+            (*SUPPORTED_READ_VERSIONS, "1.1")
+            if name == "visual-manifest"
+            else SUPPORTED_READ_VERSIONS
         )
+        schema["$id"] = "https://content-creator.dev/schemas/{}/{}.json".format(name, version)
         result[name] = {
-            "schema_version": CURRENT_SCHEMA_VERSION,
-            "supported_read_versions": list(SUPPORTED_READ_VERSIONS),
+            "schema_version": version,
+            "supported_read_versions": list(reads),
             "schema": schema,
         }
     return result
@@ -134,7 +149,10 @@ def migrate_artifact(kind: str, payload: Dict[str, Any]) -> Dict[str, Any]:
         raise SchemaCompatibilityError("Unknown artifact schema: {}".format(kind))
     migrated = deepcopy(payload)
     version = str(migrated.get("schema_version", "legacy"))
-    if version not in SUPPORTED_READ_VERSIONS:
+    supported = (
+        (*SUPPORTED_READ_VERSIONS, "1.1") if kind == "visual-manifest" else SUPPORTED_READ_VERSIONS
+    )
+    if version not in supported:
         raise SchemaCompatibilityError("Unsupported {} schema version: {}".format(kind, version))
     if version == "legacy":
         migrated["schema_version"] = CURRENT_SCHEMA_VERSION

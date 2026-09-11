@@ -26,7 +26,9 @@ from .visual_contracts import (
     VisualPackProfile,
     VisualRoleProfile,
 )
+from .visual_mutation import serialize_visual
 from .visual_preferences import VisualPreferenceMemory
+from .visual_slots import brief_path
 from .visuals import VisualWorkflow
 
 
@@ -36,6 +38,9 @@ class VisualInvocation(BaseModel):
     schema_version: str = "1.0"
     run_id: str
     request: str
+    slot_id: Optional[str] = None
+    brief_revision: Optional[int] = None
+    brief_sha256: Optional[str] = None
     decision: str = "visual-workflow"
     pack_id: str
     pack_version: str
@@ -61,6 +66,7 @@ class VisualRenderRequest(BaseModel):
     pack_version: str
     request: str
     role: Optional[str] = None
+    slot_id: Optional[str] = None
     variants: int = 1
     adapter_name: Optional[str] = None
     parent_asset_id: Optional[str] = None
@@ -112,6 +118,7 @@ class VisualRequestWorkflow:
         role_profile = profile.role(role)
         return self._resolve_components(profile, role_id, role_profile)
 
+    @serialize_visual
     def render(
         self,
         profile: VisualPackProfile,
@@ -136,6 +143,14 @@ class VisualRequestWorkflow:
         self._require_support(profile)
         if request.variants < 1 or request.variants > 6:
             raise VisualError("Visual rendering requires between 1 and 6 variants")
+        if request.slot_id:
+            return self._render_slot(profile, request)
+        manifest_path = self.store.run_dir(request.run_id) / "visuals/manifest.json"
+        if (
+            manifest_path.exists()
+            and VisualManifest.model_validate_json(manifest_path.read_bytes()).slots
+        ):
+            raise VisualError("Specify --slot for visual render on a multi-slot run")
         role_id = request.role or profile.default_role or "default"
         role_profile = profile.role(request.role)
         components = self._resolve_components(profile, role_id, role_profile)
@@ -165,6 +180,58 @@ class VisualRequestWorkflow:
                 adapter_name=request.adapter_name,
                 parent_asset_id=request.parent_asset_id,
                 variant_name="concept-{}".format(index + 1),
+            )
+            self.workflow.validate(request.run_id, asset.asset_id, profile)
+            assets.append(self.workflow.asset(request.run_id, asset.asset_id))
+        return VisualRenderResult(invocation=invocation, brief=brief, assets=assets)
+
+    def _render_slot(
+        self, profile: VisualPackProfile, request: VisualRenderRequest
+    ) -> VisualRenderResult:
+        """Render variants from an immutable placement brief.
+
+        Args:
+            profile (VisualPackProfile): Pack visual requirements.
+            request (VisualRenderRequest): Explicit slot render request.
+
+        Returns:
+            VisualRenderResult: Invocation and independently validated slot candidates.
+
+        Raises:
+            VisualError: If request overrides conflict with the pinned brief.
+        """
+        brief = self.workflow._load_brief(request.run_id, request.slot_id)
+        if (request.role and request.role != brief.role) or request.objective or request.alt_text:
+            raise VisualError(
+                "Update the slot brief explicitly before changing its purpose or alt text"
+            )
+        if not request.adapter_name:
+            self.components(profile, brief.role)
+        invocation = VisualInvocation(
+            slot_id=brief.slot_id,
+            brief_revision=brief.brief_revision,
+            brief_sha256=hash_file(
+                self.store.run_dir(request.run_id)
+                / brief_path(str(brief.slot_id), brief.brief_revision)
+            ),
+            run_id=request.run_id,
+            request=request.request,
+            pack_id=request.pack_id,
+            pack_version=request.pack_version,
+            role=brief.role or "visual",
+            components=brief.components,
+        )
+        directory = f"visuals/slots/{brief.slot_id}/r{brief.brief_revision:04d}/invocations"
+        count = len(list((self.store.run_dir(request.run_id) / directory).glob("*.json"))) + 1
+        self.store.write_artifact(request.run_id, f"{directory}/{count:04d}.json", invocation)
+        assets = []
+        for index in range(request.variants):
+            asset = self.workflow.execute(
+                request.run_id,
+                request.adapter_name,
+                request.parent_asset_id,
+                f"concept-{index + 1}",
+                request.slot_id,
             )
             self.workflow.validate(request.run_id, asset.asset_id, profile)
             assets.append(self.workflow.asset(request.run_id, asset.asset_id))

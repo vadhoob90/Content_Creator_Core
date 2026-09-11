@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 from abc import ABC, abstractmethod
 from enum import Enum
-from typing import Any, Dict, List, Optional, Self
+from typing import Any, Dict, List, Literal, Optional, Self
 from uuid import uuid4
 
 from pydantic import BaseModel, Field, field_validator, model_validator
@@ -279,6 +279,12 @@ class VisualBrief(BaseModel):
 
     schema_version: str = "1.0"
     run_id: str
+    slot_id: Optional[str] = Field(
+        default=None, pattern=r"^[a-z0-9]+(?:-[a-z0-9]+)*$", max_length=64
+    )
+    brief_revision: int = Field(default=1, ge=1)
+    display_order: int = Field(default=0, ge=0)
+    insertion_anchor: Optional[str] = None
     objective: str
     content_connection: str
     exact_copy: List[str] = Field(default_factory=list)
@@ -377,6 +383,9 @@ class VisualAsset(BaseModel):
     """Represent a visual asset."""
 
     asset_id: str = Field(default_factory=lambda: uuid4().hex[:12])
+    slot_id: Optional[str] = None
+    brief_revision: int = 1
+    brief_sha256: Optional[str] = None
     parent_asset_id: Optional[str] = None
     revision: int = Field(default=1, ge=1)
     variant_name: Optional[str] = None
@@ -405,16 +414,55 @@ class VisualAsset(BaseModel):
     created_at: str = Field(default_factory=lambda: utc_now().isoformat())
 
 
+class VisualSlot(BaseModel):
+    """Record independent placement, text ownership, and exact approval evidence."""
+
+    slot_id: str = Field(pattern=r"^[a-z0-9]+(?:-[a-z0-9]+)*$", max_length=64)
+    role: str
+    objective: str
+    order: int = Field(default=0, ge=0)
+    anchor: Optional[str] = None
+    artifact_path: str
+    artifact_revision: int
+    artifact_sha256: str
+    brief_revision: int
+    brief_sha256: str
+    selected_asset_id: Optional[str] = None
+    approval_sha256: Optional[str] = None
+    published_path: Optional[str] = None
+
+
 class VisualManifest(BaseModel):
     """Represent a visual manifest."""
 
-    schema_version: str = "1.0"
+    schema_version: Literal["1.0", "1.1"] = "1.0"
+    slots: List[VisualSlot] = Field(default_factory=list)
     run_id: str
     assets: List[VisualAsset] = Field(default_factory=list)
     components: List[VisualComponentRef] = Field(default_factory=list)
     selected_asset_id: Optional[str] = None
     published_path: Optional[str] = None
     updated_at: str = Field(default_factory=lambda: utc_now().isoformat())
+
+    @model_validator(mode="after")
+    def validate_collection(self) -> Self:
+        """Validate collection identity without permitting silent singleton downgrade.
+
+        Returns:
+            Self: Validated visual manifest.
+
+        Raises:
+            ValueError: If identities conflict or slot data uses a legacy schema.
+        """
+        ids = [slot.slot_id for slot in self.slots]
+        assets = [asset.asset_id for asset in self.assets]
+        if len(ids) != len(set(ids)) or len(assets) != len(set(assets)):
+            raise ValueError("Visual slot and asset identifiers must be unique")
+        if any(s.artifact_path != f"runs/{self.run_id}/final.md" for s in self.slots):
+            raise ValueError("Visual slots must belong to their manifest run")
+        if self.slots and (self.schema_version != "1.1" or self.selected_asset_id):
+            raise ValueError("Slot manifests require schema 1.1 and no global selection")
+        return self
 
 
 class VisualAdapter(ABC):

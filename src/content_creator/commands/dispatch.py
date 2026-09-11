@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Callable, List, Optional
 
 from ..orchestrator import Orchestrator
+from .author_edit import run as run_author_edit
 from .base_commands import (
     check_workspace,
     evaluate,
@@ -19,6 +20,7 @@ from .base_commands import (
     manage_voice,
     show_advanced,
 )
+from .bundle import run as run_bundle
 from .context import CommandContext
 from .context_commands import run as show_context
 from .coordinator_commands import inspect_coordinator
@@ -44,6 +46,11 @@ from .workspace_commands import manage_workspace
 
 Handler = Callable[[CommandContext], int]
 ROUTES: dict[str, Handler] = {
+    "bundle": run_bundle,
+    "export-draft": run_bundle,
+    "adopt-edit": run_author_edit,
+    "approve-edit-claims": run_author_edit,
+    "recover-edit": run_author_edit,
     "advanced": show_advanced,
     "agents": manage_agents,
     "approve-research": approve_research,

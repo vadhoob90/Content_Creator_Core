@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 from datetime import UTC, datetime
 from pathlib import Path
@@ -81,7 +82,7 @@ def resolved_context(
     result: Dict[str, Any] = {
         "schema_version": "1.1",
         "engine_version": VERSION,
-        "content_pack": {"id": pack.id, "version": pack.version},
+        **_pack_snapshot(pack),
         "voice": voice,
         "component_hashes": hashes,
         "active_learning_ids": voice_learning_ids,
@@ -124,3 +125,21 @@ def _voice_memory_path(root: Path, order: WorkOrder) -> Path:
     if order.voice_version:
         return epoch_path(root, order.voice_id, str(order.voice_version))
     return root / "profiles" / order.voice_id / "learnings" / "memory.json"
+
+
+def _pack_snapshot(pack: ContentPack) -> dict:
+    """Capture effective pack inputs and their canonical digest for later validation.
+
+    Args:
+        pack (ContentPack): Fully resolved generation-time content pack.
+
+    Returns:
+        dict: Pack identity, effective inputs, and integrity hash.
+    """
+    snapshot = pack.model_dump(mode="json")
+    digest = hashlib.sha256(json.dumps(snapshot, sort_keys=True).encode("utf-8")).hexdigest()
+    return {
+        "content_pack": {"id": pack.id, "version": pack.version},
+        "effective_pack": snapshot,
+        "effective_pack_sha256": "sha256:" + digest,
+    }

@@ -58,3 +58,35 @@ reconstructed from current registry state.
 The authoritative catalogue lives in `content_creator.schema_registry`.
 Pydantic models remain the single source of truth; exported schemas are build
 artifacts and must not be edited by hand.
+
+## Author-edit integrity additions
+
+The author-edit slice of #135 adds optional `claim_review_required` state and
+coordinator fields, optional `draft_integrity` production metadata, and version
+1.0 `draft-integrity` / `edit-claim-review` schemas. New resolved contexts also
+capture `effective_pack` and `effective_pack_sha256`. Historical contexts remain
+readable; missing effective inputs remain unavailable for adoption unless a
+matching standalone pack can be verified. Accepted snapshots and recovery
+journals live within ignored run directories. Existing text writers and legacy
+receipt shapes are unchanged. See [author edits](../guides/author-edits.md).
+
+## Draft bundle additions
+
+Issue #135 adds version 1.0 `draft-bundle`, `draft-bundle-review`, and
+`draft-export-manifest` schemas. Bundle metadata pins independent run identities,
+text/evidence hashes, and selected visual records. Unknown bundle schema versions
+are rejected. Text-only runs remain supported, with unavailable historical
+evidence represented explicitly. Existing singleton visual selections retain
+their semantics. No publication receipt schema or source run migration is
+required. See [draft bundles](../guides/draft-bundles.md).
+
+## Visual collection schema 1.1
+
+Core 1.20 adds explicit visual slots, per-brief candidate bindings, and exact
+approval hashes in visual-manifest schema `1.1`. Legacy singleton `1.0` remains
+supported; slot data cannot be written under the legacy version or with a global
+selection. Explicit migration preserves historical artifacts and only binds the
+verified current selected candidate. Use Core 1.20+ for collection mutations.
+The schema catalogue reports per-kind read versions; unrelated schemas remain
+at 1.0. Publication media/receipt slot IDs and production slot projections are
+additive optional fields. See [visual slots](../guides/visual-slots.md).

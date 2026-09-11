@@ -33,6 +33,7 @@ class PerspectiveEvaluationReceipt(BaseModel):
 class PublicationArtifactReceipt(BaseModel):
     """Record one content or media artifact in a publication package."""
 
+    slot_id: Optional[str] = None
     role: str
     path: str
     sha256: str

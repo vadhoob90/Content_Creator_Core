@@ -19,6 +19,7 @@ from .domain import (
     RunStatus,
     WorkOrder,
 )
+from .edit_transaction import serialize_run
 from .orchestration_support import OrchestrationError as OrchestrationError
 from .orchestration_support import OrchestrationRuntime
 from .perspective_extraction import extract_perspectives
@@ -122,6 +123,7 @@ class Orchestrator:
         """
         return self.learning.retry_publication(run_id)
 
+    @serialize_run
     def replace_visual(self, run_id: str, asset_id: str) -> RunState:
         """Update published media without rewriting the canonical text artifact.
 
@@ -138,13 +140,15 @@ class Orchestrator:
         state = self.store.load(run_id)
         if state.status != RunStatus.PUBLISHED:
             raise OrchestrationError("Visual replacement requires a published run")
+        if self.publications.verify(run_id=run_id)["status"] != "ok":
+            raise OrchestrationError(
+                "Existing publication failed verification; restore it before replacing media"
+            )
         pack = self.packs.resolve(
             state.work_order.content_pack,
             state.work_order.pack_options,
         )
-        asset = self.visuals.ensure_publication_ready(run_id, pack.visuals)
-        if asset is None or asset.asset_id != asset_id:
-            raise OrchestrationError("Visual replacement requires the selected approved asset")
+        asset = self.visuals.replacement_asset(run_id, asset_id, pack.visuals)
         receipt_path = self.package_publisher.replace_visual(state, asset, pack.visuals)
         state.events.extend(
             [
@@ -158,6 +162,7 @@ class Orchestrator:
         self.store.save_state(state)
         return state
 
+    @serialize_run
     def revise(
         self,
         run_id: str,
@@ -602,6 +607,7 @@ class Orchestrator:
             self._runtime._fail(state, exc)
             raise
 
+    @serialize_run
     def publish(
         self,
         run_id: str,
@@ -630,26 +636,14 @@ class Orchestrator:
             RunState: The resulting run state for publish.
 
         """
-        state, draft, pack, visual_asset, target = self._prepare_publication(
-            run_id, filename, diagnostic_decision
-        )
-        gate = self.publication_lifecycle.prepare(
-            state,
-            draft,
+        return self.publication_lifecycle.publish_reviewed(
+            self,
+            run_id,
+            filename,
+            feedback,
+            diagnostic_decision,
             perspective_review_approved_by,
             perspective_review_notes,
-        )
-        assessment = self._publication_assessment(state, run_id, target, feedback)
-        self.store.write_artifact(run_id, "assessment.json", assessment)
-        self._extract_learnings(state, draft, assessment, feedback)
-        self._extract_perspectives(state, draft, assessment)
-        return self._finish_publication(
-            state,
-            target,
-            pack,
-            visual_asset,
-            draft,
-            gate,
         )
 
     def _prepare_publication(
@@ -690,7 +684,7 @@ class Orchestrator:
             self._runtime._apply_diagnostic_state(state, preflight)
         draft = self.store.read_artifact(run_id, "final.md").rstrip() + "\n"
         pack = self.packs.resolve(state.work_order.content_pack, state.work_order.pack_options)
-        visual_asset = self.visuals.ensure_publication_ready(run_id, pack.visuals)
+        visual_asset = self.visuals.ensure_publication_assets(run_id, pack.visuals)
         target_dir = self.root / pack.destination
         target_dir.mkdir(parents=True, exist_ok=True)
         requested = filename or f"{slugify(state.work_order.topic)}.md"
@@ -698,6 +692,11 @@ class Orchestrator:
         if target.exists():
             raise StorageError(f"Refusing to overwrite {target}")
         self.publications.ensure_receipt_available(target)
+        from .slot_publication import preflight_collection
+
+        preflight_collection(
+            self.package_publisher, state, target, draft, pack.visuals, visual_asset
+        )
         return state, draft, pack, visual_asset, target
 
     def _publication_assessment(

@@ -107,3 +107,10 @@ retry returns without invoking the extractor or applying memory again. Reusing
 the key with different feedback fails; intentional new feedback needs a new
 key. Unkeyed requests remain supported, but retry-capable hosts should always
 supply a stable key.
+
+## Direct author edits
+
+Use [author-edit adoption](author-edits.md) to preserve direct changes without a
+model-backed rewrite. Publication rejects stale draft/research hashes and
+outstanding claim review. `adopt-edit` and `approve-edit-claims` do not publish
+or activate learning.

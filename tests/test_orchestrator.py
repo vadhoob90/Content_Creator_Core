@@ -260,7 +260,7 @@ def test_post_gate_author_revision_refreshes_checks_and_is_idempotent(project):
     )
 
     run = project / "runs" / state.id
-    assert revised.status == RunStatus.READY
+    assert revised.status == RunStatus.NEEDS_AUTHOR
     assert repeated.revision == 2
     assert (run / "final.md").read_text(encoding="utf-8").strip() == edited.strip()
     assert "reviewed writing system" in (run / "revision-02.diff").read_text()

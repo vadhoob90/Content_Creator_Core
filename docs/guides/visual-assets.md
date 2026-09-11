@@ -195,3 +195,10 @@ alter linguistic writer or critic prompts.
 - Workspaces own palette, typography, locked marks, templates, and learned
   visual choices in a scope separate from linguistic voice.
 - The author remains the final authority; validation never implies approval.
+
+## Related drafts and multiple placements
+
+See [visual slots](visual-slots.md) to govern several independent images and
+[draft bundles](draft-bundles.md) to collect and export article/hook drafts for
+review. Coordinator capabilities expose these commands, context includes bundle
+review summaries, and run next-actions report per-slot review requirements.

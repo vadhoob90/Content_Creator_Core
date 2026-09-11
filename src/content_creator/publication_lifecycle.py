@@ -8,6 +8,7 @@ from typing import Any, Dict, Optional, Type
 from pydantic import BaseModel
 
 from .domain import RunEvent, RunState, RunStatus
+from .draft_integrity import ensure_draft_integrity
 from .perspective_semantic_review import (
     PerspectiveSemanticReview,
     SemanticReviewEvidence,
@@ -75,6 +76,52 @@ class PublicationLifecycle:
         self.policy = policy
         self.error_type = error_type
 
+    def publish_reviewed(
+        self,
+        workflow: Any,
+        run_id: str,
+        filename: Optional[str],
+        feedback: Optional[str],
+        diagnostic_decision: Optional[str],
+        approved_by: Optional[str],
+        review_notes: Optional[str],
+    ) -> RunState:
+        """Coordinate guarded publication through the composed run workflow.
+
+        Args:
+            workflow (Any): Orchestration host holding the exclusive run mutation lock.
+            run_id (str): Reviewed run identifier.
+            filename (Optional[str]): Requested publication filename.
+            feedback (Optional[str]): Explicit author publication feedback.
+            diagnostic_decision (Optional[str]): Support-candidate disposition.
+            approved_by (Optional[str]): Perspective review approver.
+            review_notes (Optional[str]): Perspective review disposition.
+
+        Returns:
+            RunState: Published run after the complete package boundary succeeds.
+        """
+        state, draft, pack, visual_asset, target = workflow._prepare_publication(
+            run_id, filename, diagnostic_decision
+        )
+        gate = workflow.publication_lifecycle.prepare(
+            state,
+            draft,
+            approved_by,
+            review_notes,
+        )
+        assessment = workflow._publication_assessment(state, run_id, target, feedback)
+        workflow.store.write_artifact(run_id, "assessment.json", assessment)
+        workflow._extract_learnings(state, draft, assessment, feedback)
+        workflow._extract_perspectives(state, draft, assessment)
+        return workflow._finish_publication(
+            state,
+            target,
+            pack,
+            visual_asset,
+            draft,
+            gate,
+        )
+
     def prepare(
         self,
         state: RunState,
@@ -95,6 +142,8 @@ class PublicationLifecycle:
             PublicationGateEvidence: Deterministic and semantic evidence for the receipt.
 
         """
+        run = self.store.run_dir(state.id)
+        ensure_draft_integrity(run, (run / "final.md").read_bytes().decode("utf-8"))
         VoiceRegistry(self.root).resolve(state.work_order.voice_id, state.work_order.voice_version)
         evaluation, evaluation_hash = self._deterministic(state, draft)
         semantic = self._semantic(state, draft, approved_by, review_notes)

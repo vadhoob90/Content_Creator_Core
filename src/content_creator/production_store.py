@@ -3,6 +3,7 @@
 from pathlib import Path
 
 from .domain import RunState
+from .draft_integrity import archive_manifest, capture_accepted
 from .production_manifest import refresh_production_manifest
 from .storage import RunStore, StateWriter
 
@@ -30,4 +31,6 @@ def _refresh_manifest(root: Path, state: RunState, write_text: StateWriter) -> N
     Returns:
         None: Production artifacts and state paths are refreshed in place.
     """
+    capture_accepted(root, state, write_text)
     refresh_production_manifest(root, state, write_text)
+    archive_manifest(root, state)
