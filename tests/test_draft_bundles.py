@@ -112,10 +112,12 @@ def test_membership_changes_are_explicit_and_order_is_stable(project, bundle_run
     article, hook = bundle_runs
     bundles = build_bundle(project, bundle_runs)
     old = bundles.show("launch")
-    assert bundles.add("launch", "article", article.id) == old
+    repeated = bundles.add("launch", "article", article.id)
+    assert repeated == old
     with pytest.raises(StorageError, match="exists"):
         bundles.add("launch", "article", hook.id)
-    assert bundles.update("launch", "article") == old
+    unchanged = bundles.update("launch", "article")
+    assert unchanged == old
     updated = bundles.remove("launch", "article")
     assert [m.name for m in updated.members] == ["hook"]
     assert updated.revision == old.revision + 1
@@ -278,12 +280,14 @@ def test_bundle_identity_validation_and_empty_export(project):
         with pytest.raises(StorageError):
             bundles.create(name, "Draft")
     created = bundles.create("empty", "Empty")
-    assert bundles.create("empty", "Empty") == created
+    repeated = bundles.create("empty", "Empty")
+    assert repeated == created
     with pytest.raises(StorageError, match="different title"):
         bundles.create("empty", "Changed")
     with pytest.raises(StorageError, match="empty"):
         bundles.export("empty", "drafts/empty")
-    assert bundles.remove("empty", "absent") == created
+    unchanged = bundles.remove("empty", "absent")
+    assert unchanged == created
     with pytest.raises(StorageError, match="Unknown bundle member"):
         bundles.update("empty", "absent")
     path = project / "draft-bundles/empty.json"

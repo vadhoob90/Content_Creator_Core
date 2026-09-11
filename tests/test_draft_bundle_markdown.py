@@ -66,3 +66,20 @@ def test_code_examples_and_plain_text_remain_exact():
 def test_export_rejects_unresolved_or_unsupported_references(text):
     with pytest.raises(StorageError):
         rewrite(text)
+
+
+def test_adversarial_escape_sequence_does_not_backtrack_exponentially():
+    import subprocess
+    import sys
+
+    code = r"""
+from content_creator.draft_bundles.markdown import rewrite_markdown
+from content_creator.storage import StorageError
+try:
+    rewrite_markdown("[](" + "\\!" * 4000, "runs/example/final.md", {}, {})
+except StorageError:
+    pass
+else:
+    raise AssertionError("Malformed link should be rejected")
+"""
+    subprocess.run([sys.executable, "-c", code], check=True, timeout=5)

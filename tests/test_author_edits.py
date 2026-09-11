@@ -3,7 +3,12 @@ import json
 import pytest
 from conftest import passing_critique, research_brief, valid_draft
 
-from content_creator.author_edits import AuthorEditRequest, AuthorEditWorkflow, ClaimReviewDecision
+from content_creator.author_edits import (
+    AuthorEditRequest,
+    AuthorEditWorkflow,
+    ClaimReviewDecision,
+    validate_author_edit,
+)
 from content_creator.domain import ResearchBrief, RunStatus, WorkOrder
 from content_creator.orchestrator import Orchestrator
 from content_creator.providers import FakeProvider, ProviderRegistry
@@ -336,19 +341,16 @@ def test_cli_adoption_and_claim_review(project, reviewed, capsys):
 
 
 def test_change_during_validation_is_preserved(project, reviewed, monkeypatch):
-    import content_creator.author_edits as adoption
-
     _, state, _ = reviewed
     final = project / state.final_draft_path
     request = request_for(project, state, final.read_text() + "\n")
-    validate = adoption.validate_author_edit
 
     def concurrent_change(root, current, draft):
-        result = validate(root, current, draft)
+        result = validate_author_edit(root, current, draft)
         final.write_text("Concurrent author changes")
         return result
 
-    monkeypatch.setattr(adoption, "validate_author_edit", concurrent_change)
+    monkeypatch.setattr("content_creator.author_edits.validate_author_edit", concurrent_change)
     with pytest.raises(StorageError, match="changed concurrently"):
         AuthorEditWorkflow(project).adopt(state.id, request)
     assert final.read_text() == "Concurrent author changes"

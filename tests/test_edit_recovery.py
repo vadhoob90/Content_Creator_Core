@@ -26,10 +26,13 @@ def test_interrupted_transaction_blocks_publication_and_recovery_restores_exact_
     run = project / "runs" / state.id
     final = run / "final.md"
     before = final.read_bytes()
-    with pytest.raises(KeyboardInterrupt), edit_transaction(run, ["final.md", "new.json"]):
-        final.write_bytes(b"interrupted edit")
-        (run / "new.json").write_text("new")
-        raise KeyboardInterrupt
+    try:
+        with edit_transaction(run, ["final.md", "new.json"]):
+            final.write_bytes(b"interrupted edit")
+            (run / "new.json").write_text("new")
+            raise KeyboardInterrupt
+    except KeyboardInterrupt:
+        assert final.read_bytes() == b"interrupted edit"
     assert (run / JOURNAL).exists()
     with pytest.raises(StorageError, match="recover-edit"):
         core.publish(state.id)
