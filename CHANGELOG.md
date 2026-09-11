@@ -8,6 +8,23 @@ release tag.
 
 ## [Unreleased]
 
+### Added
+
+- Provider-free `adopt-edit`, exact-hash `approve-edit-claims`, and `recover-edit`
+  commands preserve accepted text, deterministic diffs, original pack inputs,
+  and recoverable author-edit evidence (first slice of #135).
+- Draft-integrity records and coordinator actions expose outstanding claim
+  review without reusing historical model scores as current validation.
+
+### Changed
+
+- New prose revisions conservatively reopen claim review; publication rejects
+  changed final/research hashes and unresolved claim review. Only trailing-newline
+  edits can automatically preserve prior claim clearance.
+- New runs preserve effective pack snapshots for historical edit validation.
+  Adoption and claim review share a run lock with revision and publication.
+
+
 ## [1.19.0] - 2026-08-23
 
 ### Added

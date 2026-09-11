@@ -19,6 +19,7 @@ from .domain import (
     RunStatus,
     WorkOrder,
 )
+from .edit_transaction import serialize_run
 from .orchestration_support import OrchestrationError as OrchestrationError
 from .orchestration_support import OrchestrationRuntime
 from .perspective_extraction import extract_perspectives
@@ -158,6 +159,7 @@ class Orchestrator:
         self.store.save_state(state)
         return state
 
+    @serialize_run
     def revise(
         self,
         run_id: str,
@@ -602,6 +604,7 @@ class Orchestrator:
             self._runtime._fail(state, exc)
             raise
 
+    @serialize_run
     def publish(
         self,
         run_id: str,
@@ -630,26 +633,14 @@ class Orchestrator:
             RunState: The resulting run state for publish.
 
         """
-        state, draft, pack, visual_asset, target = self._prepare_publication(
-            run_id, filename, diagnostic_decision
-        )
-        gate = self.publication_lifecycle.prepare(
-            state,
-            draft,
+        return self.publication_lifecycle.publish_reviewed(
+            self,
+            run_id,
+            filename,
+            feedback,
+            diagnostic_decision,
             perspective_review_approved_by,
             perspective_review_notes,
-        )
-        assessment = self._publication_assessment(state, run_id, target, feedback)
-        self.store.write_artifact(run_id, "assessment.json", assessment)
-        self._extract_learnings(state, draft, assessment, feedback)
-        self._extract_perspectives(state, draft, assessment)
-        return self._finish_publication(
-            state,
-            target,
-            pack,
-            visual_asset,
-            draft,
-            gate,
         )
 
     def _prepare_publication(

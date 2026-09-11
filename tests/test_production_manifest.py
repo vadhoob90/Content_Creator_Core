@@ -3,6 +3,7 @@ import json
 import pytest
 from conftest import passing_critique, valid_draft
 
+from content_creator.author_edits import AuthorEditWorkflow
 from content_creator.domain import (
     PerspectiveSelection,
     RoutePlan,
@@ -10,6 +11,7 @@ from content_creator.domain import (
     RunState,
     WorkOrder,
 )
+from content_creator.edit_contracts import ClaimReviewDecision
 from content_creator.orchestrator import Orchestrator
 from content_creator.production_manifest import ProductionManifest
 from content_creator.production_store import production_run_store
@@ -119,6 +121,14 @@ def test_revision_and_publication_refresh_manifest_without_decorating_publicatio
         feedback="Use the reviewed wording.",
         draft=edited,
         idempotency_key="production-manifest-revision",
+    )
+    AuthorEditWorkflow(project).approve_claims(
+        revised.id,
+        ClaimReviewDecision(
+            draft_sha256=hash_file(project / revised.final_draft_path),
+            approved_by="Author",
+            notes="Reviewed the wording; no new factual assertions.",
+        ),
     )
     published = orchestrator.publish(revised.id, filename="manifest-test.md")
     run = project / "runs" / state.id

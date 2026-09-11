@@ -85,6 +85,7 @@ class RunSummary(BaseModel):
     superseded_by_run_id: Optional[str] = None
     requires_human_input: bool = False
     incomplete: bool = False
+    claim_review_required: bool = False
 
 
 class WorkspaceSnapshot(BaseModel):

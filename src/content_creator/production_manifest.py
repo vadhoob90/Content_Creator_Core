@@ -12,7 +12,8 @@ from pydantic import BaseModel, Field
 
 from .context_composition import ContextCompositionManifest
 from .domain import PublishedMediaArtifact, RunState
-from .packs import PackError, PackRegistry
+from .draft_integrity import DraftIntegrity, read_integrity
+from .packs import ContentPack, PackError, PackRegistry
 from .production_governance import (
     ProductionGovernance,
     ProductionPerspective,
@@ -97,6 +98,7 @@ class ProductionManifest(BaseModel):
     invocations: list[ProductionInvocation] = Field(default_factory=list)
     artifacts: list[ProductionArtifact] = Field(default_factory=list)
     publication: Optional[ProductionPublication] = None
+    draft_integrity: Optional[DraftIntegrity] = None
 
 
 def refresh_production_manifest(
@@ -185,6 +187,7 @@ def build_production_manifest(
         invocations=_invocations(run_dir),
         artifacts=_artifacts(root, state),
         publication=_publication(root, state),
+        draft_integrity=read_integrity(run_dir),
     )
 
 
@@ -368,10 +371,15 @@ def _pack(root: Path, state: RunState) -> ProductionPack:
     """
     order = state.work_order
     registry = PackRegistry(root)
-    try:
-        pack = registry.resolve(order.content_pack, order.pack_options)
-    except PackError:
-        pack = registry.get(order.content_pack)
+    context_path = root / "runs" / state.id / "resolved-context.json"
+    context = json.loads(context_path.read_text()) if context_path.is_file() else {}
+    if context.get("effective_pack"):
+        pack = ContentPack.model_validate(context["effective_pack"])
+    else:
+        try:
+            pack = registry.resolve(order.content_pack, order.pack_options)
+        except PackError:
+            pack = registry.get(order.content_pack)
     return ProductionPack(
         id=pack.id,
         version=pack.version,

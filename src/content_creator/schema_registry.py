@@ -11,6 +11,8 @@ from pydantic import BaseModel
 
 from .context_composition import ContextCompositionManifest
 from .domain import RunState, WorkOrder
+from .draft_integrity import DraftIntegrity
+from .edit_contracts import ClaimReviewDecision
 from .lifecycle_models import LifecyclePlan, LifecycleReceipt, VersionLifecycleCatalogue
 from .perspective_semantic_review import (
     PerspectiveReviewDecision,
@@ -43,6 +45,8 @@ class SchemaCompatibilityError(ValueError):
 
 
 SCHEMA_MODELS: Dict[str, Type[BaseModel]] = {
+    "draft-integrity": DraftIntegrity,
+    "edit-claim-review": ClaimReviewDecision,
     "context-composition-manifest": ContextCompositionManifest,
     "work-order": WorkOrder,
     "run-state": RunState,

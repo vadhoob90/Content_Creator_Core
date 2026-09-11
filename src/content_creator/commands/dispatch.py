@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Callable, List, Optional
 
 from ..orchestrator import Orchestrator
+from .author_edit import run as run_author_edit
 from .base_commands import (
     check_workspace,
     evaluate,
@@ -44,6 +45,9 @@ from .workspace_commands import manage_workspace
 
 Handler = Callable[[CommandContext], int]
 ROUTES: dict[str, Handler] = {
+    "adopt-edit": run_author_edit,
+    "approve-edit-claims": run_author_edit,
+    "recover-edit": run_author_edit,
     "advanced": show_advanced,
     "agents": manage_agents,
     "approve-research": approve_research,

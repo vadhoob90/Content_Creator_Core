@@ -295,6 +295,7 @@ class ContentCoordinator:
             RunSummary(
                 run_id=state.id,
                 status=state.status.value,
+                claim_review_required=state.claim_review_required,
                 topic=state.work_order.topic,
                 content_pack=state.work_order.content_pack,
                 voice_id=state.work_order.voice_id,
