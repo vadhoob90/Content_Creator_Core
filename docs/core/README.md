@@ -81,6 +81,7 @@ The runtime composes:
 
 ```text
 Core harness and role contract
++ shared editorial standard for writers and critics
 + repository-owned agent instructions
 + repository and voice-scoped learning
 + active voice version
@@ -91,6 +92,21 @@ Core harness and role contract
 
 Repository instructions may specialise behavior but cannot remove Core
 integrity boundaries.
+
+The [shared editorial standard](../guides/editorial-standard.md), included
+from v1.21.0, enters every writer and critic prompt, including revisions.
+Maintain the policy in [contracts/editorial-standard.md](../../contracts/editorial-standard.md)
+and its packaged mirror under `src/content_creator/resources/contracts/`.
+Core loads the packaged policy directly, so legacy workspace rubric overrides
+cannot hide it. Local author preferences and selected voice evidence specialise
+its style defaults.
+
+Downstream workspaces receive policy updates through their installed Core
+dependency. Use the [runtime context guide](../guides/runtime-context-composition.md)
+to inspect the `core-editorial` layer and its hash. The
+[linguistic research](../research/ai-writing-patterns.md) and
+[evaluation protocol](../guides/editorial-standard.md#evaluation-set-and-protocol)
+explain the evidence and how to assess changes.
 
 Before changing structure or public behavior, read the
 [architecture and development guardrails](architecture-guardrails.md), the
