@@ -45,6 +45,16 @@ available on demand rather than becoming first-run prerequisites.
 Persisted files—not chat history—hold workflow state. Core returns content for
 human review and does not publish externally.
 
+Since v1.21.0, Core automatically includes a **shared editorial standard** in
+every writer and critic invocation, including revisions. It guides specific,
+coherent writing while preserving the author's voice and local preferences.
+Downstream workspaces receive it by upgrading their installed Core package;
+there are no rules to copy into each repository.
+
+Read the [editorial standard and examples](docs/guides/editorial-standard.md)
+for how it works, or the [linguistic research](docs/research/ai-writing-patterns.md)
+for the evidence behind it.
+
 For a system-level view of the human interaction, agent workflow, persisted
 artifacts, provider-neutral LLM layer, and the boundary between Core and the
 Author's workspace, see
