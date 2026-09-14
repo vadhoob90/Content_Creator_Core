@@ -13,11 +13,16 @@ For each role, Core composes the applicable instruction layers in this order:
 3. `agents/<role>.md` from the author workspace;
 4. `agents/<role>-learnings.md` from the workspace, where the role has a
    learning policy;
-5. the selected immutable voice profile under `profiles/<voice-id>/`;
-6. only the approved perspective profiles selected for this run;
-7. active, role-matched records from `learnings/memory.json` and the exact
+5. `contracts/editorial-standard.md` from Core for writers and critics;
+6. the selected immutable voice profile under `profiles/<voice-id>/`;
+7. only the approved perspective profiles selected for this run;
+8. active, role-matched records from `learnings/memory.json` and the exact
    `profiles/<voice-id>/learnings/<resolved-voice-version>/memory.json` epoch; and
-8. the selected content pack's rubrics and role instructions.
+9. the selected content pack's rubrics and role instructions.
+
+The [shared editorial standard](editorial-standard.md) supplies style defaults
+that local author preferences and voice evidence specialise. It is loaded from
+the installed package even when a workspace has legacy rubric overrides.
 
 A layer that does not apply is recorded as `skipped` with a reason. This makes
 absence visible—for example, `no-approved-perspective-selected` or
@@ -69,7 +74,7 @@ invocation:
 ```text
 [context]   1. load Core harness from core:contracts/agent-harness.md
 [context]   3. load Workspace writer agent from agents/writer.md
-[context]   7. load Active voice learnings from profiles/bharath-linkedin/learnings/memory.json; records=writer-01
+[context]   5. load Core editorial standard from core:contracts/editorial-standard.md
 ```
 
 Standard output remains the normal machine-readable run result, so existing

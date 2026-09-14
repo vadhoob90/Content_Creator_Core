@@ -4,6 +4,12 @@
 separate repository that pins a tagged kernel release and owns its editorial
 team, voices, learnings, sources, policies, runs, and publications.
 
+The [shared editorial standard](editorial-standard.md) arrives through the
+installed Core package. Upgrading to a release that includes it updates writer
+and critic guidance without regenerating repository agents. Local voice and
+author preferences continue to specialise its defaults. A repository update
+that leaves the installed Core dependency unchanged does not fetch new policy.
+
 ## Responsibility boundary
 
 The core owns mechanisms and non-negotiable contracts:
@@ -34,7 +40,7 @@ branch:
 name = "example-content-workspace"
 version = "0.1.0"
 dependencies = [
-  "content-creator==1.20.0",
+  "content-creator==1.21.0",
 ]
 ```
 
@@ -44,7 +50,7 @@ refreshing the lock, and running downstream tests.
 From v0.6, preview that change with:
 
 ```bash
-content-creator --workspace . workspace upgrade --to v1.20.0
+content-creator --workspace . workspace upgrade --to v1.21.0
 ```
 
 The preview shows the dependency and lockfile operation, packaged template
@@ -63,7 +69,7 @@ plain-language summary lines plus decision prompts for the chat coordinator.
 Apply the reviewed preview explicitly:
 
 ```bash
-content-creator --workspace . workspace upgrade --to v1.20.0 --apply
+content-creator --workspace . workspace upgrade --to v1.21.0 --apply
 ```
 
 Core accepts only a semantic-version tag or full 40-character reviewed commit,
