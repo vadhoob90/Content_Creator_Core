@@ -18,6 +18,8 @@ creation to a first reviewable draft. Use `start` for the next content task and
 - [Agents, learning, voice, and perspectives](guides/personalisation.md)
 - [What each agent receives at runtime](guides/runtime-context-composition.md)
 - [Repository-owned agents](guides/repository-agents.md)
+- [Shared editorial standard and local voice preferences](guides/editorial-standard.md)
+- [Linguistic research on generic AI writing](research/ai-writing-patterns.md)
 
 Run `content-creator --workspace . personalisation show` for a direct view of
 the effective state and the repository paths behind it.

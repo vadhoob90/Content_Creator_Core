@@ -43,6 +43,7 @@ def resolved_context(
     resources = ResourceResolver(root)
     hashes = {
         "core_rubric": hash_file(resources.path("rubrics/core.yaml")),
+        "editorial_standard": hash_file(resources.core / "contracts/editorial-standard.md"),
         "pack_manifest": hash_file(resources.path(Path("packs") / pack.id / "pack.json")),
     }
     agent_workspace = AgentWorkspace(root)

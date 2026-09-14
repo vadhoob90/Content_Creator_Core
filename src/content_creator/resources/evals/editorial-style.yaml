@@ -1,0 +1,135 @@
+version: "1.0"
+purpose: "Human review of editorial quality and voice preservation; not AI detection."
+execution: "Manual paired review; separate from the deterministic route replay."
+cases:
+  - id: inflated-opening
+    pack: linkedin-post
+    voice: "Plain professional English."
+    evidence: "The team removed one approval step. Reviews now take two days instead of five."
+    draft: "In today's rapidly evolving landscape, the team has unlocked a transformative new era of streamlined review, reducing reviews from five days to two by removing one approval step."
+    action: revise
+    reference: "The team removed one approval step. Reviews now take two days instead of five."
+    must_preserve: ["one approval step", "five days to two days"]
+    must_avoid: ["new statistics", "unsupported transformation claim"]
+    review_focus: "Remove ceremony while retaining the supported change and outcome."
+
+  - id: fragment-rhythm
+    pack: general-text
+    voice: "Connected professional prose."
+    evidence: "The pilot failed because invitations expired before reviewers opened them."
+    draft: "The pilot failed. The reason? Invitations. They expired. Before reviewers opened them."
+    action: revise
+    reference: "The pilot failed because invitations expired before reviewers opened them."
+    must_preserve: ["failure", "supported cause"]
+    must_avoid: ["invented timing", "arbitrary minimum sentence length"]
+    review_focus: "Reconnect a causal explanation broken into unnecessary fragments."
+
+  - id: abstract-nouns
+    pack: general-text
+    voice: "Plain workplace update."
+    evidence: "The team will review applications on Monday."
+    draft: "The implementation of the review of applications by the team will take place on Monday."
+    action: revise
+    reference: "The team will review applications on Monday."
+    must_preserve: ["team", "applications", "Monday"]
+    must_avoid: ["changed responsibility", "changed date"]
+    review_focus: "Make the actor and action clear."
+
+  - id: unsupported-significance
+    pack: linkedin-article
+    voice: "Measured analysis."
+    evidence: "The pilot had twelve participants. No outcome data is available."
+    draft: "The pilot had twelve participants, underscoring its transformative impact."
+    action: revise
+    reference: "The pilot had twelve participants. Outcome data is not yet available."
+    must_preserve: ["twelve participants", "unknown outcomes"]
+    must_avoid: ["inferred success", "inferred failure"]
+    review_focus: "Identify the unsupported inference as an evidence issue."
+
+  - id: empty-contrast
+    pack: linkedin-post
+    voice: "Direct professional prose."
+    evidence: "The change gives reviewers one queue to check."
+    draft: "This isn't just a change. It's a whole new way of working. The change gives reviewers one queue to check."
+    action: revise
+    reference: "The change gives reviewers one queue to check."
+    must_preserve: ["one queue", "reviewers"]
+    must_avoid: ["invented wider impact"]
+    review_focus: "Remove a grand contrast that contributes no information."
+
+  - id: preserve-short-instruction
+    pack: general-text
+    voice: "Short, accessible instructions."
+    evidence: "Readers must save their work before closing the window."
+    draft: "Save your work. Then close the window."
+    action: preserve
+    reference: "Save your work. Then close the window."
+    must_preserve: ["sequence", "short sentences"]
+    must_avoid: ["padding", "criticism based on sentence length alone"]
+    review_focus: "Recognise clear short sentences as appropriate."
+
+  - id: preserve-dash-voice
+    pack: linkedin-post
+    voice: "The author explicitly prefers occasional em-dash asides."
+    evidence: "The review was finally completed on Friday."
+    draft: "The review finished—at last—on Friday."
+    action: preserve
+    reference: "The review finished—at last—on Friday."
+    must_preserve: ["Friday", "supported author punctuation preference"]
+    must_avoid: ["dash-based AI accusation", "automatic punctuation replacement"]
+    review_focus: "Retain a purposeful aside in the selected voice."
+
+  - id: preserve-real-contrast
+    pack: general-text
+    voice: "Precise explanation that corrects a likely misconception."
+    evidence: "The tool recommends edits. It cannot approve publication. Readers may confuse these powers."
+    draft: "The tool recommends edits; it does not approve publication."
+    action: preserve
+    reference: "The tool recommends edits; it does not approve publication."
+    must_preserve: ["recommendation versus approval distinction"]
+    must_avoid: ["removing a useful contrast", "claiming publication authority"]
+    review_focus: "Retain a distinction that prevents misunderstanding."
+
+  - id: preserve-uncertainty
+    pack: linkedin-article
+    voice: "Careful evidence-led analysis."
+    evidence: "A small pilot suggests shorter review times; it cannot establish performance at scale."
+    draft: "The pilot suggests shorter reviews, but it does not establish whether the change will work at scale."
+    action: preserve
+    reference: "The pilot suggests shorter reviews, but it does not establish whether the change will work at scale."
+    must_preserve: ["tentative result", "scale limitation"]
+    must_avoid: ["turning suggests into proves", "removing warranted qualification"]
+    review_focus: "Preserve epistemic caution even when reducing generic hedging."
+
+  - id: preserve-regional-voice
+    pack: general-text
+    voice: "Concise British English; keep ordinary regional vocabulary."
+    evidence: "The organisation approved the colour changes on Tuesday."
+    draft: "The organisation approved the colour changes on Tuesday."
+    action: preserve
+    reference: "The organisation approved the colour changes on Tuesday."
+    must_preserve: ["organisation", "colour", "Tuesday"]
+    must_avoid: ["Americanising spelling", "inventing a more idiomatic author identity"]
+    review_focus: "Accept clear regional English without generic voice normalisation."
+
+  - id: preserve-literal-material
+    pack: general-text
+    voice: "Technical release notes. Preserve literal code and quotations."
+    evidence: 'The documented command is tool --dry-run. The source quote is "Wait—check the log." The supported range is 3–5 retries.'
+    draft: 'Run `tool --dry-run`. The note says, "Wait—check the log." Use 3–5 retries.'
+    action: preserve
+    reference: 'Run `tool --dry-run`. The note says, "Wait—check the log." Use 3–5 retries.'
+    must_preserve: ["double-hyphen flag", "exact quotation", "en-dash range"]
+    must_avoid: ["global dash replacement", "altered command"]
+    review_focus: "Keep code, quotations, and ranges intact."
+
+  - id: missing-personal-evidence
+    pack: linkedin-post
+    voice: "Warm first-person style, but no personal experience is supplied."
+    evidence: "Only the fact that a review process changed is supplied. No author experience or results are known."
+    draft: "I saw this change transform my team's results overnight."
+    action: report_gap
+    reference: "Author experience and results are not supported. Report the gap through the application's defined response, or use only the supplied fact if the task permits it."
+    must_preserve: ["absence of evidence", "author authority"]
+    must_avoid: ["invented anecdote", "invented team", "invented impact"]
+    review_focus: "Do not manufacture specificity or personality to satisfy a style request."

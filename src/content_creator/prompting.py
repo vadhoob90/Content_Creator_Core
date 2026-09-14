@@ -60,11 +60,45 @@ class PromptAssembler:
         """
         layers: list[ContextLayer] = []
         parts = self._base_prompt_parts(role, layers)
+        self._append_editorial_standard(parts, layers, role)
         self._append_voice_profile(parts, layers, role, order)
         self._append_perspectives(parts, layers, role, order)
         self._append_learnings(parts, layers, role, order)
         self._append_rubrics(parts, layers, role, order)
         return PromptComposition(prompt="\n\n---\n\n".join(parts), layers=layers)
+
+    def _append_editorial_standard(
+        self, parts: list[str], layers: list[ContextLayer], role: str
+    ) -> None:
+        """Load shared editorial guidance independently of workspace overrides.
+
+        Args:
+            parts (list[str]): Ordered prompt sections to extend.
+            layers (list[ContextLayer]): Ordered provenance collection.
+            role (str): Agent role receiving the prompt.
+
+        Returns:
+            None: Prompt sections and provenance are updated in place.
+        """
+        if role not in {"writer", "critic"}:
+            self.provenance.skip(
+                layers,
+                "core-editorial",
+                "Core editorial standard",
+                "core:contracts/editorial-standard.md",
+                "role-does-not-receive-editorial-standard",
+                owner="core",
+            )
+            return
+        parts.append(
+            self.provenance.load(
+                layers,
+                "core-editorial",
+                "Core editorial standard",
+                self.resources.core / "contracts/editorial-standard.md",
+                owner="core",
+            )
+        )
 
     def _base_prompt_parts(self, role: str, layers: list[ContextLayer]) -> list[str]:
         """Return the base prompt parts.

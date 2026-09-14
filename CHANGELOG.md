@@ -6,6 +6,18 @@ The project follows semantic versioning. Entries marked **Unreleased** are
 present on the development branch but are not available from an immutable
 release tag.
 
+## [1.21.0] - 2026-09-14
+
+### Added
+
+- Shared, research-informed editorial guidance for writer and critic prompts,
+  including local voice precedence, contextual review, and protection against
+  blanket punctuation bans or authorship claims. Installed Core updates supply
+  the guidance even when a workspace retains legacy rubric overrides.
+- Exact editorial-policy hashes in prompt provenance and new resolved contexts,
+  a cited linguistic review, worked examples, and twelve manual evaluation cases.
+  Existing rubric scores, integrity gates, and author-owned files are preserved.
+
 ## [1.20.0] - 2026-09-11
 
 ### Added
